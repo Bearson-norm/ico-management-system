@@ -1,0 +1,24 @@
+# Postgres opsional untuk pengembangan lokal (produksi VPS: Postgres native, bukan Docker)
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: inventory_postgres_dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: devpassword
+      POSTGRES_DB: postgres
+    # Host port 5432 = Postgres default (lokal). Jika sudah ada Postgres lain di 5432, ubah sisi kiri mis. "5433:5432".
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./docker/init-multiple-databases.sh:/docker-entrypoint-initdb.d/init-multiple-databases.sh:ro
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dev -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:

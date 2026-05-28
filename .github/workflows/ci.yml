@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-and-build:
+    runs-on: ubuntu-latest
+    env:
+      # Diperlukan oleh schema (env()) untuk prisma validate & prisma generate — DB tidak harus bisa dijangkau.
+      DATABASE_URL_MTC: postgresql://ci:ci@127.0.0.1:5432/mtc_db
+      DATABASE_URL_GA: postgresql://ci:ci@127.0.0.1:5432/ga_db
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Validate Prisma schemas
+        run: npx prisma validate --schema=prisma/mtc/schema.prisma && npx prisma validate --schema=prisma/ga/schema.prisma
+
+      - name: Build
+        env:
+          NEXTAUTH_SECRET: ci-build-secret-min-32-chars-long-xx
+          NEXTAUTH_URL: http://localhost:3000
+        run: npm run build

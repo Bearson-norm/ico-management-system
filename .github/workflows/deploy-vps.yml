@@ -1,0 +1,94 @@
+name: Deploy VPS
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  ssh-deploy:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          command_timeout: 30m
+          script: |
+            set -e
+            if [ -f "$HOME/.nvm/nvm.sh" ]; then
+              . "$HOME/.nvm/nvm.sh"
+            fi
+            if command -v fnm >/dev/null 2>&1; then
+              eval "$(fnm env)"
+            fi
+            APP_PATH="${{ secrets.VPS_APP_PATH }}"
+            APP_PATH="$(printf '%s' "$APP_PATH" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+            if [ -z "$APP_PATH" ]; then
+              echo "ERROR: Secret GitHub VPS_APP_PATH kosong."
+              echo "Set ke path absolut repo di VPS, mis: /var/www/inventory (folder berisi package.json dan .env)."
+              exit 1
+            fi
+            if [ ! -d "$APP_PATH" ]; then
+              echo "ERROR: Folder tidak ada: $APP_PATH"
+              echo "Periksa secret VPS_APP_PATH (typo, huruf besar/kecil, atau path salah)."
+              exit 1
+            fi
+            cd "$APP_PATH"
+            echo ">>> Deploy cwd: $(pwd)"
+            echo ">>> SSH user: $(whoami)"
+            if [ ! -f .env ]; then
+              echo "ERROR: Tidak ada file .env di $(pwd)"
+              echo "Buat di VPS: cd $APP_PATH && cp .env.example .env && nano .env"
+              echo "Pastikan secret VPS_APP_PATH mengarah ke folder yang SAMA tempat .env Anda (bukan ~)."
+              echo "--- Daftar file di folder ini ---"
+              ls -la
+              exit 1
+            fi
+            if [ ! -d .git ]; then
+              echo "ERROR: Bukan working tree Git (folder .git tidak ada)."
+              echo "Workflow ini menyamakan kode dengan GitHub (git fetch + reset). Folder harus hasil git clone."
+              echo "Contoh setup sekali di VPS (sesuaikan URL repo; backup .env ke /tmp dulu):"
+              echo "  cd /var/www && cp inventory/.env /tmp/inventory.env.bak"
+              echo "  sudo rm -rf inventory && git clone https://github.com/USERNAME/REPO.git inventory"
+              echo "  mv /tmp/inventory.env.bak inventory/.env && chmod 600 inventory/.env"
+              exit 1
+            fi
+            # Git 2.35+: hindari "dubious ownership" jika folder repo dimiliki user lain (mis. clone pakai sudo)
+            if ! git config --global --get-all safe.directory 2>/dev/null | grep -qxF "$APP_PATH"; then
+              git config --global --add safe.directory "$APP_PATH"
+            fi
+            export NODE_ENV=production
+            git fetch origin
+            echo ">>> Menyelaraskan repo dengan remote (perubahan lokal pada file ter-track akan dibuang; .env tidak ikut karena di-ignore Git)."
+            if git rev-parse --verify origin/main >/dev/null 2>&1; then
+              git checkout main
+              git reset --hard origin/main
+            elif git rev-parse --verify origin/master >/dev/null 2>&1; then
+              git checkout master
+              git reset --hard origin/master
+            else
+              echo "ERROR: Branch origin/main atau origin/master tidak ditemukan."
+              exit 1
+            fi
+            npm ci
+            echo ">>> DATABASE_URL_* dari file .env di VPS (password disamarkan). Prisma migrate memakai file ini — bukan .env.example."
+            grep -E '^[[:space:]]*DATABASE_URL_(MTC|GA)=' .env | sed -E 's|(postgresql://[^:]+:)[^@]+(@)|\1***\2|' || true
+            npm run prisma:generate
+            npm run migrate
+            npm run build
+            if pm2 describe inventory >/dev/null 2>&1; then
+              pm2 reload ecosystem.config.cjs --only inventory --update-env
+            else
+              pm2 start ecosystem.config.cjs
+            fi
+            pm2 save

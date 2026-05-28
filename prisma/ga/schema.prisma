@@ -1,0 +1,110 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../lib/generated/ga"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL_GA")
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  username     String    @unique
+  passwordHash String    @map("password_hash")
+  namaLengkap  String    @map("nama_lengkap")
+  role         String    @default("viewer")
+  aktif        Boolean   @default(true)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  lastLogin    DateTime? @map("last_login")
+
+  @@map("ga_users")
+}
+
+model Kategori {
+  id        Int      @id @default(autoincrement())
+  nama      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+
+  items GaItem[]
+
+  @@map("ga_kategori")
+}
+
+/// Master barang GA (selaras kolom laporan: KODE BARANG, NAMA BARANG, LOKASI, Satuan, Reorder, Max, Harga)
+model GaItem {
+  id          String   @id
+  nama        String
+  kodeBarang  String?  @map("kode_barang")
+  kategoriId  Int?     @map("kategori_id")
+  uom         String   @default("Pcs")
+  lokasi      String?
+  harga       Decimal  @default(0) @db.Decimal(14, 2)
+  minQty      Int      @default(0) @map("min_qty")
+  maxQty      Int?     @map("max_qty")
+  aktif       Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  kategori Kategori?         @relation(fields: [kategoriId], references: [id])
+  movements GaStockMovement[]
+  opnameLines GaOpnameLine[]
+
+  @@map("ga_item")
+}
+
+/// IN / OUT (tanpa LOG). Inbound: qty_diterima, tanggal_terima, pic — selaras CSV GA.
+model GaStockMovement {
+  id             Int       @id @default(autoincrement())
+  tipe           String // IN | OUT | ADJ (ADJ: qty bertanda +/−)
+  itemId         String?   @map("item_id")
+  namaBarang     String?   @map("nama_barang")
+  qty            Int
+  qtyDiterima    Int?      @map("qty_diterima")
+  tanggalTerima  DateTime? @map("tanggal_terima")
+  tanggalPakai   DateTime? @map("tanggal_pemakaian")
+  tanggal        DateTime  @default(now())
+  picNama        String?   @map("pic_nama")
+  purchaseType   String?   @map("purchase_type")
+  vendor         String?
+  keterangan     String?
+  harga          Decimal   @default(0) @db.Decimal(14, 2)
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  item GaItem? @relation(fields: [itemId], references: [id])
+
+  @@index([itemId])
+  @@index([tipe])
+  @@index([tanggal])
+  @@map("ga_stock_movement")
+}
+
+model GaOpnameSession {
+  id          Int       @id @default(autoincrement())
+  periodeNama String    @map("periode_nama")
+  lokasi      String?
+  status      String    @default("draft") // draft | posted
+  tanggal     DateTime  @default(now())
+  postedAt    DateTime? @map("posted_at")
+  postMode    String?   @map("post_mode") // in_out | adj
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  lines GaOpnameLine[]
+
+  @@map("ga_opname_session")
+}
+
+model GaOpnameLine {
+  id        Int     @id @default(autoincrement())
+  sessionId Int     @map("session_id")
+  itemId    String  @map("item_id")
+  qtyFisik  Int?    @map("qty_fisik")
+  qtySistem Int     @map("qty_sistem")
+  picNama   String? @map("pic_nama")
+
+  session GaOpnameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  item    GaItem          @relation(fields: [itemId], references: [id])
+
+  @@unique([sessionId, itemId])
+  @@map("ga_opname_line")
+}

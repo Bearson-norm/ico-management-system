@@ -1,0 +1,52 @@
+{
+  "name": "mtc-system",
+  "version": "3.0.0",
+  "private": true,
+  "scripts": {
+    "postinstall": "prisma generate --schema=prisma/mtc/schema.prisma && prisma generate --schema=prisma/ga/schema.prisma",
+    "dev": "next dev",
+    "build": "prisma generate --schema=prisma/mtc/schema.prisma && prisma generate --schema=prisma/ga/schema.prisma && next build",
+    "start": "next start",
+    "start:prod": "next start --hostname 127.0.0.1 --port 1325",
+    "lint": "next lint",
+    "prisma:generate": "prisma generate --schema=prisma/mtc/schema.prisma && prisma generate --schema=prisma/ga/schema.prisma",
+    "migrate:mtc": "prisma migrate deploy --schema=prisma/mtc/schema.prisma",
+    "migrate:ga": "prisma migrate deploy --schema=prisma/ga/schema.prisma",
+    "migrate": "npm run migrate:mtc && npm run migrate:ga",
+    "migrate:dev:mtc": "prisma migrate dev --schema=prisma/mtc/schema.prisma",
+    "migrate:dev:ga": "prisma migrate dev --schema=prisma/ga/schema.prisma",
+    "studio:mtc": "prisma studio --schema=prisma/mtc/schema.prisma",
+    "studio:ga": "prisma studio --schema=prisma/ga/schema.prisma --port 5556",
+    "seed": "npx prisma generate --schema=prisma/mtc/schema.prisma && npx prisma generate --schema=prisma/ga/schema.prisma && npx ts-node --project tsconfig.scripts.json prisma/seed.ts",
+    "import-data": "ts-node --project tsconfig.scripts.json lib/migration/migrate.ts",
+    "import:sparepart-csv": "ts-node --project tsconfig.scripts.json scripts/import-sparepart-csv.ts",
+    "import:ga-initial-stock": "ts-node --project tsconfig.scripts.json scripts/import-ga-initial-stock.ts",
+    "import:mtc-initial-stock": "ts-node --project tsconfig.scripts.json scripts/import-mtc-initial-stock.ts",
+    "flush:db": "ts-node --project tsconfig.scripts.json scripts/flush-db.ts",
+    "reset:db": "ts-node --project tsconfig.scripts.json scripts/flush-db.ts --all --confirm --seed"
+  },
+  "dependencies": {
+    "@auth/prisma-adapter": "^2.7.2",
+    "@prisma/client": "^5.22.0",
+    "@tanstack/react-query": "^5.62.7",
+    "bcryptjs": "^2.4.3",
+    "csv-parse": "^5.5.6",
+    "next": "14.2.3",
+    "next-auth": "^4.24.7",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "recharts": "^2.13.3",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.3",
+    "prisma": "^5.22.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5"
+  }
+}

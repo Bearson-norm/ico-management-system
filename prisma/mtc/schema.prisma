@@ -1,0 +1,153 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../lib/generated/mtc"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL_MTC")
+}
+
+// ─── Users ───────────────────────────────────────────────────────────────────
+
+model User {
+  id           Int       @id @default(autoincrement())
+  username     String    @unique
+  passwordHash String    @map("password_hash")
+  namaLengkap  String    @map("nama_lengkap")
+  role         String    @default("viewer") // "viewer" | "editor"
+  aktif        Boolean   @default(true)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  lastLogin    DateTime? @map("last_login")
+
+  @@map("users")
+}
+
+// ─── Master Data ─────────────────────────────────────────────────────────────
+
+model Teknisi {
+  id        Int       @id @default(autoincrement())
+  nama      String    @unique
+  aktif     Boolean   @default(true)
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  reports   MaintenanceReport[]
+  movements StockMovement[]
+
+  @@map("teknisi")
+}
+
+model Mesin {
+  id        Int       @id @default(autoincrement())
+  nama      String    @unique
+  tipe      String    @default("keduanya") // "sparepart" | "perbaikan" | "keduanya"
+  area      String?
+  aktif     Boolean   @default(true)
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  reports    MaintenanceReport[]
+  spareparts Sparepart[]
+
+  @@map("mesin")
+}
+
+model Kategori {
+  id        Int       @id @default(autoincrement())
+  nama      String    @unique
+  tipe      String    @default("umum")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  spareparts Sparepart[]
+  reports    MaintenanceReport[]
+
+  @@map("kategori")
+}
+
+model Sparepart {
+  id         String    @id
+  nama       String
+  kategoriId Int?      @map("kategori_id")
+  uom        String    @default("Pcs")
+  lokasi     String?
+  harga      Decimal   @default(0) @db.Decimal(14, 2)
+  minQty       Int       @default(0) @map("min_qty")
+  maxLeadTime  Int       @default(0) @map("max_lead_time")
+  avgLeadTime  Float     @default(0) @map("avg_lead_time")
+  aktif        Boolean   @default(true)
+  purchasingStatus String  @default("NONE") @map("purchasing_status")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  kategori   Kategori?     @relation(fields: [kategoriId], references: [id])
+  mesins     Mesin[]
+  movements  StockMovement[]
+
+  @@map("sparepart")
+}
+
+// ─── Report Counter (atomic no_report generation) ────────────────────────────
+
+model ReportCounter {
+  tipe  String @id
+  count Int    @default(0)
+
+  @@map("report_counter")
+}
+
+// ─── Transactions ─────────────────────────────────────────────────────────────
+
+model MaintenanceReport {
+  id          Int      @id @default(autoincrement())
+  noReport    String   @unique @map("no_report")
+  tipe        String   // "CM" | "PM" | "OH"
+  tanggal     DateTime
+  startTime   String?  @map("start_time")
+  finishTime  String?  @map("finish_time")
+  durasiMenit Int?     @map("durasi_menit")
+  shift       Int?
+  mesinId     Int      @map("mesin_id")
+  keluhan     String
+  issue       String
+  actionTaken String   @map("action_taken")
+  kategoriId  Int?     @map("kategori_id")
+  picId       Int      @map("pic_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  mesin     Mesin     @relation(fields: [mesinId], references: [id])
+  kategori  Kategori? @relation(fields: [kategoriId], references: [id])
+  pic       Teknisi   @relation(fields: [picId], references: [id])
+  movements StockMovement[]
+
+  @@index([tipe])
+  @@index([tanggal])
+  @@index([mesinId])
+  @@index([picId])
+  @@map("maintenance_report")
+}
+
+model StockMovement {
+  id           Int          @id @default(autoincrement())
+  tipe         String       // "IN" | "OUT" | "LOG"
+  sparepartId  String?      @map("sparepart_id")
+  namaItem     String?      @map("nama_item")
+  qty          Int
+  harga        Decimal      @default(0) @db.Decimal(14, 2)
+  lokasi       String?
+  picId        Int?         @map("pic_id")
+  noReport     String?      @map("no_report")
+  purchaseType String?      @map("purchase_type")
+  vendor       String?
+  keterangan   String?
+  tanggal      DateTime     @default(now())
+  createdAt    DateTime     @default(now()) @map("created_at")
+
+  sparepart Sparepart?         @relation(fields: [sparepartId], references: [id])
+  pic       Teknisi?           @relation(fields: [picId], references: [id])
+  report    MaintenanceReport? @relation(fields: [noReport], references: [noReport])
+
+  @@index([sparepartId])
+  @@index([tipe])
+  @@index([tanggal])
+  @@index([noReport])
+  @@map("stock_movement")
+}
