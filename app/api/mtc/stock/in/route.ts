@@ -1,12 +1,15 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireMtcEditor } from '@/lib/auth';
+import { requireMtcEditor, isQuickInBypassed } from '@/lib/auth';
 import { StockInSchema } from '@/lib/validations/stock';
 import { generateItemId, ok, err } from '@/lib/utils';
 
 export async function POST(req: NextRequest) {
-  const session = await requireMtcEditor();
-  if (!session) return err('Akses ditolak', 403);
+  const isBypassed = isQuickInBypassed(req);
+  if (!isBypassed) {
+    const session = await requireMtcEditor();
+    if (!session) return err('Akses ditolak', 403);
+  }
 
   let body: unknown;
   try {
@@ -65,6 +68,11 @@ export async function POST(req: NextRequest) {
             harga: p.harga,
             minQty: p.minQty,
             aktif: true,
+            ...(p.mesinIds && p.mesinIds.length > 0 ? {
+              mesins: {
+                connect: p.mesinIds.map((mid: string) => ({ id: Number(mid) }))
+              }
+            } : {})
           },
         });
         await tx.stockMovement.create({

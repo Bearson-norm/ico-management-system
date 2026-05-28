@@ -1,11 +1,14 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireMtcEditor } from '@/lib/auth';
+import { requireMtcEditor, isQuickInBypassed } from '@/lib/auth';
 import { ok, err } from '@/lib/utils';
 
 export async function GET(req: NextRequest) {
-  const session = await requireMtcEditor();
-  if (!session) return err('Akses ditolak', 403);
+  const isBypassed = isQuickInBypassed(req);
+  if (!isBypassed) {
+    const session = await requireMtcEditor();
+    if (!session) return err('Akses ditolak', 403);
+  }
 
   const { searchParams } = new URL(req.url);
   const includeSpareparts = searchParams.get('include') === 'spareparts';
@@ -17,7 +20,7 @@ export async function GET(req: NextRequest) {
       ? {
           spareparts: {
             where: { aktif: true },
-            select: { id: true, nama: true, uom: true, lokasi: true },
+            include: { kategori: true, mesins: { select: { id: true, nama: true } } },
             orderBy: { nama: 'asc' },
           },
         }
@@ -69,4 +72,22 @@ export async function PUT(req: NextRequest) {
     },
   });
   return ok(row);
+}
+
+export async function DELETE(req: NextRequest) {
+  const session = await requireMtcEditor();
+  if (!session) return err('Akses ditolak', 403);
+  
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get('id');
+  if (!id) return err('ID wajib');
+  
+  try {
+    await prisma.mesin.delete({
+      where: { id: Number(id) }
+    });
+    return ok({ msg: 'Mesin berhasil dihapus' });
+  } catch (e: unknown) {
+    return err('Gagal menghapus mesin. Pastikan tidak ada data terhubung (seperti BOM).', 500);
+  }
 }

@@ -36,6 +36,7 @@ export const StockInNewSchema = BaseInSchema.extend({
   harga:    z.number().min(0).default(0),
   qty:      z.number().int().positive(),
   minQty:   z.number().int().min(0).default(0),
+  mesinIds: z.array(z.string()).optional(),
 });
 
 export const StockInLogSchema = BaseInSchema.extend({

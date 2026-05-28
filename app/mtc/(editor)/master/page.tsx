@@ -87,8 +87,8 @@ export default function MasterPage() {
     } else if (type === 'mesin') {
       setForm(
         data
-          ? { ...data, tipe: data.tipe || 'keduanya' }
-          : { nama: '', area: '', tipe: 'keduanya', aktif: true }
+          ? { ...data, tipe: data.tipe || 'perbaikan' }
+          : { nama: '', area: '', tipe: 'perbaikan', aktif: true }
       );
     } else if (type === 'teknisi') {
       setForm(data || { nama: '', aktif: true });
@@ -115,6 +115,23 @@ export default function MasterPage() {
     } else {
       const json = await res.json();
       alert('Error: ' + json.error);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm(`Apakah Anda yakin ingin menghapus data ini secara permanen? Tindakan ini tidak dapat dibatalkan.`)) return;
+    
+    const endpoint = `/api/mtc/master/${modalType}?id=${form.id}`;
+    const res = await fetch(endpoint, {
+      method: 'DELETE',
+    });
+
+    if (res.ok) {
+      setModalOpen(false);
+      fetchData();
+    } else {
+      const json = await res.json();
+      alert('Gagal menghapus: ' + json.error);
     }
   };
 
@@ -323,6 +340,7 @@ export default function MasterPage() {
                     <tr>
                       <th>ID</th>
                       <th>Nama Mesin</th>
+                      <th>Tipe</th>
                       <th>Area</th>
                       <th>Spareparts</th>
                       <th>Status</th>
@@ -330,10 +348,18 @@ export default function MasterPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {mesins.filter(m => m.nama.toLowerCase().includes(search.toLowerCase())).map(m => (
+                    {mesins
+                      .filter(m => m.nama.toLowerCase().includes(search.toLowerCase()))
+                      .filter(m => m.tipe === 'perbaikan')
+                      .map(m => (
                       <tr key={m.id}>
                         <td data-label="ID" className="text-muted text-tiny">{m.id}</td>
                         <td data-label="Nama Mesin" style={{ fontWeight: 600 }}>{m.nama}</td>
+                        <td data-label="Tipe">
+                          {m.tipe === 'sparepart' ? <span className="badge badge-blu">Khusus Sparepart (BOM)</span>
+                           : m.tipe === 'perbaikan' ? <span className="badge badge-ylw">Khusus Perbaikan</span>
+                           : <span className="badge badge-pur">Keduanya</span>}
+                        </td>
                         <td data-label="Area">{m.area || '—'}</td>
                         <td data-label="Spareparts"><span className="badge badge-pur">{m._sparepartCount ?? 0} item</span></td>
                         <td data-label="Status">{m.aktif ? <span className="badge badge-grn">Aktif</span> : <span className="badge badge-red">Nonaktif</span>}</td>
@@ -411,11 +437,16 @@ export default function MasterPage() {
                       <th>Nama Mesin</th>
                       <th>Area</th>
                       <th>Jumlah Sparepart Terhubung</th>
+                      <th style={{ textAlign: 'right' }}>Aksi</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {bomMesins.filter(m => m.nama.toLowerCase().includes(search.toLowerCase())).map(m => (
-                      <React.Fragment key={m.id}>
+                    {bomMesins
+                      .filter(m => m.nama.toLowerCase().includes(search.toLowerCase()))
+                      .filter(m => m.tipe === 'sparepart' || m.tipe === 'keduanya')
+                      .filter(m => (m._sparepartCount ?? 0) > 0)
+                      .map(m => (
+                        <React.Fragment key={m.id}>
                         <tr onClick={() => setExpandedMesinId(expandedMesinId === m.id ? null : m.id)} style={{ cursor: 'pointer' }}>
                           <td style={{ textAlign: 'center', fontSize: 14 }}>{expandedMesinId === m.id ? '▼' : '▶'}</td>
                           <td data-label="Nama Mesin" style={{ fontWeight: 600 }}>{m.nama}</td>
@@ -425,10 +456,22 @@ export default function MasterPage() {
                               {m._sparepartCount} sparepart
                             </span>
                           </td>
+                          <td data-label="Aksi" style={{ textAlign: 'right' }}>
+                            <button 
+                              type="button" 
+                              className="btn btn-ghost btn-sm" 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openModal('mesin', m);
+                              }}
+                            >
+                              ✏️ Edit Mesin
+                            </button>
+                          </td>
                         </tr>
                         {expandedMesinId === m.id && (
                           <tr>
-                            <td colSpan={4} style={{ padding: 0 }}>
+                            <td colSpan={5} style={{ padding: 0 }}>
                               <div style={{ padding: '12px 20px 16px 48px', background: 'var(--sf2)', borderTop: '1px solid var(--br)' }}>
                                 {Array.isArray(m.spareparts) && m.spareparts.length > 0 ? (
                                   <table className="table-clean" style={{ marginBottom: 0 }}>
@@ -438,6 +481,7 @@ export default function MasterPage() {
                                         <th style={{ fontSize: 11 }}>Nama Sparepart</th>
                                         <th style={{ fontSize: 11 }}>UoM</th>
                                         <th style={{ fontSize: 11 }}>SLOC</th>
+                                        <th style={{ fontSize: 11, textAlign: 'right' }}>Aksi</th>
                                       </tr>
                                     </thead>
                                     <tbody>
@@ -447,6 +491,19 @@ export default function MasterPage() {
                                           <td style={{ fontWeight: 600, fontSize: 13 }}>{sp.nama}</td>
                                           <td className="text-tiny">{sp.uom}</td>
                                           <td><span className="badge badge-blu" style={{ fontSize: 10 }}>{sp.lokasi || '—'}</span></td>
+                                          <td style={{ textAlign: 'right', padding: '4px 8px' }}>
+                                            <button 
+                                              type="button" 
+                                              className="btn btn-ghost btn-sm" 
+                                              style={{ fontSize: 11, padding: '2px 8px' }}
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                openModal('sparepart', sp);
+                                              }}
+                                            >
+                                              ✏️ Edit BOM
+                                            </button>
+                                          </td>
                                         </tr>
                                       ))}
                                     </tbody>
@@ -645,9 +702,23 @@ export default function MasterPage() {
 
               </form>
             </div>
-            <div className="modal-footer">
-              <button className="btn btn-ghost" onClick={() => setModalOpen(false)}>Batal</button>
-              <button type="submit" form="masterForm" className="btn btn-primary">Simpan Data</button>
+            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+              <div>
+                {isEdit && (
+                  <button 
+                    type="button" 
+                    className="btn" 
+                    style={{ background: 'var(--red)', color: 'white', display: 'flex', alignItems: 'center', gap: 6 }}
+                    onClick={handleDelete}
+                  >
+                    🗑️ Hapus Permanen
+                  </button>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="button" className="btn btn-ghost" onClick={() => setModalOpen(false)}>Batal</button>
+                <button type="submit" form="masterForm" className="btn btn-primary">Simpan Data</button>
+              </div>
             </div>
           </div>
         </div>
