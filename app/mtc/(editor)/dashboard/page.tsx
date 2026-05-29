@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
-import ProcurementSelect from '@/components/shared/ProcurementSelect';
+
 
 function fmtRupiah(value: number): string {
   return new Intl.NumberFormat('id-ID', {
@@ -290,7 +290,15 @@ export default async function DashboardPage() {
                         )}
                       </td>
                       <td style={{ textAlign: 'center' }}>
-                        <ProcurementSelect itemId={sp.id} initialStatus={sp.purchasingStatus || 'NONE'} />
+                        {sp.purchasingStatus === 'PR' && (
+                          <span className="badge badge-ylw">⏳ Sedang PR</span>
+                        )}
+                        {sp.purchasingStatus === 'PO' && (
+                          <span className="badge badge-blu">📦 Sudah PO</span>
+                        )}
+                        {(!sp.purchasingStatus || sp.purchasingStatus === 'NONE') && (
+                          <span className="text-muted">—</span>
+                        )}
                       </td>
                     </tr>
                   ))}

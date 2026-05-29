@@ -62,8 +62,8 @@ export async function PUT(req: NextRequest) {
   } = body;
   if (!id) return err('ID wajib');
 
-  const kid = kategoriId === '' || kategoriId === undefined ? null : Number(kategoriId);
-  const mesinIdNums = Array.isArray(mesinIds) ? mesinIds.map((x: string) => Number(x)) : [];
+  const kid = kategoriId === '' ? null : (kategoriId === undefined ? undefined : Number(kategoriId));
+  const mesinIdNums = Array.isArray(mesinIds) ? mesinIds.map((x: string) => Number(x)) : undefined;
 
   await prisma.$transaction(async (tx) => {
     const currentSp = await tx.sparepart.findUnique({
@@ -96,7 +96,7 @@ export async function PUT(req: NextRequest) {
       where: { id: String(id) },
       data: {
         ...(nama !== undefined ? { nama: nama.trim() } : {}),
-        kategoriId: kid,
+        ...(kid !== undefined ? { kategoriId: kid } : {}),
         ...(uom !== undefined ? { uom: uom || 'Pcs' } : {}),
         ...(lokasi !== undefined ? { lokasi: lokasi || null } : {}),
         ...(harga != null ? { harga: Number(harga) } : {}),
@@ -111,7 +111,7 @@ export async function PUT(req: NextRequest) {
         ...(purchasingStatus !== undefined ? { purchasingStatus: String(purchasingStatus) } : {}),
         ...(prDateVal !== undefined ? { prDate: prDateVal } : {}),
         ...(poDateVal !== undefined ? { poDate: poDateVal } : {}),
-        mesins: { set: mesinIdNums.map((mid) => ({ id: mid })) },
+        ...(mesinIdNums !== undefined ? { mesins: { set: mesinIdNums.map((mid) => ({ id: mid })) } } : {}),
       },
     });
   });
