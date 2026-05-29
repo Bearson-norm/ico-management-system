@@ -360,7 +360,7 @@ export default function GaDatabasePage() {
 
       {editOpen && (
         <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && closeEdit()}>
-          <div className="modal-box" style={{ maxWidth: 520 }} onClick={(e) => e.stopPropagation()}>
+          <div className="modal-box" style={{ maxWidth: 600 }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-title">Edit Barang</div>
               <button type="button" className="btn btn-ghost btn-sm" onClick={closeEdit} aria-label="Tutup">
@@ -369,66 +369,77 @@ export default function GaDatabasePage() {
             </div>
             <form id="gaEditForm" onSubmit={handleSave}>
               <div className="modal-body">
-                <div className="form-group">
-                  <label className="form-label">Kode Barang</label>
-                  <input
-                    className="form-input"
-                    value={form.kodeBarang}
-                    onChange={(e) => setForm({ ...form, kodeBarang: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Nama Barang</label>
-                  <input
-                    className="form-input"
-                    value={form.nama}
-                    onChange={(e) => setForm({ ...form, nama: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="form-grid-2">
-                  <div className="form-group">
-                    <label className="form-label">Lokasi</label>
-                    <input
-                      className="form-input"
-                      value={form.lokasi}
-                      onChange={(e) => setForm({ ...form, lokasi: e.target.value })}
-                      placeholder="G2 ATAS"
-                    />
+                <div className="form-grid">
+                  <p className="ga-modal-form-section">Identitas barang</p>
+                  <div
+                    className="form-grid-2"
+                    style={{ gridTemplateColumns: 'minmax(120px, 1fr) minmax(0, 2fr)' }}
+                  >
+                    <div className="form-group">
+                      <label className="form-label">Kode Barang</label>
+                      <input
+                        className="form-input"
+                        value={form.kodeBarang}
+                        onChange={(e) => setForm({ ...form, kodeBarang: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Nama Barang</label>
+                      <input
+                        className="form-input"
+                        value={form.nama}
+                        onChange={(e) => setForm({ ...form, nama: e.target.value })}
+                        required
+                      />
+                    </div>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Satuan (UOM)</label>
-                    <input
-                      className="form-input"
-                      value={form.uom}
-                      onChange={(e) => setForm({ ...form, uom: e.target.value })}
-                    />
+
+                  <p className="ga-modal-form-section">Lokasi & stok</p>
+                  <div className="form-grid-2">
+                    <div className="form-group">
+                      <label className="form-label">Lokasi</label>
+                      <input
+                        className="form-input"
+                        value={form.lokasi}
+                        onChange={(e) => setForm({ ...form, lokasi: e.target.value })}
+                        placeholder="G2 ATAS"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Satuan (UOM)</label>
+                      <input
+                        className="form-input"
+                        value={form.uom}
+                        onChange={(e) => setForm({ ...form, uom: e.target.value })}
+                      />
+                    </div>
                   </div>
-                </div>
-                <div className="form-grid-2">
-                  <div className="form-group">
-                    <label className="form-label">Min Qty</label>
-                    <input
-                      type="number"
-                      min={0}
-                      className="form-input"
-                      value={form.minQty}
-                      onChange={(e) => setForm({ ...form, minQty: e.target.value })}
-                    />
+                  <div className="form-grid-2">
+                    <div className="form-group">
+                      <label className="form-label">Min Qty</label>
+                      <input
+                        type="number"
+                        min={0}
+                        className="form-input"
+                        value={form.minQty}
+                        onChange={(e) => setForm({ ...form, minQty: e.target.value })}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Max Qty (opsional)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        className="form-input"
+                        value={form.maxQty}
+                        onChange={(e) => setForm({ ...form, maxQty: e.target.value })}
+                        placeholder="Kosongkan jika tidak dipakai"
+                      />
+                    </div>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Max Qty (opsional)</label>
-                    <input
-                      type="number"
-                      min={0}
-                      className="form-input"
-                      value={form.maxQty}
-                      onChange={(e) => setForm({ ...form, maxQty: e.target.value })}
-                    />
-                  </div>
-                </div>
-                <div className="form-grid-2">
+
+                  <p className="ga-modal-form-section">Harga & klasifikasi</p>
                   <div className="form-group">
                     <label className="form-label">Harga (Rp)</label>
                     <input
@@ -439,37 +450,39 @@ export default function GaDatabasePage() {
                       onChange={(e) => setForm({ ...form, harga: e.target.value })}
                     />
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Kategori</label>
-                    <select
-                      className="form-input form-select"
-                      value={form.kategoriId}
-                      onChange={(e) => setForm({ ...form, kategoriId: e.target.value })}
-                    >
-                      <option value="">— Tanpa kategori —</option>
-                      {kategoris.map((k) => (
-                        <option key={k.id} value={k.id}>
-                          {k.nama}
-                        </option>
-                      ))}
-                    </select>
+                  <div className="form-grid-2">
+                    <div className="form-group">
+                      <label className="form-label">Kategori</label>
+                      <select
+                        className="form-input form-select"
+                        value={form.kategoriId}
+                        onChange={(e) => setForm({ ...form, kategoriId: e.target.value })}
+                      >
+                        <option value="">— Tanpa kategori —</option>
+                        {kategoris.map((k) => (
+                          <option key={k.id} value={k.id}>
+                            {k.nama}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Status</label>
+                      <select
+                        className="form-input form-select"
+                        value={form.aktif ? 'true' : 'false'}
+                        onChange={(e) => setForm({ ...form, aktif: e.target.value === 'true' })}
+                      >
+                        <option value="true">Aktif</option>
+                        <option value="false">Nonaktif (disembunyikan dari stok)</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Status</label>
-                  <select
-                    className="form-input form-select"
-                    value={form.aktif ? 'true' : 'false'}
-                    onChange={(e) => setForm({ ...form, aktif: e.target.value === 'true' })}
-                  >
-                    <option value="true">Aktif</option>
-                    <option value="false">Nonaktif (disembunyikan dari stok)</option>
-                  </select>
-                </div>
-                <p className="form-hint">ID sistem: {editId}</p>
               </div>
             </form>
             <div className="modal-footer">
+              <span className="ga-modal-footer-meta">ID sistem: {editId}</span>
               <button type="button" className="btn btn-ghost" onClick={closeEdit} disabled={saving}>
                 Batal
               </button>
