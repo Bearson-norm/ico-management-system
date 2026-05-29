@@ -457,10 +457,10 @@ export default function ProcurementPage() {
           </div>
           <div style={{ padding: '24px 20px' }}>
             {/* Input Row Form */}
-            <form onSubmit={handleAddToCart} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', alignItems: 'end' }} className="po-pr-form">
+            <form onSubmit={handleAddToCart} style={{ display: 'grid', gridTemplateColumns: '1.8fr 1.2fr 0.6fr 1.2fr', gap: '20px', alignItems: 'end' }} className="po-pr-form">
               {/* Autocomplete Sparepart Input */}
               <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 6 }} ref={dropdownRef}>
-                <label className="form-label" style={{ fontWeight: 700, fontSize: 12 }}>
+                <label className="form-label" style={{ fontWeight: 800, fontSize: 10, letterSpacing: '0.05em', color: 'var(--tx3)', textTransform: 'uppercase' }}>
                   Cari Suku Cadang <span style={{ color: 'var(--red)' }}>*</span>
                 </label>
                 <div className="search-bar" style={{ width: '100%', marginBottom: 0 }}>
@@ -578,36 +578,60 @@ export default function ProcurementPage() {
 
               {/* Set Status Pengadaan */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label className="form-label" style={{ fontWeight: 700, fontSize: 12 }}>
+                <label className="form-label" style={{ fontWeight: 800, fontSize: 10, letterSpacing: '0.05em', color: 'var(--tx3)', textTransform: 'uppercase' }}>
                   Set Status Pengadaan <span style={{ color: 'var(--red)' }}>*</span>
                 </label>
-                <div style={{ display: 'flex', gap: '16px', alignItems: 'center', height: '40px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
-                    <input
-                      type="radio"
-                      name="purchasingStatus"
-                      checked={targetStatus === 'PR'}
-                      onChange={() => setTargetStatus('PR')}
-                      style={{ transform: 'scale(1.1)', cursor: 'pointer' }}
-                    />
-                    ⏳ PR (Requisition)
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
-                    <input
-                      type="radio"
-                      name="purchasingStatus"
-                      checked={targetStatus === 'PO'}
-                      onChange={() => setTargetStatus('PO')}
-                      style={{ transform: 'scale(1.1)', cursor: 'pointer' }}
-                    />
-                    📦 PO (Purchase Order)
-                  </label>
+                <div style={{ display: 'flex', background: 'var(--sf2)', padding: 4, borderRadius: 8, border: '1px solid var(--br)', height: '40px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setTargetStatus('PR')}
+                    style={{
+                      flex: 1,
+                      padding: '4px 12px',
+                      borderRadius: 6,
+                      border: 'none',
+                      fontWeight: 700,
+                      fontSize: 12,
+                      cursor: 'pointer',
+                      background: targetStatus === 'PR' ? 'var(--ylw-d)' : 'transparent',
+                      color: targetStatus === 'PR' ? 'var(--ylw)' : 'var(--tx3)',
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6
+                    }}
+                  >
+                    ⏳ PR
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTargetStatus('PO')}
+                    style={{
+                      flex: 1,
+                      padding: '4px 12px',
+                      borderRadius: 6,
+                      border: 'none',
+                      fontWeight: 700,
+                      fontSize: 12,
+                      cursor: 'pointer',
+                      background: targetStatus === 'PO' ? 'var(--blu-d)' : 'transparent',
+                      color: targetStatus === 'PO' ? 'var(--blu)' : 'var(--tx3)',
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6
+                    }}
+                  >
+                    📦 PO
+                  </button>
                 </div>
               </div>
 
               {/* Jumlah / Qty Pengadaan */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label className="form-label" style={{ fontWeight: 700, fontSize: 12 }}>
+                <label className="form-label" style={{ fontWeight: 800, fontSize: 10, letterSpacing: '0.05em', color: 'var(--tx3)', textTransform: 'uppercase' }}>
                   Jumlah / Qty <span style={{ color: 'var(--red)' }}>*</span>
                 </label>
                 <input
@@ -629,7 +653,7 @@ export default function ProcurementPage() {
                   disabled={!selectedSp}
                   style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, height: '40px', fontWeight: 700 }}
                 >
-                  ➕ Tambah ke Daftar Item
+                  ➕ Tambah ke Daftar
                 </button>
               </div>
 
