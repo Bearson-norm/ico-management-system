@@ -26,7 +26,7 @@ export default function HistoryPage() {
       if (tipe) q.set('tipe', tipe);
       if (dateFrom) q.set('dateFrom', dateFrom);
       if (dateTo) q.set('dateTo', dateTo);
-      
+      q.set('sort', sort);
       const res = await fetch('/api/mtc/history?' + q.toString());
       const json = await res.json();
       if (json.success) {
@@ -62,9 +62,9 @@ export default function HistoryPage() {
               <input type="date" className="form-input" style={{ width: '140px' }} value={dateFrom} onChange={e => {setDateFrom(e.target.value); setPage(1);}} />
               <span className="text-muted">ke</span>
               <input type="date" className="form-input" style={{ width: '140px' }} value={dateTo} onChange={e => {setDateTo(e.target.value); setPage(1);}} />
-              <select className="form-input form-select" style={{ width: '160px' }} value={sort} onChange={e => {setSort(e.target.value as 'desc' | 'asc'); setPage(1);}}>
-                <option value="desc">Terbaru dulu</option>
-                <option value="asc">Terlama dulu</option>
+              <select className="form-input form-select" style={{ width: '180px' }} value={sort} onChange={e => {setSort(e.target.value as 'desc' | 'asc'); setPage(1);}}>
+                <option value="desc">Terbaru (tanggal & waktu)</option>
+                <option value="asc">Terlama (tanggal & waktu)</option>
               </select>
             </div>
           </div>

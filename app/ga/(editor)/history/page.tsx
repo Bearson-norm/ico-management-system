@@ -39,6 +39,7 @@ export default function GaHistoryPage() {
       if (tipe) q.set('tipe', tipe);
       if (dateFrom) q.set('dateFrom', dateFrom);
       if (dateTo) q.set('dateTo', dateTo);
+      q.set('sort', sort);
       const res = await fetch('/api/ga/history?' + q.toString());
       const j = await res.json();
       if (j.success) {
@@ -114,15 +115,15 @@ export default function GaHistoryPage() {
               />
               <select
                 className="form-input form-select"
-                style={{ width: 160 }}
+                style={{ width: 180 }}
                 value={sort}
                 onChange={(e) => {
                   setSort(e.target.value as 'desc' | 'asc');
                   setPage(1);
                 }}
               >
-                <option value="desc">Terbaru dulu</option>
-                <option value="asc">Terlama dulu</option>
+                <option value="desc">Terbaru (tanggal & waktu)</option>
+                <option value="asc">Terlama (tanggal & waktu)</option>
               </select>
             </div>
           </div>

@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireMtcAuth } from '@/lib/auth';
 import { ok, err } from '@/lib/utils';
+import { historyOrderBy, parseHistorySort } from '@/lib/historySort';
 
 export async function GET(req: NextRequest) {
   const session = await requireMtcAuth();
@@ -14,7 +15,7 @@ export async function GET(req: NextRequest) {
   const tipe = searchParams.get('tipe') ?? '';
   const dateFrom = searchParams.get('dateFrom');
   const dateTo = searchParams.get('dateTo');
-  const sort = searchParams.get('sort') === 'asc' ? 'asc' : 'desc';
+  const sort = parseHistorySort(searchParams);
 
   const where = {
     ...(tipe ? { tipe: tipe as 'IN' | 'OUT' | 'LOG' } : {}),
@@ -43,7 +44,7 @@ export async function GET(req: NextRequest) {
     prisma.stockMovement.findMany({
       where,
       include: { sparepart: true, pic: true },
-      orderBy: [{ tanggal: sort }, { createdAt: sort }],
+      orderBy: historyOrderBy(sort),
       skip: (page - 1) * limit,
       take: limit,
     }),
