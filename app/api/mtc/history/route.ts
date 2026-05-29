@@ -14,6 +14,7 @@ export async function GET(req: NextRequest) {
   const tipe = searchParams.get('tipe') ?? '';
   const dateFrom = searchParams.get('dateFrom');
   const dateTo = searchParams.get('dateTo');
+  const sort = searchParams.get('sort') === 'asc' ? 'asc' : 'desc';
 
   const where = {
     ...(tipe ? { tipe: tipe as 'IN' | 'OUT' | 'LOG' } : {}),
@@ -42,7 +43,7 @@ export async function GET(req: NextRequest) {
     prisma.stockMovement.findMany({
       where,
       include: { sparepart: true, pic: true },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ tanggal: sort }, { createdAt: sort }],
       skip: (page - 1) * limit,
       take: limit,
     }),

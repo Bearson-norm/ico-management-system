@@ -12,10 +12,11 @@ export default function HistoryPage() {
   const [tipe, setTipe] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [sort, setSort] = useState<'desc' | 'asc'>('desc');
 
   useEffect(() => {
     fetchData();
-  }, [page, search, tipe, dateFrom, dateTo]);
+  }, [page, search, tipe, dateFrom, dateTo, sort]);
 
   async function fetchData() {
     setLoading(true);
@@ -61,6 +62,10 @@ export default function HistoryPage() {
               <input type="date" className="form-input" style={{ width: '140px' }} value={dateFrom} onChange={e => {setDateFrom(e.target.value); setPage(1);}} />
               <span className="text-muted">ke</span>
               <input type="date" className="form-input" style={{ width: '140px' }} value={dateTo} onChange={e => {setDateTo(e.target.value); setPage(1);}} />
+              <select className="form-input form-select" style={{ width: '160px' }} value={sort} onChange={e => {setSort(e.target.value as 'desc' | 'asc'); setPage(1);}}>
+                <option value="desc">Terbaru dulu</option>
+                <option value="asc">Terlama dulu</option>
+              </select>
             </div>
           </div>
 

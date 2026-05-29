@@ -25,10 +25,11 @@ export default function GaHistoryPage() {
   const [tipe, setTipe] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [sort, setSort] = useState<'desc' | 'asc'>('desc');
 
   useEffect(() => {
     fetchData();
-  }, [page, search, tipe, dateFrom, dateTo]);
+  }, [page, search, tipe, dateFrom, dateTo, sort]);
 
   async function fetchData() {
     setLoading(true);
@@ -111,6 +112,18 @@ export default function GaHistoryPage() {
                   setPage(1);
                 }}
               />
+              <select
+                className="form-input form-select"
+                style={{ width: 160 }}
+                value={sort}
+                onChange={(e) => {
+                  setSort(e.target.value as 'desc' | 'asc');
+                  setPage(1);
+                }}
+              >
+                <option value="desc">Terbaru dulu</option>
+                <option value="asc">Terlama dulu</option>
+              </select>
             </div>
           </div>
           <div className="table-wrap">
