@@ -70,16 +70,10 @@ jobs:
             export NODE_ENV=production
             git fetch origin
             echo ">>> Menyelaraskan repo dengan remote (perubahan lokal pada file ter-track akan dibuang; .env tidak ikut karena di-ignore Git)."
-            if git rev-parse --verify origin/main >/dev/null 2>&1; then
-              git checkout main
-              git reset --hard origin/main
-            elif git rev-parse --verify origin/master >/dev/null 2>&1; then
-              git checkout master
-              git reset --hard origin/master
-            else
-              echo "ERROR: Branch origin/main atau origin/master tidak ditemukan."
-              exit 1
-            fi
+            TARGET_BRANCH="${{ github.ref_name }}"
+            echo ">>> Deploying branch: $TARGET_BRANCH"
+            git checkout "$TARGET_BRANCH"
+            git reset --hard "origin/$TARGET_BRANCH"
             npm ci
             echo ">>> DATABASE_URL_* dari file .env di VPS (password disamarkan). Prisma migrate memakai file ini — bukan .env.example."
             grep -E '^[[:space:]]*DATABASE_URL_(MTC|GA)=' .env | sed -E 's|(postgresql://[^:]+:)[^@]+(@)|\1***\2|' || true
