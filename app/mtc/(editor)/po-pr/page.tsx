@@ -22,6 +22,14 @@ type Sparepart = {
   currentStock: number;
 };
 
+type CartItem = {
+  id: string;
+  nama: string;
+  uom: string;
+  qty: number;
+  harga: number;
+};
+
 export default function ProcurementPage() {
   const [spareparts, setSpareparts] = useState<Sparepart[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,6 +50,9 @@ export default function ProcurementPage() {
   const [formNoPo, setFormNoPo] = useState('');
   const [formDate, setFormDate] = useState(getLocalDateTimeString());
   const [showDropdown, setShowDropdown] = useState(false);
+
+  // Cart state
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
 
   // Tabs state
   const [activeTab, setActiveTab] = useState<'PR' | 'PO'>('PR');
@@ -163,48 +174,95 @@ export default function ProcurementPage() {
     }
   }
 
-  async function handleAddProcurement(e: React.FormEvent) {
+  function handleAddToCart(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedSp) {
       alert('Silakan pilih suku cadang terlebih dahulu');
       return;
     }
-    setActionLoading(selectedSp.id);
+    const existingIndex = cartItems.findIndex(item => item.id === selectedSp.id);
+    if (existingIndex > -1) {
+      const updated = [...cartItems];
+      updated[existingIndex].qty += purchasingQty;
+      setCartItems(updated);
+    } else {
+      setCartItems([
+        ...cartItems,
+        {
+          id: selectedSp.id,
+          nama: selectedSp.nama,
+          uom: selectedSp.uom,
+          qty: purchasingQty,
+          harga: Number(selectedSp.harga) || 0
+        }
+      ]);
+    }
+    setSelectedSp(null);
+    setSearchText('');
+    setPurchasingQty(1);
+  }
+
+  async function handleSaveBulkProcurement(e: React.FormEvent) {
+    e.preventDefault();
+    if (cartItems.length === 0) {
+      alert('Daftar barang pengadaan kosong. Silakan tambah barang terlebih dahulu');
+      return;
+    }
+
+    setActionLoading('bulk-save');
     try {
       const isPr = targetStatus === 'PR';
-      const payload = {
-        id: selectedSp.id,
-        purchasingStatus: targetStatus,
-        purchasingQty,
-        purchasingNoPr: isPr ? formNoPr : null,
-        purchasingNoPo: !isPr ? formNoPo : null,
-        prDate: isPr ? new Date(formDate).toISOString() : null,
-        poDate: !isPr ? new Date(formDate).toISOString() : null,
-      };
+      const docNo = isPr ? formNoPr : formNoPo;
 
-      const res = await fetch('/api/mtc/master/sparepart', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const json = await res.json();
-      if (json.success) {
-        await fetchData();
-        setSelectedSp(null);
-        setSearchText('');
-        setFormNoPr('');
-        setFormNoPo('');
-        setFormDate(getLocalDateTimeString());
-        setPurchasingQty(1);
-        setActiveTab(targetStatus);
-      } else {
-        alert('Gagal membuat pengadaan: ' + (json.message || 'Error'));
+      for (const item of cartItems) {
+        const payload = {
+          id: item.id,
+          purchasingStatus: targetStatus,
+          purchasingQty: item.qty,
+          purchasingNoPr: isPr ? docNo : null,
+          purchasingNoPo: !isPr ? docNo : null,
+          prDate: isPr ? new Date(formDate).toISOString() : null,
+          poDate: !isPr ? new Date(formDate).toISOString() : null,
+        };
+
+        const res = await fetch('/api/mtc/master/sparepart', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const json = await res.json();
+        if (!json.success) {
+          throw new Error(json.message || `Gagal menyimpan ${item.nama}`);
+        }
       }
-    } catch (err) {
-      alert('Terjadi kesalahan koneksi');
+
+      alert(`Berhasil menyimpan ${cartItems.length} pengadaan baru!`);
+      await fetchData();
+      setCartItems([]);
+      setFormNoPr('');
+      setFormNoPo('');
+      setFormDate(getLocalDateTimeString());
+      setActiveTab(targetStatus);
+    } catch (err: any) {
+      alert('Terjadi kesalahan saat menyimpan pengadaan: ' + err.message);
     } finally {
       setActionLoading(null);
     }
+  }
+
+  function handleRemoveFromCart(id: string) {
+    setCartItems(cartItems.filter(item => item.id !== id));
+  }
+
+  function handleUpdateCartQty(id: string, delta: number) {
+    setCartItems(
+      cartItems.map(item => {
+        if (item.id === id) {
+          return { ...item, qty: Math.max(1, item.qty + delta) };
+        }
+        return item;
+      })
+    );
   }
 
   async function handleEditSubmit(e: React.FormEvent) {
@@ -398,7 +456,8 @@ export default function ProcurementPage() {
             <div className="card-title">📝 Input Transaksi Pengadaan Baru</div>
           </div>
           <div style={{ padding: '24px 20px' }}>
-            <form onSubmit={handleAddProcurement} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }} className="po-pr-form">
+            {/* Input Row Form */}
+            <form onSubmit={handleAddToCart} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', alignItems: 'end' }} className="po-pr-form">
               {/* Autocomplete Sparepart Input */}
               <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 6 }} ref={dropdownRef}>
                 <label className="form-label" style={{ fontWeight: 700, fontSize: 12 }}>
@@ -517,7 +576,7 @@ export default function ProcurementPage() {
                 )}
               </div>
 
-              {/* Status & Submit controls */}
+              {/* Set Status Pengadaan */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <label className="form-label" style={{ fontWeight: 700, fontSize: 12 }}>
                   Set Status Pengadaan <span style={{ color: 'var(--red)' }}>*</span>
@@ -562,34 +621,16 @@ export default function ProcurementPage() {
                 />
               </div>
 
-              {/* Nomor PR / PO */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label className="form-label" style={{ fontWeight: 700, fontSize: 12 }}>
-                  {targetStatus === 'PR' ? 'Nomor PR' : 'Nomor PO'} <span style={{ color: 'var(--tx3)' }}>(Opsional)</span>
-                </label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder={targetStatus === 'PR' ? 'Contoh: PR-2026-001' : 'Contoh: PO-2026-001'}
-                  value={targetStatus === 'PR' ? formNoPr : formNoPo}
-                  onChange={(e) => targetStatus === 'PR' ? setFormNoPr(e.target.value) : setFormNoPo(e.target.value)}
-                  style={{ height: '40px' }}
-                />
-              </div>
-
-              {/* Tanggal Pengadaan */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label className="form-label" style={{ fontWeight: 700, fontSize: 12 }}>
-                  Tanggal Pengadaan <span style={{ color: 'var(--red)' }}>*</span>
-                </label>
-                <input
-                  type="datetime-local"
-                  className="form-input"
-                  required
-                  value={formDate}
-                  onChange={(e) => setFormDate(e.target.value)}
-                  style={{ height: '40px' }}
-                />
+              {/* Button Add To Cart */}
+              <div style={{ height: '40px', display: 'flex', alignItems: 'end' }}>
+                <button
+                  type="submit"
+                  className="btn btn-pur"
+                  disabled={!selectedSp}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, height: '40px', fontWeight: 700 }}
+                >
+                  ➕ Tambah ke Daftar Item
+                </button>
               </div>
 
               {/* Detail Selected Sparepart Summary */}
@@ -632,31 +673,121 @@ export default function ProcurementPage() {
                   </div>
                 </div>
               )}
-
-              {/* Submit & Reset actions */}
-              <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 12 }}>
-                {selectedSp && (
-                  <button
-                    type="button"
-                    className="btn btn-ghost"
-                    onClick={() => {
-                      setSelectedSp(null);
-                      setSearchText('');
-                    }}
-                  >
-                    Batal
-                  </button>
-                )}
-                <button
-                  type="submit"
-                  className="btn btn-pur"
-                  disabled={!selectedSp || actionLoading !== null}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 24px' }}
-                >
-                  {actionLoading !== null ? 'Memproses...' : `Simpan ke ${targetStatus}`}
-                </button>
-              </div>
             </form>
+
+            {/* Procurement Cart UI Table */}
+            {cartItems.length > 0 && (
+              <div style={{ marginTop: 30, animation: 'fadeIn 0.3s ease-out', borderTop: '1px solid var(--br)', paddingTop: 24 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--pur)' }}>🛒 Daftar Item Pengadaan ({cartItems.length})</div>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setCartItems([])} style={{ color: 'var(--red)' }}>
+                    Bersihkan Daftar
+                  </button>
+                </div>
+                <div className="table-wrap" style={{ marginBottom: 20 }}>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Item ID</th>
+                        <th>Nama Suku Cadang</th>
+                        <th style={{ textAlign: 'center' }}>Jumlah / Qty</th>
+                        <th>Harga Satuan</th>
+                        <th>Subtotal</th>
+                        <th style={{ textAlign: 'right' }}>Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cartItems.map((item) => (
+                        <tr key={item.id}>
+                          <td className="text-mono text-tiny text-muted">{item.id}</td>
+                          <td style={{ fontWeight: 600 }}>{item.nama}</td>
+                          <td style={{ textAlign: 'center' }}>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateCartQty(item.id, -1)}
+                                className="btn btn-ghost"
+                                style={{ padding: '0 8px', fontSize: 14, height: 24, minWidth: 24 }}
+                              >
+                                -
+                              </button>
+                              <span style={{ fontWeight: 700, fontSize: 13, minWidth: 24, display: 'inline-block', textAlign: 'center' }}>
+                                {item.qty} {item.uom}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateCartQty(item.id, 1)}
+                                className="btn btn-ghost"
+                                style={{ padding: '0 8px', fontSize: 14, height: 24, minWidth: 24 }}
+                              >
+                                +
+                              </button>
+                            </div>
+                          </td>
+                          <td>{fmtRupiah(item.harga)}</td>
+                          <td style={{ fontWeight: 700 }}>{fmtRupiah(item.harga * item.qty)}</td>
+                          <td style={{ textAlign: 'right' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveFromCart(item.id)}
+                              style={{ background: 'none', border: 'none', color: 'var(--red)', fontSize: 18, cursor: 'pointer' }}
+                            >
+                              ×
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: 14, fontWeight: 800, marginBottom: 24 }}>
+                  <span>Total Estimasi: <span style={{ color: 'var(--pur)', fontSize: 16 }}>{fmtRupiah(cartItems.reduce((sum, item) => sum + (item.harga * item.qty), 0))}</span></span>
+                </div>
+
+                {/* Bulk Document & Date Details Form */}
+                <form onSubmit={handleSaveBulkProcurement} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', background: 'var(--sf2)', padding: '20px', borderRadius: 8, border: '1px solid var(--br)' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: 12 }}>
+                      {targetStatus === 'PR' ? 'Nomor PR Dokumen' : 'Nomor PO Dokumen'} <span style={{ color: 'var(--tx3)' }}>(Opsional - Berlaku untuk Semua Item)</span>
+                    </label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder={targetStatus === 'PR' ? 'Masukkan Nomor PR (Contoh: PR-MTC-0529)' : 'Masukkan Nomor PO (Contoh: PO-MTC-0529)'}
+                      value={targetStatus === 'PR' ? formNoPr : formNoPo}
+                      onChange={(e) => targetStatus === 'PR' ? setFormNoPr(e.target.value) : setFormNoPo(e.target.value)}
+                      style={{ height: '40px' }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: 12 }}>
+                      Tanggal Pengadaan <span style={{ color: 'var(--red)' }}>*</span>
+                    </label>
+                    <input
+                      type="datetime-local"
+                      className="form-input"
+                      required
+                      value={formDate}
+                      onChange={(e) => setFormDate(e.target.value)}
+                      style={{ height: '40px' }}
+                    />
+                  </div>
+
+                  <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 12 }}>
+                    <button
+                      type="submit"
+                      className={`btn ${targetStatus === 'PR' ? 'btn-pur' : 'btn-blu'}`}
+                      disabled={actionLoading !== null}
+                      style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 28px', fontWeight: 700 }}
+                    >
+                      {actionLoading === 'bulk-save' ? 'Memproses Penyimpanan...' : `💾 Simpan Semua Pengadaan (${cartItems.length} Suku Cadang)`}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
           </div>
         </div>
 
