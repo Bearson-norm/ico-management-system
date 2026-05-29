@@ -59,6 +59,7 @@ export async function PUT(req: NextRequest) {
     aktif,
     mesinIds,
     purchasingStatus,
+    purchasingQty,
   } = body;
   if (!id) return err('ID wajib');
 
@@ -108,7 +109,11 @@ export async function PUT(req: NextRequest) {
           ? { avgLeadTime: parseFloat(String(avgLeadTime)) || 0 }
           : {}),
         ...(aktif === undefined ? {} : { aktif: Boolean(aktif) }),
-        ...(purchasingStatus !== undefined ? { purchasingStatus: String(purchasingStatus) } : {}),
+        ...(purchasingStatus !== undefined ? { 
+          purchasingStatus: String(purchasingStatus),
+          ...(purchasingStatus === 'NONE' ? { purchasingQty: 0 } : {})
+        } : {}),
+        ...(purchasingQty !== undefined && purchasingStatus !== 'NONE' ? { purchasingQty: Number(purchasingQty) || 0 } : {}),
         ...(prDateVal !== undefined ? { prDate: prDateVal } : {}),
         ...(poDateVal !== undefined ? { poDate: poDateVal } : {}),
         ...(mesinIdNums !== undefined ? { mesins: { set: mesinIdNums.map((mid) => ({ id: mid })) } } : {}),

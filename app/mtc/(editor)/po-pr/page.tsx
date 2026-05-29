@@ -14,6 +14,7 @@ type Sparepart = {
   avgLeadTime: number;
   aktif: boolean;
   purchasingStatus: 'NONE' | 'PR' | 'PO';
+  purchasingQty: number;
   prDate: string | null;
   poDate: string | null;
   currentStock: number;
@@ -28,6 +29,7 @@ export default function ProcurementPage() {
   const [searchText, setSearchText] = useState('');
   const [selectedSp, setSelectedSp] = useState<Sparepart | null>(null);
   const [targetStatus, setTargetStatus] = useState<'PR' | 'PO'>('PR');
+  const [purchasingQty, setPurchasingQty] = useState<number>(1);
   const [showDropdown, setShowDropdown] = useState(false);
 
   // Tabs state
@@ -91,20 +93,24 @@ export default function ProcurementPage() {
   }, [spareparts]);
 
   const totalPrEstimasi = useMemo(() => {
-    return prItems.reduce((sum, item) => sum + (Number(item.harga) || 0), 0);
+    return prItems.reduce((sum, item) => sum + ((Number(item.harga) || 0) * (item.purchasingQty || 1)), 0);
   }, [prItems]);
 
   const totalPoEstimasi = useMemo(() => {
-    return poItems.reduce((sum, item) => sum + (Number(item.harga) || 0), 0);
+    return poItems.reduce((sum, item) => sum + ((Number(item.harga) || 0) * (item.purchasingQty || 1)), 0);
   }, [poItems]);
 
-  async function updateStatus(itemId: string, newStatus: 'NONE' | 'PR' | 'PO') {
+  async function updateStatus(itemId: string, newStatus: 'NONE' | 'PR' | 'PO', qty?: number) {
     setActionLoading(itemId);
     try {
       const res = await fetch('/api/mtc/master/sparepart', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: itemId, purchasingStatus: newStatus }),
+        body: JSON.stringify({ 
+          id: itemId, 
+          purchasingStatus: newStatus,
+          ...(qty !== undefined ? { purchasingQty: qty } : {})
+        }),
       });
       const json = await res.json();
       if (json.success) {
@@ -131,9 +137,11 @@ export default function ProcurementPage() {
       alert('Silakan pilih suku cadang terlebih dahulu');
       return;
     }
-    await updateStatus(selectedSp.id, targetStatus);
+    await updateStatus(selectedSp.id, targetStatus, purchasingQty);
     // Switch to appropriate tab
     setActiveTab(targetStatus);
+    // Reset Qty to 1
+    setPurchasingQty(1);
   }
 
   function fmtRupiah(value: number): string {
@@ -188,7 +196,7 @@ export default function ProcurementPage() {
             <div className="card-title">📝 Input Transaksi Pengadaan Baru</div>
           </div>
           <div style={{ padding: '24px 20px' }}>
-            <form onSubmit={handleAddProcurement} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }} className="po-pr-form">
+            <form onSubmit={handleAddProcurement} style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 0.6fr', gap: '20px' }} className="po-pr-form">
               {/* Autocomplete Sparepart Input */}
               <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 6 }} ref={dropdownRef}>
                 <label className="form-label" style={{ fontWeight: 700, fontSize: 12 }}>
@@ -336,6 +344,22 @@ export default function ProcurementPage() {
                 </div>
               </div>
 
+              {/* Jumlah / Qty Pengadaan */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label className="form-label" style={{ fontWeight: 700, fontSize: 12 }}>
+                  Jumlah / Qty <span style={{ color: 'var(--red)' }}>*</span>
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  required
+                  className="form-input"
+                  value={purchasingQty}
+                  onChange={(e) => setPurchasingQty(Math.max(1, parseInt(e.target.value) || 1))}
+                  style={{ height: '40px' }}
+                />
+              </div>
+
               {/* Detail Selected Sparepart Summary */}
               {selectedSp && (
                 <div
@@ -468,6 +492,7 @@ export default function ProcurementPage() {
                   <tr>
                     <th>Item ID</th>
                     <th>Nama Suku Cadang</th>
+                    <th style={{ textAlign: 'center' }}>Qty PR</th>
                     <th>SLOC</th>
                     <th>Stok Saat Ini</th>
                     <th>Estimasi Biaya</th>
@@ -486,13 +511,25 @@ export default function ProcurementPage() {
                       <tr key={sp.id}>
                         <td className="text-mono text-tiny text-muted">{sp.id}</td>
                         <td style={{ fontWeight: 600 }}>{sp.nama}</td>
+                        <td style={{ textAlign: 'center', fontWeight: 700 }}>
+                          <span className="badge badge-pur" style={{ fontSize: 11, padding: '4px 10px' }}>
+                            {sp.purchasingQty || 1} {sp.uom}
+                          </span>
+                        </td>
                         <td>
                           <span className="badge badge-blu" style={{ fontSize: 10 }}>{sp.lokasi || '—'}</span>
                         </td>
                         <td style={{ fontWeight: 700, color: sp.currentStock <= sp.minQty ? 'var(--red)' : 'var(--tx)' }}>
                           {sp.currentStock} {sp.uom} <span className="text-tiny text-muted" style={{ fontWeight: 400 }}>/ min {sp.minQty}</span>
                         </td>
-                        <td style={{ fontWeight: 600 }}>{fmtRupiah(sp.harga)}</td>
+                        <td style={{ fontWeight: 600 }}>
+                          <div>{fmtRupiah((Number(sp.harga) || 0) * (sp.purchasingQty || 1))}</div>
+                          {(sp.purchasingQty || 1) > 1 && (
+                            <div style={{ fontSize: 9, color: 'var(--tx3)', fontWeight: 400 }}>
+                              {sp.purchasingQty} x {fmtRupiah(sp.harga)}
+                            </div>
+                          )}
+                        </td>
                         <td className="text-tiny">
                           {sp.prDate ? new Date(sp.prDate).toLocaleString('id-ID', {
                             day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
@@ -530,7 +567,7 @@ export default function ProcurementPage() {
                             <button
                               type="button"
                               className="btn btn-blu btn-sm"
-                              onClick={() => updateStatus(sp.id, 'PO')}
+                              onClick={() => updateStatus(sp.id, 'PO', sp.purchasingQty)}
                               disabled={actionLoading !== null}
                               style={{ padding: '4px 10px', fontSize: 11 }}
                             >
@@ -543,7 +580,7 @@ export default function ProcurementPage() {
                   })}
                   {prItems.length === 0 && !loading && (
                     <tr>
-                      <td colSpan={9} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--tx3)' }}>
+                      <td colSpan={10} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--tx3)' }}>
                         <div style={{ fontSize: 36, marginBottom: 8 }}>⏳</div>
                         <div>Tidak ada suku cadang dalam tahap PR (Requisition).</div>
                       </td>
@@ -557,6 +594,7 @@ export default function ProcurementPage() {
                   <tr>
                     <th>Item ID</th>
                     <th>Nama Suku Cadang</th>
+                    <th style={{ textAlign: 'center' }}>Qty PO</th>
                     <th>SLOC</th>
                     <th>Stok Saat Ini</th>
                     <th>Estimasi Biaya</th>
@@ -575,13 +613,25 @@ export default function ProcurementPage() {
                       <tr key={sp.id}>
                         <td className="text-mono text-tiny text-muted">{sp.id}</td>
                         <td style={{ fontWeight: 600 }}>{sp.nama}</td>
+                        <td style={{ textAlign: 'center', fontWeight: 700 }}>
+                          <span className="badge badge-pur" style={{ fontSize: 11, padding: '4px 10px' }}>
+                            {sp.purchasingQty || 1} {sp.uom}
+                          </span>
+                        </td>
                         <td>
                           <span className="badge badge-blu" style={{ fontSize: 10 }}>{sp.lokasi || '—'}</span>
                         </td>
                         <td style={{ fontWeight: 700, color: sp.currentStock <= sp.minQty ? 'var(--red)' : 'var(--tx)' }}>
                           {sp.currentStock} {sp.uom} <span className="text-tiny text-muted" style={{ fontWeight: 400 }}>/ min {sp.minQty}</span>
                         </td>
-                        <td style={{ fontWeight: 600 }}>{fmtRupiah(sp.harga)}</td>
+                        <td style={{ fontWeight: 600 }}>
+                          <div>{fmtRupiah((Number(sp.harga) || 0) * (sp.purchasingQty || 1))}</div>
+                          {(sp.purchasingQty || 1) > 1 && (
+                            <div style={{ fontSize: 9, color: 'var(--tx3)', fontWeight: 400 }}>
+                              {sp.purchasingQty} x {fmtRupiah(sp.harga)}
+                            </div>
+                          )}
+                        </td>
                         <td className="text-tiny">
                           {sp.poDate ? new Date(sp.poDate).toLocaleString('id-ID', {
                             day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
@@ -621,7 +671,7 @@ export default function ProcurementPage() {
                   })}
                   {poItems.length === 0 && !loading && (
                     <tr>
-                      <td colSpan={9} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--tx3)' }}>
+                      <td colSpan={10} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--tx3)' }}>
                         <div style={{ fontSize: 36, marginBottom: 8 }}>📦</div>
                         <div>Tidak ada suku cadang dalam tahap PO (Purchase Order).</div>
                       </td>
