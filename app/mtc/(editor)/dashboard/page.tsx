@@ -35,6 +35,7 @@ export default async function DashboardPage() {
       uom: true,
       lokasi: true,
       purchasingStatus: true,
+      purchasingQty: true,
       harga: true,
       movements: {
         where: { tipe: { in: ['IN', 'OUT'] } },
@@ -83,6 +84,7 @@ export default async function DashboardPage() {
       lokasi: sp.lokasi,
       currentStock,
       purchasingStatus: sp.purchasingStatus,
+      purchasingQty: sp.purchasingQty,
       harga: Number(sp.harga || 0),
     };
   });
@@ -112,6 +114,9 @@ export default async function DashboardPage() {
 
   const prItems = sparepartsWithStock.filter((sp) => sp.purchasingStatus === 'PR');
   const poItems = sparepartsWithStock.filter((sp) => sp.purchasingStatus === 'PO');
+
+  const totalPrEstimasi = prItems.reduce((sum, item) => sum + (item.harga * (item.purchasingQty || 1)), 0);
+  const totalPoEstimasi = poItems.reduce((sum, item) => sum + (item.harga * (item.purchasingQty || 1)), 0);
 
   const topUsedMovements = await prisma.stockMovement.groupBy({
     by: ['sparepartId', 'namaItem'],
@@ -214,16 +219,28 @@ export default async function DashboardPage() {
               Di bawah safety stock · <span className="stat-card__cta">Lihat daftar →</span>
             </div>
           </Link>
-          <div className="stat-card stat-ylw">
+          <Link
+            href="/mtc/po-pr"
+            className="stat-card stat-ylw stat-card--link"
+            aria-label={`${totalPRCount} sedang di-PR — kelola pengadaan`}
+          >
             <div className="stat-label">Sedang di-PR</div>
             <div className="stat-value" style={{ color: 'var(--ylw)' }}>{totalPRCount}</div>
-            <div className="stat-sub">Barang tahap Requisition</div>
-          </div>
-          <div className="stat-card stat-blu">
+            <div className="stat-sub">
+              Estimasi: <span style={{ fontWeight: 700 }}>{fmtRupiah(totalPrEstimasi)}</span>
+            </div>
+          </Link>
+          <Link
+            href="/mtc/po-pr"
+            className="stat-card stat-blu stat-card--link"
+            aria-label={`${totalPOCount} sudah jadi PO — kelola pengadaan`}
+          >
             <div className="stat-label">Sudah jadi PO</div>
             <div className="stat-value" style={{ color: 'var(--blu)' }}>{totalPOCount}</div>
-            <div className="stat-sub">Barang tahap Purchase Order</div>
-          </div>
+            <div className="stat-sub">
+              Estimasi: <span style={{ fontWeight: 700 }}>{fmtRupiah(totalPoEstimasi)}</span>
+            </div>
+          </Link>
         </div>
 
         <div className="form-grid-2" style={{ marginBottom: 24, gap: 20 }}>
