@@ -19,6 +19,7 @@ export default function QuickStockInPage() {
   // Modal
   const [spModalOpen, setSpModalOpen] = useState(false);
   const [spSearch, setSpSearch] = useState('');
+  const [selectedMachineFilter, setSelectedMachineFilter] = useState<string>('');
 
   // Forms
   const [baseForm, setBaseForm] = useState({
@@ -94,6 +95,12 @@ export default function QuickStockInPage() {
 
   // -- Modal logic --
   const filteredSP = spareparts.filter(sp => {
+    // Filter berdasarkan mesin (BOM) jika dipilih
+    if (selectedMachineFilter) {
+      const hasMachine = sp.mesins?.some((m: any) => m.id === Number(selectedMachineFilter));
+      if (!hasMachine) return false;
+    }
+    // Filter pencarian teks
     if (!spSearch) return true;
     const q = spSearch.toLowerCase();
     return sp.nama.toLowerCase().includes(q) || sp.id.toLowerCase().includes(q);
@@ -102,7 +109,7 @@ export default function QuickStockInPage() {
   const addExisting = (sp: any) => {
     if (existingItems.find(s => s.sparepartId === sp.id)) return alert('Sudah ada');
     setExistingItems(p => [...p, { sparepartId: sp.id, qty: 1, nama: sp.nama, harga: sp.harga || 0, uom: sp.uom }]);
-    setSpModalOpen(false); setSpSearch('');
+    setSpModalOpen(false); setSpSearch(''); setSelectedMachineFilter('');
   };
 
   // -- Submit --
@@ -359,7 +366,7 @@ export default function QuickStockInPage() {
                   >
                     <option value="">— Bukan untuk Mesin Khusus / Umum (Dipakai Semua Mesin) —</option>
                     {mesins
-                      .filter(m => m.tipe === 'sparepart' || m.tipe === 'keduanya')
+                      .filter(m => (m.tipe === 'sparepart' || m.tipe === 'keduanya') && (m._sparepartCount ?? 0) > 0)
                       .map(m => (
                         <option key={m.id} value={m.id.toString()}>{m.nama}</option>
                       ))}
@@ -406,17 +413,35 @@ export default function QuickStockInPage() {
           <div className="modal-box" style={{ height: '80vh', maxWidth: 600 }}>
             <div className="modal-header">
               <div className="modal-title">Pilih Barang untuk Restock</div>
-              <button onClick={() => setSpModalOpen(false)} style={{ background:'none', border:'none', color:'var(--tx2)', fontSize: 20 }}>×</button>
+              <button onClick={() => { setSpModalOpen(false); setSpSearch(''); setSelectedMachineFilter(''); }} style={{ background:'none', border:'none', color:'var(--tx2)', fontSize: 20 }}>×</button>
             </div>
             <div className="modal-body" style={{ padding: 0 }}>
-              <div style={{ padding: 16, borderBottom: '1px solid var(--br)' }}>
-                <input type="text" className="form-input" autoFocus placeholder="Cari..." value={spSearch} onChange={e => setSpSearch(e.target.value)} />
+              <div style={{ padding: 16, borderBottom: '1px solid var(--br)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div className="form-group">
+                  <label className="form-label" style={{ fontSize: 10 }}>Filter Mesin (BOM)</label>
+                  <select 
+                    className="form-input form-select" 
+                    value={selectedMachineFilter} 
+                    onChange={e => setSelectedMachineFilter(e.target.value)}
+                  >
+                    <option value="">— Semua Mesin (Tampilkan Semua Sparepart) —</option>
+                    {mesins
+                      .filter(m => (m.tipe === 'sparepart' || m.tipe === 'keduanya') && (m._sparepartCount ?? 0) > 0)
+                      .map(m => (
+                        <option key={m.id} value={m.id.toString()}>{m.nama}</option>
+                      ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label" style={{ fontSize: 10 }}>Cari Sparepart</label>
+                  <input type="text" className="form-input" autoFocus placeholder="Ketik nama atau ID sparepart..." value={spSearch} onChange={e => setSpSearch(e.target.value)} />
+                </div>
               </div>
               <div style={{ overflowY: 'auto', flex: 1 }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <tbody>
                     {filteredSP.map(sp => (
-                      <tr key={sp.id} onClick={() => addExisting(sp)} style={{ cursor: 'pointer', borderBottom: '1px solid var(--br)' }}>
+                      <tr key={sp.id} onClick={() => { addExisting(sp); setSpSearch(''); setSelectedMachineFilter(''); }} style={{ cursor: 'pointer', borderBottom: '1px solid var(--br)' }}>
                         <td style={{ padding: '12px 16px' }}>
                           <div style={{ fontWeight: 600 }}>{sp.nama}</div>
                           <div style={{ fontSize: 11, color: 'var(--tx3)' }}>{sp.id} · {sp.lokasi}</div>

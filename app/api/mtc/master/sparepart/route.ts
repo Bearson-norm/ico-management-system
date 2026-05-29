@@ -66,6 +66,32 @@ export async function PUT(req: NextRequest) {
   const mesinIdNums = Array.isArray(mesinIds) ? mesinIds.map((x: string) => Number(x)) : [];
 
   await prisma.$transaction(async (tx) => {
+    const currentSp = await tx.sparepart.findUnique({
+      where: { id: String(id) },
+      select: { purchasingStatus: true, prDate: true, poDate: true },
+    });
+
+    let prDateVal: Date | null | undefined = undefined;
+    let poDateVal: Date | null | undefined = undefined;
+
+    if (purchasingStatus !== undefined && currentSp) {
+      const newStatus = String(purchasingStatus);
+      const oldStatus = currentSp.purchasingStatus;
+
+      if (newStatus !== oldStatus) {
+        if (newStatus === 'PR') {
+          prDateVal = new Date();
+          poDateVal = null;
+        } else if (newStatus === 'PO') {
+          prDateVal = currentSp.prDate || new Date();
+          poDateVal = new Date();
+        } else {
+          prDateVal = null;
+          poDateVal = null;
+        }
+      }
+    }
+
     await tx.sparepart.update({
       where: { id: String(id) },
       data: {
@@ -83,6 +109,8 @@ export async function PUT(req: NextRequest) {
           : {}),
         ...(aktif === undefined ? {} : { aktif: Boolean(aktif) }),
         ...(purchasingStatus !== undefined ? { purchasingStatus: String(purchasingStatus) } : {}),
+        ...(prDateVal !== undefined ? { prDate: prDateVal } : {}),
+        ...(poDateVal !== undefined ? { poDate: poDateVal } : {}),
         mesins: { set: mesinIdNums.map((mid) => ({ id: mid })) },
       },
     });

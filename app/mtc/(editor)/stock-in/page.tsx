@@ -4,6 +4,7 @@ import { useState, useEffect, FormEvent } from 'react';
 export default function StockInPage() {
   const [spareparts, setSpareparts] = useState<any[]>([]);
   const [kategoris, setKategoris] = useState<any[]>([]);
+  const [mesins, setMesins] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -14,6 +15,7 @@ export default function StockInPage() {
   // Modal
   const [spModalOpen, setSpModalOpen] = useState(false);
   const [spSearch, setSpSearch] = useState('');
+  const [selectedMachineFilter, setSelectedMachineFilter] = useState<string>('');
 
   // Forms
   const [baseForm, setBaseForm] = useState({
@@ -24,8 +26,8 @@ export default function StockInPage() {
 
   const [existingItems, setExistingItems] = useState<{ sparepartId: string; qty: number; nama: string; harga: number; uom: string }[]>([]);
   
-  const [newForm, setNewForm] = useState({
-    nama: '', kategoriId: '', lokasi: '', harga: '', qty: '', minQty: ''
+  const [newForm, setNewForm] = useState<any>({
+    nama: '', kategoriId: '', lokasi: '', harga: '', qty: '', minQty: '', mesinId: ''
   });
 
   const [logForm, setLogForm] = useState({
@@ -35,12 +37,14 @@ export default function StockInPage() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [resK, resS] = await Promise.all([
+        const [resK, resS, resM] = await Promise.all([
           fetch('/api/mtc/master/kategori').then(r => r.json()),
-          fetch('/api/mtc/stock').then(r => r.json())
+          fetch('/api/mtc/stock').then(r => r.json()),
+          fetch('/api/mtc/master/mesin').then(r => r.json())
         ]);
         if (resK.success) setKategoris(resK.data.filter((k:any) => k.tipe === 'sparepart' || k.tipe === 'umum'));
         if (resS.success) setSpareparts(resS.data);
+        if (resM.success) setMesins(resM.data);
       } finally { setLoading(false); }
     }
     loadData();
@@ -48,6 +52,12 @@ export default function StockInPage() {
 
   // -- Modal logic --
   const filteredSP = spareparts.filter(sp => {
+    // Filter berdasarkan mesin (BOM) jika dipilih
+    if (selectedMachineFilter) {
+      const hasMachine = sp.mesins?.some((m: any) => m.id === Number(selectedMachineFilter));
+      if (!hasMachine) return false;
+    }
+    // Filter pencarian teks
     if (!spSearch) return true;
     const q = spSearch.toLowerCase();
     return sp.nama.toLowerCase().includes(q) || sp.id.toLowerCase().includes(q);
@@ -56,7 +66,7 @@ export default function StockInPage() {
   const addExisting = (sp: any) => {
     if (existingItems.find(s => s.sparepartId === sp.id)) return alert('Sudah ada');
     setExistingItems(p => [...p, { sparepartId: sp.id, qty: 1, nama: sp.nama, harga: sp.harga || 0, uom: sp.uom }]);
-    setSpModalOpen(false); setSpSearch('');
+    setSpModalOpen(false); setSpSearch(''); setSelectedMachineFilter('');
   };
 
   // -- Submit --
@@ -70,7 +80,15 @@ export default function StockInPage() {
       if (!existingItems.length) { setSubmitting(false); return alert('Pilih minimal 1 barang'); }
       payload.items = existingItems;
     } else if (activeTab === 'new') {
-      payload = { ...payload, ...newForm, harga: Number(newForm.harga)||0, qty: Number(newForm.qty)||0, minQty: Number(newForm.minQty)||0, kategoriId: newForm.kategoriId ? Number(newForm.kategoriId) : null };
+      payload = { 
+        ...payload, 
+        ...newForm, 
+        harga: Number(newForm.harga)||0, 
+        qty: Number(newForm.qty)||0, 
+        minQty: Number(newForm.minQty)||0, 
+        kategoriId: newForm.kategoriId ? Number(newForm.kategoriId) : null,
+        mesinIds: newForm.mesinId ? [newForm.mesinId] : []
+      };
     } else if (activeTab === 'log') {
       payload = { ...payload, ...logForm, harga: Number(logForm.harga)||0, qty: Number(logForm.qty)||0 };
     }
@@ -82,7 +100,7 @@ export default function StockInPage() {
         setMessage({ type: 'success', text: `✅ ${json.data.msg}` });
         // Reset
         setExistingItems([]);
-        setNewForm({ nama: '', kategoriId: '', lokasi: '', harga: '', qty: '', minQty: '' });
+        setNewForm({ nama: '', kategoriId: '', lokasi: '', harga: '', qty: '', minQty: '', mesinId: '' });
         setLogForm({ nama: '', harga: '', qty: '' });
         // Refresh master
         fetch('/api/mtc/stock').then(r => r.json()).then(rs => { if(rs.success) setSpareparts(rs.data); });
@@ -235,6 +253,21 @@ export default function StockInPage() {
                   <label className="form-label">Jumlah Masuk (Stok Awal) <span className="req">*</span></label>
                   <input type="number" className="form-input" min="1" required value={newForm.qty} onChange={e => setNewForm({...newForm, qty: e.target.value})} />
                 </div>
+                <div className="form-group" style={{ gridColumn: '1/-1', marginTop: 8 }}>
+                  <label className="form-label">Digunakan Pada Mesin (BOM)</label>
+                  <select 
+                    className="form-input form-select" 
+                    value={newForm.mesinId} 
+                    onChange={e => setNewForm({...newForm, mesinId: e.target.value})}
+                  >
+                    <option value="">— Bukan untuk Mesin Khusus / Umum (Dipakai Semua Mesin) —</option>
+                    {mesins
+                      .filter(m => (m.tipe === 'sparepart' || m.tipe === 'keduanya') && (m._sparepartCount ?? 0) > 0)
+                      .map(m => (
+                        <option key={m.id} value={m.id.toString()}>{m.nama}</option>
+                      ))}
+                  </select>
+                </div>
               </>
             )}
 
@@ -276,17 +309,35 @@ export default function StockInPage() {
           <div className="modal-box" style={{ height: '80vh', maxWidth: 600 }}>
             <div className="modal-header">
               <div className="modal-title">Pilih Barang untuk Restock</div>
-              <button onClick={() => setSpModalOpen(false)} style={{ background:'none', border:'none', color:'var(--tx2)', fontSize: 20 }}>×</button>
+              <button onClick={() => { setSpModalOpen(false); setSpSearch(''); setSelectedMachineFilter(''); }} style={{ background:'none', border:'none', color:'var(--tx2)', fontSize: 20 }}>×</button>
             </div>
             <div className="modal-body" style={{ padding: 0 }}>
-              <div style={{ padding: 16, borderBottom: '1px solid var(--br)' }}>
-                <input type="text" className="form-input" autoFocus placeholder="Cari..." value={spSearch} onChange={e => setSpSearch(e.target.value)} />
+              <div style={{ padding: 16, borderBottom: '1px solid var(--br)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div className="form-group">
+                  <label className="form-label" style={{ fontSize: 10 }}>Filter Mesin (BOM)</label>
+                  <select 
+                    className="form-input form-select" 
+                    value={selectedMachineFilter} 
+                    onChange={e => setSelectedMachineFilter(e.target.value)}
+                  >
+                    <option value="">— Semua Mesin (Tampilkan Semua Sparepart) —</option>
+                    {mesins
+                      .filter(m => (m.tipe === 'sparepart' || m.tipe === 'keduanya') && (m._sparepartCount ?? 0) > 0)
+                      .map(m => (
+                        <option key={m.id} value={m.id.toString()}>{m.nama}</option>
+                      ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label" style={{ fontSize: 10 }}>Cari Sparepart</label>
+                  <input type="text" className="form-input" autoFocus placeholder="Ketik nama atau ID sparepart..." value={spSearch} onChange={e => setSpSearch(e.target.value)} />
+                </div>
               </div>
               <div style={{ overflowY: 'auto', flex: 1 }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <tbody>
                     {filteredSP.map(sp => (
-                      <tr key={sp.id} onClick={() => addExisting(sp)} style={{ cursor: 'pointer', borderBottom: '1px solid var(--br)' }}>
+                      <tr key={sp.id} onClick={() => { addExisting(sp); setSpSearch(''); setSelectedMachineFilter(''); }} style={{ cursor: 'pointer', borderBottom: '1px solid var(--br)' }}>
                         <td style={{ padding: '12px 16px' }}>
                           <div style={{ fontWeight: 600 }}>{sp.nama}</div>
                           <div style={{ fontSize: 11, color: 'var(--tx3)' }}>{sp.id} · {sp.lokasi}</div>

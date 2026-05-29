@@ -87,7 +87,7 @@ jobs:
             npm run migrate
             npm run build
             if pm2 describe inventory >/dev/null 2>&1; then
-              pm2 reload ecosystem.config.cjs --only inventory --update-env
+              pm2 restart ecosystem.config.cjs --only inventory --update-env
             else
               pm2 start ecosystem.config.cjs
             fi

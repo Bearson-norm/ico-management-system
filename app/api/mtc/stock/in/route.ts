@@ -31,6 +31,7 @@ export async function POST(req: NextRequest) {
         for (const it of p.items) {
           const sp = await tx.sparepart.findUnique({ where: { id: it.sparepartId } });
           if (!sp) throw new Error(`Sparepart ${it.sparepartId} tidak ditemukan`);
+          
           await tx.stockMovement.create({
             data: {
               tipe: 'IN',
@@ -44,12 +45,30 @@ export async function POST(req: NextRequest) {
               tanggal,
             },
           });
-          if (it.harga != null && it.harga >= 0) {
-            await tx.sparepart.update({
-              where: { id: it.sparepartId },
-              data: { harga: it.harga },
-            });
+
+          let calculatedAvgLeadTime = sp.avgLeadTime;
+          let calculatedMaxLeadTime = sp.maxLeadTime;
+          if (sp.prDate) {
+            const elapsedMs = tanggal.getTime() - new Date(sp.prDate).getTime();
+            const elapsedDays = Math.max(1, elapsedMs / (1000 * 60 * 60 * 24));
+            
+            calculatedAvgLeadTime = sp.avgLeadTime === 0
+              ? elapsedDays
+              : Number((sp.avgLeadTime * 0.8 + elapsedDays * 0.2).toFixed(2));
+            calculatedMaxLeadTime = Math.max(sp.maxLeadTime, Math.round(elapsedDays));
           }
+
+          await tx.sparepart.update({
+            where: { id: it.sparepartId },
+            data: {
+              ...(it.harga != null && it.harga >= 0 ? { harga: it.harga } : {}),
+              purchasingStatus: 'NONE',
+              prDate: null,
+              poDate: null,
+              avgLeadTime: calculatedAvgLeadTime,
+              maxLeadTime: calculatedMaxLeadTime,
+            },
+          });
         }
       });
       return ok({ msg: `Stok masuk: ${p.items.length} jenis barang` });
