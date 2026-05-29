@@ -59,6 +59,11 @@ export async function PUT(req: NextRequest) {
     aktif,
     mesinIds,
     purchasingStatus,
+    purchasingQty,
+    purchasingNoPr,
+    purchasingNoPo,
+    prDate,
+    poDate,
   } = body;
   if (!id) return err('ID wajib');
 
@@ -68,7 +73,7 @@ export async function PUT(req: NextRequest) {
   await prisma.$transaction(async (tx) => {
     const currentSp = await tx.sparepart.findUnique({
       where: { id: String(id) },
-      select: { purchasingStatus: true, prDate: true, poDate: true },
+      select: { purchasingStatus: true, prDate: true, poDate: true, purchasingNoPr: true, purchasingNoPo: true },
     });
 
     let prDateVal: Date | null | undefined = undefined;
@@ -76,19 +81,22 @@ export async function PUT(req: NextRequest) {
 
     if (purchasingStatus !== undefined && currentSp) {
       const newStatus = String(purchasingStatus);
-      const oldStatus = currentSp.purchasingStatus;
-
-      if (newStatus !== oldStatus) {
-        if (newStatus === 'PR') {
-          prDateVal = new Date();
-          poDateVal = null;
-        } else if (newStatus === 'PO') {
-          prDateVal = currentSp.prDate || new Date();
-          poDateVal = new Date();
-        } else {
-          prDateVal = null;
-          poDateVal = null;
-        }
+      if (newStatus === 'PR') {
+        prDateVal = prDate ? new Date(prDate) : (currentSp.prDate || new Date());
+        poDateVal = null;
+      } else if (newStatus === 'PO') {
+        prDateVal = prDate ? new Date(prDate) : (currentSp.prDate || new Date());
+        poDateVal = poDate ? new Date(poDate) : (currentSp.poDate || new Date());
+      } else {
+        prDateVal = null;
+        poDateVal = null;
+      }
+    } else {
+      if (prDate !== undefined) {
+        prDateVal = prDate ? new Date(prDate) : null;
+      }
+      if (poDate !== undefined) {
+        poDateVal = poDate ? new Date(poDate) : null;
       }
     }
 
@@ -108,12 +116,44 @@ export async function PUT(req: NextRequest) {
           ? { avgLeadTime: parseFloat(String(avgLeadTime)) || 0 }
           : {}),
         ...(aktif === undefined ? {} : { aktif: Boolean(aktif) }),
-        ...(purchasingStatus !== undefined ? { purchasingStatus: String(purchasingStatus) } : {}),
+        ...(purchasingStatus !== undefined ? { 
+          purchasingStatus: String(purchasingStatus),
+          ...(purchasingStatus === 'NONE' ? { purchasingQty: 0, purchasingNoPr: null, purchasingNoPo: null } : {})
+        } : {}),
+        ...(purchasingQty !== undefined && purchasingStatus !== 'NONE' ? { purchasingQty: Number(purchasingQty) || 0 } : {}),
+        ...(purchasingNoPr !== undefined && purchasingStatus !== 'NONE' ? { purchasingNoPr: purchasingNoPr || null } : {}),
+        ...(purchasingNoPo !== undefined && purchasingStatus !== 'NONE' ? { purchasingNoPo: purchasingNoPo || null } : {}),
         ...(prDateVal !== undefined ? { prDate: prDateVal } : {}),
         ...(poDateVal !== undefined ? { poDate: poDateVal } : {}),
         ...(mesinIdNums !== undefined ? { mesins: { set: mesinIdNums.map((mid) => ({ id: mid })) } } : {}),
       },
     });
+
+    const currentNoPr = purchasingNoPr !== undefined ? purchasingNoPr : currentSp?.purchasingNoPr;
+    const finalNoPo = purchasingNoPo !== undefined ? purchasingNoPo : null;
+
+    if (purchasingStatus === 'PO' && currentNoPr && finalNoPo) {
+      const relatedSps = await tx.sparepart.findMany({
+        where: {
+          purchasingNoPr: currentNoPr,
+          purchasingStatus: 'PR',
+          id: { not: String(id) }
+        }
+      });
+
+      if (relatedSps.length > 0) {
+        await tx.sparepart.updateMany({
+          where: {
+            id: { in: relatedSps.map(sp => sp.id) }
+          },
+          data: {
+            purchasingStatus: 'PO',
+            purchasingNoPo: finalNoPo,
+            poDate: poDateVal || new Date()
+          }
+        });
+      }
+    }
   });
 
   const row = await prisma.sparepart.findUnique({

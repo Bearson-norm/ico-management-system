@@ -14,6 +14,9 @@ type Sparepart = {
   avgLeadTime: number;
   aktif: boolean;
   purchasingStatus: 'NONE' | 'PR' | 'PO';
+  purchasingQty: number;
+  purchasingNoPr: string | null;
+  purchasingNoPo: string | null;
   prDate: string | null;
   poDate: string | null;
   currentStock: number;
@@ -24,14 +27,47 @@ export default function ProcurementPage() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
+  // Utility to format ISO local timezone datetime for datetime-local inputs
+  function getLocalDateTimeString(date: Date = new Date()) {
+    const tzoffset = date.getTimezoneOffset() * 60000;
+    return (new Date(date.getTime() - tzoffset)).toISOString().slice(0, 16);
+  }
+
   // Search & input form state
   const [searchText, setSearchText] = useState('');
   const [selectedSp, setSelectedSp] = useState<Sparepart | null>(null);
   const [targetStatus, setTargetStatus] = useState<'PR' | 'PO'>('PR');
+  const [purchasingQty, setPurchasingQty] = useState<number>(1);
+  const [formNoPr, setFormNoPr] = useState('');
+  const [formNoPo, setFormNoPo] = useState('');
+  const [formDate, setFormDate] = useState(getLocalDateTimeString());
   const [showDropdown, setShowDropdown] = useState(false);
 
   // Tabs state
   const [activeTab, setActiveTab] = useState<'PR' | 'PO'>('PR');
+
+  // Edit Modal states
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingSp, setEditingSp] = useState<Sparepart | null>(null);
+  const [editQty, setEditQty] = useState(1);
+  const [editNoPr, setEditNoPr] = useState('');
+  const [editNoPo, setEditNoPo] = useState('');
+  const [editPrDate, setEditPrDate] = useState('');
+  const [editPoDate, setEditPoDate] = useState('');
+
+  // Upgrade Modal states
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradingSp, setUpgradingSp] = useState<Sparepart | null>(null);
+  const [upgradeNoPo, setUpgradeNoPo] = useState('');
+  const [upgradePoDate, setUpgradePoDate] = useState('');
+
+  // Receive Modal states
+  const [showReceiveModal, setShowReceiveModal] = useState(false);
+  const [receivingSp, setReceivingSp] = useState<Sparepart | null>(null);
+  const [receiveDate, setReceiveDate] = useState(new Date().toISOString().split('T')[0]);
+  const [receivePrice, setReceivePrice] = useState(0);
+  const [receiveType, setReceiveType] = useState('MTC');
+  const [receiveVendor, setReceiveVendor] = useState('');
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -74,8 +110,8 @@ export default function ProcurementPage() {
     return spareparts
       .filter(sp => sp.aktif &&
         (sp.nama.toLowerCase().includes(q) ||
-         sp.id.toLowerCase().includes(q) ||
-         (sp.lokasi && sp.lokasi.toLowerCase().includes(q)))
+          sp.id.toLowerCase().includes(q) ||
+          (sp.lokasi && sp.lokasi.toLowerCase().includes(q)))
       )
       .slice(0, 10);
   }, [searchText, spareparts]);
@@ -91,26 +127,28 @@ export default function ProcurementPage() {
   }, [spareparts]);
 
   const totalPrEstimasi = useMemo(() => {
-    return prItems.reduce((sum, item) => sum + (Number(item.harga) || 0), 0);
+    return prItems.reduce((sum, item) => sum + ((Number(item.harga) || 0) * (item.purchasingQty || 1)), 0);
   }, [prItems]);
 
   const totalPoEstimasi = useMemo(() => {
-    return poItems.reduce((sum, item) => sum + (Number(item.harga) || 0), 0);
+    return poItems.reduce((sum, item) => sum + ((Number(item.harga) || 0) * (item.purchasingQty || 1)), 0);
   }, [poItems]);
 
-  async function updateStatus(itemId: string, newStatus: 'NONE' | 'PR' | 'PO') {
+  async function updateStatus(itemId: string, newStatus: 'NONE' | 'PR' | 'PO', qty?: number) {
     setActionLoading(itemId);
     try {
       const res = await fetch('/api/mtc/master/sparepart', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: itemId, purchasingStatus: newStatus }),
+        body: JSON.stringify({ 
+          id: itemId, 
+          purchasingStatus: newStatus,
+          ...(qty !== undefined ? { purchasingQty: qty } : {})
+        }),
       });
       const json = await res.json();
       if (json.success) {
-        // Success notification or reload data
         await fetchData();
-        // Clear input form if it was the selected sparepart
         if (selectedSp && selectedSp.id === itemId) {
           setSelectedSp(null);
           setSearchText('');
@@ -131,9 +169,181 @@ export default function ProcurementPage() {
       alert('Silakan pilih suku cadang terlebih dahulu');
       return;
     }
-    await updateStatus(selectedSp.id, targetStatus);
-    // Switch to appropriate tab
-    setActiveTab(targetStatus);
+    setActionLoading(selectedSp.id);
+    try {
+      const isPr = targetStatus === 'PR';
+      const payload = {
+        id: selectedSp.id,
+        purchasingStatus: targetStatus,
+        purchasingQty,
+        purchasingNoPr: isPr ? formNoPr : null,
+        purchasingNoPo: !isPr ? formNoPo : null,
+        prDate: isPr ? new Date(formDate).toISOString() : null,
+        poDate: !isPr ? new Date(formDate).toISOString() : null,
+      };
+
+      const res = await fetch('/api/mtc/master/sparepart', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json();
+      if (json.success) {
+        await fetchData();
+        setSelectedSp(null);
+        setSearchText('');
+        setFormNoPr('');
+        setFormNoPo('');
+        setFormDate(getLocalDateTimeString());
+        setPurchasingQty(1);
+        setActiveTab(targetStatus);
+      } else {
+        alert('Gagal membuat pengadaan: ' + (json.message || 'Error'));
+      }
+    } catch (err) {
+      alert('Terjadi kesalahan koneksi');
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function handleEditSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingSp) return;
+
+    setActionLoading(editingSp.id);
+    try {
+      const payload = {
+        id: editingSp.id,
+        purchasingQty: editQty,
+        purchasingNoPr: editNoPr || null,
+        purchasingNoPo: editNoPo || null,
+        prDate: editPrDate ? new Date(editPrDate).toISOString() : null,
+        poDate: editPoDate ? new Date(editPoDate).toISOString() : null,
+      };
+
+      const res = await fetch('/api/mtc/master/sparepart', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const json = await res.json();
+      if (json.success) {
+        setShowEditModal(false);
+        setEditingSp(null);
+        await fetchData();
+      } else {
+        alert('Gagal mengedit pengadaan: ' + (json.message || 'Error'));
+      }
+    } catch (err) {
+      alert('Terjadi kesalahan koneksi');
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function handleUpgradeSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!upgradingSp) return;
+
+    setActionLoading(upgradingSp.id);
+    try {
+      const payload = {
+        id: upgradingSp.id,
+        purchasingStatus: 'PO',
+        purchasingQty: upgradingSp.purchasingQty,
+        purchasingNoPr: upgradingSp.purchasingNoPr,
+        purchasingNoPo: upgradeNoPo || null,
+        poDate: upgradePoDate ? new Date(upgradePoDate).toISOString() : new Date().toISOString(),
+      };
+
+      const res = await fetch('/api/mtc/master/sparepart', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const json = await res.json();
+      if (json.success) {
+        setShowUpgradeModal(false);
+        setUpgradingSp(null);
+        setUpgradeNoPo('');
+        setActiveTab('PO');
+        await fetchData();
+      } else {
+        alert('Gagal memproses upgrade: ' + (json.message || 'Error'));
+      }
+    } catch (err) {
+      alert('Terjadi kesalahan koneksi');
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function handleReceiveSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!receivingSp) return;
+
+    setActionLoading(receivingSp.id);
+    try {
+      const payload = {
+        jenis: 'existing',
+        tanggal: receiveDate,
+        purchaseType: receiveType || null,
+        vendor: receiveVendor || null,
+        items: [
+          {
+            sparepartId: receivingSp.id,
+            qty: receivingSp.purchasingQty || 1,
+            harga: Number(receivePrice) || 0
+          }
+        ]
+      };
+
+      const res = await fetch('/api/mtc/stock/in', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const json = await res.json();
+      if (json.success) {
+        alert(`Berhasil menerima ${receivingSp.nama} sebanyak ${receivingSp.purchasingQty || 1} ${receivingSp.uom}`);
+        setShowReceiveModal(false);
+        setReceivingSp(null);
+        await fetchData();
+      } else {
+        alert('Gagal mencatat penerimaan: ' + (json.message || 'Error'));
+      }
+    } catch (err) {
+      alert('Terjadi kesalahan koneksi');
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  function openEditModal(sp: Sparepart) {
+    setEditingSp(sp);
+    setEditQty(sp.purchasingQty || 1);
+    setEditNoPr(sp.purchasingNoPr || '');
+    setEditNoPo(sp.purchasingNoPo || '');
+    setEditPrDate(sp.prDate ? getLocalDateTimeString(new Date(sp.prDate)) : '');
+    setEditPoDate(sp.poDate ? getLocalDateTimeString(new Date(sp.poDate)) : '');
+    setShowEditModal(true);
+  }
+
+  function openUpgradeModal(sp: Sparepart) {
+    setUpgradingSp(sp);
+    setUpgradeNoPo('');
+    setUpgradePoDate(getLocalDateTimeString());
+    setShowUpgradeModal(true);
+  }
+
+  function openReceiveModal(sp: Sparepart) {
+    setReceivingSp(sp);
+    setReceivePrice(Number(sp.harga) || 0);
+    setReceiveDate(new Date().toISOString().split('T')[0]);
+    setReceiveType('MTC');
+    setReceiveVendor('');
+    setShowReceiveModal(true);
   }
 
   function fmtRupiah(value: number): string {
@@ -188,7 +398,7 @@ export default function ProcurementPage() {
             <div className="card-title">📝 Input Transaksi Pengadaan Baru</div>
           </div>
           <div style={{ padding: '24px 20px' }}>
-            <form onSubmit={handleAddProcurement} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }} className="po-pr-form">
+            <form onSubmit={handleAddProcurement} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }} className="po-pr-form">
               {/* Autocomplete Sparepart Input */}
               <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 6 }} ref={dropdownRef}>
                 <label className="form-label" style={{ fontWeight: 700, fontSize: 12 }}>
@@ -321,7 +531,7 @@ export default function ProcurementPage() {
                       onChange={() => setTargetStatus('PR')}
                       style={{ transform: 'scale(1.1)', cursor: 'pointer' }}
                     />
-                    ⏳ Masukkan ke PR (Requisition)
+                    ⏳ PR (Requisition)
                   </label>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
                     <input
@@ -331,9 +541,55 @@ export default function ProcurementPage() {
                       onChange={() => setTargetStatus('PO')}
                       style={{ transform: 'scale(1.1)', cursor: 'pointer' }}
                     />
-                    📦 Masukkan ke PO (Purchase Order)
+                    📦 PO (Purchase Order)
                   </label>
                 </div>
+              </div>
+
+              {/* Jumlah / Qty Pengadaan */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label className="form-label" style={{ fontWeight: 700, fontSize: 12 }}>
+                  Jumlah / Qty <span style={{ color: 'var(--red)' }}>*</span>
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  required
+                  className="form-input"
+                  value={purchasingQty}
+                  onChange={(e) => setPurchasingQty(Math.max(1, parseInt(e.target.value) || 1))}
+                  style={{ height: '40px' }}
+                />
+              </div>
+
+              {/* Nomor PR / PO */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label className="form-label" style={{ fontWeight: 700, fontSize: 12 }}>
+                  {targetStatus === 'PR' ? 'Nomor PR' : 'Nomor PO'} <span style={{ color: 'var(--tx3)' }}>(Opsional)</span>
+                </label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder={targetStatus === 'PR' ? 'Contoh: PR-2026-001' : 'Contoh: PO-2026-001'}
+                  value={targetStatus === 'PR' ? formNoPr : formNoPo}
+                  onChange={(e) => targetStatus === 'PR' ? setFormNoPr(e.target.value) : setFormNoPo(e.target.value)}
+                  style={{ height: '40px' }}
+                />
+              </div>
+
+              {/* Tanggal Pengadaan */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label className="form-label" style={{ fontWeight: 700, fontSize: 12 }}>
+                  Tanggal Pengadaan <span style={{ color: 'var(--red)' }}>*</span>
+                </label>
+                <input
+                  type="datetime-local"
+                  className="form-input"
+                  required
+                  value={formDate}
+                  onChange={(e) => setFormDate(e.target.value)}
+                  style={{ height: '40px' }}
+                />
               </div>
 
               {/* Detail Selected Sparepart Summary */}
@@ -468,6 +724,8 @@ export default function ProcurementPage() {
                   <tr>
                     <th>Item ID</th>
                     <th>Nama Suku Cadang</th>
+                    <th>No PR</th>
+                    <th style={{ textAlign: 'center' }}>Qty PR</th>
                     <th>SLOC</th>
                     <th>Stok Saat Ini</th>
                     <th>Estimasi Biaya</th>
@@ -487,12 +745,27 @@ export default function ProcurementPage() {
                         <td className="text-mono text-tiny text-muted">{sp.id}</td>
                         <td style={{ fontWeight: 600 }}>{sp.nama}</td>
                         <td>
+                          <span className="badge badge-blu" style={{ fontSize: 10 }}>{sp.purchasingNoPr || '—'}</span>
+                        </td>
+                        <td style={{ textAlign: 'center', fontWeight: 700 }}>
+                          <span className="badge badge-pur" style={{ fontSize: 11, padding: '4px 10px' }}>
+                            {sp.purchasingQty || 1} {sp.uom}
+                          </span>
+                        </td>
+                        <td>
                           <span className="badge badge-blu" style={{ fontSize: 10 }}>{sp.lokasi || '—'}</span>
                         </td>
                         <td style={{ fontWeight: 700, color: sp.currentStock <= sp.minQty ? 'var(--red)' : 'var(--tx)' }}>
                           {sp.currentStock} {sp.uom} <span className="text-tiny text-muted" style={{ fontWeight: 400 }}>/ min {sp.minQty}</span>
                         </td>
-                        <td style={{ fontWeight: 600 }}>{fmtRupiah(sp.harga)}</td>
+                        <td style={{ fontWeight: 600 }}>
+                          <div>{fmtRupiah((Number(sp.harga) || 0) * (sp.purchasingQty || 1))}</div>
+                          {(sp.purchasingQty || 1) > 1 && (
+                            <div style={{ fontSize: 9, color: 'var(--tx3)', fontWeight: 400 }}>
+                              {sp.purchasingQty} x {fmtRupiah(sp.harga)}
+                            </div>
+                          )}
+                        </td>
                         <td className="text-tiny">
                           {sp.prDate ? new Date(sp.prDate).toLocaleString('id-ID', {
                             day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
@@ -517,24 +790,32 @@ export default function ProcurementPage() {
                           )}
                         </td>
                         <td style={{ textAlign: 'right' }}>
-                          <div style={{ display: 'inline-flex', gap: 8 }}>
+                          <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-sm"
+                              onClick={() => openEditModal(sp)}
+                              style={{ color: 'var(--pur)', padding: '2px 6px' }}
+                            >
+                              Edit
+                            </button>
                             <button
                               type="button"
                               className="btn btn-ghost btn-sm"
                               onClick={() => updateStatus(sp.id, 'NONE')}
                               disabled={actionLoading !== null}
-                              style={{ color: 'var(--red)' }}
+                              style={{ color: 'var(--red)', padding: '2px 6px' }}
                             >
-                              Batal PR
+                              Batal
                             </button>
                             <button
                               type="button"
                               className="btn btn-blu btn-sm"
-                              onClick={() => updateStatus(sp.id, 'PO')}
+                              onClick={() => openUpgradeModal(sp)}
                               disabled={actionLoading !== null}
                               style={{ padding: '4px 10px', fontSize: 11 }}
                             >
-                              📦 Upgrade ke PO
+                              📦 Upgrade PO
                             </button>
                           </div>
                         </td>
@@ -543,7 +824,7 @@ export default function ProcurementPage() {
                   })}
                   {prItems.length === 0 && !loading && (
                     <tr>
-                      <td colSpan={9} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--tx3)' }}>
+                      <td colSpan={11} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--tx3)' }}>
                         <div style={{ fontSize: 36, marginBottom: 8 }}>⏳</div>
                         <div>Tidak ada suku cadang dalam tahap PR (Requisition).</div>
                       </td>
@@ -557,6 +838,8 @@ export default function ProcurementPage() {
                   <tr>
                     <th>Item ID</th>
                     <th>Nama Suku Cadang</th>
+                    <th>No PO</th>
+                    <th style={{ textAlign: 'center' }}>Qty PO</th>
                     <th>SLOC</th>
                     <th>Stok Saat Ini</th>
                     <th>Estimasi Biaya</th>
@@ -576,12 +859,34 @@ export default function ProcurementPage() {
                         <td className="text-mono text-tiny text-muted">{sp.id}</td>
                         <td style={{ fontWeight: 600 }}>{sp.nama}</td>
                         <td>
+                          <div>
+                            <span className="badge badge-blu" style={{ fontSize: 10 }}>{sp.purchasingNoPo || '—'}</span>
+                          </div>
+                          {sp.purchasingNoPr && (
+                            <div style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 2 }}>
+                              PR: {sp.purchasingNoPr}
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ textAlign: 'center', fontWeight: 700 }}>
+                          <span className="badge badge-pur" style={{ fontSize: 11, padding: '4px 10px' }}>
+                            {sp.purchasingQty || 1} {sp.uom}
+                          </span>
+                        </td>
+                        <td>
                           <span className="badge badge-blu" style={{ fontSize: 10 }}>{sp.lokasi || '—'}</span>
                         </td>
                         <td style={{ fontWeight: 700, color: sp.currentStock <= sp.minQty ? 'var(--red)' : 'var(--tx)' }}>
                           {sp.currentStock} {sp.uom} <span className="text-tiny text-muted" style={{ fontWeight: 400 }}>/ min {sp.minQty}</span>
                         </td>
-                        <td style={{ fontWeight: 600 }}>{fmtRupiah(sp.harga)}</td>
+                        <td style={{ fontWeight: 600 }}>
+                          <div>{fmtRupiah((Number(sp.harga) || 0) * (sp.purchasingQty || 1))}</div>
+                          {(sp.purchasingQty || 1) > 1 && (
+                            <div style={{ fontSize: 9, color: 'var(--tx3)', fontWeight: 400 }}>
+                              {sp.purchasingQty} x {fmtRupiah(sp.harga)}
+                            </div>
+                          )}
+                        </td>
                         <td className="text-tiny">
                           {sp.poDate ? new Date(sp.poDate).toLocaleString('id-ID', {
                             day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
@@ -606,22 +911,41 @@ export default function ProcurementPage() {
                           )}
                         </td>
                         <td style={{ textAlign: 'right' }}>
-                          <button
-                            type="button"
-                            className="btn btn-ghost btn-sm"
-                            onClick={() => updateStatus(sp.id, 'NONE')}
-                            disabled={actionLoading !== null}
-                            style={{ color: 'var(--red)' }}
-                          >
-                            Batal PO
-                          </button>
+                          <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-sm"
+                              onClick={() => openEditModal(sp)}
+                              style={{ color: 'var(--pur)', padding: '2px 6px' }}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-sm"
+                              onClick={() => updateStatus(sp.id, 'NONE')}
+                              disabled={actionLoading !== null}
+                              style={{ color: 'var(--red)', padding: '2px 6px' }}
+                            >
+                              Batal
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-grn btn-sm"
+                              onClick={() => openReceiveModal(sp)}
+                              disabled={actionLoading !== null}
+                              style={{ padding: '4px 10px', fontSize: 11 }}
+                            >
+                              📥 Terima Barang
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
                   })}
                   {poItems.length === 0 && !loading && (
                     <tr>
-                      <td colSpan={9} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--tx3)' }}>
+                      <td colSpan={11} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--tx3)' }}>
                         <div style={{ fontSize: 36, marginBottom: 8 }}>📦</div>
                         <div>Tidak ada suku cadang dalam tahap PO (Purchase Order).</div>
                       </td>
@@ -632,8 +956,261 @@ export default function ProcurementPage() {
             )}
           </div>
         </div>
-
       </div>
+
+      {showEditModal && editingSp && (
+        <div className="modal-overlay">
+          <div className="modal-card">
+            <div className="modal-header">
+              <h3>✏️ Edit Informasi Pengadaan</h3>
+              <button className="modal-close" onClick={() => setShowEditModal(false)}>×</button>
+            </div>
+            <form onSubmit={handleEditSubmit}>
+              <div className="modal-body">
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ fontSize: 11, color: 'var(--tx3)' }}>NAMA SUKU CADANG</label>
+                  <div style={{ fontSize: 14, fontWeight: 700, marginTop: 4 }}>{editingSp.nama} (ID: {editingSp.id})</div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+                  <div>
+                    <label className="form-label">Jumlah / Qty</label>
+                    <input
+                      type="number"
+                      min="1"
+                      required
+                      className="form-input"
+                      value={editQty}
+                      onChange={(e) => setEditQty(Math.max(1, parseInt(e.target.value) || 1))}
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Unit of Measure (UOM)</label>
+                    <input type="text" className="form-input" disabled value={editingSp.uom} />
+                  </div>
+                </div>
+
+                {editingSp.purchasingStatus === 'PR' ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+                    <div>
+                      <label className="form-label">Nomor PR</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="Contoh: PR-2026-001"
+                        value={editNoPr}
+                        onChange={(e) => setEditNoPr(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="form-label">Tanggal PR</label>
+                      <input
+                        type="datetime-local"
+                        className="form-input"
+                        required
+                        value={editPrDate}
+                        onChange={(e) => setEditPrDate(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+                      <div>
+                        <label className="form-label">Nomor PR</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          placeholder="Contoh: PR-2026-001"
+                          value={editNoPr}
+                          onChange={(e) => setEditNoPr(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="form-label">Tanggal PR</label>
+                        <input
+                          type="datetime-local"
+                          className="form-input"
+                          value={editPrDate}
+                          onChange={(e) => setEditPrDate(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+                      <div>
+                        <label className="form-label">Nomor PO</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          placeholder="Contoh: PO-2026-001"
+                          value={editNoPo}
+                          onChange={(e) => setEditNoPo(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="form-label">Tanggal PO</label>
+                        <input
+                          type="datetime-local"
+                          className="form-input"
+                          required
+                          value={editPoDate}
+                          onChange={(e) => setEditPoDate(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-ghost" onClick={() => setShowEditModal(false)}>Batal</button>
+                <button type="submit" className="btn btn-pur" disabled={actionLoading !== null}>
+                  {actionLoading !== null ? 'Menyimpan...' : 'Simpan Perubahan'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showUpgradeModal && upgradingSp && (
+        <div className="modal-overlay">
+          <div className="modal-card">
+            <div className="modal-header">
+              <h3>📦 Upgrade ke PO (Purchase Order)</h3>
+              <button className="modal-close" onClick={() => setShowUpgradeModal(false)}>×</button>
+            </div>
+            <form onSubmit={handleUpgradeSubmit}>
+              <div className="modal-body">
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ fontSize: 11, color: 'var(--tx3)' }}>NAMA SUKU CADANG</label>
+                  <div style={{ fontSize: 14, fontWeight: 700, marginTop: 4 }}>{upgradingSp.nama}</div>
+                  <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 2 }}>
+                    Qty: {upgradingSp.purchasingQty} {upgradingSp.uom} · PR No: {upgradingSp.purchasingNoPr || '—'}
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 14, marginBottom: 14 }}>
+                  <div>
+                    <label className="form-label">Nomor PO <span style={{ color: 'var(--red)' }}>*</span></label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Masukkan Nomor PO..."
+                      className="form-input"
+                      value={upgradeNoPo}
+                      onChange={(e) => setUpgradeNoPo(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Tanggal PO <span style={{ color: 'var(--red)' }}>*</span></label>
+                    <input
+                      type="datetime-local"
+                      required
+                      className="form-input"
+                      value={upgradePoDate}
+                      onChange={(e) => setUpgradePoDate(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {upgradingSp.purchasingNoPr && (
+                  <div style={{ background: 'var(--sf2)', border: '1px solid var(--br)', borderRadius: 6, padding: '10px 14px', fontSize: 11, color: 'var(--tx3)' }}>
+                    💡 <strong>Catatan:</strong> Barang-barang lain dengan Nomor PR <strong>{upgradingSp.purchasingNoPr}</strong> otomatis akan di-upgrade ke PO mewarisi Nomor PO & Tanggal yang sama.
+                  </div>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-ghost" onClick={() => setShowUpgradeModal(false)}>Batal</button>
+                <button type="submit" className="btn btn-blu" disabled={actionLoading !== null}>
+                  {actionLoading !== null ? 'Memproses...' : 'Upgrade Sekarang'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showReceiveModal && receivingSp && (
+        <div className="modal-overlay">
+          <div className="modal-card">
+            <div className="modal-header">
+              <h3>📥 Terima Barang & Catat Stok Masuk</h3>
+              <button className="modal-close" onClick={() => setShowReceiveModal(false)}>×</button>
+            </div>
+            <form onSubmit={handleReceiveSubmit}>
+              <div className="modal-body">
+                <div style={{ marginBottom: 14, borderBottom: '1px solid var(--br)', paddingBottom: 10 }}>
+                  <label style={{ fontSize: 11, color: 'var(--tx3)' }}>NAMA SUKU CADANG</label>
+                  <div style={{ fontSize: 14, fontWeight: 700, marginTop: 4 }}>{receivingSp.nama}</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--pur)', marginTop: 4 }}>
+                    Menerima: {receivingSp.purchasingQty || 1} {receivingSp.uom} · PO No: {receivingSp.purchasingNoPo || '—'}
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+                  <div>
+                    <label className="form-label">Tanggal Kedatangan <span style={{ color: 'var(--red)' }}>*</span></label>
+                    <input
+                      type="date"
+                      required
+                      className="form-input"
+                      value={receiveDate}
+                      onChange={(e) => setReceiveDate(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Harga Satuan Aktual (Rp) <span style={{ color: 'var(--red)' }}>*</span></label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      className="form-input"
+                      value={receivePrice}
+                      onChange={(e) => setReceivePrice(Math.max(0, parseFloat(e.target.value) || 0))}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+                  <div>
+                    <label className="form-label">Jenis Pembelian</label>
+                    <select
+                      className="form-input"
+                      value={receiveType}
+                      onChange={(e) => setReceiveType(e.target.value)}
+                      style={{ padding: '0 10px', height: '38px' }}
+                    >
+                      <option value="MTC">MTC</option>
+                      <option value="PROJECT">PROJECT</option>
+                      <option value="INVESTASI">INVESTASI</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="form-label">Nama Vendor / Toko</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Contoh: PT ABC Suku Cadang"
+                      value={receiveVendor}
+                      onChange={(e) => setReceiveVendor(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ fontSize: 11, color: 'var(--tx3)', background: 'var(--sf2)', padding: 10, borderRadius: 6 }}>
+                  ℹ️ <strong>Informasi:</strong> Menyimpan penerimaan ini akan secara otomatis menambahkan stok barang sebanyak {receivingSp.purchasingQty || 1} unit ke sistem, menghitung Lead-Time pengadaan, serta me-reset status pengadaan suku cadang ini menjadi normal.
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-ghost" onClick={() => setShowReceiveModal(false)}>Batal</button>
+                <button type="submit" className="btn btn-grn" disabled={actionLoading !== null}>
+                  {actionLoading !== null ? 'Mencatat...' : 'Terima & Masuk Stok'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       <style jsx global>{`
         .po-pr-form {
@@ -644,6 +1221,73 @@ export default function ProcurementPage() {
         }
         .suggestion-item:last-child {
           border-bottom: none;
+        }
+        .modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.7);
+          backdrop-filter: blur(4px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          animation: fadeInOverlay 0.15s ease-out;
+        }
+        .modal-card {
+          background: var(--sf3);
+          border: 1px solid var(--br);
+          border-radius: 12px;
+          box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+          width: 90%;
+          max-width: 520px;
+          overflow: hidden;
+          animation: slideUpCard 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 16px 20px;
+          border-bottom: 1px solid var(--br);
+          background: var(--sf2);
+        }
+        .modal-header h3 {
+          margin: 0;
+          font-size: 15px;
+          font-weight: 800;
+          color: var(--tx);
+        }
+        .modal-close {
+          background: none;
+          border: none;
+          color: var(--tx3);
+          font-size: 24px;
+          cursor: pointer;
+          line-height: 1;
+        }
+        .modal-body {
+          padding: 20px;
+          max-height: 70vh;
+          overflow-y: auto;
+        }
+        .modal-footer {
+          display: flex;
+          justify-content: flex-end;
+          gap: 12px;
+          padding: 14px 20px;
+          background: var(--sf2);
+          border-top: 1px solid var(--br);
+        }
+        @keyframes fadeInOverlay {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes slideUpCard {
+          from { transform: translateY(20px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
         }
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(4px); }

@@ -63,6 +63,7 @@ export async function POST(req: NextRequest) {
             data: {
               ...(it.harga != null && it.harga >= 0 ? { harga: it.harga } : {}),
               purchasingStatus: 'NONE',
+              purchasingQty: 0,
               prDate: null,
               poDate: null,
               avgLeadTime: calculatedAvgLeadTime,
