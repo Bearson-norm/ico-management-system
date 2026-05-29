@@ -62,15 +62,41 @@ export async function PUT(req: NextRequest) {
   } = body;
   if (!id) return err('ID wajib');
 
-  const kid = kategoriId === '' || kategoriId === undefined ? null : Number(kategoriId);
-  const mesinIdNums = Array.isArray(mesinIds) ? mesinIds.map((x: string) => Number(x)) : [];
+  const kid = kategoriId === '' ? null : (kategoriId === undefined ? undefined : Number(kategoriId));
+  const mesinIdNums = Array.isArray(mesinIds) ? mesinIds.map((x: string) => Number(x)) : undefined;
 
   await prisma.$transaction(async (tx) => {
+    const currentSp = await tx.sparepart.findUnique({
+      where: { id: String(id) },
+      select: { purchasingStatus: true, prDate: true, poDate: true },
+    });
+
+    let prDateVal: Date | null | undefined = undefined;
+    let poDateVal: Date | null | undefined = undefined;
+
+    if (purchasingStatus !== undefined && currentSp) {
+      const newStatus = String(purchasingStatus);
+      const oldStatus = currentSp.purchasingStatus;
+
+      if (newStatus !== oldStatus) {
+        if (newStatus === 'PR') {
+          prDateVal = new Date();
+          poDateVal = null;
+        } else if (newStatus === 'PO') {
+          prDateVal = currentSp.prDate || new Date();
+          poDateVal = new Date();
+        } else {
+          prDateVal = null;
+          poDateVal = null;
+        }
+      }
+    }
+
     await tx.sparepart.update({
       where: { id: String(id) },
       data: {
         ...(nama !== undefined ? { nama: nama.trim() } : {}),
-        kategoriId: kid,
+        ...(kid !== undefined ? { kategoriId: kid } : {}),
         ...(uom !== undefined ? { uom: uom || 'Pcs' } : {}),
         ...(lokasi !== undefined ? { lokasi: lokasi || null } : {}),
         ...(harga != null ? { harga: Number(harga) } : {}),
@@ -83,7 +109,9 @@ export async function PUT(req: NextRequest) {
           : {}),
         ...(aktif === undefined ? {} : { aktif: Boolean(aktif) }),
         ...(purchasingStatus !== undefined ? { purchasingStatus: String(purchasingStatus) } : {}),
-        mesins: { set: mesinIdNums.map((mid) => ({ id: mid })) },
+        ...(prDateVal !== undefined ? { prDate: prDateVal } : {}),
+        ...(poDateVal !== undefined ? { poDate: poDateVal } : {}),
+        ...(mesinIdNums !== undefined ? { mesins: { set: mesinIdNums.map((mid) => ({ id: mid })) } } : {}),
       },
     });
   });
@@ -93,4 +121,22 @@ export async function PUT(req: NextRequest) {
     include: { kategori: true, mesins: true },
   });
   return ok(row);
+}
+
+export async function DELETE(req: NextRequest) {
+  const session = await requireMtcEditor();
+  if (!session) return err('Akses ditolak', 403);
+  
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get('id');
+  if (!id) return err('ID wajib');
+  
+  try {
+    await prisma.sparepart.delete({
+      where: { id: String(id) }
+    });
+    return ok({ msg: 'Sparepart berhasil dihapus' });
+  } catch (e: unknown) {
+    return err('Gagal menghapus sparepart. Pastikan tidak ada histori transaksi yang terhubung.', 500);
+  }
 }

@@ -1,4 +1,5 @@
 import { NextAuthOptions, getServerSession } from 'next-auth';
+import { NextRequest } from 'next/server';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
@@ -133,3 +134,10 @@ export async function requireAuth() {
   const session = await getServerSession(authOptions);
   return session ?? null;
 }
+
+export function isQuickInBypassed(req: NextRequest) {
+  const secretParam = req.nextUrl.searchParams.get('secret') || req.headers.get('x-secret-key');
+  const allowedSecret = process.env.QUICK_IN_SECRET || 'MTCI';
+  return secretParam === allowedSecret;
+}
+

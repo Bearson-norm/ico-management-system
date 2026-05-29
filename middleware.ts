@@ -44,6 +44,12 @@ export default withAuth(
       if (req.method === 'GET' && pathname === '/api/mtc/stock') {
         return NextResponse.next();
       }
+      
+      const secret = req.nextUrl.searchParams.get('secret');
+      const allowedSecret = process.env.QUICK_IN_SECRET || 'MTCI';
+      if (secret === allowedSecret) {
+        return NextResponse.next();
+      }
       if (!token || tenant !== 'mtc') {
         return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
       }
@@ -77,7 +83,7 @@ export default withAuth(
     if (pathname.startsWith('/mtc')) {
       // Halaman stok publik — /stock dan /mtc/stock (bukan /mtc/stock-in|out)
       const isPublicStockPage =
-        pathname === '/mtc/stock' || pathname === '/mtc/stock/';
+        pathname === '/mtc/stock' || pathname === '/mtc/stock/' || pathname === '/mtc/quick-in';
       if (isPublicStockPage) {
         return NextResponse.next();
       }

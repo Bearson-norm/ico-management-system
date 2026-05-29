@@ -1,12 +1,15 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireMtcEditor } from '@/lib/auth';
+import { requireMtcEditor, isQuickInBypassed } from '@/lib/auth';
 import { StockInSchema } from '@/lib/validations/stock';
 import { generateItemId, ok, err } from '@/lib/utils';
 
 export async function POST(req: NextRequest) {
-  const session = await requireMtcEditor();
-  if (!session) return err('Akses ditolak', 403);
+  const isBypassed = isQuickInBypassed(req);
+  if (!isBypassed) {
+    const session = await requireMtcEditor();
+    if (!session) return err('Akses ditolak', 403);
+  }
 
   let body: unknown;
   try {
@@ -28,6 +31,7 @@ export async function POST(req: NextRequest) {
         for (const it of p.items) {
           const sp = await tx.sparepart.findUnique({ where: { id: it.sparepartId } });
           if (!sp) throw new Error(`Sparepart ${it.sparepartId} tidak ditemukan`);
+          
           await tx.stockMovement.create({
             data: {
               tipe: 'IN',
@@ -41,12 +45,30 @@ export async function POST(req: NextRequest) {
               tanggal,
             },
           });
-          if (it.harga != null && it.harga >= 0) {
-            await tx.sparepart.update({
-              where: { id: it.sparepartId },
-              data: { harga: it.harga },
-            });
+
+          let calculatedAvgLeadTime = sp.avgLeadTime;
+          let calculatedMaxLeadTime = sp.maxLeadTime;
+          if (sp.prDate) {
+            const elapsedMs = tanggal.getTime() - new Date(sp.prDate).getTime();
+            const elapsedDays = Math.max(1, elapsedMs / (1000 * 60 * 60 * 24));
+            
+            calculatedAvgLeadTime = sp.avgLeadTime === 0
+              ? elapsedDays
+              : Number((sp.avgLeadTime * 0.8 + elapsedDays * 0.2).toFixed(2));
+            calculatedMaxLeadTime = Math.max(sp.maxLeadTime, Math.round(elapsedDays));
           }
+
+          await tx.sparepart.update({
+            where: { id: it.sparepartId },
+            data: {
+              ...(it.harga != null && it.harga >= 0 ? { harga: it.harga } : {}),
+              purchasingStatus: 'NONE',
+              prDate: null,
+              poDate: null,
+              avgLeadTime: calculatedAvgLeadTime,
+              maxLeadTime: calculatedMaxLeadTime,
+            },
+          });
         }
       });
       return ok({ msg: `Stok masuk: ${p.items.length} jenis barang` });
@@ -65,6 +87,11 @@ export async function POST(req: NextRequest) {
             harga: p.harga,
             minQty: p.minQty,
             aktif: true,
+            ...(p.mesinIds && p.mesinIds.length > 0 ? {
+              mesins: {
+                connect: p.mesinIds.map((mid: string) => ({ id: Number(mid) }))
+              }
+            } : {})
           },
         });
         await tx.stockMovement.create({

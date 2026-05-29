@@ -40,3 +40,21 @@ export async function PUT(req: NextRequest) {
   });
   return ok(row);
 }
+
+export async function DELETE(req: NextRequest) {
+  const session = await requireMtcEditor();
+  if (!session) return err('Akses ditolak', 403);
+  
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get('id');
+  if (!id) return err('ID wajib');
+  
+  try {
+    await prisma.teknisi.delete({
+      where: { id: Number(id) }
+    });
+    return ok({ msg: 'Teknisi berhasil dihapus' });
+  } catch (e: unknown) {
+    return err('Gagal menghapus teknisi. Pastikan tidak ada data laporan atau transaksi yang terhubung.', 500);
+  }
+}

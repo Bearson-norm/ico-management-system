@@ -75,6 +75,8 @@ model Sparepart {
   avgLeadTime  Float     @default(0) @map("avg_lead_time")
   aktif        Boolean   @default(true)
   purchasingStatus String  @default("NONE") @map("purchasing_status")
+  prDate       DateTime? @map("pr_date")
+  poDate       DateTime? @map("po_date")
   createdAt  DateTime  @default(now()) @map("created_at")
   updatedAt  DateTime  @updatedAt @map("updated_at")
 

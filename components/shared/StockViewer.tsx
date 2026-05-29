@@ -1,8 +1,6 @@
 'use client';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import ProcurementSelect from './ProcurementSelect';
-
 type StockItem = {
   id: string; nama: string; kategori: string; lokasi: string;
   uom: string; harga: number; minQty: number;
@@ -780,7 +778,15 @@ function StockItemTableRow({
       </td>
       {isEditor && (
         <td style={{ textAlign: 'center' }}>
-          <ProcurementSelect itemId={item.id} initialStatus={item.purchasingStatus || 'NONE'} onUpdate={onUpdate} />
+          {item.purchasingStatus === 'PR' && (
+            <span className="badge badge-ylw">⏳ Sedang PR</span>
+          )}
+          {item.purchasingStatus === 'PO' && (
+            <span className="badge badge-blu">📦 Sudah PO</span>
+          )}
+          {(!item.purchasingStatus || item.purchasingStatus === 'NONE') && (
+            <span className="text-muted">—</span>
+          )}
         </td>
       )}
     </tr>
@@ -822,7 +828,11 @@ function StockItemCard({
           <span className="stock-item-card__uom">{item.uom}</span>
         </div>
         {isEditor ? (
-          <ProcurementSelect itemId={item.id} initialStatus={item.purchasingStatus || 'NONE'} onUpdate={onUpdate} />
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+            <StatusBadge s={item.status} />
+            {item.purchasingStatus === 'PR' && <span className="badge badge-ylw" style={{ fontSize: 10 }}>⏳ Sedang PR</span>}
+            {item.purchasingStatus === 'PO' && <span className="badge badge-blu" style={{ fontSize: 10 }}>📦 Sudah PO</span>}
+          </div>
         ) : (
           <StatusBadge s={item.status} />
         )}

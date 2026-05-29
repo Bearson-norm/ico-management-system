@@ -1,7 +1,11 @@
 'use client';
-import { useState, useEffect, FormEvent } from 'react';
+import React, { useState, useEffect, FormEvent } from 'react';
 
-export default function StockInPage() {
+export default function QuickStockInPage() {
+  const [secret, setSecret] = useState<string>('');
+  const [secretChecked, setSecretChecked] = useState<boolean>(false);
+  const [inputSecret, setInputSecret] = useState<string>('');
+
   const [spareparts, setSpareparts] = useState<any[]>([]);
   const [kategoris, setKategoris] = useState<any[]>([]);
   const [mesins, setMesins] = useState<any[]>([]);
@@ -34,21 +38,60 @@ export default function StockInPage() {
     nama: '', harga: '', qty: ''
   });
 
+  // 1. Ambil dan simpan secret dari URL / localStorage
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    let sec = params.get('secret');
+    if (sec) {
+      localStorage.setItem('quick_in_secret', sec);
+      setSecret(sec);
+    } else {
+      sec = localStorage.getItem('quick_in_secret') || '';
+      if (sec) {
+        setSecret(sec);
+      }
+    }
+    setSecretChecked(true);
+  }, []);
+
+  // 2. Load data setelah secret terverifikasi ada
+  useEffect(() => {
+    if (!secretChecked || !secret) return;
+
     async function loadData() {
+      setLoading(true);
       try {
         const [resK, resS, resM] = await Promise.all([
-          fetch('/api/mtc/master/kategori').then(r => r.json()),
-          fetch('/api/mtc/stock').then(r => r.json()),
-          fetch('/api/mtc/master/mesin').then(r => r.json())
+          fetch(`/api/mtc/master/kategori?secret=${secret}`).then(r => r.json()),
+          fetch(`/api/mtc/stock?secret=${secret}`).then(r => r.json()),
+          fetch(`/api/mtc/master/mesin?secret=${secret}`).then(r => r.json())
         ]);
-        if (resK.success) setKategoris(resK.data.filter((k:any) => k.tipe === 'sparepart' || k.tipe === 'umum'));
-        if (resS.success) setSpareparts(resS.data);
-        if (resM.success) setMesins(resM.data);
-      } finally { setLoading(false); }
+        if (resK.success) {
+          setKategoris(resK.data.filter((k: any) => k.tipe === 'sparepart' || k.tipe === 'umum'));
+        }
+        if (resS.success) {
+          setSpareparts(resS.data);
+        }
+        if (resM.success) {
+          setMesins(resM.data);
+        }
+      } catch (err) {
+        console.error('Error loading data', err);
+      } finally {
+        setLoading(false);
+      }
     }
     loadData();
-  }, []);
+  }, [secretChecked, secret]);
+
+  // -- Simpan token manual jika diinput lewat form --
+  const handleSaveManualSecret = (e: FormEvent) => {
+    e.preventDefault();
+    if (inputSecret.trim()) {
+      localStorage.setItem('quick_in_secret', inputSecret.trim());
+      setSecret(inputSecret.trim());
+    }
+  };
 
   // -- Modal logic --
   const filteredSP = spareparts.filter(sp => {
@@ -94,7 +137,11 @@ export default function StockInPage() {
     }
 
     try {
-      const res = await fetch('/api/mtc/stock/in', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const res = await fetch(`/api/mtc/stock/in?secret=${secret}`, { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify(payload) 
+      });
       const json = await res.json();
       if (json.success) {
         setMessage({ type: 'success', text: `✅ ${json.data.msg}` });
@@ -103,32 +150,89 @@ export default function StockInPage() {
         setNewForm({ nama: '', kategoriId: '', lokasi: '', harga: '', qty: '', minQty: '', mesinId: '' });
         setLogForm({ nama: '', harga: '', qty: '' });
         // Refresh master
-        fetch('/api/mtc/stock').then(r => r.json()).then(rs => { if(rs.success) setSpareparts(rs.data); });
+        fetch(`/api/mtc/stock?secret=${secret}`).then(r => r.json()).then(rs => { if(rs.success) setSpareparts(rs.data); });
         window.scrollTo(0,0);
       } else {
         setMessage({ type: 'error', text: `❌ ${json.error}` });
       }
+    } catch (err: any) {
+      setMessage({ type: 'error', text: `❌ Gagal mengirim: ${err.message}` });
     } finally { setSubmitting(false); }
   };
 
-  if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>Memuat data...</div>;
+  // 3. Jika belum memasukkan token rahasia, tampilkan input token
+  if (secretChecked && !secret) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '80vh', padding: 20 }}>
+        <div className="card" style={{ maxWidth: 450, width: '100%', padding: 30, boxShadow: '0 8px 30px rgba(0,0,0,0.12)', borderRadius: 12 }}>
+          <div style={{ textAlign: 'center', marginBottom: 20 }}>
+            <span style={{ fontSize: 48 }}>🔒</span>
+            <h2 style={{ marginTop: 12, fontWeight: 700 }}>Halaman Terproteksi</h2>
+            <p style={{ color: 'var(--tx3)', fontSize: 13, marginTop: 6 }}>
+              Masukkan Kode Rahasia (*Secret Token*) untuk membuka halaman Quick Stock In ini.
+            </p>
+          </div>
+          <form onSubmit={handleSaveManualSecret} className="form-grid">
+            <div className="form-group">
+              <label className="form-label">Kode / Token Rahasia</label>
+              <input 
+                type="password" 
+                className="form-input" 
+                required 
+                placeholder="Masukkan kode rahasia..." 
+                value={inputSecret} 
+                onChange={e => setInputSecret(e.target.value)} 
+              />
+            </div>
+            <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: 10 }}>
+              Buka Akses
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+        <div className="loader" style={{ marginBottom: 15 }}>⏳</div>
+        <div>Memverifikasi akses dan memuat data...</div>
+      </div>
+    );
+  }
 
   return (
     <>
-      <div className="page-header">
-        <div className="page-title">📥 Stock In</div>
-        <div className="page-sub">Penambahan stok barang baru atau existing</div>
+      <div className="page-header" style={{ position: 'relative' }}>
+        <div>
+          <div className="page-title">⚡ Quick Stock In</div>
+          <div className="page-sub">Mode Cepat tanpa login — Khusus Restock & Daftar Barang baru</div>
+        </div>
+        <div style={{ position: 'absolute', right: 20, top: 20 }}>
+          <button 
+            type="button" 
+            className="btn btn-ghost btn-sm" 
+            style={{ fontSize: 11, opacity: 0.6 }} 
+            onClick={() => {
+              localStorage.removeItem('quick_in_secret');
+              setSecret('');
+            }}
+          >
+            🔒 Kunci Halaman
+          </button>
+        </div>
       </div>
 
       <div className="page-body">
         {message && <div className={`alert ${message.type === 'success' ? 'alert-grn' : 'alert-red'}`} style={{ marginBottom: 20 }}>{message.text}</div>}
 
-        {/* Mode Stock In — tombol (bukan teks statis) */}
+        {/* Mode Stock In — tombol */}
         <div
           className="nav-wrap nav-wrap--scroll"
           style={{ marginBottom: 20 }}
           role="tablist"
-          aria-label="Mode stok masuk"
+          aria-label="Mode stok masuk cepat"
         >
           <button
             type="button"
@@ -146,7 +250,7 @@ export default function StockInPage() {
             className={`ntab ${activeTab === 'new' ? 'act-in' : ''}`}
             onClick={() => setActiveTab('new')}
           >
-            ✨ Daftar Barang Baru
+            ✨ Daftar Barang Baru (Auto ID)
           </button>
           <button
             type="button"
@@ -221,7 +325,7 @@ export default function StockInPage() {
             {/* TAB 2: NEW */}
             {activeTab === 'new' && (
               <>
-                <label className="form-label" style={{ marginBottom: 8, color: 'var(--pur)' }}>✨ Daftarkan Barang Baru ke Master Data</label>
+                <label className="form-label" style={{ marginBottom: 8, color: 'var(--pur)' }}>✨ Daftarkan Barang Baru (ID Otomatis Berurutan)</label>
                 <div className="form-grid-2">
                   <div className="form-group">
                     <label className="form-label">Nama Barang <span className="req">*</span></label>
@@ -253,7 +357,7 @@ export default function StockInPage() {
                   <label className="form-label">Jumlah Masuk (Stok Awal) <span className="req">*</span></label>
                   <input type="number" className="form-input" min="1" required value={newForm.qty} onChange={e => setNewForm({...newForm, qty: e.target.value})} />
                 </div>
-                <div className="form-group" style={{ gridColumn: '1/-1', marginTop: 8 }}>
+                <div className="form-group" style={{ gridColumn: '1/-1' }}>
                   <label className="form-label">Digunakan Pada Mesin (BOM)</label>
                   <select 
                     className="form-input form-select" 

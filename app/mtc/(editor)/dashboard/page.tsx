@@ -1,6 +1,15 @@
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
-import ProcurementSelect from '@/components/shared/ProcurementSelect';
+
+
+function fmtRupiah(value: number): string {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(value);
+}
 
 export default async function DashboardPage() {
   const today = new Date();
@@ -26,6 +35,7 @@ export default async function DashboardPage() {
       uom: true,
       lokasi: true,
       purchasingStatus: true,
+      harga: true,
       movements: {
         where: { tipe: { in: ['IN', 'OUT'] } },
         select: { tipe: true, qty: true, tanggal: true },
@@ -73,8 +83,20 @@ export default async function DashboardPage() {
       lokasi: sp.lokasi,
       currentStock,
       purchasingStatus: sp.purchasingStatus,
+      harga: Number(sp.harga || 0),
     };
   });
+
+  const totalStockValuation = sparepartsWithStock.reduce(
+    (sum, sp) => sum + (sp.currentStock > 0 ? sp.currentStock * sp.harga : 0),
+    0
+  );
+
+  const totalLogAggregation = await prisma.stockMovement.aggregate({
+    where: { tipe: 'LOG' },
+    _sum: { harga: true },
+  });
+  const totalOnetimeValuation = Number(totalLogAggregation._sum.harga || 0);
 
   const lowStockItems = sparepartsWithStock
     .filter((sp) => sp.currentStock <= sp.limitStock)
@@ -107,6 +129,64 @@ export default async function DashboardPage() {
       </div>
 
       <div className="page-body">
+        {/* ==================== SECTION: RINGKASAN NILAI ASET (VALUATION OVERVIEW) ==================== */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+            📊 Ringkasan Nilai Aset MTC
+          </div>
+          <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', marginBottom: 0 }}>
+            <div className="stat-card" style={{
+              background: 'linear-gradient(135deg, rgba(62,181,116,0.08) 0%, rgba(19,19,26,0.65) 100%)',
+              border: '1px solid var(--grn-b)',
+              borderLeft: '4px solid var(--grn)',
+              boxShadow: 'var(--shadow)',
+              padding: '20px 24px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              transition: 'all 0.2s ease',
+              borderRadius: 'var(--r)'
+            }}>
+              <div>
+                <div className="stat-label" style={{ color: 'var(--grn)', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 800 }}>
+                  <span>📦</span> Total Nilai Aset Stok (Inventory)
+                </div>
+                <div className="stat-value" style={{ color: 'var(--tx)', marginTop: 12, fontSize: 26, letterSpacing: '-0.5px' }}>
+                  {fmtRupiah(totalStockValuation)}
+                </div>
+              </div>
+              <div className="stat-sub" style={{ color: 'var(--tx2)', marginTop: 16, fontSize: 12 }}>
+                Dihitung dari: <span style={{ fontWeight: 600, color: 'var(--tx)' }}>Stok Aktif × Harga Master</span>
+              </div>
+            </div>
+
+            <div className="stat-card" style={{
+              background: 'linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(19,19,26,0.65) 100%)',
+              border: '1px solid var(--pur-b)',
+              borderLeft: '4px solid var(--pur)',
+              boxShadow: 'var(--shadow)',
+              padding: '20px 24px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              transition: 'all 0.2s ease',
+              borderRadius: 'var(--r)'
+            }}>
+              <div>
+                <div className="stat-label" style={{ color: 'var(--pur)', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 800 }}>
+                  <span>📝</span> Total Pembelian Sekali Pakai (Log)
+                </div>
+                <div className="stat-value" style={{ color: 'var(--tx)', marginTop: 12, fontSize: 26, letterSpacing: '-0.5px' }}>
+                  {fmtRupiah(totalOnetimeValuation)}
+                </div>
+              </div>
+              <div className="stat-sub" style={{ color: 'var(--tx2)', marginTop: 16, fontSize: 12 }}>
+                Dihitung dari: <span style={{ fontWeight: 600, color: 'var(--tx)' }}>Akumulasi Transaksi Non-Stok</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="stats-grid" style={{ marginBottom: 24 }}>
           <div className="stat-card stat-pur">
             <div className="stat-label">Report Hari Ini</div>
@@ -210,7 +290,15 @@ export default async function DashboardPage() {
                         )}
                       </td>
                       <td style={{ textAlign: 'center' }}>
-                        <ProcurementSelect itemId={sp.id} initialStatus={sp.purchasingStatus || 'NONE'} />
+                        {sp.purchasingStatus === 'PR' && (
+                          <span className="badge badge-ylw">⏳ Sedang PR</span>
+                        )}
+                        {sp.purchasingStatus === 'PO' && (
+                          <span className="badge badge-blu">📦 Sudah PO</span>
+                        )}
+                        {(!sp.purchasingStatus || sp.purchasingStatus === 'NONE') && (
+                          <span className="text-muted">—</span>
+                        )}
                       </td>
                     </tr>
                   ))}

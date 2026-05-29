@@ -20,22 +20,17 @@ export default function MasterPage() {
   const [isEdit, setIsEdit] = useState(false);
   const [form, setForm] = useState<any>({});
 
-  const [importModalOpen, setImportModalOpen] = useState(false);
-  const [importType, setImportType] = useState('sparepart');
+  // Unified Super Import State
+  const [unifiedImportOpen, setUnifiedImportOpen] = useState(false);
+  const [importType, setImportType] = useState<string>('sparepart');
+  const [importMethod, setImportMethod] = useState<'excel' | 'csv'>('excel');
   const [importText, setImportText] = useState('');
-  const [isImporting, setIsImporting] = useState(false);
-
-  const [stockImportOpen, setStockImportOpen] = useState(false);
-  const [stockImportText, setStockImportText] = useState('');
   const [stockImportSync, setStockImportSync] = useState(false);
-  const [isStockImporting, setIsStockImporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
 
   // BOM State
   const [bomMesins, setBomMesins] = useState<any[]>([]);
   const [expandedMesinId, setExpandedMesinId] = useState<number | null>(null);
-  const [bomImportOpen, setBomImportOpen] = useState(false);
-  const [bomCsvText, setBomCsvText] = useState('');
-  const [isBomImporting, setIsBomImporting] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -87,8 +82,8 @@ export default function MasterPage() {
     } else if (type === 'mesin') {
       setForm(
         data
-          ? { ...data, tipe: data.tipe || 'keduanya' }
-          : { nama: '', area: '', tipe: 'keduanya', aktif: true }
+          ? { ...data, tipe: data.tipe || 'perbaikan' }
+          : { nama: '', area: '', tipe: 'perbaikan', aktif: true }
       );
     } else if (type === 'teknisi') {
       setForm(data || { nama: '', aktif: true });
@@ -118,68 +113,47 @@ export default function MasterPage() {
     }
   };
 
-  const handleStockImportSubmit = async () => {
-    if (!stockImportText.trim()) return alert('Pilih file CSV atau paste data dulu');
-    setIsStockImporting(true);
+  const handleDelete = async () => {
+    if (!confirm(`Apakah Anda yakin ingin menghapus data ini secara permanen? Tindakan ini tidak dapat dibatalkan.`)) return;
+    
+    const endpoint = `/api/mtc/master/${modalType}?id=${form.id}`;
+    const res = await fetch(endpoint, {
+      method: 'DELETE',
+    });
 
-    try {
-      const res = await fetch('/api/mtc/stock/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          rawText: stockImportText,
-          syncMode: stockImportSync,
-          keterangan: stockImportSync ? 'Stock report sync' : 'Saldo awal',
-        }),
-      });
+    if (res.ok) {
+      setModalOpen(false);
+      fetchData();
+    } else {
       const json = await res.json();
-
-      if (json.success) {
-        const d = json.data;
-        if (d.skippedRows?.length || d.failedRows?.length) {
-          console.group('Detail import stok');
-          if (d.skippedRows?.length) console.table(d.skippedRows);
-          if (d.failedRows?.length) console.table(d.failedRows);
-          console.groupEnd();
-        }
-        alert(d.message || 'Import stok selesai');
-        if ((d.failed ?? 0) === 0) {
-          setStockImportOpen(false);
-          setStockImportText('');
-        }
-        fetchData();
-      } else {
-        alert('❌ Error: ' + json.error);
-      }
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : 'Unknown error';
-      alert('Terjadi kesalahan saat memproses data: ' + message);
-    } finally {
-      setIsStockImporting(false);
+      alert('Gagal menghapus: ' + json.error);
     }
   };
 
-  const handleStockFilePick = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setStockImportText(String(reader.result ?? ''));
-    };
-    reader.readAsText(file);
-    e.target.value = '';
-  };
-
-  const handleImportSubmit = async () => {
-    if (!importText.trim()) return alert('Data masih kosong');
+  const handleUnifiedImportSubmit = async () => {
+    if (!importText.trim()) return alert('Data masih kosong atau file belum dipilih');
     setIsImporting(true);
 
     try {
-      const res = await fetch('/api/mtc/master/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: importType, rawText: importText }),
-      });
+      let res;
+      if (importType === 'stock') {
+        res = await fetch('/api/mtc/stock/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            rawText: importText,
+            syncMode: stockImportSync,
+            keterangan: stockImportSync ? 'Stock report sync' : 'Saldo awal',
+          }),
+        });
+      } else {
+        res = await fetch('/api/mtc/master/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: importType, rawText: importText }),
+        });
+      }
+
       const json = await res.json();
 
       if (json.success) {
@@ -190,20 +164,74 @@ export default function MasterPage() {
           if (d.failedRows?.length) console.table(d.failedRows);
           console.groupEnd();
         }
-        alert(d.message || 'Import selesai');
-        if ((d.skipped ?? 0) === 0 && (d.failed ?? 0) === 0) {
-          setImportModalOpen(false);
-          setImportText('');
-        }
+        alert(d.message || '✅ Import data berhasil!');
+        setUnifiedImportOpen(false);
+        setImportText('');
         fetchData();
       } else {
         alert('❌ Error: ' + json.error);
       }
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'Unknown error';
-      alert('Terjadi kesalahan saat memproses data: ' + message);
+      alert('Terjadi kesalahan saat memproses import: ' + message);
     } finally {
       setIsImporting(false);
+    }
+  };
+
+  const handleImportFilePick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setImportText(String(reader.result ?? ''));
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const getImportGuidelines = () => {
+    switch (importType) {
+      case 'sparepart':
+        return {
+          title: '📦 Master Sparepart',
+          alertClass: 'alert-blu',
+          cols: 'id (Item ID), nama, kategori, uom, lokasi, harga, minQty, maxLeadTime, avgLeadTime',
+          placeholderExcel: "Contoh Copy-Paste dari Excel:\nid\tnama\tkategori\tuom\tlokasi\tharga\tminQty\nMTC-SP-001\tBearing SKF\tMechanical\tPcs\t1-A-1-1\t50000\t2",
+          placeholderCsv: "Contoh isi file CSV:\nid,nama,kategori,uom,lokasi,harga,minQty\nMTC-SP-001,Bearing SKF,Mechanical,Pcs,1-A-1-1,50000,2"
+        };
+      case 'mesin':
+        return {
+          title: '🏭 Master Mesin',
+          alertClass: 'alert-blu',
+          cols: 'nama, tipe, area (tipe: perbaikan / sparepart / keduanya)',
+          placeholderExcel: "Contoh Copy-Paste dari Excel:\nnama\ttipe\tarea\nMesin Press 100T\tkeduanya\tLine A",
+          placeholderCsv: "Contoh isi file CSV:\nnama,tipe,area\nMesin Press 100T,keduanya,Line A"
+        };
+      case 'bom':
+        return {
+          title: '🔗 Pemetaan BOM Mesin',
+          alertClass: 'alert-pur',
+          cols: 'Nama Mesin, Item ID (atau sparepartId, mesinNama)',
+          placeholderExcel: "Contoh Copy-Paste dari Excel:\nNama Mesin\tItem ID\nMesin Press 100T\tMTC-SP-001",
+          placeholderCsv: "Contoh isi file CSV:\nNama Mesin,Item ID\nMesin Press 100T,MTC-SP-001"
+        };
+      case 'stock':
+        return {
+          title: '📊 Laporan Stok Awal / Sync',
+          alertClass: 'alert-grn',
+          cols: 'id, Current Stock',
+          placeholderExcel: "Contoh Copy-Paste dari Excel:\nid\tCurrent Stock\nMTC-SP-001\t15",
+          placeholderCsv: "Contoh isi file CSV:\nid,Current Stock\nMTC-SP-001,15"
+        };
+      default:
+        return {
+          title: 'Import',
+          alertClass: 'alert-blu',
+          cols: '',
+          placeholderExcel: '',
+          placeholderCsv: ''
+        };
     }
   };
 
@@ -216,19 +244,17 @@ export default function MasterPage() {
             <div className="page-sub">Kelola informasi barang, teknisi, mesin, dan kategori</div>
           </div>
           <div className="page-header-actions">
-            {activeTab === 'sparepart' && (
-              <button type="button" className="btn btn-ghost" onClick={() => setStockImportOpen(true)}>
-                📊 Import Stock
-              </button>
-            )}
-            {activeTab === 'bom' && (
-              <button type="button" className="btn btn-primary" onClick={() => setBomImportOpen(true)}>
-                📥 Import CSV BOM
-              </button>
-            )}
-            {activeTab !== 'bom' && (
-              <button type="button" className="btn btn-ghost" onClick={() => setImportModalOpen(true)}>
-                📥 Import Excel
+            {(activeTab === 'sparepart' || activeTab === 'mesin' || activeTab === 'bom') && (
+              <button 
+                type="button" 
+                className="btn btn-ghost" 
+                onClick={() => {
+                  setImportType(activeTab);
+                  setImportText('');
+                  setUnifiedImportOpen(true);
+                }}
+              >
+                📋 Import Excel
               </button>
             )}
             {activeTab !== 'sparepart' && activeTab !== 'bom' && (
@@ -323,6 +349,7 @@ export default function MasterPage() {
                     <tr>
                       <th>ID</th>
                       <th>Nama Mesin</th>
+                      <th>Tipe</th>
                       <th>Area</th>
                       <th>Spareparts</th>
                       <th>Status</th>
@@ -330,10 +357,18 @@ export default function MasterPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {mesins.filter(m => m.nama.toLowerCase().includes(search.toLowerCase())).map(m => (
+                    {mesins
+                      .filter(m => m.nama.toLowerCase().includes(search.toLowerCase()))
+                      .filter(m => m.tipe === 'perbaikan')
+                      .map(m => (
                       <tr key={m.id}>
                         <td data-label="ID" className="text-muted text-tiny">{m.id}</td>
                         <td data-label="Nama Mesin" style={{ fontWeight: 600 }}>{m.nama}</td>
+                        <td data-label="Tipe">
+                          {m.tipe === 'sparepart' ? <span className="badge badge-blu">Khusus Sparepart (BOM)</span>
+                           : m.tipe === 'perbaikan' ? <span className="badge badge-ylw">Khusus Perbaikan</span>
+                           : <span className="badge badge-pur">Keduanya</span>}
+                        </td>
                         <td data-label="Area">{m.area || '—'}</td>
                         <td data-label="Spareparts"><span className="badge badge-pur">{m._sparepartCount ?? 0} item</span></td>
                         <td data-label="Status">{m.aktif ? <span className="badge badge-grn">Aktif</span> : <span className="badge badge-red">Nonaktif</span>}</td>
@@ -411,11 +446,16 @@ export default function MasterPage() {
                       <th>Nama Mesin</th>
                       <th>Area</th>
                       <th>Jumlah Sparepart Terhubung</th>
+                      <th style={{ textAlign: 'right' }}>Aksi</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {bomMesins.filter(m => m.nama.toLowerCase().includes(search.toLowerCase())).map(m => (
-                      <React.Fragment key={m.id}>
+                    {bomMesins
+                      .filter(m => m.nama.toLowerCase().includes(search.toLowerCase()))
+                      .filter(m => m.tipe === 'sparepart' || m.tipe === 'keduanya')
+                      .filter(m => (m._sparepartCount ?? 0) > 0)
+                      .map(m => (
+                        <React.Fragment key={m.id}>
                         <tr onClick={() => setExpandedMesinId(expandedMesinId === m.id ? null : m.id)} style={{ cursor: 'pointer' }}>
                           <td style={{ textAlign: 'center', fontSize: 14 }}>{expandedMesinId === m.id ? '▼' : '▶'}</td>
                           <td data-label="Nama Mesin" style={{ fontWeight: 600 }}>{m.nama}</td>
@@ -425,10 +465,22 @@ export default function MasterPage() {
                               {m._sparepartCount} sparepart
                             </span>
                           </td>
+                          <td data-label="Aksi" style={{ textAlign: 'right' }}>
+                            <button 
+                              type="button" 
+                              className="btn btn-ghost btn-sm" 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openModal('mesin', m);
+                              }}
+                            >
+                              ✏️ Edit Mesin
+                            </button>
+                          </td>
                         </tr>
                         {expandedMesinId === m.id && (
                           <tr>
-                            <td colSpan={4} style={{ padding: 0 }}>
+                            <td colSpan={5} style={{ padding: 0 }}>
                               <div style={{ padding: '12px 20px 16px 48px', background: 'var(--sf2)', borderTop: '1px solid var(--br)' }}>
                                 {Array.isArray(m.spareparts) && m.spareparts.length > 0 ? (
                                   <table className="table-clean" style={{ marginBottom: 0 }}>
@@ -438,6 +490,7 @@ export default function MasterPage() {
                                         <th style={{ fontSize: 11 }}>Nama Sparepart</th>
                                         <th style={{ fontSize: 11 }}>UoM</th>
                                         <th style={{ fontSize: 11 }}>SLOC</th>
+                                        <th style={{ fontSize: 11, textAlign: 'right' }}>Aksi</th>
                                       </tr>
                                     </thead>
                                     <tbody>
@@ -447,6 +500,19 @@ export default function MasterPage() {
                                           <td style={{ fontWeight: 600, fontSize: 13 }}>{sp.nama}</td>
                                           <td className="text-tiny">{sp.uom}</td>
                                           <td><span className="badge badge-blu" style={{ fontSize: 10 }}>{sp.lokasi || '—'}</span></td>
+                                          <td style={{ textAlign: 'right', padding: '4px 8px' }}>
+                                            <button 
+                                              type="button" 
+                                              className="btn btn-ghost btn-sm" 
+                                              style={{ fontSize: 11, padding: '2px 8px' }}
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                openModal('sparepart', sp);
+                                              }}
+                                            >
+                                              ✏️ Edit BOM
+                                            </button>
+                                          </td>
                                         </tr>
                                       ))}
                                     </tbody>
@@ -645,238 +711,170 @@ export default function MasterPage() {
 
               </form>
             </div>
-            <div className="modal-footer">
-              <button className="btn btn-ghost" onClick={() => setModalOpen(false)}>Batal</button>
-              <button type="submit" form="masterForm" className="btn btn-primary">Simpan Data</button>
+            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+              <div>
+                {isEdit && (
+                  <button 
+                    type="button" 
+                    className="btn" 
+                    style={{ background: 'var(--red)', color: 'white', display: 'flex', alignItems: 'center', gap: 6 }}
+                    onClick={handleDelete}
+                  >
+                    🗑️ Hapus Permanen
+                  </button>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="button" className="btn btn-ghost" onClick={() => setModalOpen(false)}>Batal</button>
+                <button type="submit" form="masterForm" className="btn btn-primary">Simpan Data</button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {stockImportOpen && (
-        <div className="modal-backdrop">
-          <div className="modal-box" style={{ maxWidth: 600 }}>
+      {/* UNIFIED SUPER IMPORT MODAL */}
+      {unifiedImportOpen && (
+        <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setUnifiedImportOpen(false); }}>
+          <div className="modal-box" style={{ maxWidth: 620, width: '100%', height: '90vh' }}>
             <div className="modal-header">
-              <div className="modal-title">📊 Import Stock Report</div>
-            </div>
-            <div className="modal-body">
-              <div className="alert alert-grn" style={{ marginBottom: 16 }}>
-                <strong>Cara paling gampang — 3 langkah:</strong>
-                <ol style={{ marginLeft: 16, marginTop: 6, marginBottom: 0 }}>
-                  <li>Pastikan Item ID sudah ada di tab Master Sparepart</li>
-                  <li>Klik <strong>Pilih file CSV</strong> di bawah</li>
-                  <li>Klik <strong>Import Stok</strong></li>
-                </ol>
+              <div className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                📥 Super Import Data Massal
               </div>
-
+              <button onClick={() => { setUnifiedImportOpen(false); setImportText(''); }} style={{ background:'none', border:'none', color:'var(--tx2)', fontSize: 20 }}>×</button>
+            </div>
+            
+            <div className="modal-body" style={{ gap: 16, overflowY: 'auto' }}>
+              {/* Select Target Table */}
               <div className="form-group">
-                <label className="form-label">1. Pilih file CSV stock report</label>
-                <input
-                  type="file"
-                  accept=".csv,.txt,text/csv"
-                  className="form-input"
-                  onChange={handleStockFilePick}
-                />
-                <p style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 4 }}>
-                  Format: <code>id, Current Stock</code> — sama persis file <em>DB WEB MTC - Stock Sparepart.csv</em>
-                </p>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={stockImportSync}
-                    onChange={(e) => setStockImportSync(e.target.checked)}
-                  />
-                  Update stok yang sudah ada (mode sync)
-                </label>
-                <p style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 4 }}>
-                  {stockImportSync
-                    ? 'Centang ini kalau stok sudah pernah diisi dan mau disamakan lagi dengan stock report terbaru.'
-                    : 'Biarkan tidak dicentang untuk isi stok pertama kali (hanya barang yang stoknya masih 0).'}
-                </p>
-              </div>
-
-              <details style={{ marginTop: 8 }}>
-                <summary style={{ cursor: 'pointer', fontSize: 12, color: 'var(--tx2)' }}>Alternatif: paste dari Excel</summary>
-                <div className="form-group" style={{ marginTop: 10 }}>
-                  <textarea
-                    className="form-input"
-                    rows={6}
-                    style={{ fontFamily: 'monospace', whiteSpace: 'pre', overflowWrap: 'normal', overflowX: 'auto' }}
-                    placeholder={`id\tCurrent Stock\nMTC-SP-001\t31`}
-                    value={stockImportText}
-                    onChange={(e) => setStockImportText(e.target.value)}
-                  />
-                </div>
-              </details>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-ghost" onClick={() => setStockImportOpen(false)} disabled={isStockImporting}>
-                Batal
-              </button>
-              <button className="btn btn-primary" onClick={handleStockImportSubmit} disabled={isStockImporting || !stockImportText.trim()}>
-                {isStockImporting ? '⏳ Memproses...' : 'Import Stok'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {importModalOpen && (
-        <div className="modal-backdrop">
-          <div className="modal-box" style={{ maxWidth: 600 }}>
-            <div className="modal-header">
-              <div className="modal-title">📥 Import / Update Data Massal</div>
-            </div>
-            <div className="modal-body">
-              <div className="alert alert-blu">
-                <div style={{ flex: 1 }}>
-                  <strong>Cara Import:</strong>
-                  <ol style={{ marginLeft: 16, marginTop: 4 }}>
-                    <li>Pilih tipe data yang ingin di-import.</li>
-                    <li>Copy data dari file Excel (termasuk baris Header-nya).</li>
-                    <li>Paste ke dalam kotak teks di bawah ini.</li>
-                  </ol>
-                  <p style={{ marginTop: 4, fontSize: 11, color: 'var(--tx3)' }}>
-                    *Copy dari Excel (Ctrl+C), paste di sini (Ctrl+V). Jangan ketik manual. Header wajib ada kolom <strong>id</strong>.
-                    Harga dengan koma (Rp6,500,000) aman — pemisah kolom harus <strong>tab</strong> dari Excel.
-                  </p>
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Pilih Target Tabel</label>
-                <select className="form-input form-select" value={importType} onChange={e => setImportType(e.target.value)}>
-                  <option value="mesin">Mesin (nama, tipe, area) — tipe: Perbaikan / Sparepart / Keduanya</option>
-                  <option value="sparepart">Sparepart (id / Item ID, nama, kategori, uom, lokasi, harga, minQty, lead time)</option>
-                  <option value="bom">Pemetaan BOM (Kolom: sparepartId, mesinNama)</option>
+                <label className="form-label" style={{ fontSize: 10 }}>1. Pilih Target Data / Tabel</label>
+                <select 
+                  className="form-input form-select" 
+                  value={importType} 
+                  onChange={(e) => {
+                    setImportType(e.target.value);
+                    setImportText('');
+                  }}
+                >
+                  <option value="sparepart">📦 Master Sparepart (Barang & Harga)</option>
+                  <option value="mesin">🏭 Master Mesin (Daftar Unit)</option>
+                  <option value="bom">🔗 Pemetaan BOM (Sparepart per Mesin)</option>
+                  <option value="stock">📊 Laporan / Sinkronisasi Stok (Qty Saat Ini)</option>
                 </select>
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Paste Data Excel Di Sini</label>
-                <textarea
-                  className="form-input"
-                  rows={10}
-                  style={{ fontFamily: 'monospace', whiteSpace: 'pre', overflowWrap: 'normal', overflowX: 'auto' }}
-                  placeholder={`Contoh Header untuk Mesin:\nnama\ttipe\tarea\nMesin CNC 01\tperbaikan\tWorkshop A`}
-                  value={importText}
-                  onChange={e => setImportText(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-ghost" onClick={() => setImportModalOpen(false)} disabled={isImporting}>
-                Batal
-              </button>
-              <button className="btn btn-primary" onClick={handleImportSubmit} disabled={isImporting}>
-                {isImporting ? '⏳ Memproses...' : 'Mulai Import'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL IMPORT BOM CSV */}
-      {bomImportOpen && (
-        <div className="modal-backdrop">
-          <div className="modal-box" style={{ maxWidth: 600 }}>
-            <div className="modal-header">
-              <div className="modal-title">🔗 Import BOM — Sparepart per Mesin</div>
-            </div>
-            <div className="modal-body">
-              <div className="alert alert-blu" style={{ marginBottom: 16 }}>
-                <div style={{ flex: 1 }}>
-                  <strong>Format CSV yang didukung:</strong>
-                  <div style={{ marginTop: 6, fontFamily: 'monospace', fontSize: 12, background: 'var(--bg)', padding: '8px 12px', borderRadius: 6 }}>
-                    Nama Mesin,Item ID<br/>
-                    Mesin Lanyard Device,MTC-SP-077<br/>
-                    Mesin Cellophane Device,MTC-SP-068
+              {/* Dynamic Guidelines */}
+              {(() => {
+                const guide = getImportGuidelines();
+                return (
+                  <div className={`alert ${guide.alertClass}`} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div><strong>Format Kolom yang Diterima:</strong></div>
+                    <code style={{ background: 'rgba(0,0,0,0.2)', padding: '4px 8px', borderRadius: 4, display: 'inline-block', fontSize: 12, wordBreak: 'break-all' }}>
+                      {guide.cols}
+                    </code>
+                    {importType === 'stock' && (
+                      <div style={{ marginTop: 6, fontSize: 11 }}>
+                        *MTC Sparepart ID wajib sudah terdaftar terlebih dahulu di Master Data.
+                      </div>
+                    )}
                   </div>
-                  <p style={{ marginTop: 8, fontSize: 11, color: 'var(--tx3)' }}>
-                    Baris dengan kolom kosong akan otomatis dilewati. Mesin akan dibuat otomatis jika belum ada.
+                );
+              })()}
+
+              {/* Method Tabs */}
+              <div className="stock-view-toggle" style={{ background: 'var(--sf3)', padding: 3, borderRadius: 8 }}>
+                <button 
+                  type="button" 
+                  className={`stock-view-toggle__btn ${importMethod === 'excel' ? 'stock-view-toggle__btn--active' : ''}`}
+                  style={{ flex: 1, padding: '8px 12px' }}
+                  onClick={() => { setImportMethod('excel'); setImportText(''); }}
+                >
+                  📋 Paste dari Excel
+                </button>
+                <button 
+                  type="button" 
+                  className={`stock-view-toggle__btn ${importMethod === 'csv' ? 'stock-view-toggle__btn--active' : ''}`}
+                  style={{ flex: 1, padding: '8px 12px' }}
+                  onClick={() => { setImportMethod('csv'); setImportText(''); }}
+                >
+                  📁 Upload File (CSV)
+                </button>
+              </div>
+
+              {/* Specific Options for Stock */}
+              {importType === 'stock' && (
+                <div style={{ background: 'var(--sf2)', padding: 12, borderRadius: 8, border: '1px solid var(--br)' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>
+                    <input 
+                      type="checkbox" 
+                      checked={stockImportSync} 
+                      onChange={(e) => setStockImportSync(e.target.checked)} 
+                    />
+                    Update stok yang sudah ada (Mode Sync)
+                  </label>
+                  <p style={{ color: 'var(--tx3)', fontSize: 11, marginTop: 4, marginLeft: 22 }}>
+                    {stockImportSync 
+                      ? 'Menimpa Qty lama dengan Qty baru di file CSV/Excel.' 
+                      : 'Hanya mengisi Qty awal untuk barang yang stoknya masih 0.'}
                   </p>
                 </div>
-              </div>
+              )}
 
-              <div className="form-group">
-                <label className="form-label">Pilih File CSV</label>
-                <input
-                  type="file"
-                  accept=".csv,.txt,text/csv"
-                  className="form-input"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    const reader = new FileReader();
-                    reader.onload = () => setBomCsvText(String(reader.result ?? ''));
-                    reader.readAsText(file);
-                    e.target.value = '';
-                  }}
-                />
-                <p style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 4 }}>
-                  File: <em>DB WEB MTC - DB Sparepart-Mesin.csv</em> atau format serupa
-                </p>
-              </div>
-
-              <details style={{ marginTop: 8 }}>
-                <summary style={{ cursor: 'pointer', fontSize: 12, color: 'var(--tx2)' }}>Alternatif: paste teks CSV langsung</summary>
-                <div className="form-group" style={{ marginTop: 10 }}>
+              {/* Inputs based on Method */}
+              {importMethod === 'excel' ? (
+                <div className="form-group">
+                  <label className="form-label" style={{ fontSize: 10 }}>2. Paste Data dari Excel di bawah</label>
                   <textarea
                     className="form-input"
-                    rows={6}
-                    style={{ fontFamily: 'monospace', fontSize: 12 }}
-                    placeholder={'Nama Mesin,Item ID\nMesin Press 100T,MTC-SP-001'}
-                    value={bomCsvText}
-                    onChange={(e) => setBomCsvText(e.target.value)}
+                    rows={8}
+                    style={{ fontFamily: 'monospace', fontSize: 12, whiteSpace: 'pre', overflowX: 'auto' }}
+                    placeholder={getImportGuidelines().placeholderExcel}
+                    value={importText}
+                    onChange={(e) => setImportText(e.target.value)}
                   />
+                  <p style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 4 }}>
+                    *Salin tabel di Excel (termasuk baris Header), lalu paste (Ctrl+V) di kotak atas.
+                  </p>
                 </div>
-              </details>
-
-              {bomCsvText && (
-                <div style={{ marginTop: 10, padding: '8px 12px', background: 'var(--sf2)', borderRadius: 6, fontSize: 12, color: 'var(--tx2)' }}>
-                  ✅ {bomCsvText.trim().split('\n').length - 1} baris data siap diimport
+              ) : (
+                <div className="form-group">
+                  <label className="form-label" style={{ fontSize: 10 }}>2. Pilih File CSV</label>
+                  <input
+                    type="file"
+                    accept=".csv,.txt,text/csv"
+                    className="form-input"
+                    onChange={handleImportFilePick}
+                  />
+                  <p style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 4 }}>
+                    *Pilih file berformat `.csv` yang berisi kolom-kolom di atas.
+                  </p>
+                  {importText && (
+                    <div style={{ marginTop: 8, padding: '8px 12px', background: 'var(--sf2)', borderRadius: 6, fontSize: 12, color: 'var(--tx2)' }}>
+                      ✅ {importText.trim().split('\n').length - 1} baris data terdeteksi di dalam file CSV.
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-            <div className="modal-footer">
-              <button className="btn btn-ghost" onClick={() => { setBomImportOpen(false); setBomCsvText(''); }} disabled={isBomImporting}>
+
+            <div className="modal-footer" style={{ padding: '16px 24px', borderTop: '1px solid var(--br)', display: 'flex', gap: 10 }}>
+              <button 
+                type="button" 
+                className="btn btn-ghost" 
+                onClick={() => { setUnifiedImportOpen(false); setImportText(''); }} 
+                disabled={isImporting}
+                style={{ flex: 1, justifyContent: 'center' }}
+              >
                 Batal
               </button>
-              <button
-                className="btn btn-primary"
-                disabled={isBomImporting || !bomCsvText.trim()}
-                onClick={async () => {
-                  if (!bomCsvText.trim()) return;
-                  setIsBomImporting(true);
-                  try {
-                    const res = await fetch('/api/mtc/master/import', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ type: 'bom', rawText: bomCsvText }),
-                    });
-                    const json = await res.json();
-                    if (json.success) {
-                      alert(json.data.message || '✅ Import BOM selesai!');
-                      setBomImportOpen(false);
-                      setBomCsvText('');
-                      // Refresh BOM data
-                      const r2 = await fetch('/api/mtc/master/mesin?include=spareparts');
-                      const j2 = await r2.json();
-                      if (j2.success) setBomMesins(j2.data);
-                    } else {
-                      alert('❌ Error: ' + json.error);
-                    }
-                  } catch (e: unknown) {
-                    alert('Terjadi kesalahan: ' + (e instanceof Error ? e.message : 'Unknown error'));
-                  } finally {
-                    setIsBomImporting(false);
-                  }
-                }}
+              <button 
+                type="button" 
+                className="btn btn-primary" 
+                onClick={handleUnifiedImportSubmit} 
+                disabled={isImporting || !importText.trim()}
+                style={{ flex: 2, justifyContent: 'center' }}
               >
-                {isBomImporting ? '⏳ Mengimport...' : '🔗 Import BOM'}
+                {isImporting ? '⏳ Sedang Memproses...' : '📥 Mulai Import Data'}
               </button>
             </div>
           </div>
