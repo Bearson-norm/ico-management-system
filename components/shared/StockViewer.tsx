@@ -118,6 +118,8 @@ export default function StockViewer({ stockApiUrl = '/api/mtc/stock' }: { stockA
     parseStatusFilter(searchParams.get('status'))
   );
 
+  const isGa = stockApiUrl.includes('/ga/');
+
   useEffect(() => {
     fetchData();
     const t = setInterval(fetchData, 120000);
@@ -415,34 +417,43 @@ export default function StockViewer({ stockApiUrl = '/api/mtc/stock' }: { stockA
               ))}
             </div>
 
-            {/* Mesin Pills */}
-            {uniqueMesins.length > 0 && (
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button
-                  onClick={() => setSelectedMesin(null)}
-                  style={{
-                    padding: '6px 14px', borderRadius: 20, border: '1px solid var(--br)', cursor: 'pointer', fontSize: 12, fontWeight: 600,
-                    background: selectedMesin === null ? 'var(--tx)' : 'transparent',
-                    color: selectedMesin === null ? 'var(--bg)' : 'var(--tx2)',
-                    transition: 'all .15s'
-                  }}
-                >
-                  Semua Mesin
-                </button>
-                {uniqueMesins.map(m => (
-                  <button
-                    key={m.id}
-                    onClick={() => setSelectedMesin(m.id)}
+            {/* Mesin Filter Dropdown */}
+            {!isGa && uniqueMesins.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: '.5px' }}>Filter Mesin:</span>
+                <div style={{ position: 'relative', display: 'inline-block' }}>
+                  <select
+                    value={selectedMesin === null ? '' : selectedMesin}
+                    onChange={e => setSelectedMesin(e.target.value === '' ? null : Number(e.target.value))}
                     style={{
-                      padding: '6px 14px', borderRadius: 20, border: '1px solid var(--br)', cursor: 'pointer', fontSize: 12, fontWeight: 600,
-                      background: selectedMesin === m.id ? 'var(--pur)' : 'var(--sf2)',
-                      color: selectedMesin === m.id ? '#fff' : 'var(--tx2)',
-                      transition: 'all .15s'
+                      padding: '6px 36px 6px 14px',
+                      borderRadius: 20,
+                      border: '1px solid var(--br)',
+                      background: selectedMesin === null ? 'var(--sf2)' : 'var(--pur-d)',
+                      color: selectedMesin === null ? 'var(--tx2)' : 'var(--pur)',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      outline: 'none',
+                      appearance: 'none',
+                      boxShadow: 'var(--shadow)',
+                      minWidth: 200,
+                      maxWidth: 280,
+                      transition: 'all .15s',
+                      borderColor: selectedMesin === null ? 'var(--br)' : 'var(--pur)',
                     }}
                   >
-                    🏭 {m.nama}
-                  </button>
-                ))}
+                    <option value="" style={{ background: 'var(--sf3)', color: 'var(--tx)' }}>🏭 Semua Mesin ({uniqueMesins.length})</option>
+                    {uniqueMesins.map(m => (
+                      <option key={m.id} value={m.id} style={{ background: 'var(--sf3)', color: 'var(--tx)' }}>
+                        🏭 {m.nama}
+                      </option>
+                    ))}
+                  </select>
+                  <div style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: selectedMesin === null ? 'var(--tx3)' : 'var(--pur)', fontSize: 10 }}>
+                    ▼
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -580,6 +591,36 @@ export default function StockViewer({ stockApiUrl = '/api/mtc/stock' }: { stockA
         )}
 
       </div>
+
+      <style jsx global>{`
+        @media (max-width: 768px) {
+          .stock-page-header {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 16px !important;
+          }
+          .stock-view-header-actions {
+            width: 100% !important;
+            justify-content: space-between !important;
+          }
+          .stock-status-filters {
+            display: grid !important;
+            grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)) !important;
+            gap: 6px !important;
+            width: 100% !important;
+          }
+          .stock-status-filter {
+            width: 100% !important;
+            justify-content: center !important;
+          }
+          .stock-kolom-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .stock-rak-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </>
   );
 }

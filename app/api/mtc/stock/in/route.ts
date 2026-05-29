@@ -122,6 +122,7 @@ export async function POST(req: NextRequest) {
         harga: p.harga,
         purchaseType: p.purchaseType || null,
         vendor: p.vendor || null,
+        keterangan: 'keterangan' in p ? p.keterangan : null,
         tanggal,
       },
     });

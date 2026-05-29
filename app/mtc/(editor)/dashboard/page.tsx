@@ -245,7 +245,7 @@ export default async function DashboardPage() {
 
         <div className="form-grid-2" style={{ marginBottom: 24, gap: 20 }}>
           <div className="card" style={{ height: '100%' }}>
-            <div className="card-header">
+            <div className="card-header" style={{ marginBottom: 16 }}>
               <div className="card-title" style={{ color: 'var(--red)' }}>
                 🚨 Barang Perlu Restock (Kritis)
               </div>
@@ -258,113 +258,129 @@ export default async function DashboardPage() {
                 )}
               </div>
             </div>
-            <div className="table-wrap">
-              <table className="table-clean">
-                <thead>
-                  <tr>
-                    <th>Item</th>
-                    <th>SLOC</th>
-                    <th>Stok Saat Ini</th>
-                    <th>Batas Peringatan</th>
-                    <th style={{ textAlign: 'center' }}>Status Pengadaan</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lowStockItems.map((sp) => (
-                    <tr key={sp.id}>
-                      <td style={{ fontWeight: 600 }}>
-                        <div>{sp.nama}</div>
-                        <span className="text-muted text-tiny">{sp.id}</span>
-                      </td>
-                      <td>
-                        <span className="badge badge-blu" style={{ fontSize: 10 }}>
-                          {sp.lokasi || '—'}
-                        </span>
-                      </td>
-                      <td
-                        style={{
-                          fontWeight: 700,
-                          color: sp.currentStock === 0 ? 'var(--red)' : 'var(--ylw)',
-                        }}
-                      >
+            <div style={{ padding: '0 20px 20px 20px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {lowStockItems.map((sp) => {
+                  const isOut = sp.currentStock === 0;
+                  return (
+                    <div key={sp.id} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '12px 16px',
+                      borderRadius: 10,
+                      background: 'var(--sf2)',
+                      border: '1px solid var(--br)',
+                      transition: 'all 0.2s ease',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                        <div style={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: '50%',
+                          background: isOut ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: 14,
+                          flexShrink: 0
+                        }}>
+                          {isOut ? '🔴' : '🟡'}
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--tx)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sp.nama}</div>
+                          <div style={{ fontSize: 10, color: 'var(--tx3)', fontFamily: 'monospace', marginTop: 2 }}>{sp.id}</div>
+                        </div>
+                      </div>
+                      <div style={{
+                        padding: '6px 12px',
+                        borderRadius: 20,
+                        fontSize: 11,
+                        fontWeight: 800,
+                        background: isOut ? 'rgba(239, 68, 68, 0.12)' : 'rgba(245, 158, 11, 0.12)',
+                        color: isOut ? 'var(--red)' : 'var(--ylw)',
+                        border: `1px solid ${isOut ? 'rgba(239, 68, 68, 0.25)' : 'rgba(245, 158, 11, 0.25)'}`,
+                        flexShrink: 0
+                      }}>
                         {sp.currentStock} {sp.uom}
-                      </td>
-                      <td>
-                        <span style={{ fontWeight: 600 }}>
-                          {sp.limitStock} {sp.uom}
-                        </span>
-                        {sp.isAuto ? (
-                          <div
-                            className="text-tiny"
-                            style={{ color: 'var(--pur)', fontSize: 9, marginTop: 2 }}
-                          >
-                            Auto Safety Stock
-                          </div>
-                        ) : (
-                          <div className="text-tiny text-muted" style={{ fontSize: 9, marginTop: 2 }}>
-                            Manual Min
-                          </div>
-                        )}
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        {sp.purchasingStatus === 'PR' && (
-                          <span className="badge badge-ylw">⏳ Sedang PR</span>
-                        )}
-                        {sp.purchasingStatus === 'PO' && (
-                          <span className="badge badge-blu">📦 Sudah PO</span>
-                        )}
-                        {(!sp.purchasingStatus || sp.purchasingStatus === 'NONE') && (
-                          <span className="text-muted">—</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                  {lowStockItems.length === 0 && (
-                    <tr>
-                      <td colSpan={5} style={{ textAlign: 'center', padding: 24, color: 'var(--tx3)' }}>
-                        Stok aman! Tidak ada barang kritis.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                      </div>
+                    </div>
+                  );
+                })}
+                {lowStockItems.length === 0 && (
+                  <div style={{ textAlign: 'center', padding: '36px 0', color: 'var(--tx3)' }}>
+                    <div style={{ fontSize: 32, marginBottom: 8 }}>🟢</div>
+                    <div style={{ fontSize: 13 }}>Stok aman! Tidak ada barang kritis.</div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
           <div className="card" style={{ height: '100%' }}>
-            <div className="card-header">
+            <div className="card-header" style={{ marginBottom: 16 }}>
               <div className="card-title" style={{ color: 'var(--pur)' }}>
                 🔥 Pemakaian Tertinggi (Top 5)
               </div>
             </div>
-            <div className="table-wrap">
-              <table className="table-clean">
-                <thead>
-                  <tr>
-                    <th>Nama Barang</th>
-                    <th>ID Barang</th>
-                    <th style={{ textAlign: 'right' }}>Total Dipakai</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {topUsedMovements.map((m) => (
-                    <tr key={m.sparepartId}>
-                      <td style={{ fontWeight: 600 }}>{m.namaItem}</td>
-                      <td className="text-mono text-muted text-tiny">{m.sparepartId}</td>
-                      <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--pur)' }}>
+            <div style={{ padding: '0 20px 20px 20px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {topUsedMovements.map((m, idx) => {
+                  const rankIcons = ['🥇', '🥈', '🥉', '🔥', '🔥'];
+                  return (
+                    <div key={m.sparepartId} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '12px 16px',
+                      borderRadius: 10,
+                      background: 'var(--sf2)',
+                      border: '1px solid var(--br)',
+                      transition: 'all 0.2s ease',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                        <div style={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: '50%',
+                          background: 'rgba(139, 92, 246, 0.1)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: 14,
+                          flexShrink: 0
+                        }}>
+                          {rankIcons[idx] || '🔥'}
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--tx)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.namaItem}</div>
+                          <div style={{ fontSize: 10, color: 'var(--tx3)', fontFamily: 'monospace', marginTop: 2 }}>{m.sparepartId}</div>
+                        </div>
+                      </div>
+                      <div style={{
+                        padding: '6px 12px',
+                        borderRadius: 20,
+                        fontSize: 11,
+                        fontWeight: 800,
+                        background: 'rgba(139, 92, 246, 0.12)',
+                        color: 'var(--pur)',
+                        border: '1px solid rgba(139, 92, 246, 0.25)',
+                        flexShrink: 0
+                      }}>
                         {m._sum.qty} Pcs
-                      </td>
-                    </tr>
-                  ))}
-                  {topUsedMovements.length === 0 && (
-                    <tr>
-                      <td colSpan={3} style={{ textAlign: 'center', padding: 24, color: 'var(--tx3)' }}>
-                        Belum ada data pemakaian barang.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                      </div>
+                    </div>
+                  );
+                })}
+                {topUsedMovements.length === 0 && (
+                  <div style={{ textAlign: 'center', padding: '36px 0', color: 'var(--tx3)' }}>
+                    <div style={{ fontSize: 32, marginBottom: 8 }}>📦</div>
+                    <div style={{ fontSize: 13 }}>Belum ada data pemakaian barang.</div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

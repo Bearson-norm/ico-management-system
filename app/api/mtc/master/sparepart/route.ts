@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
   if (!session) return err('Akses ditolak', 403);
 
   const { searchParams } = new URL(req.url);
-  const search = searchParams.get('search') ?? '';
+  const search = (searchParams.get('search') ?? '').trim();
 
   const rows = await prisma.sparepart.findMany({
     where: {
@@ -18,6 +18,8 @@ export async function GET(req: NextRequest) {
               { nama: { contains: search, mode: 'insensitive' } },
               { id: { contains: search, mode: 'insensitive' } },
               { lokasi: { contains: search, mode: 'insensitive' } },
+              { kategori: { nama: { contains: search, mode: 'insensitive' } } },
+              { mesins: { some: { nama: { contains: search, mode: 'insensitive' } } } },
             ],
           }
         : {}),
@@ -28,7 +30,7 @@ export async function GET(req: NextRequest) {
       movements: { where: { tipe: { in: ['IN', 'OUT'] } }, select: { tipe: true, qty: true } },
     },
     orderBy: { nama: 'asc' },
-    take: 100,
+    take: 1000,
   });
 
   const data = rows.map((sp) => {

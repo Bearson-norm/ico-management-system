@@ -35,10 +35,10 @@ export default function ProcurementPage() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  // Utility to format ISO local timezone datetime for datetime-local inputs
-  function getLocalDateTimeString(date: Date = new Date()) {
+  // Utility to format date for date inputs (YYYY-MM-DD)
+  function getLocalDateString(date: Date = new Date()) {
     const tzoffset = date.getTimezoneOffset() * 60000;
-    return (new Date(date.getTime() - tzoffset)).toISOString().slice(0, 16);
+    return new Date(date.getTime() - tzoffset).toISOString().slice(0, 10);
   }
 
   // Search & input form state
@@ -48,7 +48,7 @@ export default function ProcurementPage() {
   const [purchasingQty, setPurchasingQty] = useState<number>(1);
   const [formNoPr, setFormNoPr] = useState('');
   const [formNoPo, setFormNoPo] = useState('');
-  const [formDate, setFormDate] = useState(getLocalDateTimeString());
+  const [formDate, setFormDate] = useState(getLocalDateString());
   const [showDropdown, setShowDropdown] = useState(false);
 
   // Cart state
@@ -65,12 +65,13 @@ export default function ProcurementPage() {
   const [editNoPo, setEditNoPo] = useState('');
   const [editPrDate, setEditPrDate] = useState('');
   const [editPoDate, setEditPoDate] = useState('');
+  // editPrDate & editPoDate use YYYY-MM-DD format
 
   // Upgrade Modal states
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradingSp, setUpgradingSp] = useState<Sparepart | null>(null);
   const [upgradeNoPo, setUpgradeNoPo] = useState('');
-  const [upgradePoDate, setUpgradePoDate] = useState('');
+  const [upgradePoDate, setUpgradePoDate] = useState('');  // YYYY-MM-DD
 
   // Receive Modal states
   const [showReceiveModal, setShowReceiveModal] = useState(false);
@@ -221,8 +222,8 @@ export default function ProcurementPage() {
           purchasingQty: item.qty,
           purchasingNoPr: isPr ? docNo : null,
           purchasingNoPo: !isPr ? docNo : null,
-          prDate: isPr ? new Date(formDate).toISOString() : null,
-          poDate: !isPr ? new Date(formDate).toISOString() : null,
+          prDate: isPr ? new Date(formDate + 'T00:00:00').toISOString() : null,
+          poDate: !isPr ? new Date(formDate + 'T00:00:00').toISOString() : null,
         };
 
         const res = await fetch('/api/mtc/master/sparepart', {
@@ -241,7 +242,7 @@ export default function ProcurementPage() {
       setCartItems([]);
       setFormNoPr('');
       setFormNoPo('');
-      setFormDate(getLocalDateTimeString());
+      setFormDate(getLocalDateString());
       setActiveTab(targetStatus);
     } catch (err: any) {
       alert('Terjadi kesalahan saat menyimpan pengadaan: ' + err.message);
@@ -276,8 +277,8 @@ export default function ProcurementPage() {
         purchasingQty: editQty,
         purchasingNoPr: editNoPr || null,
         purchasingNoPo: editNoPo || null,
-        prDate: editPrDate ? new Date(editPrDate).toISOString() : null,
-        poDate: editPoDate ? new Date(editPoDate).toISOString() : null,
+        prDate: editPrDate ? new Date(editPrDate + 'T00:00:00').toISOString() : null,
+        poDate: editPoDate ? new Date(editPoDate + 'T00:00:00').toISOString() : null,
       };
 
       const res = await fetch('/api/mtc/master/sparepart', {
@@ -312,7 +313,7 @@ export default function ProcurementPage() {
         purchasingQty: upgradingSp.purchasingQty,
         purchasingNoPr: upgradingSp.purchasingNoPr,
         purchasingNoPo: upgradeNoPo || null,
-        poDate: upgradePoDate ? new Date(upgradePoDate).toISOString() : new Date().toISOString(),
+        poDate: upgradePoDate ? new Date(upgradePoDate + 'T00:00:00').toISOString() : new Date().toISOString(),
       };
 
       const res = await fetch('/api/mtc/master/sparepart', {
@@ -383,15 +384,15 @@ export default function ProcurementPage() {
     setEditQty(sp.purchasingQty || 1);
     setEditNoPr(sp.purchasingNoPr || '');
     setEditNoPo(sp.purchasingNoPo || '');
-    setEditPrDate(sp.prDate ? getLocalDateTimeString(new Date(sp.prDate)) : '');
-    setEditPoDate(sp.poDate ? getLocalDateTimeString(new Date(sp.poDate)) : '');
+    setEditPrDate(sp.prDate ? getLocalDateString(new Date(sp.prDate)) : '');
+    setEditPoDate(sp.poDate ? getLocalDateString(new Date(sp.poDate)) : '');
     setShowEditModal(true);
   }
 
   function openUpgradeModal(sp: Sparepart) {
     setUpgradingSp(sp);
     setUpgradeNoPo('');
-    setUpgradePoDate(getLocalDateTimeString());
+    setUpgradePoDate(getLocalDateString());
     setShowUpgradeModal(true);
   }
 
@@ -790,7 +791,7 @@ export default function ProcurementPage() {
                       Tanggal Pengadaan <span style={{ color: 'var(--red)' }}>*</span>
                     </label>
                     <input
-                      type="datetime-local"
+                      type="date"
                       className="form-input"
                       required
                       value={formDate}
@@ -872,9 +873,9 @@ export default function ProcurementPage() {
           </div>
 
           {/* TAB CONTENTS */}
-          <div className="table-wrap" style={{ opacity: loading ? 0.6 : 1 }}>
+          <div className="table-wrap" style={{ opacity: loading ? 0.6 : 1, overflowX: 'auto' }}>
             {activeTab === 'PR' ? (
-              <table>
+              <table style={{ minWidth: 900 }}>
                 <thead>
                   <tr>
                     <th>Item ID</th>
@@ -922,8 +923,8 @@ export default function ProcurementPage() {
                           )}
                         </td>
                         <td className="text-tiny">
-                          {sp.prDate ? new Date(sp.prDate).toLocaleString('id-ID', {
-                            day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                          {sp.prDate ? new Date(sp.prDate).toLocaleDateString('id-ID', {
+                            day: '2-digit', month: 'short', year: 'numeric'
                           }) : '—'}
                         </td>
                         <td style={{ textAlign: 'center', fontWeight: 800, color: isOverdue ? 'var(--red)' : 'var(--tx)' }}>
@@ -988,7 +989,7 @@ export default function ProcurementPage() {
                 </tbody>
               </table>
             ) : (
-              <table>
+              <table style={{ minWidth: 900 }}>
                 <thead>
                   <tr>
                     <th>Item ID</th>
@@ -1043,8 +1044,8 @@ export default function ProcurementPage() {
                           )}
                         </td>
                         <td className="text-tiny">
-                          {sp.poDate ? new Date(sp.poDate).toLocaleString('id-ID', {
-                            day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                          {sp.poDate ? new Date(sp.poDate).toLocaleDateString('id-ID', {
+                            day: '2-digit', month: 'short', year: 'numeric'
                           }) : '—'}
                         </td>
                         <td style={{ textAlign: 'center', fontWeight: 800, color: isOverdue ? 'var(--red)' : 'var(--tx)' }}>
@@ -1160,7 +1161,7 @@ export default function ProcurementPage() {
                     <div>
                       <label className="form-label">Tanggal PR</label>
                       <input
-                        type="datetime-local"
+                        type="date"
                         className="form-input"
                         required
                         value={editPrDate}
@@ -1184,7 +1185,7 @@ export default function ProcurementPage() {
                       <div>
                         <label className="form-label">Tanggal PR</label>
                         <input
-                          type="datetime-local"
+                          type="date"
                           className="form-input"
                           value={editPrDate}
                           onChange={(e) => setEditPrDate(e.target.value)}
@@ -1205,7 +1206,7 @@ export default function ProcurementPage() {
                       <div>
                         <label className="form-label">Tanggal PO</label>
                         <input
-                          type="datetime-local"
+                          type="date"
                           className="form-input"
                           required
                           value={editPoDate}
@@ -1259,7 +1260,7 @@ export default function ProcurementPage() {
                   <div>
                     <label className="form-label">Tanggal PO <span style={{ color: 'var(--red)' }}>*</span></label>
                     <input
-                      type="datetime-local"
+                      type="date"
                       required
                       className="form-input"
                       value={upgradePoDate}

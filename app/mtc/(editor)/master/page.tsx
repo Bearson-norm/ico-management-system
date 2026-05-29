@@ -7,6 +7,12 @@ export default function MasterPage() {
   const [activeTab, setActiveTab] = useState<TabType>('sparepart');
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+
+  // Filters State
+  const [filterKategori, setFilterKategori] = useState<string>('');
+  const [filterMesin, setFilterMesin] = useState<string>('');
+  const [filterStatus, setFilterStatus] = useState<string>(''); // '', 'aktif', 'nonaktif'
+  const [filterPengadaan, setFilterPengadaan] = useState<string>(''); // '', 'PR', 'PO', 'NONE'
   
   // Data
   const [spareparts, setSpareparts] = useState<any[]>([]);
@@ -31,6 +37,14 @@ export default function MasterPage() {
   // BOM State
   const [bomMesins, setBomMesins] = useState<any[]>([]);
   const [expandedMesinId, setExpandedMesinId] = useState<number | null>(null);
+
+  // Reset filters on tab switch
+  useEffect(() => {
+    setFilterKategori('');
+    setFilterMesin('');
+    setFilterStatus('');
+    setFilterPengadaan('');
+  }, [activeTab]);
 
   useEffect(() => {
     fetchData();
@@ -287,12 +301,87 @@ export default function MasterPage() {
         </div>
 
         <div className="card">
-          <div className="card-header">
-            <div className="filter-row" style={{ marginBottom: 0, width: '100%' }}>
-              <div className="search-bar">
+          <div className="card-header" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="master-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: 16, flexWrap: 'wrap' }}>
+              <div className="search-bar" style={{ flex: 1, minWidth: 240, marginBottom: 0 }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                 <input type="text" placeholder="Cari data..." value={search} onChange={e => setSearch(e.target.value)} />
               </div>
+
+              {activeTab === 'sparepart' && (
+                <div className="master-filters">
+                  {/* Filter Kategori */}
+                  <div style={{ position: 'relative', display: 'inline-block' }}>
+                    <select
+                      className="form-input form-select"
+                      style={{ padding: '6px 30px 6px 14px', borderRadius: 20, background: 'var(--sf2)', color: 'var(--tx)', border: '1px solid var(--br)', fontSize: 12, height: 'auto', outline: 'none', cursor: 'pointer', appearance: 'none', minWidth: 150, transition: 'all .15s' }}
+                      value={filterKategori}
+                      onChange={e => setFilterKategori(e.target.value)}
+                    >
+                      <option value="">🏷️ Semua Kategori</option>
+                      {kategoris.map(k => (
+                        <option key={k.id} value={k.nama}>{k.nama}</option>
+                      ))}
+                    </select>
+                    <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--tx3)', fontSize: 9 }}>
+                      ▼
+                    </div>
+                  </div>
+
+                  {/* Filter Mesin */}
+                  <div style={{ position: 'relative', display: 'inline-block' }}>
+                    <select
+                      className="form-input form-select"
+                      style={{ padding: '6px 30px 6px 14px', borderRadius: 20, background: 'var(--sf2)', color: 'var(--tx)', border: '1px solid var(--br)', fontSize: 12, height: 'auto', outline: 'none', cursor: 'pointer', appearance: 'none', minWidth: 150, transition: 'all .15s' }}
+                      value={filterMesin}
+                      onChange={e => setFilterMesin(e.target.value)}
+                    >
+                      <option value="">🏭 Semua Mesin</option>
+                      {mesins.map(m => (
+                        <option key={m.id} value={m.nama}>{m.nama}</option>
+                      ))}
+                    </select>
+                    <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--tx3)', fontSize: 9 }}>
+                      ▼
+                    </div>
+                  </div>
+
+                  {/* Filter Status Aktif */}
+                  <div style={{ position: 'relative', display: 'inline-block' }}>
+                    <select
+                      className="form-input form-select"
+                      style={{ padding: '6px 30px 6px 14px', borderRadius: 20, background: 'var(--sf2)', color: 'var(--tx)', border: '1px solid var(--br)', fontSize: 12, height: 'auto', outline: 'none', cursor: 'pointer', appearance: 'none', minWidth: 120, transition: 'all .15s' }}
+                      value={filterStatus}
+                      onChange={e => setFilterStatus(e.target.value)}
+                    >
+                      <option value="">⚙️ Semua Status</option>
+                      <option value="aktif">🟢 Aktif</option>
+                      <option value="nonaktif">🔴 Nonaktif</option>
+                    </select>
+                    <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--tx3)', fontSize: 9 }}>
+                      ▼
+                    </div>
+                  </div>
+
+                  {/* Filter Status Pengadaan */}
+                  <div style={{ position: 'relative', display: 'inline-block' }}>
+                    <select
+                      className="form-input form-select"
+                      style={{ padding: '6px 30px 6px 14px', borderRadius: 20, background: 'var(--sf2)', color: 'var(--tx)', border: '1px solid var(--br)', fontSize: 12, height: 'auto', outline: 'none', cursor: 'pointer', appearance: 'none', minWidth: 160, transition: 'all .15s' }}
+                      value={filterPengadaan}
+                      onChange={e => setFilterPengadaan(e.target.value)}
+                    >
+                      <option value="">🛒 Semua Pengadaan</option>
+                      <option value="PR">⏳ Sedang PR</option>
+                      <option value="PO">📦 Sudah PO</option>
+                      <option value="NONE">— Tanpa Status</option>
+                    </select>
+                    <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--tx3)', fontSize: 9 }}>
+                      ▼
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -316,28 +405,44 @@ export default function MasterPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {spareparts.map(s => (
-                      <tr key={s.id}>
-                        <td data-label="Item ID" className="text-mono text-tiny text-muted">{s.id}</td>
-                        <td data-label="Nama Barang" style={{ fontWeight: 600 }}>
-                          <div>{s.nama}</div>
-                          {s.purchasingStatus === 'PR' && <span className="badge badge-ylw" style={{ fontSize: 9, marginTop: 4, display: 'inline-block' }}>⏳ Sedang PR</span>}
-                          {s.purchasingStatus === 'PO' && <span className="badge badge-blu" style={{ fontSize: 9, marginTop: 4, display: 'inline-block' }}>📦 Sudah PO</span>}
-                        </td>
-                        <td data-label="Lokasi"><span className="badge badge-blu" style={{ fontSize: 10 }}>{s.lokasi || '—'}</span></td>
-                        <td data-label="Kategori">{s.kategori?.nama || '—'}</td>
-                        <td data-label="Harga">Rp {Number(s.harga).toLocaleString('id-ID')}</td>
-                        <td data-label="Stok" style={{ fontWeight: 700, color: s.currentStock <= 0 ? 'var(--red)' : s.currentStock < s.minQty ? 'var(--ylw)' : 'var(--grn)' }}>
-                          {s.currentStock ?? 0} {s.uom}
-                        </td>
-                        <td data-label="Min Qty">{s.minQty}</td>
-                        <td data-label="Status">{s.aktif ? <span className="badge badge-grn">Aktif</span> : <span className="badge badge-red">Nonaktif</span>}</td>
-                        <td data-label="Aksi">
-                          <button type="button" className="btn btn-ghost btn-sm" onClick={() => openModal('sparepart', s)}>Edit</button>
-                        </td>
-                      </tr>
-                    ))}
-                    {spareparts.length === 0 && !loading && <tr><td colSpan={9} style={{ textAlign: 'center', padding: 40 }}>Data tidak ditemukan</td></tr>}
+                    {(() => {
+                      const list = spareparts.filter(s => {
+                        if (filterKategori && s.kategori?.nama !== filterKategori) return false;
+                        if (filterMesin && !s.mesins?.some((m: any) => m.nama === filterMesin)) return false;
+                        if (filterStatus) {
+                          const isAktif = filterStatus === 'aktif';
+                          if (s.aktif !== isAktif) return false;
+                        }
+                        if (filterPengadaan && s.purchasingStatus !== filterPengadaan) return false;
+                        return true;
+                      });
+
+                      if (list.length === 0 && !loading) {
+                        return <tr><td colSpan={9} style={{ textAlign: 'center', padding: 40 }}>Data tidak ditemukan</td></tr>;
+                      }
+
+                      return list.map(s => (
+                        <tr key={s.id}>
+                          <td data-label="Item ID" className="text-mono text-tiny text-muted">{s.id}</td>
+                          <td data-label="Nama Barang" style={{ fontWeight: 600 }}>
+                            <div>{s.nama}</div>
+                            {s.purchasingStatus === 'PR' && <span className="badge badge-ylw" style={{ fontSize: 9, marginTop: 4, display: 'inline-block' }}>⏳ Sedang PR</span>}
+                            {s.purchasingStatus === 'PO' && <span className="badge badge-blu" style={{ fontSize: 9, marginTop: 4, display: 'inline-block' }}>📦 Sudah PO</span>}
+                          </td>
+                          <td data-label="Lokasi"><span className="badge badge-blu" style={{ fontSize: 10 }}>{s.lokasi || '—'}</span></td>
+                          <td data-label="Kategori">{s.kategori?.nama || '—'}</td>
+                          <td data-label="Harga">Rp {Number(s.harga).toLocaleString('id-ID')}</td>
+                          <td data-label="Stok" style={{ fontWeight: 700, color: s.currentStock <= 0 ? 'var(--red)' : s.currentStock < s.minQty ? 'var(--ylw)' : 'var(--grn)' }}>
+                            {s.currentStock ?? 0} {s.uom}
+                          </td>
+                          <td data-label="Min Qty">{s.minQty}</td>
+                          <td data-label="Status">{s.aktif ? <span className="badge badge-grn">Aktif</span> : <span className="badge badge-red">Nonaktif</span>}</td>
+                          <td data-label="Aksi">
+                            <button type="button" className="btn btn-ghost btn-sm" onClick={() => openModal('sparepart', s)}>Edit</button>
+                          </td>
+                        </tr>
+                      ));
+                    })()}
                   </tbody>
                 </>
               )}
@@ -880,6 +985,40 @@ export default function MasterPage() {
           </div>
         </div>
       )}
+
+      <style jsx global>{`
+        .master-filters {
+          display: flex;
+          gap: 10px;
+          flex-wrap: wrap;
+          align-items: center;
+        }
+        @media (max-width: 1024px) {
+          .master-header-row {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 12px !important;
+          }
+          .master-filters {
+            width: 100% !important;
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 8px !important;
+          }
+          .master-filters > div {
+            width: 100% !important;
+          }
+          .master-filters select {
+            width: 100% !important;
+            min-width: 0 !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .master-filters {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </>
   );
 }

@@ -5,7 +5,7 @@ import { ok } from '@/lib/utils';
 // GET /api/mtc/stock — publik (viewer tanpa login), sama seperti V2
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const search    = searchParams.get('search') ?? '';
+  const search    = (searchParams.get('search') ?? '').trim();
   const status    = searchParams.get('status') ?? ''; // safe | low | habis
   const kategoriId = searchParams.get('kategoriId');
 

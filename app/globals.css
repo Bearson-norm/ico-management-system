@@ -918,6 +918,191 @@ tbody tr:hover td { background: var(--sf2); }
   }
 }
 
+/* ====================================================
+   MASTER DATA: FILTER ROW RESPONSIF
+   ==================================================== */
+.master-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.master-filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .master-header-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .master-filters {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .master-filters > div {
+    width: 100% !important;
+    display: block !important;
+  }
+
+  .master-filters select {
+    width: 100% !important;
+    min-width: 0 !important;
+    font-size: 14px !important;
+    border-radius: 8px !important;
+    height: 40px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .master-filters {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ====================================================
+   PO/PR PAGE: FORM RESPONSIF
+   ==================================================== */
+@media (max-width: 768px) {
+  .po-pr-form {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* Tabel PO/PR jadi card stack di mobile */
+  .table-wrap table {
+    min-width: 0;
+  }
+}
+
+/* ====================================================
+   CARD HEADER ACTIONS: STACK DI MOBILE
+   ==================================================== */
+@media (max-width: 768px) {
+  .card-header {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .card-header > div:last-child {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+}
+
+/* ====================================================
+   TABLE: HORIZONTAL SCROLL ONLY (untuk tabel banyak kolom)
+   ==================================================== */
+.table-wrap--scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ====================================================
+   STAT CARDS: LEBIH COMPACT DI MOBILE
+   ==================================================== */
+@media (max-width: 768px) {
+  .stat-card {
+    padding: 14px 16px;
+  }
+
+  .stat-value {
+    font-size: 22px !important;
+  }
+
+  .stat-label {
+    font-size: 10px;
+  }
+}
+
+/* ====================================================
+   TABLE PO/PR & HISTORY: FORCE HORIZONTAL SCROLL 
+   ==================================================== */
+@media (max-width: 768px) {
+  .table-wrap-x {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 0 -14px;
+    padding: 0 14px;
+  }
+
+  .table-wrap-x table {
+    min-width: 700px;
+  }
+
+  /* Badge kecil di label status lebih rapi */
+  .badge {
+    white-space: nowrap;
+  }
+
+  /* Form input date responsif */
+  .form-input[type="date"] {
+    min-height: 44px;
+    font-size: 14px;
+  }
+
+  /* Dropdown modal lebih mudah tap */
+  .form-input, select.form-input {
+    min-height: 44px;
+  }
+}
+
+/* ====================================================
+   FORM LABEL: UPPERCASE KECIL AGAR TIDAK TERLALU BESAR
+   ==================================================== */
+@media (max-width: 480px) {
+  .form-label {
+    font-size: 10px;
+  }
+}
+
+/* ====================================================
+   PREVENT HORIZONTAL OVERFLOW DI SEMUA HALAMAN
+   ==================================================== */
+.page-body {
+  overflow-x: hidden;
+}
+
+/* ====================================================
+   CARD TABLE: MINIMAL PADDING DI HP
+   ==================================================== */
+@media (max-width: 480px) {
+  .table-stack tbody td {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .table-stack tbody td::before {
+    font-size: 9px;
+  }
+}
+
+/* ====================================================
+   SMOOTH TRANSITIONS UNTUK SEMUA INTERACTIVE ELEMENTS
+   ==================================================== */
+.btn, .nav-item, .stat-card, .card, .badge, .form-input {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ====================================================
+   BTN-BLU (MISSING CLASS)
+   ==================================================== */
+.btn-blu { background: var(--blu); color: #fff; }
+.btn-blu:hover { filter: brightness(1.1); }
+.btn-pur { background: var(--pur); color: #fff; }
+.btn-pur:hover { filter: brightness(1.1); }
+
 /* Desktop: sembunyikan topbar & backdrop */
 @media (min-width: 769px) {
   .mobile-topbar {

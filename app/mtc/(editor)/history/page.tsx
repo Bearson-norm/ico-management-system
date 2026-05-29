@@ -47,30 +47,32 @@ export default function HistoryPage() {
 
       <div className="page-body">
         <div className="card">
-          <div className="card-header">
-            <div className="filter-row" style={{ marginBottom: 0, width: '100%' }}>
-              <div className="search-bar">
+          <div className="card-header" style={{ display: 'block', padding: '14px 20px' }}>
+            <div className="filter-row" style={{ marginBottom: 0, width: '100%', display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+              <div className="search-bar" style={{ flex: '1 1 200px', minWidth: 180, marginBottom: 0 }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                 <input type="text" placeholder="Cari nama barang, report, keterangan..." value={search} onChange={e => {setSearch(e.target.value); setPage(1);}} />
               </div>
-              <select className="form-input form-select" style={{ width: '120px' }} value={tipe} onChange={e => {setTipe(e.target.value); setPage(1);}}>
+              <select className="form-input form-select" style={{ flex: '0 0 auto', minWidth: 110 }} value={tipe} onChange={e => {setTipe(e.target.value); setPage(1);}}>
                 <option value="">Semua Tipe</option>
                 <option value="IN">IN</option>
                 <option value="OUT">OUT</option>
                 <option value="LOG">LOG</option>
               </select>
-              <input type="date" className="form-input" style={{ width: '140px' }} value={dateFrom} onChange={e => {setDateFrom(e.target.value); setPage(1);}} />
-              <span className="text-muted">ke</span>
-              <input type="date" className="form-input" style={{ width: '140px' }} value={dateTo} onChange={e => {setDateTo(e.target.value); setPage(1);}} />
-              <select className="form-input form-select" style={{ width: '180px' }} value={sort} onChange={e => {setSort(e.target.value as 'desc' | 'asc'); setPage(1);}}>
-                <option value="desc">Terbaru (tanggal & waktu)</option>
-                <option value="asc">Terlama (tanggal & waktu)</option>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', flex: '0 1 auto' }}>
+                <input type="date" className="form-input" style={{ flex: '1 1 130px', minWidth: 120 }} value={dateFrom} onChange={e => {setDateFrom(e.target.value); setPage(1);}} />
+                <span className="text-muted" style={{ flexShrink: 0 }}>s/d</span>
+                <input type="date" className="form-input" style={{ flex: '1 1 130px', minWidth: 120 }} value={dateTo} onChange={e => {setDateTo(e.target.value); setPage(1);}} />
+              </div>
+              <select className="form-input form-select" style={{ flex: '0 0 auto', minWidth: 160 }} value={sort} onChange={e => {setSort(e.target.value as 'desc' | 'asc'); setPage(1);}}>
+                <option value="desc">Terbaru ↓</option>
+                <option value="asc">Terlama ↑</option>
               </select>
             </div>
           </div>
 
-          <div className="table-wrap">
-            <table>
+          <div className="table-wrap" style={{ overflowX: 'auto' }}>
+            <table style={{ minWidth: 680 }}>
               <thead>
                 <tr>
                   <th>Tanggal</th>

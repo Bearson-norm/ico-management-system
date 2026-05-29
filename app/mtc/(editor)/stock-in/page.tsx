@@ -1,6 +1,32 @@
 'use client';
 import { useState, useEffect, FormEvent } from 'react';
 
+// ── Opsi Kebutuhan — disimpan di localStorage ─────────────────────────────────
+const STORAGE_KEY = 'mtc_kebutuhan_options';
+
+const DEFAULT_KEBUTUHAN = [
+  { id: '1', label: '🔄 Rutin / Terus Menerus' },
+  { id: '2', label: '⚡ Insidentil / Sekali Pakai' },
+  { id: '3', label: '🚀 Project / Investasi' },
+  { id: '4', label: '🚨 Emergency / Urgent' },
+];
+
+function loadKebutuhanOptions() {
+  if (typeof window === 'undefined') return DEFAULT_KEBUTUHAN;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {}
+  return DEFAULT_KEBUTUHAN;
+}
+
+function saveKebutuhanOptions(opts: { id: string; label: string }[]) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(opts)); } catch {}
+}
+
 export default function StockInPage() {
   const [spareparts, setSpareparts] = useState<any[]>([]);
   const [kategoris, setKategoris] = useState<any[]>([]);
@@ -31,8 +57,60 @@ export default function StockInPage() {
   });
 
   const [logForm, setLogForm] = useState({
-    nama: '', harga: '', qty: ''
+    nama: '', harga: '', qty: '', kebutuhan: '', kebutuhanDetail: ''
   });
+
+  // Kebutuhan Options — dinamis, disimpan di localStorage
+  const [kebutuhanOptions, setKebutuhanOptions] = useState<{ id: string; label: string }[]>(DEFAULT_KEBUTUHAN);
+  const [kebutuhanModalOpen, setKebutuhanModalOpen] = useState(false);
+  const [newKebutuhanLabel, setNewKebutuhanLabel] = useState('');
+  const [editingKebutuhan, setEditingKebutuhan] = useState<{ id: string; label: string } | null>(null);
+
+  // Load opsi dari localStorage saat mount
+  useEffect(() => {
+    setKebutuhanOptions(loadKebutuhanOptions());
+  }, []);
+
+  function handleSaveKebutuhanOptions(opts: { id: string; label: string }[]) {
+    setKebutuhanOptions(opts);
+    saveKebutuhanOptions(opts);
+  }
+
+  function handleAddKebutuhan() {
+    const label = newKebutuhanLabel.trim();
+    if (!label) return;
+    const newOpt = { id: Date.now().toString(), label };
+    handleSaveKebutuhanOptions([...kebutuhanOptions, newOpt]);
+    setNewKebutuhanLabel('');
+  }
+
+  function handleDeleteKebutuhan(id: string) {
+    if (!confirm('Hapus opsi ini? Log lama yang sudah tercatat tidak akan berubah.')) return;
+    handleSaveKebutuhanOptions(kebutuhanOptions.filter(o => o.id !== id));
+    if (logForm.kebutuhan === kebutuhanOptions.find(o => o.id === id)?.label) {
+      setLogForm(prev => ({ ...prev, kebutuhan: '' }));
+    }
+  }
+
+  function handleMoveKebutuhan(id: string, dir: 'up' | 'down') {
+    const idx = kebutuhanOptions.findIndex(o => o.id === id);
+    if (idx < 0) return;
+    const newOpts = [...kebutuhanOptions];
+    if (dir === 'up' && idx > 0) {
+      [newOpts[idx - 1], newOpts[idx]] = [newOpts[idx], newOpts[idx - 1]];
+    } else if (dir === 'down' && idx < newOpts.length - 1) {
+      [newOpts[idx], newOpts[idx + 1]] = [newOpts[idx + 1], newOpts[idx]];
+    }
+    handleSaveKebutuhanOptions(newOpts);
+  }
+
+  function handleSaveEditKebutuhan() {
+    if (!editingKebutuhan || !editingKebutuhan.label.trim()) return;
+    handleSaveKebutuhanOptions(
+      kebutuhanOptions.map(o => o.id === editingKebutuhan.id ? editingKebutuhan : o)
+    );
+    setEditingKebutuhan(null);
+  }
 
   useEffect(() => {
     async function loadData() {
@@ -90,7 +168,17 @@ export default function StockInPage() {
         mesinIds: newForm.mesinId ? [newForm.mesinId] : []
       };
     } else if (activeTab === 'log') {
-      payload = { ...payload, ...logForm, harga: Number(logForm.harga)||0, qty: Number(logForm.qty)||0 };
+      if (!logForm.kebutuhan || !logForm.kebutuhanDetail) {
+        setSubmitting(false);
+        return alert('Tipe Kebutuhan dan Keterangan Penggunaan wajib diisi');
+      }
+      payload = { 
+        ...payload, 
+        nama: logForm.nama,
+        harga: Number(logForm.harga)||0, 
+        qty: Number(logForm.qty)||0,
+        keterangan: `[${logForm.kebutuhan}] ${logForm.kebutuhanDetail}`
+      };
     }
 
     try {
@@ -101,7 +189,7 @@ export default function StockInPage() {
         // Reset
         setExistingItems([]);
         setNewForm({ nama: '', kategoriId: '', lokasi: '', harga: '', qty: '', minQty: '', mesinId: '' });
-        setLogForm({ nama: '', harga: '', qty: '' });
+        setLogForm({ nama: '', harga: '', qty: '', kebutuhan: '', kebutuhanDetail: '' });
         // Refresh master
         fetch('/api/mtc/stock').then(r => r.json()).then(rs => { if(rs.success) setSpareparts(rs.data); });
         window.scrollTo(0,0);
@@ -291,6 +379,62 @@ export default function StockInPage() {
                     <input type="number" className="form-input" value={logForm.harga} onChange={e => setLogForm({...logForm, harga: e.target.value})} />
                   </div>
                 </div>
+                
+                <div className="form-grid-2" style={{ marginTop: 16 }}>
+                  <div className="form-group">
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <label className="form-label" style={{ margin: 0 }}>Tipe Kebutuhan <span className="req">*</span></label>
+                      <button
+                        type="button"
+                        title="Kelola opsi kebutuhan"
+                        onClick={() => setKebutuhanModalOpen(true)}
+                        style={{
+                          background: 'var(--sf3)',
+                          border: '1px solid var(--br)',
+                          borderRadius: 6,
+                          color: 'var(--tx3)',
+                          padding: '2px 8px',
+                          fontSize: 11,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          transition: 'all .15s'
+                        }}
+                      >
+                        ⚙️ Kelola
+                      </button>
+                    </div>
+                    <div style={{ position: 'relative', width: '100%' }}>
+                      <select 
+                        className="form-input form-select" 
+                        required 
+                        value={logForm.kebutuhan} 
+                        onChange={e => setLogForm({...logForm, kebutuhan: e.target.value})}
+                        style={{ padding: '6px 36px 6px 14px', borderRadius: 8, background: 'var(--sf2)', color: 'var(--tx)', border: '1px solid var(--br)', fontSize: 13, height: '40px', outline: 'none', cursor: 'pointer', appearance: 'none', width: '100%', transition: 'all .15s' }}
+                      >
+                        <option value="">Pilih Kebutuhan...</option>
+                        {kebutuhanOptions.map(opt => (
+                          <option key={opt.id} value={opt.label}>{opt.label}</option>
+                        ))}
+                      </select>
+                      <div style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--tx3)', fontSize: 10 }}>
+                        ▼
+                      </div>
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Keterangan Penggunaan <span className="req">*</span></label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      required 
+                      placeholder="Contoh: Digunakan untuk area Blister Line A..." 
+                      value={logForm.kebutuhanDetail} 
+                      onChange={e => setLogForm({...logForm, kebutuhanDetail: e.target.value})} 
+                    />
+                  </div>
+                </div>
               </>
             )}
           </div>
@@ -351,6 +495,141 @@ export default function StockInPage() {
           </div>
         </div>
       )}
+
+      {/* Modal Kelola Opsi Kebutuhan */}
+      {kebutuhanModalOpen && (
+        <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setKebutuhanModalOpen(false); }}>
+          <div className="modal-box" style={{ maxWidth: 480 }}>
+            <div className="modal-header">
+              <div className="modal-title">⚙️ Kelola Opsi Kebutuhan</div>
+              <button onClick={() => setKebutuhanModalOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--tx2)', fontSize: 20, cursor: 'pointer' }}>×</button>
+            </div>
+            <div className="modal-body" style={{ gap: 16 }}>
+              <div style={{ fontSize: 12, color: 'var(--tx3)', background: 'var(--sf2)', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--br)' }}>
+                ℹ️ Mengubah atau menghapus opsi <strong>tidak akan</strong> menghapus log yang sudah dicatat. Log lama tetap tersimpan dengan label aslinya.
+              </div>
+
+              {/* Daftar opsi */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {kebutuhanOptions.map((opt, idx) => (
+                  <div key={opt.id} style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    background: 'var(--sf2)',
+                    border: '1px solid var(--br)',
+                    borderRadius: 8,
+                    padding: '8px 12px'
+                  }}>
+                    {/* Tombol urutan */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <button
+                        type="button"
+                        onClick={() => handleMoveKebutuhan(opt.id, 'up')}
+                        disabled={idx === 0}
+                        style={{ background: 'none', border: 'none', color: idx === 0 ? 'var(--br)' : 'var(--tx3)', cursor: idx === 0 ? 'default' : 'pointer', fontSize: 10, lineHeight: 1, padding: 2 }}
+                      >▲</button>
+                      <button
+                        type="button"
+                        onClick={() => handleMoveKebutuhan(opt.id, 'down')}
+                        disabled={idx === kebutuhanOptions.length - 1}
+                        style={{ background: 'none', border: 'none', color: idx === kebutuhanOptions.length - 1 ? 'var(--br)' : 'var(--tx3)', cursor: idx === kebutuhanOptions.length - 1 ? 'default' : 'pointer', fontSize: 10, lineHeight: 1, padding: 2 }}
+                      >▼</button>
+                    </div>
+
+                    {/* Label / Edit inline */}
+                    {editingKebutuhan?.id === opt.id ? (
+                      <input
+                        type="text"
+                        className="form-input"
+                        autoFocus
+                        value={editingKebutuhan.label}
+                        onChange={e => setEditingKebutuhan({ ...editingKebutuhan, label: e.target.value })}
+                        onKeyDown={e => { if (e.key === 'Enter') handleSaveEditKebutuhan(); if (e.key === 'Escape') setEditingKebutuhan(null); }}
+                        style={{ flex: 1, height: 34, fontSize: 13 }}
+                      />
+                    ) : (
+                      <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--tx)' }}>{opt.label}</span>
+                    )}
+
+                    {/* Aksi */}
+                    {editingKebutuhan?.id === opt.id ? (
+                      <>
+                        <button type="button" className="btn btn-grn btn-sm" onClick={handleSaveEditKebutuhan} style={{ padding: '4px 10px', fontSize: 11 }}>✓ Simpan</button>
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditingKebutuhan(null)} style={{ padding: '4px 10px', fontSize: 11 }}>Batal</button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setEditingKebutuhan(opt)}
+                          style={{ background: 'none', border: 'none', color: 'var(--pur)', fontSize: 13, cursor: 'pointer', padding: '2px 6px', borderRadius: 4 }}
+                          title="Edit opsi ini"
+                        >✏️</button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteKebutuhan(opt.id)}
+                          style={{ background: 'none', border: 'none', color: 'var(--red)', fontSize: 13, cursor: 'pointer', padding: '2px 6px', borderRadius: 4 }}
+                          title="Hapus opsi ini"
+                        >🗑️</button>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Tambah opsi baru */}
+              <div style={{ borderTop: '1px solid var(--br)', paddingTop: 14 }}>
+                <label className="form-label" style={{ marginBottom: 8, display: 'block' }}>Tambah Opsi Baru</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Contoh: 🏭 Produksi / Manufacturing"
+                    value={newKebutuhanLabel}
+                    onChange={e => setNewKebutuhanLabel(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddKebutuhan(); } }}
+                    style={{ flex: 1, height: 40 }}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={handleAddKebutuhan}
+                    disabled={!newKebutuhanLabel.trim()}
+                    style={{ height: 40, padding: '0 16px', whiteSpace: 'nowrap' }}
+                  >
+                    + Tambah
+                  </button>
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 6 }}>
+                  💡 Tips: Bisa pakai emoji di awal label, contoh: 🔧 Perbaikan Rutin
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => { if (confirm('Reset ke opsi default? Opsi custom akan hilang.')) { handleSaveKebutuhanOptions(DEFAULT_KEBUTUHAN); } }}
+                style={{ color: 'var(--red)', fontSize: 12 }}
+              >
+                🔄 Reset ke Default
+              </button>
+              <button type="button" className="btn btn-primary" onClick={() => setKebutuhanModalOpen(false)}>Selesai</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style jsx global>{`
+        @media (max-width: 768px) {
+          .form-grid-3, .form-grid-2 {
+            display: grid !important;
+            grid-template-columns: 1fr !important;
+            gap: 12px !important;
+          }
+        }
+      `}</style>
     </>
   );
 }
