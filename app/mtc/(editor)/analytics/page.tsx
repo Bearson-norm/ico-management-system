@@ -1,10 +1,17 @@
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import AnalyticsClient from './AnalyticsClient';
+import { requireMtcEditor } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 
 export const revalidate = 0; // Disable caching to fetch live transactions
 
 export default async function AnalyticsPage() {
+  const session = await requireMtcEditor();
+  if (!session || session.user.email !== 'admin') {
+    redirect('/mtc/dashboard');
+  }
+
   const now = new Date();
   
   // 1. Fetch Spareparts with all IN/OUT movements to calculate current stock, ROP, and averages

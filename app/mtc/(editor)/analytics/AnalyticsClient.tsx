@@ -650,6 +650,7 @@ export default function AnalyticsClient({
               </table>
             </div>
           </div>
+        )}
       </div>
 
       {showFutureModal && (

@@ -13,12 +13,14 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
   const name = session?.user?.name || 'User';
 
   const isEditor = role === 'editor';
+  const username = (session?.user as { email?: string })?.email || '';
+  const isSuperAdmin = username === 'admin';
 
   const menu = [
     ...(isEditor
       ? [
           { href: '/mtc/dashboard', icon: '📊', label: 'Dashboard', section: 'Overview' },
-          { href: '/mtc/analytics', icon: '📈', label: 'ERP ROP & Analytics', section: 'Overview' },
+          ...(isSuperAdmin ? [{ href: '/mtc/analytics', icon: '📈', label: 'ERP ROP & Analytics', section: 'Overview' }] : []),
           { href: '/mtc/report', icon: '📋', label: 'Report & SP', section: 'Maintenance' },
           { href: '/mtc/stock-out', icon: '📤', label: 'Stock Out', section: 'Inventory' },
           { href: '/mtc/stock-in', icon: '📥', label: 'Stock In', section: 'Inventory' },
