@@ -1048,7 +1048,7 @@ export default function ProcurementTrackingPage() {
                     justifyContent: 'space-between', 
                     alignItems: 'center', 
                     cursor: 'pointer',
-                    userSelect: 'none',
+                    userSelect: 'text',
                     borderBottom: isExpanded ? '1px solid var(--br)' : 'none',
                     transition: 'background 0.2s'
                   }}
@@ -1070,7 +1070,13 @@ export default function ProcurementTrackingPage() {
                       ) : (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span style={{ fontSize: 11, color: 'var(--tx3)', fontWeight: 600 }}>NOMOR PR:</span>
-                          <span className="badge badge-ylw" style={{ fontSize: 12, padding: '2px 8px', fontWeight: 800 }}>{group.nomorPr}</span>
+                          <span 
+                            className="badge badge-ylw" 
+                            style={{ fontSize: 12, padding: '2px 8px', fontWeight: 800, cursor: 'text', userSelect: 'text' }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {group.nomorPr}
+                          </span>
                         </div>
                       )}
                       <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 4 }}>
@@ -1083,7 +1089,14 @@ export default function ProcurementTrackingPage() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span style={{ fontSize: 9, color: 'var(--tx3)', fontWeight: 600 }}>PO NO:</span>
                         {group.poNumbers.split(', ').map(po => (
-                          <span key={po} className="badge badge-blu" style={{ fontSize: 11, padding: '2px 8px', fontWeight: 800 }}>{po}</span>
+                          <span 
+                            key={po} 
+                            className="badge badge-blu" 
+                            style={{ fontSize: 11, padding: '2px 8px', fontWeight: 800, cursor: 'text', userSelect: 'text' }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {po}
+                          </span>
                         ))}
                       </div>
                     )}
