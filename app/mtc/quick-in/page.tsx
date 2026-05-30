@@ -366,7 +366,7 @@ export default function QuickStockInPage() {
                   >
                     <option value="">— Bukan untuk Mesin Khusus / Umum (Dipakai Semua Mesin) —</option>
                     {mesins
-                      .filter(m => (m.tipe === 'sparepart' || m.tipe === 'keduanya') && (m._sparepartCount ?? 0) > 0)
+                      .filter(m => m.tipe === 'sparepart' || m.tipe === 'keduanya')
                       .map(m => (
                         <option key={m.id} value={m.id.toString()}>{m.nama}</option>
                       ))}
@@ -426,7 +426,7 @@ export default function QuickStockInPage() {
                   >
                     <option value="">— Semua Mesin (Tampilkan Semua Sparepart) —</option>
                     {mesins
-                      .filter(m => (m.tipe === 'sparepart' || m.tipe === 'keduanya') && (m._sparepartCount ?? 0) > 0)
+                      .filter(m => m.tipe === 'sparepart' || m.tipe === 'keduanya')
                       .map(m => (
                         <option key={m.id} value={m.id.toString()}>{m.nama}</option>
                       ))}
