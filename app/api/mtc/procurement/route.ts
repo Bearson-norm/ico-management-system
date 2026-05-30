@@ -176,4 +176,63 @@ export async function POST(req: NextRequest) {
   }
 }
 
+// PATCH /api/mtc/procurement
+export async function PATCH(req: NextRequest) {
+  const session = await requireMtcEditor();
+  if (!session) return err('Akses ditolak', 403);
+
+  let body: any;
+  try {
+    body = await req.json();
+  } catch {
+    return err('Format JSON tidak valid', 400);
+  }
+
+  const {
+    id,
+    nomorPr,
+    nomorPo,
+    vendor,
+    harga,
+    etaFoom,
+    linkGr,
+    urgency,
+    originalName,
+    qty,
+    productCategory,
+    keterangan,
+    reason,
+  } = body;
+
+  if (!id) return err('ID record wajib diisi', 400);
+
+  try {
+    const updated = await prisma.procurementTracking.update({
+      where: { id: Number(id) },
+      data: {
+        nomorPr: nomorPr !== undefined ? (nomorPr?.trim() || null) : undefined,
+        nomorPo: nomorPo !== undefined ? (nomorPo?.trim() || null) : undefined,
+        vendor: vendor !== undefined ? (vendor?.trim() || null) : undefined,
+        harga: harga !== undefined ? (harga ? Number(harga) : null) : undefined,
+        etaFoom: etaFoom !== undefined ? (etaFoom ? new Date(etaFoom) : null) : undefined,
+        linkGr: linkGr !== undefined ? (linkGr?.trim() || null) : undefined,
+        urgency: urgency !== undefined ? (urgency || 'Normal') : undefined,
+        originalName: originalName !== undefined ? (originalName?.trim() || undefined) : undefined,
+        qty: qty !== undefined ? Number(qty) : undefined,
+        productCategory: productCategory !== undefined ? (productCategory || null) : undefined,
+        keterangan: keterangan !== undefined ? (keterangan || null) : undefined,
+        reason: reason !== undefined ? (reason || null) : undefined,
+      },
+    });
+
+    return ok({
+      msg: 'Detail pelacakan berhasil diperbarui!',
+      data: updated,
+    });
+  } catch (e: any) {
+    console.error('[PATCH /api/mtc/procurement]', e);
+    return err(`Gagal memperbarui data: ${e.message}`, 500);
+  }
+}
+
 

@@ -99,6 +99,21 @@ export default function ProcurementTrackingPage() {
   const [receiveVendor, setReceiveVendor] = useState('');
   const [isStocked, setIsStocked] = useState(true); // true = Restock, false = Direct Use
 
+  // Edit SCM Modal States
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingItem, setEditingItem] = useState<TrackingItem | null>(null);
+  const [editPrNo, setEditPrNo] = useState('');
+  const [editPoNo, setEditPoNo] = useState('');
+  const [editVendor, setEditVendor] = useState('');
+  const [editPrice, setEditPrice] = useState(0);
+  const [editQty, setEditQty] = useState(1);
+  const [editEta, setEditEta] = useState('');
+  const [editGrLink, setEditGrLink] = useState('');
+  const [editReason, setEditReason] = useState('');
+  const [editCategory, setEditCategory] = useState('');
+  const [editKeterangan, setEditKeterangan] = useState('');
+  const [editUrgency, setEditUrgency] = useState('Normal');
+
   // Load configuration from localStorage on mount
   useEffect(() => {
     fetchData();
@@ -372,6 +387,62 @@ export default function ProcurementTrackingPage() {
     setLinkingItem(item);
     setLinkSearch('');
     setShowLinkModal(true);
+  }
+
+  function openEditModal(item: TrackingItem) {
+    setEditingItem(item);
+    setEditPrNo(item.nomorPr || '');
+    setEditPoNo(item.nomorPo || '');
+    setEditVendor(item.vendor || '');
+    setEditPrice(Number(item.harga) || 0);
+    setEditQty(item.qty || 1);
+    setEditEta(item.etaFoom ? new Date(item.etaFoom).toISOString().split('T')[0] : '');
+    setEditGrLink(item.linkGr || '');
+    setEditReason(item.reason || '');
+    setEditCategory(item.productCategory || 'Sparepart');
+    setEditKeterangan(item.keterangan || 'consumable');
+    setEditUrgency(item.urgency || 'Normal');
+    setShowEditModal(true);
+  }
+
+  async function handleEditSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingItem) return;
+
+    setActionLoading(`edit-${editingItem.id}`);
+    try {
+      const res = await fetch('/api/mtc/procurement', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingItem.id,
+          nomorPr: editPrNo,
+          nomorPo: editPoNo,
+          vendor: editVendor,
+          harga: editPrice,
+          qty: editQty,
+          etaFoom: editEta || null,
+          linkGr: editGrLink,
+          reason: editReason,
+          productCategory: editCategory,
+          keterangan: editKeterangan,
+          urgency: editUrgency,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        alert(json.data?.msg || '✓ Detail pengadaan berhasil diperbarui!');
+        setShowEditModal(false);
+        setEditingItem(null);
+        await fetchData();
+      } else {
+        alert(`⚠️ Gagal memperbarui detail: ${json.error}`);
+      }
+    } catch (err) {
+      alert('⚠️ Terjadi kesalahan jaringan.');
+    } finally {
+      setActionLoading(null);
+    }
   }
 
   // Filter items in memory
@@ -1058,7 +1129,7 @@ export default function ProcurementTrackingPage() {
                             <th style={{ minWidth: 160 }}>Harga & Keterangan</th>
                             <th style={{ minWidth: 110 }}>ETA Foom</th>
                             <th style={{ width: 60, textAlign: 'center' }}>GR Link</th>
-                            <th style={{ textAlign: 'right', minWidth: 160, paddingRight: 20 }}>Aksi Penerimaan</th>
+                            <th style={{ textAlign: 'right', minWidth: 220, paddingRight: 20 }}>Aksi & Detail</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1175,28 +1246,40 @@ export default function ProcurementTrackingPage() {
 
                                 {/* Receive Action Column */}
                                 <td style={{ textAlign: 'right', paddingRight: 20 }}>
-                                  {isItemReceived ? (
-                                    <div>
-                                      <span className="badge badge-grn" style={{ padding: '4px 8px', fontSize: 10, fontWeight: 700 }}>
-                                        ✓ Diterima {item.isStocked ? '(Gudang)' : '(Non-Stok)'}
-                                      </span>
-                                      {item.tanggalTerima && (
-                                        <div style={{ fontSize: 8, color: 'var(--tx3)', marginTop: 2 }}>
-                                          Tgl: {new Date(item.tanggalTerima).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit' })}
-                                        </div>
-                                      )}
-                                    </div>
-                                  ) : (
+                                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
                                     <button
                                       type="button"
-                                      className="btn btn-grn btn-sm"
-                                      disabled={actionLoading !== null}
-                                      onClick={() => openReceiveModal(item)}
-                                      style={{ padding: '5px 10px', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
+                                      className="btn btn-ghost btn-sm"
+                                      onClick={() => openEditModal(item)}
+                                      style={{ padding: '5px 8px', fontSize: 10, height: 'auto', border: '1px solid var(--br)', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}
+                                      title="Edit Detail SCM / PR / PO"
                                     >
-                                      📥 Terima Barang
+                                      ✏️ Edit
                                     </button>
-                                  )}
+
+                                    {isItemReceived ? (
+                                      <div style={{ textAlign: 'right' }}>
+                                        <span className="badge badge-grn" style={{ padding: '4px 8px', fontSize: 10, fontWeight: 700 }}>
+                                          ✓ Diterima {item.isStocked ? '(Gudang)' : '(Non-Stok)'}
+                                        </span>
+                                        {item.tanggalTerima && (
+                                          <div style={{ fontSize: 8, color: 'var(--tx3)', marginTop: 2 }}>
+                                            Tgl: {new Date(item.tanggalTerima).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit' })}
+                                          </div>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        className="btn btn-grn btn-sm"
+                                        disabled={actionLoading !== null}
+                                        onClick={() => openReceiveModal(item)}
+                                        style={{ padding: '5px 10px', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
+                                      >
+                                        📥 Terima Barang
+                                      </button>
+                                    )}
+                                  </div>
                                 </td>
                               </tr>
                             );
@@ -1563,6 +1646,172 @@ export default function ProcurementTrackingPage() {
                   style={{ fontWeight: 700, padding: '0 24px' }}
                 >
                   {actionLoading !== null ? 'Memproses...' : isStocked ? 'Terima & Masuk Stok Gudang' : 'Terima & Catat Pemakaian langsung'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL EDIT SCM DETAILS (OVERRIDE TYPOS & DELAYS) */}
+      {showEditModal && editingItem && (
+        <div className="modal-overlay" style={{ zIndex: 1050 }}>
+          <div className="modal-card" style={{ maxWidth: 560 }}>
+            <div className="modal-header" style={{ background: 'var(--sf2)', borderBottom: '1px solid var(--br)' }}>
+              <h3 style={{ margin: 0, fontSize: 14, fontWeight: 800, color: 'var(--tx)' }}>✏️ Sesuaikan & Edit Detail Pelacakan SCM</h3>
+              <button className="modal-close" onClick={() => setShowEditModal(false)}>×</button>
+            </div>
+            <form onSubmit={handleEditSubmit}>
+              <div className="modal-body" style={{ padding: 20, maxHeight: '65vh', overflowY: 'auto' }}>
+                <div style={{ marginBottom: 16, borderBottom: '1px solid var(--br)', paddingBottom: 10 }}>
+                  <label style={{ fontSize: 9, color: 'var(--tx3)', fontWeight: 800, textTransform: 'uppercase' }}>Nama Barang Pengajuan (Sheets)</label>
+                  <div style={{ fontSize: 13, fontWeight: 800, marginTop: 4, color: 'var(--tx)' }}>{editingItem.originalName}</div>
+                  <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 2 }}>
+                    Kategori: <span style={{ color: 'var(--tx2)' }}>{editingItem.productCategory || 'Sparepart'}</span> · 
+                    Kuantitas: <span style={{ color: 'var(--tx2)', fontWeight: 700 }}>{editingItem.qty} {editingItem.sparepart?.uom || 'Unit'}</span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+                  <div>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Nomor PR</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Contoh: PR04128"
+                      value={editPrNo}
+                      onChange={(e) => setEditPrNo(e.target.value)}
+                    />
+                    <span style={{ fontSize: 8, color: 'var(--tx3)', display: 'block', marginTop: 2 }}>
+                      💡 Masukkan nomor PR dari SCM untuk pengelompokan.
+                    </span>
+                  </div>
+                  <div>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Nomor PO</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Contoh: PO09123"
+                      value={editPoNo}
+                      onChange={(e) => setEditPoNo(e.target.value)}
+                    />
+                    <span style={{ fontSize: 8, color: 'var(--tx3)', display: 'block', marginTop: 2 }}>
+                      💡 Selesaikan typo PO atau tambahkan PO manual di sini.
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 14, marginBottom: 14 }}>
+                  <div>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Nama Vendor / Toko</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Nama PT / Toko online..."
+                      value={editVendor}
+                      onChange={(e) => setEditVendor(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Harga Satuan Aktual (Rp)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      className="form-input"
+                      value={editPrice}
+                      onChange={(e) => setEditPrice(Math.max(0, parseFloat(e.target.value) || 0))}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 14, marginBottom: 14 }}>
+                  <div>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Estimasi Kedatangan (ETA Foom)</label>
+                    <input
+                      type="date"
+                      className="form-input"
+                      value={editEta}
+                      onChange={(e) => setEditEta(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Urgensi Barang</label>
+                    <select
+                      className="form-input form-select"
+                      value={editUrgency}
+                      onChange={(e) => setEditUrgency(e.target.value)}
+                      style={{ height: '38px' }}
+                    >
+                      <option value="Normal">🟢 Normal</option>
+                      <option value="Urgent">🚨 Urgent / Mendesak</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+                  <div>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Jumlah Kebutuhan (Qty)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      className="form-input"
+                      value={editQty}
+                      onChange={(e) => setEditQty(Math.max(1, parseInt(e.target.value) || 1))}
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Kategori Produk</label>
+                    <select
+                      className="form-input form-select"
+                      value={editCategory}
+                      onChange={(e) => setEditCategory(e.target.value)}
+                      style={{ height: '38px' }}
+                    >
+                      <option value="Sparepart">Sparepart</option>
+                      <option value="Tools">Tools (Alat Kerja)</option>
+                      <option value="Special Tools">Special Tools</option>
+                      <option value="Consumable">Consumable</option>
+                      <option value="Lain-lain">Lain-lain</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 14, marginBottom: 14 }}>
+                  <div>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Link Lembar GR Odoo (Jika Ada)</label>
+                    <input
+                      type="url"
+                      className="form-input"
+                      placeholder="https://odoo.foom.id/web#id=..."
+                      value={editGrLink}
+                      onChange={(e) => setEditGrLink(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 14 }}>
+                  <div>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Alasan Pembelian / Keterangan Lain</label>
+                    <textarea
+                      className="form-input"
+                      placeholder="Jelaskan kebutuhan suku cadang..."
+                      rows={2}
+                      value={editReason}
+                      onChange={(e) => setEditReason(e.target.value)}
+                      style={{ height: '54px', padding: '8px 12px', resize: 'none' }}
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer" style={{ background: 'var(--sf2)', borderTop: '1px solid var(--br)' }}>
+                <button type="button" className="btn btn-ghost" onClick={() => setShowEditModal(false)}>Batal</button>
+                <button
+                  type="submit"
+                  className="btn btn-pur"
+                  disabled={actionLoading !== null}
+                  style={{ fontWeight: 700, padding: '0 24px' }}
+                >
+                  {actionLoading !== null ? 'Memproses...' : '💾 Simpan Perubahan'}
                 </button>
               </div>
             </form>
