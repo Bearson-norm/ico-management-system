@@ -125,7 +125,7 @@ export async function importMesinBatch(
 
     try {
       await prisma.mesin.upsert({
-        where: { nama: row.nama },
+        where: { nama_tipe: { nama: row.nama, tipe: row.tipe } },
         update: {
           area: row.area,
           tipe: row.tipe,

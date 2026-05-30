@@ -58,12 +58,12 @@ async function main() {
   }
 
   const mesins = [
-    { nama: 'Mesin Press 100T', area: 'Line A' },
-    { nama: 'Mesin CNC Milling', area: 'Line B' },
-    { nama: 'Conveyor Utama', area: 'Gudang' },
+    { nama: 'Mesin Press 100T', tipe: 'perbaikan', area: 'Line A' },
+    { nama: 'Mesin CNC Milling', tipe: 'perbaikan', area: 'Line B' },
+    { nama: 'Conveyor Utama', tipe: 'perbaikan', area: 'Gudang' },
   ];
   for (const m of mesins) {
-    await prisma.mesin.upsert({ where: { nama: m.nama }, update: {}, create: m });
+    await prisma.mesin.upsert({ where: { nama_tipe: { nama: m.nama, tipe: m.tipe } }, update: {}, create: m });
   }
 
   const mechKat = await prisma.kategori.findUnique({ where: { nama: 'Mechanical' } });
@@ -105,7 +105,7 @@ async function main() {
 
   const existingReport = await prisma.maintenanceReport.findUnique({ where: { noReport: 'CM-0001' } });
   if (!existingReport) {
-    const m1 = await prisma.mesin.findUnique({ where: { nama: 'Mesin Press 100T' } });
+    const m1 = await prisma.mesin.findFirst({ where: { nama: 'Mesin Press 100T', tipe: 'perbaikan' } });
     const t1 = await prisma.teknisi.findUnique({ where: { nama: 'Budi Santoso' } });
     const repKat = await prisma.kategori.findUnique({ where: { nama: 'Corrective' } });
 

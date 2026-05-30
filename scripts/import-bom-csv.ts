@@ -100,11 +100,11 @@ async function main() {
       try {
         // 1. Dapatkan atau buat mesin secara otomatis (upsert)
         const mesin = await prisma.mesin.upsert({
-          where: { nama: cleanMesinNama },
+          where: { nama_tipe: { nama: cleanMesinNama, tipe: 'sparepart' } },
           update: {},
           create: {
             nama: cleanMesinNama,
-            tipe: 'keduanya',
+            tipe: 'sparepart',
             aktif: true,
           },
         });

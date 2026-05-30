@@ -101,11 +101,11 @@ export async function POST(req: NextRequest) {
         }
         try {
           const mesin = await prisma.mesin.upsert({
-            where: { nama: mesinNama },
+            where: { nama_tipe: { nama: mesinNama, tipe: 'sparepart' } },
             update: {},
             create: {
               nama: mesinNama,
-              tipe: 'keduanya',
+              tipe: 'sparepart',
               aktif: true,
             },
           });

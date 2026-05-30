@@ -118,9 +118,9 @@ async function main() {
     // 5. Mesin — dari nama di CSV asli
     for (const nama of MESIN_NAMES) {
       await prisma.mesin.upsert({
-        where: { nama },
+        where: { nama_tipe: { nama, tipe: 'sparepart' } },
         update: {},
-        create: { nama, tipe: 'keduanya', aktif: true },
+        create: { nama, tipe: 'sparepart', aktif: true },
       });
     }
     console.log(`✅ Mesin: ${MESIN_NAMES.length} mesin (sesuai CSV asli)`);
@@ -168,7 +168,7 @@ async function main() {
       for (const line of lines) {
         const [mesinNama, sparepartId] = line.replace(/\r/g, '').split(',');
         if (!mesinNama?.trim() || !sparepartId?.trim()) continue;
-        const mesin = await prisma.mesin.findUnique({ where: { nama: mesinNama.trim() } });
+        const mesin = await prisma.mesin.findFirst({ where: { nama: mesinNama.trim(), tipe: 'sparepart' } });
         const sp = await prisma.sparepart.findUnique({ where: { id: sparepartId.trim() } });
         if (mesin && sp) {
           await prisma.sparepart.update({
