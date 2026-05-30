@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 
 type Sparepart = {
   id: string;
@@ -45,36 +45,43 @@ export default function ProcurementTrackingPage() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   
-  // Google Apps Script Web App URL state
+  // Saved configurations
   const [scriptUrl, setScriptUrl] = useState('');
+  const [sheetUrl, setSheetUrl] = useState('');
   
-  // Panel states
-  const [showImportBox, setShowImportBox] = useState(false);
+  // Modal states
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showRequestForm, setShowRequestForm] = useState(false);
   const [showScriptCodeModal, setShowScriptCodeModal] = useState(false);
   
-  // Sync states
-  const [csvText, setCsvText] = useState('');
-  const [sheetUrl, setSheetUrl] = useState('');
-  const [importStatus, setImportStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+  // Temporary Settings states
+  const [tempSheetUrl, setTempSheetUrl] = useState('');
+  const [tempScriptUrl, setTempScriptUrl] = useState('');
+  const [csvFileText, setCsvFileText] = useState('');
+  const [csvFileName, setCsvFileName] = useState('');
+  const [manualSyncStatus, setManualSyncStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
   
   // New Request Form states
   const [reqOriginalName, setReqOriginalName] = useState('');
   const [reqSparepartId, setReqSparepartId] = useState('');
   const [reqKeterangan, setReqKeterangan] = useState('consumable');
-  const [reqPenggunaanBulan, setReqPenggunaanBulan] = useState('');
-  const [reqKontrak3Bulan, setReqKontrak3Bulan] = useState(false);
   const [reqQty, setReqQty] = useState(1);
   const [reqProductCategory, setReqProductCategory] = useState('Sparepart');
   const [reqReason, setReqReason] = useState('');
   const [reqUrgency, setReqUrgency] = useState('Normal');
   const [reqLinkReferences, setReqLinkReferences] = useState('');
+  const [reqIsStocked, setReqIsStocked] = useState(true); // Default true for maintenance parts
   const [requestStatus, setRequestStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
   
   // Filter & Search states
   const [searchQuery, setSearchQuery] = useState('');
   const [urgencyFilter, setUrgencyFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  
+  // Expanded PR Groups state (default: expand drafts/new items)
+  const [expandedGroups, setExpandedGroups] = useState<{ [key: string]: boolean }>({
+    'DRAFT': true
+  });
   
   // Tabs for main view
   const [activeTab, setActiveTab] = useState<'ACTIVE' | 'RECEIVED' | 'ALL'>('ACTIVE');
@@ -98,16 +105,35 @@ export default function ProcurementTrackingPage() {
     fetchSpareparts();
     
     if (typeof window !== 'undefined') {
-      const url = localStorage.getItem('mtc_procurement_script_url');
-      if (url) setScriptUrl(url);
+      const savedScriptUrl = localStorage.getItem('mtc_procurement_script_url');
+      if (savedScriptUrl) {
+        setScriptUrl(savedScriptUrl);
+        setTempScriptUrl(savedScriptUrl);
+      }
+      const savedSheetUrl = localStorage.getItem('mtc_procurement_sheet_url');
+      if (savedSheetUrl) {
+        setSheetUrl(savedSheetUrl);
+        setTempSheetUrl(savedSheetUrl);
+      }
     }
   }, []);
 
-  function handleSaveScriptUrl(url: string) {
-    setScriptUrl(url);
+  // Sync settings saver
+  function handleSaveSettings(e: React.FormEvent) {
+    e.preventDefault();
+    setScriptUrl(tempScriptUrl);
+    setSheetUrl(tempSheetUrl);
+    
     if (typeof window !== 'undefined') {
-      localStorage.setItem('mtc_procurement_script_url', url);
+      localStorage.setItem('mtc_procurement_script_url', tempScriptUrl);
+      localStorage.setItem('mtc_procurement_sheet_url', tempSheetUrl);
     }
+    
+    setManualSyncStatus({ type: 'success', msg: 'Pengaturan koneksi berhasil disimpan!' });
+    setTimeout(() => {
+      setShowSettingsModal(false);
+      setManualSyncStatus(null);
+    }, 1500);
   }
 
   async function fetchData() {
@@ -143,30 +169,63 @@ export default function ProcurementTrackingPage() {
     }
   }
 
-  // Handle CSV sync/import
-  async function handleImportSync(e: React.FormEvent) {
-    e.preventDefault();
-    setActionLoading('import');
-    setImportStatus(null);
+  // One-Click Google Sheets Sync
+  async function handleOneClickSync() {
+    if (!sheetUrl || !sheetUrl.trim()) {
+      setTempSheetUrl('');
+      setShowSettingsModal(true);
+      alert('Silakan masukkan Link Google Sheets SCM terlebih dahulu pada menu Pengaturan (⚙️).');
+      return;
+    }
+
+    setActionLoading('sync-main');
     try {
       const res = await fetch('/api/mtc/procurement/import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ csvText, sheetUrl }),
+        body: JSON.stringify({ sheetUrl: sheetUrl.trim() }),
       });
       const json = await res.json();
       if (json.success) {
-        setImportStatus({ type: 'success', msg: json.data.msg || 'Sinkronisasi berhasil!' });
-        setCsvText('');
-        setSheetUrl('');
+        alert(json.data?.msg || '✓ Sinkronisasi data Google Sheets berhasil!');
         await fetchData();
         await fetchSpareparts();
-        setTimeout(() => setShowImportBox(false), 2000);
       } else {
-        setImportStatus({ type: 'error', msg: json.error || 'Sinkronisasi gagal.' });
+        alert(`⚠️ Gagal menyinkronkan data: ${json.error}`);
       }
     } catch (err: any) {
-      setImportStatus({ type: 'error', msg: 'Terjadi kesalahan jaringan.' });
+      alert('⚠️ Terjadi kesalahan jaringan. Coba lagi beberapa saat.');
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  // Manual File/Text CSV Sync
+  async function handleManualSyncSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!csvFileText.trim()) return;
+
+    setActionLoading('manual-sync');
+    setManualSyncStatus(null);
+    try {
+      const res = await fetch('/api/mtc/procurement/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ csvText: csvFileText }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setManualSyncStatus({ type: 'success', msg: json.data?.msg || '✓ Sinkronisasi file CSV manual berhasil!' });
+        setCsvFileText('');
+        setCsvFileName('');
+        await fetchData();
+        await fetchSpareparts();
+        setTimeout(() => setShowSettingsModal(false), 2000);
+      } else {
+        setManualSyncStatus({ type: 'error', msg: json.error || 'Gagal menyinkronkan file CSV.' });
+      }
+    } catch (err: any) {
+      setManualSyncStatus({ type: 'error', msg: 'Koneksi jaringan bermasalah.' });
     } finally {
       setActionLoading(null);
     }
@@ -179,8 +238,9 @@ export default function ProcurementTrackingPage() {
     const reader = new FileReader();
     reader.onload = (event) => {
       if (event.target?.result) {
-        setCsvText(event.target.result as string);
-        setImportStatus({ type: 'success', msg: `Berkas ${file.name} berhasil dibaca. Klik tombol Sync di bawah untuk menyimpan.` });
+        setCsvFileText(event.target.result as string);
+        setCsvFileName(file.name);
+        setManualSyncStatus({ type: 'success', msg: `Berkas ${file.name} berhasil dimuat. Klik tombol Sync di bawah untuk memproses.` });
       }
     };
     reader.readAsText(file);
@@ -196,14 +256,13 @@ export default function ProcurementTrackingPage() {
       originalName: reqOriginalName,
       sparepartId: reqSparepartId || null,
       keterangan: reqKeterangan,
-      penggunaanBulan: reqPenggunaanBulan ? Number(reqPenggunaanBulan) : null,
-      kontrak3Bulan: reqKontrak3Bulan,
       qty: reqQty,
       productCategory: reqProductCategory,
       reason: reqReason,
       urgency: reqUrgency,
       linkReferences: reqLinkReferences,
-      scriptUrl: scriptUrl || null, // Auto-push to GSheets if configured!
+      isStocked: reqIsStocked,
+      scriptUrl: scriptUrl || null, // Auto-push to GSheets if configured
     };
 
     try {
@@ -214,18 +273,17 @@ export default function ProcurementTrackingPage() {
       });
       const json = await res.json();
       if (json.success) {
-        setRequestStatus({ type: 'success', msg: json.data.msg || 'Pengajuan PR berhasil diajukan!' });
+        setRequestStatus({ type: 'success', msg: json.data.msg || 'Pengajuan PR berhasil disimpan!' });
         // Reset form
         setReqOriginalName('');
         setReqSparepartId('');
         setReqKeterangan('consumable');
-        setReqPenggunaanBulan('');
-        setReqKontrak3Bulan(false);
         setReqQty(1);
         setReqProductCategory('Sparepart');
         setReqReason('');
         setReqUrgency('Normal');
         setReqLinkReferences('');
+        setReqIsStocked(true);
         await fetchData();
         setTimeout(() => setShowRequestForm(false), 2500);
       } else {
@@ -306,7 +364,7 @@ export default function ProcurementTrackingPage() {
     setReceivePrice(Number(item.harga) || 0);
     setReceiveVendor(item.vendor || '');
     setReceiveDate(new Date().toISOString().split('T')[0]);
-    setIsStocked(item.sparepartId != null);
+    setIsStocked(item.isStocked || item.sparepartId != null);
     setShowReceiveModal(true);
   }
 
@@ -339,6 +397,114 @@ export default function ProcurementTrackingPage() {
     });
   }, [items, searchQuery, urgencyFilter, categoryFilter]);
 
+  // Group items by nomorPr
+  const groupedPrItems = useMemo(() => {
+    const groups: { [key: string]: TrackingItem[] } = {};
+
+    filteredItems.forEach(item => {
+      const key = item.nomorPr?.trim() || 'DRAFT';
+      if (!groups[key]) {
+        groups[key] = [];
+      }
+      groups[key].push(item);
+    });
+
+    const sortedKeys = Object.keys(groups).sort((a, b) => {
+      if (a === 'DRAFT') return -1; // Drafts first
+      if (b === 'DRAFT') return 1;
+      return b.localeCompare(a); // Descending order of PR numbers
+    });
+
+    return sortedKeys.map(key => {
+      const itemsInGroup = groups[key];
+      let totalQty = 0;
+      let totalCost = 0;
+      const vendorsSet = new Set<string>();
+      const posSet = new Set<string>();
+      let hasUrgent = false;
+      let allDone = true;
+      let someDone = false;
+      let hasPoActive = false;
+      
+      let oldestDate: Date | null = null;
+      let latestReceiveDate: Date | null = null;
+
+      for (const item of itemsInGroup) {
+        totalQty += item.qty;
+        totalCost += (Number(item.harga) || 0) * item.qty;
+        if (item.vendor?.trim()) vendorsSet.add(item.vendor.trim());
+        if (item.nomorPo?.trim()) posSet.add(item.nomorPo.trim());
+        if (item.urgency === 'Urgent') hasUrgent = true;
+        
+        const isReceived = item.statusPo === 'DONE';
+        if (isReceived) {
+          someDone = true;
+        } else {
+          allDone = false;
+        }
+
+        if (item.nomorPo && item.statusPo !== 'DONE') {
+          hasPoActive = true;
+        }
+
+        const dateL = new Date(item.tanggalList);
+        if (!oldestDate || dateL.getTime() < oldestDate.getTime()) {
+          oldestDate = dateL;
+        }
+
+        if (item.tanggalTerima) {
+          const rxDate = new Date(item.tanggalTerima);
+          if (!latestReceiveDate || rxDate.getTime() > latestReceiveDate.getTime()) {
+            latestReceiveDate = rxDate;
+          }
+        }
+      }
+
+      let overallStatus: 'DRAFT' | 'PR_PROCESS' | 'PO_ACTIVE' | 'PARTIAL' | 'DONE' = 'PR_PROCESS';
+      if (key === 'DRAFT') {
+        overallStatus = 'DRAFT';
+      } else if (allDone) {
+        overallStatus = 'DONE';
+      } else if (someDone) {
+        overallStatus = 'PARTIAL';
+      } else if (hasPoActive) {
+        overallStatus = 'PO_ACTIVE';
+      } else {
+        overallStatus = 'PR_PROCESS';
+      }
+
+      let daysRunningStr = '';
+      if (oldestDate) {
+        const end = allDone && latestReceiveDate ? latestReceiveDate : new Date();
+        const diff = end.getTime() - oldestDate.getTime();
+        const days = Math.max(0, parseFloat((diff / (1000 * 60 * 60 * 24)).toFixed(1)));
+        daysRunningStr = `${days} Hari`;
+      } else {
+        daysRunningStr = '—';
+      }
+
+      return {
+        nomorPr: key === 'DRAFT' ? null : key,
+        items: itemsInGroup,
+        totalQty,
+        totalCost,
+        vendors: Array.from(vendorsSet).join(', ') || '—',
+        poNumbers: Array.from(posSet).join(', ') || '—',
+        hasUrgent,
+        overallStatus,
+        daysRunningStr,
+        oldestDateStr: oldestDate ? oldestDate.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—',
+      };
+    });
+  }, [filteredItems]);
+
+  const toggleGroupExpand = (prKey: string) => {
+    setExpandedGroups(prev => ({
+      ...prev,
+      [prKey]: !prev[prKey]
+    }));
+  };
+
   // Categories list for dropdown
   const categoriesList = useMemo(() => {
     const set = new Set<string>();
@@ -353,18 +519,14 @@ export default function ProcurementTrackingPage() {
     const active = items.filter(i => i.statusPo !== 'DONE');
     const received = items.filter(i => i.statusPo === 'DONE' && i.tanggalTerima && i.tanggalList);
     
-    // Average lead time
     let totalDays = 0;
     received.forEach(item => {
       const diff = new Date(item.tanggalTerima!).getTime() - new Date(item.tanggalList).getTime();
       totalDays += Math.max(1, diff / (1000 * 60 * 60 * 24));
     });
     const avgLeadTime = received.length > 0 ? (totalDays / received.length).toFixed(1) : '—';
-
-    // Urgent items
     const urgentCount = active.filter(i => i.urgency === 'Urgent').length;
 
-    // ETA Alerts (Overdue active items)
     const today = new Date().getTime();
     const etaOverdueCount = active.filter(i => {
       if (!i.etaFoom) return false;
@@ -388,16 +550,7 @@ export default function ProcurementTrackingPage() {
     }).format(value);
   }
 
-  // Days elapsed helper
-  function getDaysElapsed(startStr: string, endStr: string | null): string {
-    const start = new Date(startStr);
-    const end = endStr ? new Date(endStr) : new Date();
-    const diff = end.getTime() - start.getTime();
-    const days = Math.max(0, parseFloat((diff / (1000 * 60 * 60 * 24)).toFixed(1)));
-    return `${days} Hari`;
-  }
-
-  // Google Apps Script source code
+  // Google Apps Script source code for display
   const googleScriptSource = `function doPost(e) {
   try {
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Request MTC");
@@ -416,8 +569,8 @@ export default function ProcurementTrackingPage() {
       data.originalName,
       data.mtcItemName,
       data.keterangan,
-      data.penggunaanBulan,
-      data.kontrak3Bulan,
+      "", // Penggunaan per bulan (kosong - dihitung avg nanti)
+      data.isStocked ? "TRUE" : "FALSE", // Status rencana stock / bukan
       data.tanggalList,
       data.qty,
       data.productCategory,
@@ -439,54 +592,80 @@ export default function ProcurementTrackingPage() {
 
   return (
     <>
+      {/* HEADER SECTION */}
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
         <div>
-          <div className="page-title">🔍 Asisten Pelacakan PR / PO (SCM Sync)</div>
-          <div className="page-sub">Kelola pengadaan barang MTC, auto-push request ke Sheets, dan sinkronkan status PO untuk update stok gudang instan.</div>
+          <div className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span>🔍</span> Asisten Pelacakan PR / PO (SCM Sync)
+          </div>
+          <div className="page-sub">Kelola pengadaan suku cadang mesin, sinkronkan Google Sheets SCM, dan catat penerimaan barang langsung.</div>
         </div>
-        <div style={{ display: 'flex', gap: 12 }}>
-          <button
-            type="button"
-            className="btn btn-ghost"
-            onClick={() => setShowRequestForm(!showRequestForm)}
-            style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--br)' }}
-          >
-            ➕ {showRequestForm ? 'Tutup Form PR' : 'Buat Pengajuan PR'}
-          </button>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           <button
             type="button"
             className="btn btn-pur"
-            onClick={() => {
-              setShowImportBox(!showImportBox);
-              setImportStatus(null);
-            }}
-            style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700 }}
+            onClick={() => setShowRequestForm(!showRequestForm)}
+            style={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8, height: 40, padding: '0 16px', borderRadius: 8, background: 'linear-gradient(135deg, var(--pur) 0%, #4f46e5 100%)', border: 'none', color: '#fff', boxShadow: '0 4px 12px rgba(124, 58, 237, 0.25)', cursor: 'pointer' }}
           >
-            🔄 {showImportBox ? 'Tutup Panel Sync' : 'Sinkronkan Google Sheets / CSV'}
+            {showRequestForm ? '✖ Tutup Form PR' : '➕ Buat Pengajuan PR'}
           </button>
+          
+          <div style={{ display: 'flex', background: 'var(--sf2)', borderRadius: 8, padding: 3, border: '1px solid var(--br)', gap: 4 }}>
+            <button
+              type="button"
+              className="btn btn-grn"
+              disabled={actionLoading === 'sync-main'}
+              onClick={handleOneClickSync}
+              style={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: 6, height: 34, padding: '0 14px', fontSize: 12, border: 'none', borderRadius: 6, cursor: 'pointer' }}
+            >
+              {actionLoading === 'sync-main' ? (
+                <>
+                  <span className="spinner" style={{ display: 'inline-block', width: 12, height: 12, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginRight: 4 }} />
+                  Menyinkronkan...
+                </>
+              ) : (
+                '🔄 Sinkronkan Data'
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setTempSheetUrl(sheetUrl);
+                setTempScriptUrl(scriptUrl);
+                setManualSyncStatus(null);
+                setShowSettingsModal(true);
+              }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 16, transition: 'all 0.15s', borderRadius: 6 }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--sf3)')}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+              title="Pengaturan Koneksi Google Sheets / CSV"
+            >
+              ⚙️
+            </button>
+          </div>
         </div>
       </div>
 
       <div className="page-body">
 
-        {/* AJUKAN PR BARU FORM PANEL */}
+        {/* COMPACT PR SUBMISSION FORM */}
         {showRequestForm && (
           <div className="card" style={{ marginBottom: 24, border: '1px solid var(--pur)', background: 'var(--sf3)', animation: 'fadeIn 0.2s ease-out' }}>
-            <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div className="card-title" style={{ color: 'var(--pur)' }}>📝 Form Pengajuan PR Baru (MTC)</div>
+            <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--br)', padding: '16px 20px' }}>
+              <div className="card-title" style={{ color: 'var(--pur)', margin: 0, fontSize: 14, fontWeight: 800 }}>📝 Form Pengajuan PR Baru (MTC Maintenance)</div>
               {scriptUrl ? (
-                <span className="badge badge-grn" style={{ fontSize: 9 }}>✓ Auto-Push ke Google Sheets Aktif</span>
+                <span className="badge badge-grn" style={{ fontSize: 9, padding: '3px 8px' }}>✓ Auto-Push ke Google Sheets Aktif</span>
               ) : (
-                <span className="badge badge-ylw" style={{ fontSize: 9 }}>⚠️ Simpan Lokal Saja (Belum ada Link Sheets)</span>
+                <span className="badge badge-ylw" style={{ fontSize: 9, padding: '3px 8px' }}>⚠️ Simpan Lokal Saja (Belum ada Link Sheets)</span>
               )}
             </div>
-            <form onSubmit={handleRequestSubmit} style={{ padding: '0 20px 20px 20px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 20, marginBottom: 16 }}>
+            <form onSubmit={handleRequestSubmit} style={{ padding: 20 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 20, marginBottom: 16 }}>
                 
-                {/* Kolom Kiri */}
+                {/* Left Column (Core info) */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div className="form-group">
-                    <label className="form-label">Nama Barang Asli (Original Material Name) <span className="req">*</span></label>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Nama Barang Asli (Original Material Name) <span className="req" style={{ color: 'var(--red)' }}>*</span></label>
                     <input
                       type="text"
                       className="form-input"
@@ -498,7 +677,7 @@ export default function ProcurementTrackingPage() {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">Hubungkan Suku Cadang Resmi MTC (Dropdown Master DB)</label>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Hubungkan Suku Cadang Resmi MTC (Dropdown Master DB)</label>
                     <select
                       className="form-input form-select"
                       value={reqSparepartId}
@@ -512,9 +691,9 @@ export default function ProcurementTrackingPage() {
                     </select>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 14 }}>
                     <div className="form-group">
-                      <label className="form-label">Keterangan / Tipe Pengadaan</label>
+                      <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Keterangan / Tipe Pengadaan</label>
                       <select
                         className="form-input form-select"
                         value={reqKeterangan}
@@ -530,7 +709,7 @@ export default function ProcurementTrackingPage() {
                     </div>
 
                     <div className="form-group">
-                      <label className="form-label">Tingkat Urgensi</label>
+                      <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Tingkat Urgensi</label>
                       <select
                         className="form-input form-select"
                         value={reqUrgency}
@@ -542,25 +721,13 @@ export default function ProcurementTrackingPage() {
                       </select>
                     </div>
                   </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Alasan Pembelian (Reason)</label>
-                    <textarea
-                      className="form-input"
-                      placeholder="Jelaskan alasan pembelian barang ini..."
-                      rows={2}
-                      value={reqReason}
-                      onChange={(e) => setReqReason(e.target.value)}
-                      style={{ height: '70px', padding: '8px 12px', resize: 'none' }}
-                    />
-                  </div>
                 </div>
 
-                {/* Kolom Kanan */}
+                {/* Right Column (Procurement Details) */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                     <div className="form-group">
-                      <label className="form-label">Jumlah / Qty <span className="req">*</span></label>
+                      <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Jumlah / Qty <span className="req" style={{ color: 'var(--red)' }}>*</span></label>
                       <input
                         type="number"
                         min="1"
@@ -572,7 +739,7 @@ export default function ProcurementTrackingPage() {
                     </div>
 
                     <div className="form-group">
-                      <label className="form-label">Kategori Produk</label>
+                      <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Kategori Produk</label>
                       <select
                         className="form-input form-select"
                         value={reqProductCategory}
@@ -588,40 +755,55 @@ export default function ProcurementTrackingPage() {
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 14, alignItems: 'center', marginTop: 4 }}>
-                    <div className="form-group">
-                      <label className="form-label">Penggunaan per Bulan</label>
-                      <input
-                        type="number"
-                        className="form-input"
-                        placeholder="Qty..."
-                        value={reqPenggunaanBulan}
-                        onChange={(e) => setReqPenggunaanBulan(e.target.value)}
-                      />
+                  {/* Rencana Masuk Stok / Direct Use selection (User's Foundation) */}
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: 11, marginBottom: 6, display: 'block' }}>Rencana Penyimpanan Barang (Tujuan Akhir)</label>
+                    <div style={{ display: 'flex', gap: 10 }}>
+                      <button
+                        type="button"
+                        className={`btn ${reqIsStocked ? 'btn-grn' : 'btn-ghost'}`}
+                        onClick={() => setReqIsStocked(true)}
+                        style={{ flex: 1, height: 36, fontSize: 11, fontWeight: 700, border: reqIsStocked ? 'none' : '1px solid var(--br)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer' }}
+                      >
+                        📦 Masuk Stok Gudang
+                      </button>
+                      <button
+                        type="button"
+                        className={`btn ${!reqIsStocked ? 'btn-pur' : 'btn-ghost'}`}
+                        onClick={() => setReqIsStocked(false)}
+                        style={{ flex: 1, height: 36, fontSize: 11, fontWeight: 700, border: !reqIsStocked ? 'none' : '1px solid var(--br)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer' }}
+                      >
+                        ⚡ Konsumsi / Langsung Habis
+                      </button>
                     </div>
-                    <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: 8, height: '40px', marginTop: 18 }}>
-                      <input
-                        type="checkbox"
-                        id="kontrak-3b"
-                        checked={reqKontrak3Bulan}
-                        onChange={(e) => setReqKontrak3Bulan(e.target.checked)}
-                        style={{ width: 18, height: 18, cursor: 'pointer' }}
-                      />
-                      <label htmlFor="kontrak-3b" style={{ fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Kontrak 3B</label>
-                    </div>
+                    <span style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 4, display: 'block' }}>
+                      💡 {reqIsStocked ? 'Fondasi: Direncanakan masuk ke persediaan inventaris gudang MTC untuk maintenance saat barang tiba.' : 'Barang langsung dipakai/dipasang untuk kebutuhan mesin, dicatat sebagai log anggaran.'}
+                    </span>
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">Link Referensi (Tokopedia / Shopee / Penawaran)</label>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Link Referensi Toko / Penawaran Vendor</label>
                     <input
                       type="url"
                       className="form-input"
-                      placeholder="Tempel link URL produk/toko online..."
+                      placeholder="Tempel link Tokopedia, Shopee, atau dokumen penawaran..."
                       value={reqLinkReferences}
                       onChange={(e) => setReqLinkReferences(e.target.value)}
                     />
                   </div>
                 </div>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 16 }}>
+                <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Alasan Pembelian (Reason / Deskripsi Kebutuhan Mesin)</label>
+                <textarea
+                  className="form-input"
+                  placeholder="Jelaskan detail untuk mesin apa, kerusakan apa, atau kenapa barang ini mendesak..."
+                  rows={2}
+                  value={reqReason}
+                  onChange={(e) => setReqReason(e.target.value)}
+                  style={{ height: '54px', padding: '8px 12px', resize: 'none' }}
+                />
               </div>
 
               {requestStatus && (
@@ -631,12 +813,12 @@ export default function ProcurementTrackingPage() {
               )}
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-                <button type="button" className="btn btn-ghost" onClick={() => setShowRequestForm(false)}>Tutup</button>
+                <button type="button" className="btn btn-ghost" onClick={() => setShowRequestForm(false)} style={{ cursor: 'pointer' }}>Batal</button>
                 <button
                   type="submit"
                   className="btn btn-pur"
                   disabled={actionLoading === 'request'}
-                  style={{ fontWeight: 700, padding: '0 32px' }}
+                  style={{ fontWeight: 800, padding: '0 24px', cursor: 'pointer' }}
                 >
                   {actionLoading === 'request' ? 'Menyimpan...' : '💾 Kirim Pengajuan'}
                 </button>
@@ -645,145 +827,40 @@ export default function ProcurementTrackingPage() {
           </div>
         )}
 
-        {/* IMPORT / SYNC PANEL CONTAINER */}
-        {showImportBox && (
-          <div className="card" style={{ marginBottom: 24, border: '1px solid var(--pur)', background: 'rgba(107, 33, 168, 0.05)', animation: 'fadeIn 0.2s ease-out' }}>
-            <div className="card-header"><div className="card-title" style={{ color: 'var(--pur)' }}>🔄 Konfigurasi & Sinkronisasi Spreadsheet SCM</div></div>
-            <form onSubmit={handleImportSync} style={{ padding: '0 20px 20px 20px' }}>
-              
-              {/* GOOGLE APPS SCRIPT WEB APP INTEGRATION INPUT */}
-              <div style={{ background: 'var(--sf2)', border: '1px solid var(--br)', borderRadius: 8, padding: 16, marginBottom: 16 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <label className="form-label" style={{ fontWeight: 800, margin: 0 }}>⚙️ Integrasi Pengiriman Sheets Otomatis (Apps Script URL)</label>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-sm"
-                    onClick={() => setShowScriptCodeModal(true)}
-                    style={{ fontSize: 10, padding: '2px 8px', height: 'auto', color: 'var(--pur)' }}
-                  >
-                    🛠️ Lihat Kode Apps Script
-                  </button>
-                </div>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="Masukkan Google Apps Script Web App URL (Contoh: https://script.google.com/macros/s/.../exec)"
-                  value={scriptUrl}
-                  onChange={(e) => handleSaveScriptUrl(e.target.value)}
-                />
-                <span style={{ fontSize: 10, color: 'var(--tx3)', display: 'block', marginTop: 4 }}>
-                  💡 Masukkan URL Web App ini agar setiap pengajuan PR baru di Web MTC **otomatis tertulis langsung ke Google Sheets Anda!** (Disimpan di komputer lokal Anda).
-                </span>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 16 }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <label className="form-label" style={{ fontWeight: 800 }}>Opsi A: Tempel Link Google Sheets Pelacakan SCM</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="Tempel tautan / URL Google Sheets Anda di sini..."
-                    value={sheetUrl}
-                    onChange={(e) => {
-                      setSheetUrl(e.target.value);
-                      setCsvText('');
-                    }}
-                  />
-                  <span style={{ fontSize: 10, color: 'var(--tx3)' }}>
-                    💡 Pastikan Spreadsheet disetel ke <strong>&quot;Anyone with the link can view&quot;</strong> (Siapa saja dengan organisasi kantor dapat melihat).
-                  </span>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <label className="form-label" style={{ fontWeight: 800 }}>Opsi B: Unggah Berkas CSV Manual</label>
-                  <div style={{ display: 'flex', gap: 10 }}>
-                    <input
-                      type="file"
-                      accept=".csv"
-                      onChange={handleFileChange}
-                      style={{ display: 'none' }}
-                      id="csv-file-picker"
-                    />
-                    <label
-                      htmlFor="csv-file-picker"
-                      className="btn btn-ghost"
-                      style={{ flex: 1, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', height: 40 }}
-                    >
-                      📁 Pilih Berkas CSV Lokal
-                    </label>
-                  </div>
-                  {csvText && (
-                    <span style={{ fontSize: 10, color: 'var(--grn)', fontWeight: 700 }}>
-                      ✓ Berkas CSV siap disinkronkan ({csvText.length} bytes terdeteksi).
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {importStatus && (
-                <div className={`alert ${importStatus.type === 'success' ? 'alert-grn' : 'alert-red'}`} style={{ marginBottom: 16 }}>
-                  {importStatus.msg}
-                </div>
-              )}
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-                <button
-                  type="button"
-                  className="btn btn-ghost"
-                  onClick={() => {
-                    setShowImportBox(false);
-                    setCsvText('');
-                    setSheetUrl('');
-                  }}
-                >
-                  Tutup
-                </button>
-                <button
-                  type="submit"
-                  className="btn btn-pur"
-                  disabled={actionLoading === 'import' || (!csvText.trim() && !sheetUrl.trim())}
-                  style={{ fontWeight: 700, padding: '0 24px' }}
-                >
-                  {actionLoading === 'import' ? 'Sinkronisasi...' : '🔄 Jalankan Sinkronisasi'}
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        {/* METRICS & SUMMARY KPI CARDS */}
+        {/* METRICS & KPI CARDS SECTION */}
         <div className="stats-grid" style={{ marginBottom: 24 }}>
-          <div className="stat-card stat-ylw" style={{ cursor: 'pointer' }} onClick={() => setActiveTab('ACTIVE')}>
+          <div className="stat-card stat-ylw" style={{ cursor: 'pointer', transition: 'all 0.2s', borderLeft: '4px solid var(--ylw)' }} onClick={() => setActiveTab('ACTIVE')}>
             <div className="stat-label">Barang Tahap PR</div>
             <div className="stat-value">{stats.prCount}</div>
-            <div className="stat-sub">Menunggu PO diterbitkan vendor</div>
+            <div className="stat-sub">Menunggu PO terbit dari SCM / Vendor</div>
           </div>
-          <div className="stat-card stat-blu" style={{ cursor: 'pointer' }} onClick={() => setActiveTab('ACTIVE')}>
+          <div className="stat-card stat-blu" style={{ cursor: 'pointer', transition: 'all 0.2s', borderLeft: '4px solid var(--blu)' }} onClick={() => setActiveTab('ACTIVE')}>
             <div className="stat-label">Barang Sudah PO</div>
             <div className="stat-value">{stats.poCount}</div>
-            <div className="stat-sub">Sedang diproses / dalam pengiriman</div>
+            <div className="stat-sub">Sedang diproses vendor / dalam pengiriman</div>
           </div>
-          <div className="stat-card stat-red">
+          <div className="stat-card stat-red" style={{ borderLeft: '4px solid var(--red)' }}>
             <div className="stat-label">Pengadaan URGENT</div>
             <div className="stat-value" style={{ color: 'var(--red)' }}>{stats.urgentCount}</div>
             <div className="stat-sub">{stats.etaOverdueCount} Item melewati ETA Foom ⚠️</div>
           </div>
-          <div className="stat-card stat-grn" style={{ cursor: 'pointer' }} onClick={() => setActiveTab('RECEIVED')}>
+          <div className="stat-card stat-grn" style={{ cursor: 'pointer', transition: 'all 0.2s', borderLeft: '4px solid var(--grn)' }} onClick={() => setActiveTab('RECEIVED')}>
             <div className="stat-label">Rerata Lead-Time Pengadaan</div>
             <div className="stat-value" style={{ color: 'var(--grn)' }}>{stats.avgLeadTime}</div>
             <div className="stat-sub">Dihitung otomatis dari riwayat kedatangan</div>
           </div>
         </div>
 
-        {/* SEARCH & FILTERS CONTROLS */}
+        {/* SEARCH & FILTERS CONTROL CARD */}
         <div className="card" style={{ marginBottom: 20, padding: 16 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1.2fr', gap: 16, alignItems: 'center' }}>
             <div className="search-bar" style={{ width: '100%', marginBottom: 0 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
               </svg>
               <input
                 type="text"
-                placeholder="Cari berdasarkan nama barang, nomor PR, PO, atau item Odoo..."
+                placeholder="Cari PR, PO, nama barang sheets, atau nama suku cadang Odoo..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -820,7 +897,7 @@ export default function ProcurementTrackingPage() {
             <div style={{ display: 'flex', background: 'var(--sf2)', padding: 4, borderRadius: 8, height: '40px', border: '1px solid var(--br)' }}>
               <button
                 type="button"
-                className={`ntab`}
+                className="ntab"
                 onClick={() => setActiveTab('ACTIVE')}
                 style={{
                   flex: 1,
@@ -834,11 +911,11 @@ export default function ProcurementTrackingPage() {
                   transition: 'all 0.15s'
                 }}
               >
-                ⏳ Aktif
+                ⏳ Aktif ({items.filter(i => i.statusPo !== 'DONE').length})
               </button>
               <button
                 type="button"
-                className={`ntab`}
+                className="ntab"
                 onClick={() => setActiveTab('RECEIVED')}
                 style={{
                   flex: 1,
@@ -852,199 +929,446 @@ export default function ProcurementTrackingPage() {
                   transition: 'all 0.15s'
                 }}
               >
-                ✓ Diterima
+                ✓ Diterima ({items.filter(i => i.statusPo === 'DONE').length})
               </button>
             </div>
           </div>
         </div>
 
-        {/* MAIN DATA TABLE */}
-        <div className="card">
-          <div className="table-wrap" style={{ opacity: loading ? 0.6 : 1, overflowX: 'auto' }}>
-            <table style={{ minWidth: 1200 }}>
-              <thead>
-                <tr>
-                  <th style={{ width: 60 }}>Fb</th>
-                  <th style={{ minWidth: 220 }}>Nama Barang (Sheets)</th>
-                  <th style={{ minWidth: 200 }}>Item Master MTC (Odoo)</th>
-                  <th style={{ textAlign: 'center', width: 60 }}>Qty</th>
-                  <th>Keterangan</th>
-                  <th>Urgensi</th>
-                  <th>Nomor PR & PO</th>
-                  <th>Harga & Vendor</th>
-                  <th>ETA Foom</th>
-                  <th style={{ textAlign: 'center' }}>Hari Berjalan</th>
-                  <th style={{ textAlign: 'center', width: 80 }}>Odoo GR</th>
-                  <th style={{ textAlign: 'right', minWidth: 160 }}>Aksi Penerimaan</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredItems.map((item) => {
-                  const isUrgent = item.urgency === 'Urgent';
-                  const isReceived = item.statusPo === 'DONE';
-                  const hasEtaPassed = item.etaFoom && !isReceived && new Date(item.etaFoom).getTime() < new Date().getTime();
+        {/* GROUPED ACCORDION PR LIST */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {groupedPrItems.map((group) => {
+            const isPrDraft = group.nomorPr === null;
+            const prKey = isPrDraft ? 'DRAFT' : group.nomorPr!;
+            const isExpanded = !!expandedGroups[prKey];
+            const hasUrgentItem = group.hasUrgent;
 
-                  return (
-                    <tr key={item.id} style={{ borderLeft: isUrgent && !isReceived ? '4px solid var(--red)' : 'none' }}>
-                      <td className="text-mono text-tiny text-muted" style={{ paddingLeft: isUrgent && !isReceived ? 12 : 16 }}>
-                        {item.fbIndex || '—'}
-                      </td>
-                      <td>
-                        <div style={{ fontWeight: 700, color: 'var(--tx)' }}>{item.originalName}</div>
-                        {item.reason && <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 4 }}>Alasan: {item.reason}</div>}
-                      </td>
-                      <td>
-                        {item.sparepart ? (
-                          <div>
-                            <div style={{ fontWeight: 600, color: 'var(--tx2)' }}>{item.sparepart.nama}</div>
-                            <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 2 }}>
-                              ID: <span className="text-mono">{item.sparepart.id}</span> · SLOC: <span className="badge badge-blu" style={{ fontSize: 8, padding: '1px 4px' }}>{item.sparepart.lokasi || '—'}</span>
-                            </div>
-                          </div>
-                        ) : (
-                          <div>
-                            <span className="badge badge-red" style={{ fontSize: 9, padding: '3px 8px' }}>⚠️ Unlinked / General</span>
-                            <button
-                              type="button"
-                              className="btn btn-ghost btn-sm"
-                              onClick={() => openLinkModal(item)}
-                              style={{ display: 'block', fontSize: 9, padding: '2px 4px', color: 'var(--pur)', marginTop: 4, height: 'auto' }}
-                            >
-                              🔗 Hubungkan ke Master DB
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                      <td style={{ textAlign: 'center', fontWeight: 800, fontSize: 13 }}>
-                        {item.qty} <span style={{ fontSize: 9, fontWeight: 400, color: 'var(--tx3)' }}>{item.sparepart?.uom || 'Pcs'}</span>
-                      </td>
-                      <td className="text-tiny">
-                        {item.keterangan || '—'}
-                      </td>
-                      <td>
-                        {isUrgent ? (
-                          <span className="badge badge-red" style={{ fontWeight: 800, fontSize: 9 }}>🚨 URGENT</span>
-                        ) : (
-                          <span className="badge badge-grn" style={{ fontSize: 9 }}>Normal</span>
-                        )}
-                      </td>
-                      <td>
-                        {item.nomorPr && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <span style={{ fontSize: 9, color: 'var(--tx3)' }}>PR:</span>
-                            <span className="badge badge-ylw" style={{ fontSize: 10, padding: '1px 6px' }}>{item.nomorPr}</span>
-                          </div>
-                        )}
-                        {item.nomorPo && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                            <span style={{ fontSize: 9, color: 'var(--tx3)' }}>PO:</span>
-                            <span className="badge badge-blu" style={{ fontSize: 10, padding: '1px 6px' }}>{item.nomorPo}</span>
-                          </div>
-                        )}
-                        {!item.nomorPr && !item.nomorPo && <span className="text-muted">—</span>}
-                      </td>
-                      <td>
-                        <div style={{ fontWeight: 600 }}>{fmtRupiah(item.harga)}</div>
-                        {item.vendor && <div style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 2 }}>Vendor: {item.vendor}</div>}
-                      </td>
-                      <td>
-                        {item.etaFoom ? (
-                          <div style={{ color: hasEtaPassed ? 'var(--red)' : 'var(--tx)' }}>
-                            {new Date(item.etaFoom).toLocaleDateString('id-ID', {
-                              day: '2-digit', month: 'short', year: 'numeric'
-                            })}
-                            {hasEtaPassed && <div style={{ fontSize: 8, fontWeight: 800, color: 'var(--red)', marginTop: 2 }}>⚠️ LEWAT ETA</div>}
-                          </div>
-                        ) : '—'}
-                      </td>
-                      <td style={{ textAlign: 'center', fontWeight: 700 }}>
-                        {getDaysElapsed(item.tanggalList, item.tanggalTerima)}
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        {item.linkGr ? (
-                          <a
-                            href={item.linkGr}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title="Buka Link GR Odoo"
-                            style={{ fontSize: 18, color: 'var(--pur)', textDecoration: 'none' }}
-                          >
-                            🔗
-                          </a>
-                        ) : '—'}
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
-                        {isReceived ? (
-                          <span className="badge badge-grn" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700 }}>
-                            ✓ Diterima {item.isStocked ? '(Gudang)' : '(Non-Stok)'}
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            className="btn btn-grn btn-sm"
-                            disabled={actionLoading !== null}
-                            onClick={() => openReceiveModal(item)}
-                            style={{ padding: '6px 12px', fontSize: 11, fontWeight: 700 }}
-                          >
-                            📥 Terima Barang
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
+            // Determine status color and text for header
+            let statusBadge = null;
+            if (isPrDraft) {
+              statusBadge = <span className="badge badge-ylw" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700 }}>📋 Draft / Pending PR</span>;
+            } else if (group.overallStatus === 'DONE') {
+              statusBadge = <span className="badge badge-grn" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700 }}>✓ Diterima Lengkap</span>;
+            } else if (group.overallStatus === 'PARTIAL') {
+              statusBadge = <span className="badge badge-ylw" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700, background: 'rgba(234, 179, 8, 0.15)', color: '#facc15' }}>⏳ Sebagian Diterima</span>;
+            } else if (group.overallStatus === 'PO_ACTIVE') {
+              statusBadge = <span className="badge badge-blu" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700 }}>🚢 Sedang Diproses (PO)</span>;
+            } else {
+              statusBadge = <span className="badge" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700, background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc' }}>📝 Pengajuan PR SCM</span>;
+            }
 
-                {filteredItems.length === 0 && !loading && (
-                  <tr>
-                    <td colSpan={13} style={{ textAlign: 'center', padding: '60px 0', color: 'var(--tx3)' }}>
-                      <div style={{ fontSize: 48, marginBottom: 12 }}>📦</div>
-                      <div style={{ fontWeight: 700, fontSize: 15 }}>Belum Ada Data Pelacakan Pengadaan</div>
-                      <div style={{ fontSize: 12, marginTop: 4 }}>Silakan klik tombol **Sinkronkan Google Sheets** di atas untuk mengunggah CSV atau menyinkronkan link Sheets.</div>
-                    </td>
-                  </tr>
+            return (
+              <div 
+                key={prKey} 
+                className="card" 
+                style={{ 
+                  overflow: 'hidden', 
+                  borderLeft: hasUrgentItem && group.overallStatus !== 'DONE' ? '4px solid var(--red)' : isPrDraft ? '4px solid var(--ylw)' : '1px solid var(--br)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                }}
+              >
+                {/* GROUP CARD HEADER */}
+                <div 
+                  onClick={() => toggleGroupExpand(prKey)}
+                  style={{ 
+                    padding: '16px 20px', 
+                    background: isPrDraft ? 'rgba(234, 179, 8, 0.02)' : 'var(--sf2)',
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    borderBottom: isExpanded ? '1px solid var(--br)' : 'none',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--sf3)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = isPrDraft ? 'rgba(234, 179, 8, 0.02)' : 'var(--sf2)')}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1, flexWrap: 'wrap' }}>
+                    {/* Expand Chevron */}
+                    <span style={{ fontSize: 12, transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s', color: 'var(--tx3)' }}>
+                      ▶
+                    </span>
+
+                    {/* PR Info */}
+                    <div>
+                      {isPrDraft ? (
+                        <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--ylw)' }}>
+                          📝 DRAFT PENDING / BELUM ADA NO PR
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: 11, color: 'var(--tx3)', fontWeight: 600 }}>NOMOR PR:</span>
+                          <span className="badge badge-ylw" style={{ fontSize: 12, padding: '2px 8px', fontWeight: 800 }}>{group.nomorPr}</span>
+                        </div>
+                      )}
+                      <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 4 }}>
+                        Tanggal Pengajuan: <strong style={{ color: 'var(--tx2)' }}>{group.oldestDateStr}</strong> · Lead Time: <strong style={{ color: 'var(--tx)' }}>{group.daysRunningStr}</strong>
+                      </div>
+                    </div>
+
+                    {/* PO Badges */}
+                    {!isPrDraft && group.poNumbers !== '—' && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 9, color: 'var(--tx3)', fontWeight: 600 }}>PO NO:</span>
+                        {group.poNumbers.split(', ').map(po => (
+                          <span key={po} className="badge badge-blu" style={{ fontSize: 11, padding: '2px 8px', fontWeight: 800 }}>{po}</span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Vendor summary */}
+                    <div style={{ fontSize: 11, color: 'var(--tx3)' }}>
+                      Vendor: <span style={{ color: 'var(--tx2)', fontWeight: 600 }}>{group.vendors}</span>
+                    </div>
+
+                    {/* Urgent Alert Banner */}
+                    {hasUrgentItem && group.overallStatus !== 'DONE' && (
+                      <span className="badge badge-red" style={{ fontSize: 9, fontWeight: 800, animation: 'pulse 1.5s infinite' }}>🚨 ADA ITEM URGENT</span>
+                    )}
+                  </div>
+
+                  {/* Summary Pricing & Status */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 14, fontWeight: 900, color: 'var(--tx)' }}>
+                        {fmtRupiah(group.totalCost)}
+                      </div>
+                      <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 2 }}>
+                        {group.items.length} Item ({group.totalQty} Pcs)
+                      </div>
+                    </div>
+                    
+                    {statusBadge}
+                  </div>
+                </div>
+
+                {/* GROUP EXPANDED DETAIL VIEW */}
+                {isExpanded && (
+                  <div style={{ padding: '0 0 10px 0', background: 'rgba(255,255,255,0.01)', animation: 'fadeIn 0.2s ease-out' }}>
+                    <div className="table-wrap" style={{ overflowX: 'auto', border: 'none', borderRadius: 0 }}>
+                      <table style={{ minWidth: 1200, background: 'transparent' }}>
+                        <thead>
+                          <tr style={{ background: 'rgba(0,0,0,0.1)' }}>
+                            <th style={{ width: 60, textAlign: 'center', paddingLeft: 20 }}>Fb</th>
+                            <th style={{ minWidth: 260 }}>Nama Barang Pengajuan (Sheets)</th>
+                            <th style={{ minWidth: 240 }}>Koneksi Database Resmi MTC (Odoo)</th>
+                            <th style={{ minWidth: 140, textAlign: 'center' }}>Fondasi Stok</th>
+                            <th style={{ width: 80, textAlign: 'center' }}>Qty</th>
+                            <th style={{ minWidth: 160 }}>Harga & Keterangan</th>
+                            <th style={{ minWidth: 110 }}>ETA Foom</th>
+                            <th style={{ width: 60, textAlign: 'center' }}>GR Link</th>
+                            <th style={{ textAlign: 'right', minWidth: 160, paddingRight: 20 }}>Aksi Penerimaan</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {group.items.map((item) => {
+                            const isItemUrgent = item.urgency === 'Urgent';
+                            const isItemReceived = item.statusPo === 'DONE';
+                            const hasEtaPassed = item.etaFoom && !isItemReceived && new Date(item.etaFoom).getTime() < new Date().getTime();
+
+                            return (
+                              <tr 
+                                key={item.id} 
+                                style={{ 
+                                  borderBottom: '1px solid var(--br)',
+                                  backgroundColor: isItemUrgent && !isItemReceived ? 'rgba(239, 68, 68, 0.02)' : 'transparent'
+                                }}
+                              >
+                                {/* index nomor list (Fb) */}
+                                <td className="text-mono text-tiny text-muted" style={{ textAlign: 'center', paddingLeft: 20 }}>
+                                  {item.fbIndex || '—'}
+                                </td>
+                                
+                                {/* Original item name */}
+                                <td>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    {isItemUrgent && !isItemReceived && <span style={{ color: 'var(--red)', fontSize: 12 }}>🚨</span>}
+                                    <span style={{ fontWeight: 700, color: 'var(--tx)' }}>{item.originalName}</span>
+                                  </div>
+                                  {item.reason && <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 4, fontStyle: 'italic' }}>&quot;{item.reason}&quot;</div>}
+                                </td>
+
+                                {/* Odoo Connected Item */}
+                                <td>
+                                  {item.sparepart ? (
+                                    <div>
+                                      <div style={{ fontWeight: 700, color: 'var(--tx2)', fontSize: 12 }}>{item.sparepart.nama}</div>
+                                      <div style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 2, display: 'flex', gap: 6, alignItems: 'center' }}>
+                                        <span className="text-mono">{item.sparepart.id}</span>
+                                        ·
+                                        <span>SLOC:</span>
+                                        <span className="badge badge-blu" style={{ fontSize: 8, padding: '1px 4px' }}>{item.sparepart.lokasi || '—'}</span>
+                                        ·
+                                        <span className="badge badge-grn" style={{ fontSize: 8, padding: '1px 4px', background: 'rgba(34, 197, 94, 0.1)', color: '#4ade80' }}>✓ Terhubung</span>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                      <span className="badge badge-red" style={{ fontSize: 9, padding: '2px 6px' }}>⚠️ Unlinked / General</span>
+                                      <button
+                                        type="button"
+                                        className="btn btn-ghost btn-sm"
+                                        onClick={() => openLinkModal(item)}
+                                        style={{ fontSize: 9, padding: '2px 6px', color: 'var(--pur)', height: 'auto', border: '1px solid rgba(168, 85, 247, 0.3)' }}
+                                      >
+                                        🔗 Hubungkan
+                                      </button>
+                                    </div>
+                                  )}
+                                </td>
+
+                                {/* Stock Foundation Badge (User requested foundation) */}
+                                <td style={{ textAlign: 'center' }}>
+                                  {item.isStocked ? (
+                                    <span className="badge badge-grn" style={{ padding: '3px 8px', fontSize: 10, fontWeight: 700, background: 'rgba(34, 197, 94, 0.15)', color: '#22c55e' }}>
+                                      📦 Masuk Stok
+                                    </span>
+                                  ) : (
+                                    <span className="badge badge-pur" style={{ padding: '3px 8px', fontSize: 10, fontWeight: 700, background: 'rgba(168, 85, 247, 0.15)', color: '#a855f7' }}>
+                                      ⚡ Langsung Pakai
+                                    </span>
+                                  )}
+                                </td>
+
+                                {/* Quantity */}
+                                <td style={{ textAlign: 'center', fontWeight: 800, fontSize: 12 }}>
+                                  {item.qty} <span style={{ fontSize: 9, fontWeight: 400, color: 'var(--tx3)' }}>{item.sparepart?.uom || 'Pcs'}</span>
+                                </td>
+
+                                {/* Price & Notes */}
+                                <td>
+                                  <div style={{ fontWeight: 700 }}>{fmtRupiah(item.harga)}</div>
+                                  <div style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 2 }}>
+                                    Kat: {item.productCategory || 'Sparepart'} · Tipe: {item.keterangan || 'consumable'}
+                                  </div>
+                                </td>
+
+                                {/* ETA Foom */}
+                                <td>
+                                  {item.etaFoom ? (
+                                    <div style={{ color: hasEtaPassed ? 'var(--red)' : 'var(--tx)' }}>
+                                      <div style={{ fontSize: 11, fontWeight: 600 }}>
+                                        {new Date(item.etaFoom).toLocaleDateString('id-ID', {
+                                          day: '2-digit', month: 'short', year: 'numeric'
+                                        })}
+                                      </div>
+                                      {hasEtaPassed && <div style={{ fontSize: 8, fontWeight: 800, color: 'var(--red)', marginTop: 2 }}>⚠️ LEWAT ESTIMASI</div>}
+                                    </div>
+                                  ) : '—'}
+                                </td>
+
+                                {/* Link GR Odoo */}
+                                <td style={{ textAlign: 'center' }}>
+                                  {item.linkGr ? (
+                                    <a
+                                      href={item.linkGr}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      title="Buka Lembar GR Odoo"
+                                      style={{ fontSize: 15, color: 'var(--pur)', textDecoration: 'none' }}
+                                    >
+                                      🔗
+                                    </a>
+                                  ) : '—'}
+                                </td>
+
+                                {/* Receive Action Column */}
+                                <td style={{ textAlign: 'right', paddingRight: 20 }}>
+                                  {isItemReceived ? (
+                                    <div>
+                                      <span className="badge badge-grn" style={{ padding: '4px 8px', fontSize: 10, fontWeight: 700 }}>
+                                        ✓ Diterima {item.isStocked ? '(Gudang)' : '(Non-Stok)'}
+                                      </span>
+                                      {item.tanggalTerima && (
+                                        <div style={{ fontSize: 8, color: 'var(--tx3)', marginTop: 2 }}>
+                                          Tgl: {new Date(item.tanggalTerima).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit' })}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      className="btn btn-grn btn-sm"
+                                      disabled={actionLoading !== null}
+                                      onClick={() => openReceiveModal(item)}
+                                      style={{ padding: '5px 10px', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
+                                    >
+                                      📥 Terima Barang
+                                    </button>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 )}
-              </tbody>
-            </table>
-          </div>
+              </div>
+            );
+          })}
+
+          {groupedPrItems.length === 0 && !loading && (
+            <div className="card" style={{ textAlign: 'center', padding: '60px 0', color: 'var(--tx3)' }}>
+              <div style={{ fontSize: 48, marginBottom: 12 }}>📦</div>
+              <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--tx)' }}>Belum Ada Data Pelacakan SCM</div>
+              <div style={{ fontSize: 12, marginTop: 4, color: 'var(--tx3)' }}>
+                Klik tombol **🔄 Sinkronkan Data** di kanan atas untuk menyinkronkan data dari Google Sheets secara langsung.
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* GOOGLE APPS SCRIPT SOURCE CODE MODAL */}
-      {showScriptCodeModal && (
+      {/* CONSOLIDATED CONFIGURATION & SETTINGS MODAL */}
+      {showSettingsModal && (
         <div className="modal-overlay">
+          <div className="modal-card" style={{ maxWidth: 640 }}>
+            <div className="modal-header">
+              <h3>⚙️ Pengaturan Koneksi Google Sheets & CSV</h3>
+              <button className="modal-close" onClick={() => setShowSettingsModal(false)}>×</button>
+            </div>
+            
+            <div className="modal-body" style={{ padding: 20 }}>
+              {/* Form 1: Save sheet/webhook links */}
+              <form onSubmit={handleSaveSettings} style={{ marginBottom: 24, borderBottom: '1px solid var(--br)', paddingBottom: 24 }}>
+                <h4 style={{ margin: '0 0 12px 0', fontSize: 13, color: 'var(--pur)', fontWeight: 800 }}>🔗 Integrasi Google Sheets API (Satu-Klik Sync)</h4>
+                
+                <div className="form-group" style={{ marginBottom: 12 }}>
+                  <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Link Google Sheets Pelacakan SCM (Source Data)</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="https://docs.google.com/spreadsheets/d/.../edit"
+                    value={tempSheetUrl}
+                    onChange={(e) => setTempSheetUrl(e.target.value)}
+                  />
+                  <span style={{ fontSize: 9, color: 'var(--tx3)', display: 'block', marginTop: 4 }}>
+                    💡 Link Spreadsheet ini akan disimpan secara lokal. Pastikan file Google Sheet disetel share ke **&quot;Anyone with the link can view&quot;**.
+                  </span>
+                </div>
+
+                <div className="form-group" style={{ marginBottom: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: 11, margin: 0 }}>Google Apps Script Web App URL (Auto-Push Form)</label>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => setShowScriptCodeModal(true)}
+                      style={{ fontSize: 9, padding: '2px 6px', height: 'auto', color: 'var(--pur)', border: '1px solid rgba(168,85,247,0.2)' }}
+                    >
+                      🛠️ Kode Apps Script
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="https://script.google.com/macros/s/.../exec"
+                    value={tempScriptUrl}
+                    onChange={(e) => setTempScriptUrl(e.target.value)}
+                  />
+                  <span style={{ fontSize: 9, color: 'var(--tx3)', display: 'block', marginTop: 4 }}>
+                    💡 Web App URL dari script Google Sheets. Mengizinkan form MTC **menulis baris request baru secara otomatis** langsung ke Sheets Anda.
+                  </span>
+                </div>
+
+                <button
+                  type="submit"
+                  className="btn btn-pur"
+                  style={{ width: '100%', fontWeight: 700, height: 38 }}
+                >
+                  💾 Simpan Tautan Integrasi
+                </button>
+              </form>
+
+              {/* Form 2: Manual Upload CSV */}
+              <form onSubmit={handleManualSyncSubmit}>
+                <h4 style={{ margin: '0 0 12px 0', fontSize: 13, color: '#facc15', fontWeight: 800 }}>📁 Unggah Berkas CSV Manual</h4>
+                
+                <div className="form-group" style={{ marginBottom: 16 }}>
+                  <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Pilih File CSV Ekspor Spreadsheet</label>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <input
+                      type="file"
+                      accept=".csv"
+                      onChange={handleFileChange}
+                      style={{ display: 'none' }}
+                      id="manual-csv-picker"
+                    />
+                    <label
+                      htmlFor="manual-csv-picker"
+                      className="btn btn-ghost"
+                      style={{ flex: 1, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', height: 38, border: '1px dashed var(--br)' }}
+                    >
+                      {csvFileName ? `📂 Berkas: ${csvFileName}` : '📁 Pilih Berkas CSV dari Komputer'}
+                    </label>
+                  </div>
+                </div>
+
+                {manualSyncStatus && (
+                  <div className={`alert ${manualSyncStatus.type === 'success' ? 'alert-grn' : 'alert-red'}`} style={{ marginBottom: 16, fontSize: 11 }}>
+                    {manualSyncStatus.msg}
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                  <button type="button" className="btn btn-ghost" onClick={() => setShowSettingsModal(false)}>Tutup</button>
+                  <button
+                    type="submit"
+                    className="btn btn-grn"
+                    disabled={actionLoading === 'manual-sync' || !csvFileText.trim()}
+                    style={{ fontWeight: 700, padding: '0 20px', height: 38 }}
+                  >
+                    {actionLoading === 'manual-sync' ? 'Memproses...' : '🔄 Jalankan Sinkronisasi CSV'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* GOOGLE APPS SCRIPT WEB APP SOURCE CODE MODAL */}
+      {showScriptCodeModal && (
+        <div className="modal-overlay" style={{ zIndex: 1100 }}>
           <div className="modal-card" style={{ maxWidth: 640 }}>
             <div className="modal-header">
               <h3>🛠️ Google Apps Script (Webhook Penulisan Sheets)</h3>
               <button className="modal-close" onClick={() => setShowScriptCodeModal(false)}>×</button>
             </div>
             <div className="modal-body" style={{ padding: 20 }}>
-              <p style={{ fontSize: 12, color: 'var(--tx2)', marginBottom: 10 }}>
-                Ikuti langkah mudah ini untuk mengaktifkan pengiriman otomatis dari Web MTC ke Google Sheets Anda:
+              <p style={{ fontSize: 11, color: 'var(--tx2)', marginBottom: 10 }}>
+                Ikuti langkah berikut untuk mengaktifkan sinkronisasi otomatis satu-arah dari Web MTC ke Sheets:
               </p>
-              <ol style={{ fontSize: 11, color: 'var(--tx3)', paddingLeft: 20, marginBottom: 14 }}>
-                <li>Buka Google Sheets Anda yang berisi tab bernama <strong>&quot;Request MTC&quot;</strong>.</li>
-                <li>Pilih menu <strong>Extensions &gt; Apps Script</strong>.</li>
-                <li>Hapus kode bawaan, lalu salin dan tempelkan seluruh kode script di bawah ini.</li>
+              <ol style={{ fontSize: 10, color: 'var(--tx3)', paddingLeft: 18, marginBottom: 14 }}>
+                <li>Buka Spreadsheet SCM Anda yang memiliki tab bernama <strong>&quot;Request MTC&quot;</strong>.</li>
+                <li>Klik <strong>Extensions &gt; Apps Script</strong>.</li>
+                <li>Hapus seluruh kode kosong di editor, lalu paste kode di bawah ini.</li>
                 <li>Klik tombol <strong>Deploy &gt; New Deployment</strong>.</li>
-                <li>Pilih tipe <strong>Web App</strong>. Setel opsi <i>&quot;Execute as&quot;</i> ke <b>Me</b> dan opsi <i>&quot;Who has access&quot;</i> ke <b>Anyone</b>.</li>
-                <li>Klik Deploy, berikan otorisasi, lalu salin URL Web App yang dihasilkan. Tempelkan URL tersebut ke kolom integrasi di Web MTC!</li>
+                <li>Pilih jenis <strong>Web App</strong>. Atur: <i>Execute as</i> ke <b>Me</b>, dan <i>Who has access</i> ke <b>Anyone</b>.</li>
+                <li>Klik Deploy, berikan otorisasi Google, salin URL Web App yang terbentuk, dan tempalkan di menu Pengaturan MTC.</li>
               </ol>
               <div style={{ position: 'relative' }}>
-                <pre style={{ background: 'var(--sf2)', border: '1px solid var(--br)', borderRadius: 8, padding: 14, fontSize: 10, overflowX: 'auto', maxHeight: 220, color: 'var(--tx2)', fontFamily: 'monospace' }}>
+                <pre style={{ background: 'var(--sf2)', border: '1px solid var(--br)', borderRadius: 8, padding: 14, fontSize: 10, overflowX: 'auto', maxHeight: 200, color: 'var(--tx2)', fontFamily: 'monospace' }}>
                   {googleScriptSource}
                 </pre>
                 <button
                   type="button"
                   onClick={() => {
                     navigator.clipboard.writeText(googleScriptSource);
-                    alert('✓ Kode script berhasil disalin ke clipboard!');
+                    alert('✓ Kode script disalin ke clipboard!');
                   }}
                   className="btn btn-pur btn-sm"
-                  style={{ position: 'absolute', right: 10, top: 10, fontSize: 10, padding: '4px 10px', height: 'auto' }}
+                  style={{ position: 'absolute', right: 10, top: 10, fontSize: 10, padding: '4px 10px', height: 'auto', cursor: 'pointer' }}
                 >
                   📋 Salin Kode
                 </button>
               </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-ghost" onClick={() => setShowScriptCodeModal(false)}>Tutup</button>
             </div>
           </div>
         </div>
@@ -1059,18 +1383,18 @@ export default function ProcurementTrackingPage() {
               <button className="modal-close" onClick={() => setShowLinkModal(false)}>×</button>
             </div>
             <div className="modal-body" style={{ padding: 20 }}>
-              <div style={{ marginBottom: 16 }}>
+              <div style={{ marginBottom: 16, borderBottom: '1px solid var(--br)', paddingBottom: 10 }}>
                 <label className="form-label" style={{ fontSize: 10, color: 'var(--tx3)' }}>NAMA BARANG DI SHEETS</label>
-                <div style={{ fontSize: 14, fontWeight: 700, marginTop: 2 }}>{linkingItem.originalName}</div>
-                <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 2 }}>Qty: {linkingItem.qty} · Qty sheets: {linkingItem.qty}</div>
+                <div style={{ fontSize: 13, fontWeight: 800, marginTop: 2, color: 'var(--tx)' }}>{linkingItem.originalName}</div>
+                <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 2 }}>Qty: {linkingItem.qty} Unit · Urgensi: {linkingItem.urgency}</div>
               </div>
 
               <div className="form-group">
-                <label className="form-label">Cari Suku Cadang Resmi</label>
+                <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Cari Suku Cadang Resmi di Master DB</label>
                 <input
                   type="text"
                   className="form-input"
-                  placeholder="Ketik Nama, ID, atau Lokasi Suku Cadang..."
+                  placeholder="Ketik Nama, ID Suku Cadang, atau Lokasi SLOC..."
                   value={linkSearch}
                   onChange={(e) => setLinkSearch(e.target.value)}
                   autoFocus
@@ -1126,15 +1450,15 @@ export default function ProcurementTrackingPage() {
               <div className="modal-body" style={{ padding: 20 }}>
                 <div style={{ marginBottom: 14, borderBottom: '1px solid var(--br)', paddingBottom: 10 }}>
                   <label style={{ fontSize: 10, color: 'var(--tx3)' }}>NAMA BARANG DI SHEETS</label>
-                  <div style={{ fontSize: 14, fontWeight: 800, marginTop: 4 }}>{receivingItem.originalName}</div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--pur)', marginTop: 4 }}>
+                  <div style={{ fontSize: 14, fontWeight: 800, marginTop: 4, color: 'var(--tx)' }}>{receivingItem.originalName}</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--pur)', marginTop: 4 }}>
                     Kuantitas Masuk: {receivingItem.qty} {receivingItem.sparepart?.uom || 'Unit'} · PO No: {receivingItem.nomorPo || '—'}
                   </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
                   <div>
-                    <label className="form-label">Tanggal Kedatangan <span style={{ color: 'var(--red)' }}>*</span></label>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Tanggal Kedatangan <span style={{ color: 'var(--red)' }}>*</span></label>
                     <input
                       type="date"
                       required
@@ -1144,7 +1468,7 @@ export default function ProcurementTrackingPage() {
                     />
                   </div>
                   <div>
-                    <label className="form-label">Harga Satuan Aktual (Rp) <span style={{ color: 'var(--red)' }}>*</span></label>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Harga Satuan Aktual (Rp) <span style={{ color: 'var(--red)' }}>*</span></label>
                     <input
                       type="number"
                       required
@@ -1158,7 +1482,7 @@ export default function ProcurementTrackingPage() {
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 14, marginBottom: 14 }}>
                   <div>
-                    <label className="form-label">Nama Vendor / Toko</label>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Nama Vendor / Toko</label>
                     <input
                       type="text"
                       className="form-input"
@@ -1171,7 +1495,7 @@ export default function ProcurementTrackingPage() {
 
                 {/* STOCKING SELECTION TOGGLE */}
                 <div style={{ marginBottom: 16 }}>
-                  <label className="form-label" style={{ fontWeight: 800, marginBottom: 8, display: 'block' }}>Tipe Penyimpanan Gudang</label>
+                  <label className="form-label" style={{ fontWeight: 800, marginBottom: 8, display: 'block', fontSize: 11 }}>Tipe Penyimpanan Gudang (Tindakan Nyata)</label>
                   <div style={{ display: 'flex', gap: 12 }}>
                     <label
                       style={{
@@ -1193,9 +1517,9 @@ export default function ProcurementTrackingPage() {
                       }}
                     >
                       <span style={{ fontSize: 20, marginBottom: 4 }}>📦</span>
-                      <span style={{ fontWeight: 700, fontSize: 12 }}>Masukkan Stok (Restock)</span>
+                      <span style={{ fontWeight: 700, fontSize: 11 }}>Masukkan Stok (Restock)</span>
                       <span style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 2, textAlign: 'center' }}>
-                        Tambah kuantitas di MTC Inventory
+                        Tambah kuantitas persediaan di MTC Inventory
                       </span>
                     </label>
 
@@ -1216,16 +1540,16 @@ export default function ProcurementTrackingPage() {
                       onClick={() => setIsStocked(false)}
                     >
                       <span style={{ fontSize: 20, marginBottom: 4 }}>⚡</span>
-                      <span style={{ fontWeight: 700, fontSize: 12 }}>Langsung Pakai (LOG)</span>
+                      <span style={{ fontWeight: 700, fontSize: 11 }}>Langsung Pakai (LOG)</span>
                       <span style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 2, textAlign: 'center' }}>
-                        Catat log anggaran, tanpa ubah stok
+                        Catat log anggaran pengadaan, tanpa mengubah stok
                       </span>
                     </label>
                   </div>
 
                   {!receivingItem.sparepartId && (
-                    <div style={{ fontSize: 10, color: 'var(--red)', fontWeight: 700, marginTop: 8 }}>
-                      ⚠️ Item ini belum dihubungkan ke Master Suku Cadang. Anda hanya bisa menerima sebagai **&quot;Langsung Pakai (Non-Stok)&quot;**. Hubungkan terlebih dahulu jika ingin memasukkannya ke stok gudang MTC.
+                    <div style={{ fontSize: 9, color: 'var(--red)', fontWeight: 700, marginTop: 8 }}>
+                      ⚠️ Item ini belum dihubungkan ke Master Suku Cadang. Anda hanya bisa mencatat sebagai **&quot;Langsung Pakai (Non-Stok)&quot;**. Hubungkan terlebih dahulu jika ingin restock kuantitas gudang.
                     </div>
                   )}
                 </div>
@@ -1283,7 +1607,7 @@ export default function ProcurementTrackingPage() {
         }
         .modal-header h3 {
           margin: 0;
-          font-size: 15px;
+          font-size: 14px;
           font-weight: 800;
           color: var(--tx);
         }
@@ -1318,6 +1642,14 @@ export default function ProcurementTrackingPage() {
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(4px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+        @keyframes pulse {
+          0% { opacity: 1; }
+          50% { opacity: 0.5; }
+          100% { opacity: 1; }
         }
       `}</style>
     </>

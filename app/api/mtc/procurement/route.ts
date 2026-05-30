@@ -15,7 +15,12 @@ export async function GET(req: NextRequest) {
       where: {
         ...(showArchived
           ? { statusPo: 'DONE' }
-          : { NOT: { statusPo: 'DONE' } }),
+          : {
+              OR: [
+                { statusPo: null },
+                { NOT: { statusPo: 'DONE' } },
+              ],
+            }),
       },
       include: {
         sparepart: {
@@ -67,6 +72,7 @@ export async function POST(req: NextRequest) {
     urgency,
     linkReferences,
     scriptUrl,
+    isStocked,
   } = body;
 
   if (!originalName?.trim()) return err('Nama barang asli wajib diisi', 400);
@@ -101,10 +107,14 @@ export async function POST(req: NextRequest) {
         urgency: urgency || 'Normal',
         linkReferences: linkReferences || null,
         statusPr: 'CONTINUE', // Default langsung aktif diajukan
+        isStocked: isStocked !== undefined ? Boolean(isStocked) : false,
       },
     });
 
-    // 2. Jika ada scriptUrl, kirim data pengajuan ke Google Sheets secara asinkron (tidak memblokir DB save jika Google lambat)
+    // 2. Jika ada scriptUrl, kirim data pengajuan ke Google Sheets dengan await agar koneksi diselesaikan sebelum response dikirim
+    let sheetSuccess = true;
+    let sheetError = null;
+
     if (scriptUrl && scriptUrl.trim()) {
       const scriptPayload = {
         originalName: originalName.trim(),
@@ -120,13 +130,39 @@ export async function POST(req: NextRequest) {
         linkReferences: linkReferences || '',
       };
 
-      // Jalankan fetch secara asinkron tanpa 'await' agar respons API cepat
-      fetch(scriptUrl.trim(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(scriptPayload),
-      }).catch((fetchErr) => {
-        console.error('[Google Apps Script Send Error]', fetchErr);
+      try {
+        console.log('[Procurement API] Mengirim data ke Google Sheets Webhook:', scriptUrl.trim());
+        const fetchRes = await fetch(scriptUrl.trim(), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(scriptPayload),
+        });
+
+        if (!fetchRes.ok) {
+          sheetSuccess = false;
+          sheetError = `HTTP error! status: ${fetchRes.status}`;
+          console.error('[Google Apps Script Send Fail]', sheetError);
+        } else {
+          const fetchJson = await fetchRes.json().catch(() => null);
+          console.log('[Google Apps Script Response]', fetchJson);
+          if (fetchJson && fetchJson.success === false) {
+            sheetSuccess = false;
+            sheetError = fetchJson.error || 'Gagal diproses di dalam script Sheets';
+            console.error('[Google Apps Script Internal Error]', sheetError);
+          }
+        }
+      } catch (fetchErr: any) {
+        sheetSuccess = false;
+        sheetError = fetchErr.message || String(fetchErr);
+        console.error('[Google Apps Script Send Exception]', fetchErr);
+      }
+    }
+
+    if (!sheetSuccess) {
+      return ok({
+        msg: `Pengajuan PR berhasil disimpan lokal, namun GAGAL dikirim ke Google Sheets: ${sheetError}. Periksa kembali Apps Script URL Anda.`,
+        data: tracking,
+        sheetError,
       });
     }
 
@@ -139,4 +175,5 @@ export async function POST(req: NextRequest) {
     return err(`Gagal membuat pengajuan pengadaan: ${e.message}`, 500);
   }
 }
+
 
