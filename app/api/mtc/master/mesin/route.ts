@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
     });
     return ok(row, 201);
   } catch (e: unknown) {
-    if ((e as { code?: string }).code === 'P2002') return err('Nama sudah ada');
+    if ((e as { code?: string }).code === 'P2002') return err('Nama dan tipe ini sudah ada');
     return err('Gagal simpan', 500);
   }
 }

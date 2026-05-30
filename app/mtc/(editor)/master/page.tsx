@@ -123,36 +123,6 @@ export default function MasterPage() {
       fetchData();
     } else {
       const json = await res.json();
-      // Khusus: tambah mesin dari tab BOM, nama sudah ada → tawarkan ubah tipe ke 'keduanya'
-      if (
-        !isEdit &&
-        modalType === 'mesin' &&
-        activeTab === 'bom' &&
-        json.error === 'Nama sudah ada'
-      ) {
-        const existing = bomMesins.find(
-          (m: any) => m.nama.toLowerCase() === (form.nama || '').toLowerCase()
-        );
-        if (existing && existing.tipe === 'perbaikan') {
-          const ok = confirm(
-            `Mesin "${existing.nama}" sudah ada sebagai mesin perbaikan.\n\nUbah tipenya menjadi "Keduanya" supaya muncul di tab BOM juga?`
-          );
-          if (ok) {
-            const putRes = await fetch('/api/mtc/master/mesin', {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ id: existing.id, tipe: 'keduanya' }),
-            });
-            if (putRes.ok) {
-              setModalOpen(false);
-              fetchData();
-            } else {
-              alert('Gagal mengubah tipe mesin.');
-            }
-          }
-          return;
-        }
-      }
       alert('Error: ' + json.error);
     }
   };

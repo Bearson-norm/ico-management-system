@@ -39,7 +39,7 @@ model Teknisi {
 
 model Mesin {
   id        Int       @id @default(autoincrement())
-  nama      String    @unique
+  nama      String
   tipe      String    @default("keduanya") // "sparepart" | "perbaikan" | "keduanya"
   area      String?
   aktif     Boolean   @default(true)
@@ -48,6 +48,7 @@ model Mesin {
   reports    MaintenanceReport[]
   spareparts Sparepart[]
 
+  @@unique([nama, tipe])
   @@map("mesin")
 }
 
