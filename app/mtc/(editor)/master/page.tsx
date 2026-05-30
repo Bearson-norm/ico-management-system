@@ -572,7 +572,6 @@ export default function MasterPage() {
                     {bomMesins
                       .filter(m => m.nama.toLowerCase().includes(search.toLowerCase()))
                       .filter(m => m.tipe === 'sparepart' || m.tipe === 'keduanya')
-                      .filter(m => (m._sparepartCount ?? 0) > 0)
                       .map(m => (
                         <React.Fragment key={m.id}>
                         <tr onClick={() => setExpandedMesinId(expandedMesinId === m.id ? null : m.id)} style={{ cursor: 'pointer' }}>
