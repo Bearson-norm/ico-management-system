@@ -45,16 +45,35 @@ export default function ProcurementTrackingPage() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   
-  // Import states
+  // Google Apps Script Web App URL state
+  const [scriptUrl, setScriptUrl] = useState('');
+  
+  // Panel states
   const [showImportBox, setShowImportBox] = useState(false);
+  const [showRequestForm, setShowRequestForm] = useState(false);
+  const [showScriptCodeModal, setShowScriptCodeModal] = useState(false);
+  
+  // Sync states
   const [csvText, setCsvText] = useState('');
   const [sheetUrl, setSheetUrl] = useState('');
   const [importStatus, setImportStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
   
+  // New Request Form states
+  const [reqOriginalName, setReqOriginalName] = useState('');
+  const [reqSparepartId, setReqSparepartId] = useState('');
+  const [reqKeterangan, setReqKeterangan] = useState('consumable');
+  const [reqPenggunaanBulan, setReqPenggunaanBulan] = useState('');
+  const [reqKontrak3Bulan, setReqKontrak3Bulan] = useState(false);
+  const [reqQty, setReqQty] = useState(1);
+  const [reqProductCategory, setReqProductCategory] = useState('Sparepart');
+  const [reqReason, setReqReason] = useState('');
+  const [reqUrgency, setReqUrgency] = useState('Normal');
+  const [reqLinkReferences, setReqLinkReferences] = useState('');
+  const [requestStatus, setRequestStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+  
   // Filter & Search states
   const [searchQuery, setSearchQuery] = useState('');
   const [urgencyFilter, setUrgencyFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('ACTIVE'); // ACTIVE | ALL | RECEIVED
   const [categoryFilter, setCategoryFilter] = useState('');
   
   // Tabs for main view
@@ -73,10 +92,23 @@ export default function ProcurementTrackingPage() {
   const [receiveVendor, setReceiveVendor] = useState('');
   const [isStocked, setIsStocked] = useState(true); // true = Restock, false = Direct Use
 
+  // Load configuration from localStorage on mount
   useEffect(() => {
     fetchData();
     fetchSpareparts();
+    
+    if (typeof window !== 'undefined') {
+      const url = localStorage.getItem('mtc_procurement_script_url');
+      if (url) setScriptUrl(url);
+    }
   }, []);
+
+  function handleSaveScriptUrl(url: string) {
+    setScriptUrl(url);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('mtc_procurement_script_url', url);
+    }
+  }
 
   async function fetchData() {
     setLoading(true);
@@ -152,6 +184,58 @@ export default function ProcurementTrackingPage() {
       }
     };
     reader.readAsText(file);
+  }
+
+  // Handle new PR Request submit (Write/Push)
+  async function handleRequestSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setActionLoading('request');
+    setRequestStatus(null);
+
+    const payload = {
+      originalName: reqOriginalName,
+      sparepartId: reqSparepartId || null,
+      keterangan: reqKeterangan,
+      penggunaanBulan: reqPenggunaanBulan ? Number(reqPenggunaanBulan) : null,
+      kontrak3Bulan: reqKontrak3Bulan,
+      qty: reqQty,
+      productCategory: reqProductCategory,
+      reason: reqReason,
+      urgency: reqUrgency,
+      linkReferences: reqLinkReferences,
+      scriptUrl: scriptUrl || null, // Auto-push to GSheets if configured!
+    };
+
+    try {
+      const res = await fetch('/api/mtc/procurement', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setRequestStatus({ type: 'success', msg: json.data.msg || 'Pengajuan PR berhasil diajukan!' });
+        // Reset form
+        setReqOriginalName('');
+        setReqSparepartId('');
+        setReqKeterangan('consumable');
+        setReqPenggunaanBulan('');
+        setReqKontrak3Bulan(false);
+        setReqQty(1);
+        setReqProductCategory('Sparepart');
+        setReqReason('');
+        setReqUrgency('Normal');
+        setReqLinkReferences('');
+        await fetchData();
+        setTimeout(() => setShowRequestForm(false), 2500);
+      } else {
+        setRequestStatus({ type: 'error', msg: json.error || 'Gagal menyimpan pengajuan.' });
+      }
+    } catch (err) {
+      setRequestStatus({ type: 'error', msg: 'Terjadi kesalahan koneksi jaringan.' });
+    } finally {
+      setActionLoading(null);
+    }
   }
 
   // Handle Goods Receipt (Terima Barang)
@@ -313,14 +397,62 @@ export default function ProcurementTrackingPage() {
     return `${days} Hari`;
   }
 
+  // Google Apps Script source code
+  const googleScriptSource = `function doPost(e) {
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Request MTC");
+    if (!sheet) {
+      return ContentService.createTextOutput(JSON.stringify({ 
+        success: false, 
+        error: "Tab 'Request MTC' tidak ditemukan di Spreadsheet Anda." 
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    var data = JSON.parse(e.postData.contents);
+    
+    // Append data baru
+    sheet.appendRow([
+      "", // Kolom A (Fb / ID kosong biar diisi manual atau auto-formula)
+      data.originalName,
+      data.mtcItemName,
+      data.keterangan,
+      data.penggunaanBulan,
+      data.kontrak3Bulan,
+      data.tanggalList,
+      data.qty,
+      data.productCategory,
+      data.reason,
+      data.urgency,
+      data.linkReferences
+    ]);
+    
+    return ContentService.createTextOutput(JSON.stringify({ 
+      success: true 
+    })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ 
+      success: false, 
+      error: err.toString() 
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}`;
+
   return (
     <>
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
         <div>
-          <div className="page-title">🔍 Pelacakan PR / PO (SCM Sinc)</div>
-          <div className="page-sub">Sinkronisasi status pengadaan langsung dari spreadsheet Procurement untuk integrasi stok MTC otomatis.</div>
+          <div className="page-title">🔍 Asisten Pelacakan PR / PO (SCM Sync)</div>
+          <div className="page-sub">Kelola pengadaan barang MTC, auto-push request ke Sheets, dan sinkronkan status PO untuk update stok gudang instan.</div>
         </div>
-        <div>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={() => setShowRequestForm(!showRequestForm)}
+            style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--br)' }}
+          >
+            ➕ {showRequestForm ? 'Tutup Form PR' : 'Buat Pengajuan PR'}
+          </button>
           <button
             type="button"
             className="btn btn-pur"
@@ -330,25 +462,227 @@ export default function ProcurementTrackingPage() {
             }}
             style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700 }}
           >
-            📥 {showImportBox ? 'Tutup Panel Sync' : 'Sinkronkan Google Sheets / CSV'}
+            🔄 {showImportBox ? 'Tutup Panel Sync' : 'Sinkronkan Google Sheets / CSV'}
           </button>
         </div>
       </div>
 
       <div className="page-body">
-        
+
+        {/* AJUKAN PR BARU FORM PANEL */}
+        {showRequestForm && (
+          <div className="card" style={{ marginBottom: 24, border: '1px solid var(--pur)', background: 'var(--sf3)', animation: 'fadeIn 0.2s ease-out' }}>
+            <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="card-title" style={{ color: 'var(--pur)' }}>📝 Form Pengajuan PR Baru (MTC)</div>
+              {scriptUrl ? (
+                <span className="badge badge-grn" style={{ fontSize: 9 }}>✓ Auto-Push ke Google Sheets Aktif</span>
+              ) : (
+                <span className="badge badge-ylw" style={{ fontSize: 9 }}>⚠️ Simpan Lokal Saja (Belum ada Link Sheets)</span>
+              )}
+            </div>
+            <form onSubmit={handleRequestSubmit} style={{ padding: '0 20px 20px 20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 20, marginBottom: 16 }}>
+                
+                {/* Kolom Kiri */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div className="form-group">
+                    <label className="form-label">Nama Barang Asli (Original Material Name) <span className="req">*</span></label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      required
+                      placeholder="Ketik nama sesuai toko online / penawaran vendor..."
+                      value={reqOriginalName}
+                      onChange={(e) => setReqOriginalName(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Hubungkan Suku Cadang Resmi MTC (Dropdown Master DB)</label>
+                    <select
+                      className="form-input form-select"
+                      value={reqSparepartId}
+                      onChange={(e) => setReqSparepartId(e.target.value)}
+                      style={{ height: '38px' }}
+                    >
+                      <option value="">— Bukan untuk Suku Cadang Terdaftar / Umum —</option>
+                      {spareparts.map(sp => (
+                        <option key={sp.id} value={sp.id}>{sp.nama} ({sp.id})</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                    <div className="form-group">
+                      <label className="form-label">Keterangan / Tipe Pengadaan</label>
+                      <select
+                        className="form-input form-select"
+                        value={reqKeterangan}
+                        onChange={(e) => setReqKeterangan(e.target.value)}
+                        style={{ height: '38px' }}
+                      >
+                        <option value="consumable">consumable (Langsung habis)</option>
+                        <option value="one time purchase">one time purchase (Sekali beli)</option>
+                        <option value="repeat order">repeat order (Beli berkala)</option>
+                        <option value="project">project (Kebutuhan project)</option>
+                        <option value="tools">tools (Perkakas kerja)</option>
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Tingkat Urgensi</label>
+                      <select
+                        className="form-input form-select"
+                        value={reqUrgency}
+                        onChange={(e) => setReqUrgency(e.target.value)}
+                        style={{ height: '38px' }}
+                      >
+                        <option value="Normal">🟢 Normal</option>
+                        <option value="Urgent">🚨 Urgent / Mendesak</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Alasan Pembelian (Reason)</label>
+                    <textarea
+                      className="form-input"
+                      placeholder="Jelaskan alasan pembelian barang ini..."
+                      rows={2}
+                      value={reqReason}
+                      onChange={(e) => setReqReason(e.target.value)}
+                      style={{ height: '70px', padding: '8px 12px', resize: 'none' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Kolom Kanan */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                    <div className="form-group">
+                      <label className="form-label">Jumlah / Qty <span className="req">*</span></label>
+                      <input
+                        type="number"
+                        min="1"
+                        required
+                        className="form-input"
+                        value={reqQty}
+                        onChange={(e) => setReqQty(Math.max(1, parseInt(e.target.value) || 1))}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Kategori Produk</label>
+                      <select
+                        className="form-input form-select"
+                        value={reqProductCategory}
+                        onChange={(e) => setReqProductCategory(e.target.value)}
+                        style={{ height: '38px' }}
+                      >
+                        <option value="Sparepart">Sparepart</option>
+                        <option value="Tools">Tools (Alat Kerja)</option>
+                        <option value="Special Tools">Special Tools</option>
+                        <option value="Consumable">Consumable</option>
+                        <option value="Lain-lain">Lain-lain</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 14, alignItems: 'center', marginTop: 4 }}>
+                    <div className="form-group">
+                      <label className="form-label">Penggunaan per Bulan</label>
+                      <input
+                        type="number"
+                        className="form-input"
+                        placeholder="Qty..."
+                        value={reqPenggunaanBulan}
+                        onChange={(e) => setReqPenggunaanBulan(e.target.value)}
+                      />
+                    </div>
+                    <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: 8, height: '40px', marginTop: 18 }}>
+                      <input
+                        type="checkbox"
+                        id="kontrak-3b"
+                        checked={reqKontrak3Bulan}
+                        onChange={(e) => setReqKontrak3Bulan(e.target.checked)}
+                        style={{ width: 18, height: 18, cursor: 'pointer' }}
+                      />
+                      <label htmlFor="kontrak-3b" style={{ fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Kontrak 3B</label>
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Link Referensi (Tokopedia / Shopee / Penawaran)</label>
+                    <input
+                      type="url"
+                      className="form-input"
+                      placeholder="Tempel link URL produk/toko online..."
+                      value={reqLinkReferences}
+                      onChange={(e) => setReqLinkReferences(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {requestStatus && (
+                <div className={`alert ${requestStatus.type === 'success' ? 'alert-grn' : 'alert-red'}`} style={{ marginBottom: 16 }}>
+                  {requestStatus.msg}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+                <button type="button" className="btn btn-ghost" onClick={() => setShowRequestForm(false)}>Tutup</button>
+                <button
+                  type="submit"
+                  className="btn btn-pur"
+                  disabled={actionLoading === 'request'}
+                  style={{ fontWeight: 700, padding: '0 32px' }}
+                >
+                  {actionLoading === 'request' ? 'Menyimpan...' : '💾 Kirim Pengajuan'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
         {/* IMPORT / SYNC PANEL CONTAINER */}
         {showImportBox && (
           <div className="card" style={{ marginBottom: 24, border: '1px solid var(--pur)', background: 'rgba(107, 33, 168, 0.05)', animation: 'fadeIn 0.2s ease-out' }}>
-            <div className="card-header"><div className="card-title" style={{ color: 'var(--pur)' }}>🔄 Sinkronisasi Spreadsheet SCM</div></div>
+            <div className="card-header"><div className="card-title" style={{ color: 'var(--pur)' }}>🔄 Konfigurasi & Sinkronisasi Spreadsheet SCM</div></div>
             <form onSubmit={handleImportSync} style={{ padding: '0 20px 20px 20px' }}>
+              
+              {/* GOOGLE APPS SCRIPT WEB APP INTEGRATION INPUT */}
+              <div style={{ background: 'var(--sf2)', border: '1px solid var(--br)', borderRadius: 8, padding: 16, marginBottom: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <label className="form-label" style={{ fontWeight: 800, margin: 0 }}>⚙️ Integrasi Pengiriman Sheets Otomatis (Apps Script URL)</label>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => setShowScriptCodeModal(true)}
+                    style={{ fontSize: 10, padding: '2px 8px', height: 'auto', color: 'var(--pur)' }}
+                  >
+                    🛠️ Lihat Kode Apps Script
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Masukkan Google Apps Script Web App URL (Contoh: https://script.google.com/macros/s/.../exec)"
+                  value={scriptUrl}
+                  onChange={(e) => handleSaveScriptUrl(e.target.value)}
+                />
+                <span style={{ fontSize: 10, color: 'var(--tx3)', display: 'block', marginTop: 4 }}>
+                  💡 Masukkan URL Web App ini agar setiap pengajuan PR baru di Web MTC **otomatis tertulis langsung ke Google Sheets Anda!** (Disimpan di komputer lokal Anda).
+                </span>
+              </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 16 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <label className="form-label" style={{ fontWeight: 800 }}>Opsi 1: Tempel Link Google Sheets</label>
+                  <label className="form-label" style={{ fontWeight: 800 }}>Opsi A: Tempel Link Google Sheets Pelacakan SCM</label>
                   <input
                     type="text"
                     className="form-input"
-                    placeholder="Tempel tautan / URL Google Sheets Pelacakan SCM di sini..."
+                    placeholder="Tempel tautan / URL Google Sheets Anda di sini..."
                     value={sheetUrl}
                     onChange={(e) => {
                       setSheetUrl(e.target.value);
@@ -360,7 +694,7 @@ export default function ProcurementTrackingPage() {
                   </span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <label className="form-label" style={{ fontWeight: 800 }}>Opsi 2: Unggah Berkas CSV</label>
+                  <label className="form-label" style={{ fontWeight: 800 }}>Opsi B: Unggah Berkas CSV Manual</label>
                   <div style={{ display: 'flex', gap: 10 }}>
                     <input
                       type="file"
@@ -401,7 +735,7 @@ export default function ProcurementTrackingPage() {
                     setSheetUrl('');
                   }}
                 >
-                  Batal
+                  Tutup
                 </button>
                 <button
                   type="submit"
@@ -674,6 +1008,47 @@ export default function ProcurementTrackingPage() {
           </div>
         </div>
       </div>
+
+      {/* GOOGLE APPS SCRIPT SOURCE CODE MODAL */}
+      {showScriptCodeModal && (
+        <div className="modal-overlay">
+          <div className="modal-card" style={{ maxWidth: 640 }}>
+            <div className="modal-header">
+              <h3>🛠️ Google Apps Script (Webhook Penulisan Sheets)</h3>
+              <button className="modal-close" onClick={() => setShowScriptCodeModal(false)}>×</button>
+            </div>
+            <div className="modal-body" style={{ padding: 20 }}>
+              <p style={{ fontSize: 12, color: 'var(--tx2)', marginBottom: 10 }}>
+                Ikuti langkah mudah ini untuk mengaktifkan pengiriman otomatis dari Web MTC ke Google Sheets Anda:
+              </p>
+              <ol style={{ fontSize: 11, color: 'var(--tx3)', paddingLeft: 20, marginBottom: 14 }}>
+                <li>Buka Google Sheets Anda yang berisi tab bernama <strong>&quot;Request MTC&quot;</strong>.</li>
+                <li>Pilih menu <strong>Extensions &gt; Apps Script</strong>.</li>
+                <li>Hapus kode bawaan, lalu salin dan tempelkan seluruh kode script di bawah ini.</li>
+                <li>Klik tombol <strong>Deploy &gt; New Deployment</strong>.</li>
+                <li>Pilih tipe <strong>Web App</strong>. Setel opsi <i>&quot;Execute as&quot;</i> ke <b>Me</b> dan opsi <i>&quot;Who has access&quot;</i> ke <b>Anyone</b>.</li>
+                <li>Klik Deploy, berikan otorisasi, lalu salin URL Web App yang dihasilkan. Tempelkan URL tersebut ke kolom integrasi di Web MTC!</li>
+              </ol>
+              <div style={{ position: 'relative' }}>
+                <pre style={{ background: 'var(--sf2)', border: '1px solid var(--br)', borderRadius: 8, padding: 14, fontSize: 10, overflowX: 'auto', maxHeight: 220, color: 'var(--tx2)', fontFamily: 'monospace' }}>
+                  {googleScriptSource}
+                </pre>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(googleScriptSource);
+                    alert('✓ Kode script berhasil disalin ke clipboard!');
+                  }}
+                  className="btn btn-pur btn-sm"
+                  style={{ position: 'absolute', right: 10, top: 10, fontSize: 10, padding: '4px 10px', height: 'auto' }}
+                >
+                  📋 Salin Kode
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL LINK MANUAL SPAREPART */}
       {showLinkModal && linkingItem && (
