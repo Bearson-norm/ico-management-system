@@ -123,6 +123,36 @@ export default function MasterPage() {
       fetchData();
     } else {
       const json = await res.json();
+      // Khusus: tambah mesin dari tab BOM, nama sudah ada → tawarkan ubah tipe ke 'keduanya'
+      if (
+        !isEdit &&
+        modalType === 'mesin' &&
+        activeTab === 'bom' &&
+        json.error === 'Nama sudah ada'
+      ) {
+        const existing = bomMesins.find(
+          (m: any) => m.nama.toLowerCase() === (form.nama || '').toLowerCase()
+        );
+        if (existing && existing.tipe === 'perbaikan') {
+          const ok = confirm(
+            `Mesin "${existing.nama}" sudah ada sebagai mesin perbaikan.\n\nUbah tipenya menjadi "Keduanya" supaya muncul di tab BOM juga?`
+          );
+          if (ok) {
+            const putRes = await fetch('/api/mtc/master/mesin', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id: existing.id, tipe: 'keduanya' }),
+            });
+            if (putRes.ok) {
+              setModalOpen(false);
+              fetchData();
+            } else {
+              alert('Gagal mengubah tipe mesin.');
+            }
+          }
+          return;
+        }
+      }
       alert('Error: ' + json.error);
     }
   };
@@ -478,6 +508,7 @@ export default function MasterPage() {
                   <tbody>
                     {mesins
                       .filter(m => m.nama.toLowerCase().includes(search.toLowerCase()))
+                      .filter(m => m.tipe === 'perbaikan')
                       .map(m => (
                       <tr key={m.id}>
                         <td data-label="ID" className="text-muted text-tiny">{m.id}</td>
@@ -570,6 +601,7 @@ export default function MasterPage() {
                   <tbody>
                     {bomMesins
                       .filter(m => m.nama.toLowerCase().includes(search.toLowerCase()))
+                      .filter(m => m.tipe === 'sparepart' || m.tipe === 'keduanya')
                       .map(m => (
                         <React.Fragment key={m.id}>
                         <tr onClick={() => setExpandedMesinId(expandedMesinId === m.id ? null : m.id)} style={{ cursor: 'pointer' }}>
