@@ -87,6 +87,7 @@ model Sparepart {
   kategori   Kategori?     @relation(fields: [kategoriId], references: [id])
   mesins     Mesin[]
   movements  StockMovement[]
+  procurementTrackings ProcurementTracking[]
 
   @@map("sparepart")
 }
@@ -157,3 +158,38 @@ model StockMovement {
   @@index([noReport])
   @@map("stock_movement")
 }
+
+model ProcurementTracking {
+  id               Int       @id @default(autoincrement())
+  fbIndex          Int?      @map("fb_index") // Nomor baris dari Google Sheets (Fb)
+  originalName     String    @map("original_name")
+  sparepartId      String?   @map("sparepart_id") // Relasi opsional ke Sparepart database
+  keterangan       String?   // "consumable" | "one time purchase" | "project" | "tools" etc.
+  penggunaanBulan  Int?      @map("penggunaan_bulan")
+  kontrak3Bulan    Boolean   @default(false) @map("kontrak_3_bulan")
+  tanggalList      DateTime  @default(now()) @map("tanggal_list")
+  qty              Int
+  productCategory  String?   @map("product_category")
+  reason           String?
+  urgency          String?   @default("Normal") // "Normal" | "Urgent"
+  linkReferences   String?   @map("link_references")
+  vendor           String?
+  harga            Decimal?  @db.Decimal(14, 2)
+  nomorPr          String?   @map("nomor_pr")
+  statusPr         String    @default("DRAFT") @map("status_pr")
+  statusPa         String?   @map("status_pa")
+  statusPo         String?   @map("status_po")
+  nomorPo          String?   @map("nomor_po")
+  poApproved       Boolean   @default(false) @map("po_approved")
+  etaFoom          DateTime? @map("eta_foom")
+  linkGr           String?   @map("link_gr")
+  tanggalTerima    DateTime? @map("tanggal_terima") // Kapan Terima
+  isStocked        Boolean   @default(false) @map("is_stocked")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  sparepart        Sparepart? @relation(fields: [sparepartId], references: [id])
+
+  @@map("procurement_tracking")
+}
+

@@ -4,102 +4,102 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 type Sparepart = {
   id: string;
   nama: string;
-  kategoriId: number | null;
-  kategori?: { nama: string } | null;
   uom: string;
   lokasi: string | null;
   harga: number;
   minQty: number;
-  maxLeadTime: number;
-  avgLeadTime: number;
-  aktif: boolean;
-  purchasingStatus: 'NONE' | 'PR' | 'PO';
-  purchasingQty: number;
-  purchasingNoPr: string | null;
-  purchasingNoPo: string | null;
-  prDate: string | null;
-  poDate: string | null;
-  currentStock: number;
 };
 
-type CartItem = {
-  id: string;
-  nama: string;
-  uom: string;
+type TrackingItem = {
+  id: number;
+  fbIndex: number | null;
+  originalName: string;
+  sparepartId: string | null;
+  keterangan: string | null;
+  penggunaanBulan: number | null;
+  kontrak3Bulan: boolean;
+  tanggalList: string;
   qty: number;
-  harga: number;
+  productCategory: string | null;
+  reason: string | null;
+  urgency: string;
+  linkReferences: string | null;
+  vendor: string | null;
+  harga: number | null;
+  nomorPr: string | null;
+  statusPr: string;
+  statusPa: string | null;
+  statusPo: string | null;
+  nomorPo: string | null;
+  poApproved: boolean;
+  etaFoom: string | null;
+  linkGr: string | null;
+  tanggalTerima: string | null;
+  isStocked: boolean;
+  sparepart?: Sparepart | null;
 };
 
-export default function ProcurementPage() {
+export default function ProcurementTrackingPage() {
+  const [items, setItems] = useState<TrackingItem[]>([]);
   const [spareparts, setSpareparts] = useState<Sparepart[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-
-  // Utility to format date for date inputs (YYYY-MM-DD)
-  function getLocalDateString(date: Date = new Date()) {
-    const tzoffset = date.getTimezoneOffset() * 60000;
-    return new Date(date.getTime() - tzoffset).toISOString().slice(0, 10);
-  }
-
-  // Search & input form state
-  const [searchText, setSearchText] = useState('');
-  const [selectedSp, setSelectedSp] = useState<Sparepart | null>(null);
-  const [targetStatus, setTargetStatus] = useState<'PR' | 'PO'>('PR');
-  const [purchasingQty, setPurchasingQty] = useState<number>(1);
-  const [formNoPr, setFormNoPr] = useState('');
-  const [formNoPo, setFormNoPo] = useState('');
-  const [formDate, setFormDate] = useState(getLocalDateString());
-  const [showDropdown, setShowDropdown] = useState(false);
-
-  // Cart state
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-
-  // Tabs state
-  const [activeTab, setActiveTab] = useState<'PR' | 'PO'>('PR');
-
-  // Edit Modal states
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editingSp, setEditingSp] = useState<Sparepart | null>(null);
-  const [editQty, setEditQty] = useState(1);
-  const [editNoPr, setEditNoPr] = useState('');
-  const [editNoPo, setEditNoPo] = useState('');
-  const [editPrDate, setEditPrDate] = useState('');
-  const [editPoDate, setEditPoDate] = useState('');
-  // editPrDate & editPoDate use YYYY-MM-DD format
-
-  // Upgrade Modal states
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [upgradingSp, setUpgradingSp] = useState<Sparepart | null>(null);
-  const [upgradeNoPo, setUpgradeNoPo] = useState('');
-  const [upgradePoDate, setUpgradePoDate] = useState('');  // YYYY-MM-DD
-
-  // Receive Modal states
+  
+  // Import states
+  const [showImportBox, setShowImportBox] = useState(false);
+  const [csvText, setCsvText] = useState('');
+  const [sheetUrl, setSheetUrl] = useState('');
+  const [importStatus, setImportStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+  
+  // Filter & Search states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [urgencyFilter, setUrgencyFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ACTIVE'); // ACTIVE | ALL | RECEIVED
+  const [categoryFilter, setCategoryFilter] = useState('');
+  
+  // Tabs for main view
+  const [activeTab, setActiveTab] = useState<'ACTIVE' | 'RECEIVED' | 'ALL'>('ACTIVE');
+  
+  // Link Modal States
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [linkingItem, setLinkingItem] = useState<TrackingItem | null>(null);
+  const [linkSearch, setLinkSearch] = useState('');
+  
+  // Receive Modal States
   const [showReceiveModal, setShowReceiveModal] = useState(false);
-  const [receivingSp, setReceivingSp] = useState<Sparepart | null>(null);
+  const [receivingItem, setReceivingItem] = useState<TrackingItem | null>(null);
   const [receiveDate, setReceiveDate] = useState(new Date().toISOString().split('T')[0]);
   const [receivePrice, setReceivePrice] = useState(0);
-  const [receiveType, setReceiveType] = useState('MTC');
   const [receiveVendor, setReceiveVendor] = useState('');
-
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [isStocked, setIsStocked] = useState(true); // true = Restock, false = Direct Use
 
   useEffect(() => {
     fetchData();
-  }, []);
-
-  // Close dropdown on click outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowDropdown(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    fetchSpareparts();
   }, []);
 
   async function fetchData() {
     setLoading(true);
+    try {
+      const showArchived = activeTab === 'RECEIVED';
+      const res = await fetch(`/api/mtc/procurement?archived=${showArchived}`);
+      const json = await res.json();
+      if (json.success) {
+        setItems(json.data || []);
+      }
+    } catch (e) {
+      console.error('Gagal mengambil data pengadaan', e);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Refetch when tab changes
+  useEffect(() => {
+    fetchData();
+  }, [activeTab]);
+
+  async function fetchSpareparts() {
     try {
       const res = await fetch('/api/mtc/master/sparepart');
       const json = await res.json();
@@ -107,305 +107,195 @@ export default function ProcurementPage() {
         setSpareparts(json.data || []);
       }
     } catch (e) {
-      console.error('Gagal mengambil data sparepart', e);
-    } finally {
-      setLoading(false);
+      console.error('Gagal mengambil master sparepart', e);
     }
   }
 
-  // Filter spareparts for autocomplete search (only show active and not in PR/PO status unless they choose it)
-  const filteredSuggestions = useMemo(() => {
-    if (!searchText.trim()) {
-      return spareparts.filter(sp => sp.aktif && sp.purchasingStatus === 'NONE').slice(0, 10);
-    }
-    const q = searchText.toLowerCase();
-    return spareparts
-      .filter(sp => sp.aktif &&
-        (sp.nama.toLowerCase().includes(q) ||
-          sp.id.toLowerCase().includes(q) ||
-          (sp.lokasi && sp.lokasi.toLowerCase().includes(q)))
-      )
-      .slice(0, 10);
-  }, [searchText, spareparts]);
-
-  // Items currently under PR
-  const prItems = useMemo(() => {
-    return spareparts.filter(sp => sp.purchasingStatus === 'PR');
-  }, [spareparts]);
-
-  // Items currently under PO
-  const poItems = useMemo(() => {
-    return spareparts.filter(sp => sp.purchasingStatus === 'PO');
-  }, [spareparts]);
-
-  const totalPrEstimasi = useMemo(() => {
-    return prItems.reduce((sum, item) => sum + ((Number(item.harga) || 0) * (item.purchasingQty || 1)), 0);
-  }, [prItems]);
-
-  const totalPoEstimasi = useMemo(() => {
-    return poItems.reduce((sum, item) => sum + ((Number(item.harga) || 0) * (item.purchasingQty || 1)), 0);
-  }, [poItems]);
-
-  async function updateStatus(itemId: string, newStatus: 'NONE' | 'PR' | 'PO', qty?: number) {
-    setActionLoading(itemId);
+  // Handle CSV sync/import
+  async function handleImportSync(e: React.FormEvent) {
+    e.preventDefault();
+    setActionLoading('import');
+    setImportStatus(null);
     try {
-      const res = await fetch('/api/mtc/master/sparepart', {
-        method: 'PUT',
+      const res = await fetch('/api/mtc/procurement/import', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          id: itemId, 
-          purchasingStatus: newStatus,
-          ...(qty !== undefined ? { purchasingQty: qty } : {})
+        body: JSON.stringify({ csvText, sheetUrl }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setImportStatus({ type: 'success', msg: json.data.msg || 'Sinkronisasi berhasil!' });
+        setCsvText('');
+        setSheetUrl('');
+        await fetchData();
+        await fetchSpareparts();
+        setTimeout(() => setShowImportBox(false), 2000);
+      } else {
+        setImportStatus({ type: 'error', msg: json.error || 'Sinkronisasi gagal.' });
+      }
+    } catch (err: any) {
+      setImportStatus({ type: 'error', msg: 'Terjadi kesalahan jaringan.' });
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  // Handle direct file select
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target?.result) {
+        setCsvText(event.target.result as string);
+        setImportStatus({ type: 'success', msg: `Berkas ${file.name} berhasil dibaca. Klik tombol Sync di bawah untuk menyimpan.` });
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  // Handle Goods Receipt (Terima Barang)
+  async function handleReceiveSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!receivingItem) return;
+    
+    setActionLoading(`receive-${receivingItem.id}`);
+    try {
+      const res = await fetch('/api/mtc/procurement/receive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: receivingItem.id,
+          tanggalTerima: receiveDate,
+          isStocked: isStocked && receivingItem.sparepartId != null,
+          harga: receivePrice,
+          vendor: receiveVendor,
         }),
       });
       const json = await res.json();
       if (json.success) {
-        await fetchData();
-        if (selectedSp && selectedSp.id === itemId) {
-          setSelectedSp(null);
-          setSearchText('');
-        }
-      } else {
-        alert('Gagal memperbarui status pengadaan: ' + (json.message || 'Error'));
-      }
-    } catch (e) {
-      alert('Terjadi kesalahan koneksi');
-    } finally {
-      setActionLoading(null);
-    }
-  }
-
-  function handleAddToCart(e: React.FormEvent) {
-    e.preventDefault();
-    if (!selectedSp) {
-      alert('Silakan pilih suku cadang terlebih dahulu');
-      return;
-    }
-    const existingIndex = cartItems.findIndex(item => item.id === selectedSp.id);
-    if (existingIndex > -1) {
-      const updated = [...cartItems];
-      updated[existingIndex].qty += purchasingQty;
-      setCartItems(updated);
-    } else {
-      setCartItems([
-        ...cartItems,
-        {
-          id: selectedSp.id,
-          nama: selectedSp.nama,
-          uom: selectedSp.uom,
-          qty: purchasingQty,
-          harga: Number(selectedSp.harga) || 0
-        }
-      ]);
-    }
-    setSelectedSp(null);
-    setSearchText('');
-    setPurchasingQty(1);
-  }
-
-  async function handleSaveBulkProcurement(e: React.FormEvent) {
-    e.preventDefault();
-    if (cartItems.length === 0) {
-      alert('Daftar barang pengadaan kosong. Silakan tambah barang terlebih dahulu');
-      return;
-    }
-
-    setActionLoading('bulk-save');
-    try {
-      const isPr = targetStatus === 'PR';
-      const docNo = isPr ? formNoPr : formNoPo;
-
-      for (const item of cartItems) {
-        const payload = {
-          id: item.id,
-          purchasingStatus: targetStatus,
-          purchasingQty: item.qty,
-          purchasingNoPr: isPr ? docNo : null,
-          purchasingNoPo: !isPr ? docNo : null,
-          prDate: isPr ? new Date(formDate + 'T00:00:00').toISOString() : null,
-          poDate: !isPr ? new Date(formDate + 'T00:00:00').toISOString() : null,
-        };
-
-        const res = await fetch('/api/mtc/master/sparepart', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        const json = await res.json();
-        if (!json.success) {
-          throw new Error(json.message || `Gagal menyimpan ${item.nama}`);
-        }
-      }
-
-      alert(`Berhasil menyimpan ${cartItems.length} pengadaan baru!`);
-      await fetchData();
-      setCartItems([]);
-      setFormNoPr('');
-      setFormNoPo('');
-      setFormDate(getLocalDateString());
-      setActiveTab(targetStatus);
-    } catch (err: any) {
-      alert('Terjadi kesalahan saat menyimpan pengadaan: ' + err.message);
-    } finally {
-      setActionLoading(null);
-    }
-  }
-
-  function handleRemoveFromCart(id: string) {
-    setCartItems(cartItems.filter(item => item.id !== id));
-  }
-
-  function handleUpdateCartQty(id: string, delta: number) {
-    setCartItems(
-      cartItems.map(item => {
-        if (item.id === id) {
-          return { ...item, qty: Math.max(1, item.qty + delta) };
-        }
-        return item;
-      })
-    );
-  }
-
-  async function handleEditSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!editingSp) return;
-
-    setActionLoading(editingSp.id);
-    try {
-      const payload = {
-        id: editingSp.id,
-        purchasingQty: editQty,
-        purchasingNoPr: editNoPr || null,
-        purchasingNoPo: editNoPo || null,
-        prDate: editPrDate ? new Date(editPrDate + 'T00:00:00').toISOString() : null,
-        poDate: editPoDate ? new Date(editPoDate + 'T00:00:00').toISOString() : null,
-      };
-
-      const res = await fetch('/api/mtc/master/sparepart', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const json = await res.json();
-      if (json.success) {
-        setShowEditModal(false);
-        setEditingSp(null);
+        alert(json.data.msg || 'Penerimaan berhasil dicatat!');
+        setShowReceiveModal(false);
+        setReceivingItem(null);
         await fetchData();
       } else {
-        alert('Gagal mengedit pengadaan: ' + (json.message || 'Error'));
+        alert(`Gagal: ${json.error}`);
       }
     } catch (err) {
-      alert('Terjadi kesalahan koneksi');
+      alert('Terjadi kesalahan koneksi jaringan.');
     } finally {
       setActionLoading(null);
     }
   }
 
-  async function handleUpgradeSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!upgradingSp) return;
-
-    setActionLoading(upgradingSp.id);
+  // Handle link manual sparepart
+  async function handleLinkSparepart(sparepartId: string) {
+    if (!linkingItem) return;
+    setActionLoading(`link-${linkingItem.id}`);
     try {
-      const payload = {
-        id: upgradingSp.id,
-        purchasingStatus: 'PO',
-        purchasingQty: upgradingSp.purchasingQty,
-        purchasingNoPr: upgradingSp.purchasingNoPr,
-        purchasingNoPo: upgradeNoPo || null,
-        poDate: upgradePoDate ? new Date(upgradePoDate + 'T00:00:00').toISOString() : new Date().toISOString(),
-      };
-
-      const res = await fetch('/api/mtc/master/sparepart', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const json = await res.json();
-      if (json.success) {
-        setShowUpgradeModal(false);
-        setUpgradingSp(null);
-        setUpgradeNoPo('');
-        setActiveTab('PO');
-        await fetchData();
-      } else {
-        alert('Gagal memproses upgrade: ' + (json.message || 'Error'));
-      }
-    } catch (err) {
-      alert('Terjadi kesalahan koneksi');
-    } finally {
-      setActionLoading(null);
-    }
-  }
-
-  async function handleReceiveSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!receivingSp) return;
-
-    setActionLoading(receivingSp.id);
-    try {
-      const payload = {
-        jenis: 'existing',
-        tanggal: receiveDate,
-        purchaseType: receiveType || null,
-        vendor: receiveVendor || null,
-        items: [
-          {
-            sparepartId: receivingSp.id,
-            qty: receivingSp.purchasingQty || 1,
-            harga: Number(receivePrice) || 0
-          }
-        ]
-      };
-
-      const res = await fetch('/api/mtc/stock/in', {
+      const res = await fetch('/api/mtc/procurement/import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({
+          csvText: `Fb,Original Material Name,MTC Item Name (ODOO),Qty\n${linkingItem.fbIndex || ''},"${linkingItem.originalName}","${spareparts.find(s => s.id === sparepartId)?.nama || ''}",${linkingItem.qty}`,
+        }),
       });
       const json = await res.json();
       if (json.success) {
-        alert(`Berhasil menerima ${receivingSp.nama} sebanyak ${receivingSp.purchasingQty || 1} ${receivingSp.uom}`);
-        setShowReceiveModal(false);
-        setReceivingSp(null);
+        setShowLinkModal(false);
+        setLinkingItem(null);
+        setLinkSearch('');
         await fetchData();
       } else {
-        alert('Gagal mencatat penerimaan: ' + (json.message || 'Error'));
+        alert(`Gagal menghubungkan: ${json.error}`);
       }
-    } catch (err) {
-      alert('Terjadi kesalahan koneksi');
+    } catch (e) {
+      alert('Koneksi bermasalah.');
     } finally {
       setActionLoading(null);
     }
   }
 
-  function openEditModal(sp: Sparepart) {
-    setEditingSp(sp);
-    setEditQty(sp.purchasingQty || 1);
-    setEditNoPr(sp.purchasingNoPr || '');
-    setEditNoPo(sp.purchasingNoPo || '');
-    setEditPrDate(sp.prDate ? getLocalDateString(new Date(sp.prDate)) : '');
-    setEditPoDate(sp.poDate ? getLocalDateString(new Date(sp.poDate)) : '');
-    setShowEditModal(true);
-  }
-
-  function openUpgradeModal(sp: Sparepart) {
-    setUpgradingSp(sp);
-    setUpgradeNoPo('');
-    setUpgradePoDate(getLocalDateString());
-    setShowUpgradeModal(true);
-  }
-
-  function openReceiveModal(sp: Sparepart) {
-    setReceivingSp(sp);
-    setReceivePrice(Number(sp.harga) || 0);
+  // Open modals
+  function openReceiveModal(item: TrackingItem) {
+    setReceivingItem(item);
+    setReceivePrice(Number(item.harga) || 0);
+    setReceiveVendor(item.vendor || '');
     setReceiveDate(new Date().toISOString().split('T')[0]);
-    setReceiveType('MTC');
-    setReceiveVendor('');
+    setIsStocked(item.sparepartId != null);
     setShowReceiveModal(true);
   }
 
-  function fmtRupiah(value: number): string {
+  function openLinkModal(item: TrackingItem) {
+    setLinkingItem(item);
+    setLinkSearch('');
+    setShowLinkModal(true);
+  }
+
+  // Filter items in memory
+  const filteredItems = useMemo(() => {
+    return items.filter(item => {
+      // Search query filter
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchName = item.originalName.toLowerCase().includes(q);
+        const matchPr = item.nomorPr?.toLowerCase().includes(q);
+        const matchPo = item.nomorPo?.toLowerCase().includes(q);
+        const matchOdoo = item.sparepart?.nama.toLowerCase().includes(q);
+        if (!matchName && !matchPr && !matchPo && !matchOdoo) return false;
+      }
+      
+      // Urgency filter
+      if (urgencyFilter && item.urgency !== urgencyFilter) return false;
+      
+      // Kategori filter
+      if (categoryFilter && item.productCategory !== categoryFilter) return false;
+
+      return true;
+    });
+  }, [items, searchQuery, urgencyFilter, categoryFilter]);
+
+  // Categories list for dropdown
+  const categoriesList = useMemo(() => {
+    const set = new Set<string>();
+    items.forEach(item => {
+      if (item.productCategory) set.add(item.productCategory);
+    });
+    return Array.from(set).sort();
+  }, [items]);
+
+  // Lead time stats & overdue counts
+  const stats = useMemo(() => {
+    const active = items.filter(i => i.statusPo !== 'DONE');
+    const received = items.filter(i => i.statusPo === 'DONE' && i.tanggalTerima && i.tanggalList);
+    
+    // Average lead time
+    let totalDays = 0;
+    received.forEach(item => {
+      const diff = new Date(item.tanggalTerima!).getTime() - new Date(item.tanggalList).getTime();
+      totalDays += Math.max(1, diff / (1000 * 60 * 60 * 24));
+    });
+    const avgLeadTime = received.length > 0 ? (totalDays / received.length).toFixed(1) : '—';
+
+    // Urgent items
+    const urgentCount = active.filter(i => i.urgency === 'Urgent').length;
+
+    // ETA Alerts (Overdue active items)
+    const today = new Date().getTime();
+    const etaOverdueCount = active.filter(i => {
+      if (!i.etaFoom) return false;
+      return new Date(i.etaFoom).getTime() < today;
+    }).length;
+
+    const prCount = active.filter(i => i.statusPr === 'CONTINUE' && !i.nomorPo).length;
+    const poCount = active.filter(i => i.nomorPo && i.statusPo !== 'DONE').length;
+
+    return { avgLeadTime, urgentCount, etaOverdueCount, prCount, poCount };
+  }, [items]);
+
+  // Format currency helper
+  function fmtRupiah(value: number | null): string {
+    if (value == null) return '—';
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
       currency: 'IDR',
@@ -414,892 +304,456 @@ export default function ProcurementPage() {
     }).format(value);
   }
 
-  function getDaysElapsed(dateStr: string | null): number {
-    if (!dateStr) return 0;
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffTime = now.getTime() - date.getTime();
-    const diffDays = diffTime / (1000 * 60 * 60 * 24);
-    return Math.max(0, parseFloat(diffDays.toFixed(1)));
+  // Days elapsed helper
+  function getDaysElapsed(startStr: string, endStr: string | null): string {
+    const start = new Date(startStr);
+    const end = endStr ? new Date(endStr) : new Date();
+    const diff = end.getTime() - start.getTime();
+    const days = Math.max(0, parseFloat((diff / (1000 * 60 * 60 * 24)).toFixed(1)));
+    return `${days} Hari`;
   }
 
   return (
     <>
-      <div className="page-header">
-        <div className="page-title">⏳ Manajemen PO & PR</div>
-        <div className="page-sub">Form pencatatan pengadaan, estimasi lead time, dan pemantauan status barang masuk.</div>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+        <div>
+          <div className="page-title">🔍 Pelacakan PR / PO (SCM Sinc)</div>
+          <div className="page-sub">Sinkronisasi status pengadaan langsung dari spreadsheet Procurement untuk integrasi stok MTC otomatis.</div>
+        </div>
+        <div>
+          <button
+            type="button"
+            className="btn btn-pur"
+            onClick={() => {
+              setShowImportBox(!showImportBox);
+              setImportStatus(null);
+            }}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700 }}
+          >
+            📥 {showImportBox ? 'Tutup Panel Sync' : 'Sinkronkan Google Sheets / CSV'}
+          </button>
+        </div>
       </div>
 
       <div className="page-body">
         
-        {/* STATS OVERVIEW CARDS */}
-        <div className="stats-grid" style={{ marginBottom: 24 }}>
-          <div className="stat-card stat-ylw" style={{ cursor: 'pointer' }} onClick={() => setActiveTab('PR')}>
-            <div className="stat-label">Barang Sedang PR</div>
-            <div className="stat-value">{prItems.length}</div>
-            <div className="stat-sub">Nilai Estimasi: <span style={{ fontWeight: 700 }}>{fmtRupiah(totalPrEstimasi)}</span></div>
-          </div>
-          <div className="stat-card stat-blu" style={{ cursor: 'pointer' }} onClick={() => setActiveTab('PO')}>
-            <div className="stat-label">Barang Sudah PO</div>
-            <div className="stat-value">{poItems.length}</div>
-            <div className="stat-sub">Nilai Estimasi: <span style={{ fontWeight: 700 }}>{fmtRupiah(totalPoEstimasi)}</span></div>
-          </div>
-          <div className="stat-card stat-grn">
-            <div className="stat-label">Total Pengadaan Aktif</div>
-            <div className="stat-value" style={{ color: 'var(--grn)' }}>{prItems.length + poItems.length}</div>
-            <div className="stat-sub">Membantu kalkulasi lead-time kedatangan</div>
-          </div>
-        </div>
-
-        {/* INPUT PO & PR FORM CARD */}
-        <div className="card" style={{ marginBottom: 24 }}>
-          <div className="card-header" style={{ borderBottom: '1px solid var(--br)' }}>
-            <div className="card-title">📝 Input Transaksi Pengadaan Baru</div>
-          </div>
-          <div style={{ padding: '24px 20px' }}>
-            {/* Input Row Form */}
-            <form onSubmit={handleAddToCart} style={{ display: 'grid', gridTemplateColumns: '1.8fr 1.2fr 0.6fr 1.2fr', gap: '20px', alignItems: 'end' }} className="po-pr-form">
-              {/* Autocomplete Sparepart Input */}
-              <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 6 }} ref={dropdownRef}>
-                <label className="form-label" style={{ fontWeight: 800, fontSize: 10, letterSpacing: '0.05em', color: 'var(--tx3)', textTransform: 'uppercase' }}>
-                  Cari Suku Cadang <span style={{ color: 'var(--red)' }}>*</span>
-                </label>
-                <div className="search-bar" style={{ width: '100%', marginBottom: 0 }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                  </svg>
+        {/* IMPORT / SYNC PANEL CONTAINER */}
+        {showImportBox && (
+          <div className="card" style={{ marginBottom: 24, border: '1px solid var(--pur)', background: 'rgba(107, 33, 168, 0.05)', animation: 'fadeIn 0.2s ease-out' }}>
+            <div className="card-header"><div className="card-title" style={{ color: 'var(--pur)' }}>🔄 Sinkronisasi Spreadsheet SCM</div></div>
+            <form onSubmit={handleImportSync} style={{ padding: '0 20px 20px 20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 16 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <label className="form-label" style={{ fontWeight: 800 }}>Opsi 1: Tempel Link Google Sheets</label>
                   <input
                     type="text"
-                    placeholder="Ketik Nama, ID, atau Lokasi Suku Cadang..."
-                    value={searchText}
+                    className="form-input"
+                    placeholder="Tempel tautan / URL Google Sheets Pelacakan SCM di sini..."
+                    value={sheetUrl}
                     onChange={(e) => {
-                      setSearchText(e.target.value);
-                      setSelectedSp(null);
-                      setShowDropdown(true);
+                      setSheetUrl(e.target.value);
+                      setCsvText('');
                     }}
-                    onFocus={() => setShowDropdown(true)}
                   />
-                  {searchText && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSearchText('');
-                        setSelectedSp(null);
-                      }}
-                      style={{ background: 'none', border: 'none', color: 'var(--tx3)', cursor: 'pointer', fontSize: 18 }}
+                  <span style={{ fontSize: 10, color: 'var(--tx3)' }}>
+                    💡 Pastikan Spreadsheet disetel ke <strong>&quot;Anyone with the link can view&quot;</strong> (Siapa saja dengan organisasi kantor dapat melihat).
+                  </span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <label className="form-label" style={{ fontWeight: 800 }}>Opsi 2: Unggah Berkas CSV</label>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <input
+                      type="file"
+                      accept=".csv"
+                      onChange={handleFileChange}
+                      style={{ display: 'none' }}
+                      id="csv-file-picker"
+                    />
+                    <label
+                      htmlFor="csv-file-picker"
+                      className="btn btn-ghost"
+                      style={{ flex: 1, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', height: 40 }}
                     >
-                      ×
-                    </button>
+                      📁 Pilih Berkas CSV Lokal
+                    </label>
+                  </div>
+                  {csvText && (
+                    <span style={{ fontSize: 10, color: 'var(--grn)', fontWeight: 700 }}>
+                      ✓ Berkas CSV siap disinkronkan ({csvText.length} bytes terdeteksi).
+                    </span>
                   )}
                 </div>
-
-                {/* Suggestions List */}
-                {showDropdown && filteredSuggestions.length > 0 && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: '100%',
-                      left: 0,
-                      right: 0,
-                      background: 'var(--sf3)',
-                      border: '1px solid var(--br)',
-                      borderRadius: 8,
-                      boxShadow: 'var(--shadow)',
-                      zIndex: 100,
-                      maxHeight: 280,
-                      overflowY: 'auto',
-                      marginTop: 4,
-                    }}
-                  >
-                    {filteredSuggestions.map((sp) => (
-                      <div
-                        key={sp.id}
-                        onClick={() => {
-                          setSelectedSp(sp);
-                          setSearchText(sp.nama);
-                          setShowDropdown(false);
-                        }}
-                        style={{
-                          padding: '10px 14px',
-                          cursor: 'pointer',
-                          borderBottom: '1px solid var(--br)',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          transition: 'background 0.15s ease',
-                        }}
-                        className="suggestion-item"
-                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--sf2)')}
-                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                      >
-                        <div>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--tx)' }}>{sp.nama}</div>
-                          <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 2 }}>
-                            ID: <span className="text-mono">{sp.id}</span> · SLOC: <span className="badge badge-blu" style={{ padding: '1px 5px', fontSize: 8 }}>{sp.lokasi || '—'}</span>
-                          </div>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: sp.currentStock <= sp.minQty ? 'var(--red)' : 'var(--grn)' }}>
-                            Stok: {sp.currentStock} {sp.uom}
-                          </div>
-                          {sp.purchasingStatus !== 'NONE' && (
-                            <span
-                              className={`badge ${sp.purchasingStatus === 'PR' ? 'badge-ylw' : 'badge-blu'}`}
-                              style={{ fontSize: 8, marginTop: 4, display: 'inline-block' }}
-                            >
-                              {sp.purchasingStatus === 'PR' ? '⏳ Sedang PR' : '📦 Sudah PO'}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {showDropdown && searchText.trim() && filteredSuggestions.length === 0 && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: '100%',
-                      left: 0,
-                      right: 0,
-                      background: 'var(--sf3)',
-                      border: '1px solid var(--br)',
-                      borderRadius: 8,
-                      padding: '14px',
-                      color: 'var(--tx3)',
-                      textAlign: 'center',
-                      zIndex: 100,
-                      marginTop: 4,
-                    }}
-                  >
-                    Tidak ada suku cadang cocok ditemukan
-                  </div>
-                )}
               </div>
 
-              {/* Set Status Pengadaan */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label className="form-label" style={{ fontWeight: 800, fontSize: 10, letterSpacing: '0.05em', color: 'var(--tx3)', textTransform: 'uppercase' }}>
-                  Set Status Pengadaan <span style={{ color: 'var(--red)' }}>*</span>
-                </label>
-                <div style={{ display: 'flex', background: 'var(--sf2)', padding: 4, borderRadius: 8, border: '1px solid var(--br)', height: '40px' }}>
-                  <button
-                    type="button"
-                    onClick={() => setTargetStatus('PR')}
-                    style={{
-                      flex: 1,
-                      padding: '4px 12px',
-                      borderRadius: 6,
-                      border: 'none',
-                      fontWeight: 700,
-                      fontSize: 12,
-                      cursor: 'pointer',
-                      background: targetStatus === 'PR' ? 'var(--ylw-d)' : 'transparent',
-                      color: targetStatus === 'PR' ? 'var(--ylw)' : 'var(--tx3)',
-                      transition: 'all 0.2s ease',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 6
-                    }}
-                  >
-                    ⏳ PR
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTargetStatus('PO')}
-                    style={{
-                      flex: 1,
-                      padding: '4px 12px',
-                      borderRadius: 6,
-                      border: 'none',
-                      fontWeight: 700,
-                      fontSize: 12,
-                      cursor: 'pointer',
-                      background: targetStatus === 'PO' ? 'var(--blu-d)' : 'transparent',
-                      color: targetStatus === 'PO' ? 'var(--blu)' : 'var(--tx3)',
-                      transition: 'all 0.2s ease',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 6
-                    }}
-                  >
-                    📦 PO
-                  </button>
+              {importStatus && (
+                <div className={`alert ${importStatus.type === 'success' ? 'alert-grn' : 'alert-red'}`} style={{ marginBottom: 16 }}>
+                  {importStatus.msg}
                 </div>
-              </div>
+              )}
 
-              {/* Jumlah / Qty Pengadaan */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label className="form-label" style={{ fontWeight: 800, fontSize: 10, letterSpacing: '0.05em', color: 'var(--tx3)', textTransform: 'uppercase' }}>
-                  Jumlah / Qty <span style={{ color: 'var(--red)' }}>*</span>
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  required
-                  className="form-input"
-                  value={purchasingQty}
-                  onChange={(e) => setPurchasingQty(Math.max(1, parseInt(e.target.value) || 1))}
-                  style={{ height: '40px' }}
-                />
-              </div>
-
-              {/* Button Add To Cart */}
-              <div style={{ height: '40px', display: 'flex', alignItems: 'end' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={() => {
+                    setShowImportBox(false);
+                    setCsvText('');
+                    setSheetUrl('');
+                  }}
+                >
+                  Batal
+                </button>
                 <button
                   type="submit"
                   className="btn btn-pur"
-                  disabled={!selectedSp}
-                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, height: '40px', fontWeight: 700 }}
+                  disabled={actionLoading === 'import' || (!csvText.trim() && !sheetUrl.trim())}
+                  style={{ fontWeight: 700, padding: '0 24px' }}
                 >
-                  ➕ Tambah ke Daftar
+                  {actionLoading === 'import' ? 'Sinkronisasi...' : '🔄 Jalankan Sinkronisasi'}
                 </button>
               </div>
-
-              {/* Detail Selected Sparepart Summary */}
-              {selectedSp && (
-                <div
-                  style={{
-                    gridColumn: '1 / -1',
-                    background: 'var(--sf2)',
-                    border: '1px solid var(--br)',
-                    borderRadius: 8,
-                    padding: '16px 20px',
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                    gap: 16,
-                    marginTop: 10,
-                    animation: 'fadeIn 0.2s ease-out',
-                  }}
-                >
-                  <div>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--tx3)', textTransform: 'uppercase' }}>Suku Cadang terpilih</div>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--tx)', marginTop: 4 }}>{selectedSp.nama}</div>
-                    <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 2 }}>ID: {selectedSp.id}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--tx3)', textTransform: 'uppercase' }}>Stok Saat Ini</div>
-                    <div style={{ fontSize: 15, fontWeight: 800, marginTop: 4, color: selectedSp.currentStock <= selectedSp.minQty ? 'var(--red)' : 'var(--grn)' }}>
-                      {selectedSp.currentStock} {selectedSp.uom}
-                    </div>
-                    <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 2 }}>Safety Limit: {selectedSp.minQty} {selectedSp.uom}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--tx3)', textTransform: 'uppercase' }}>Lokasi & Harga</div>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--tx)', marginTop: 4 }}>{selectedSp.lokasi || '—'}</div>
-                    <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 2 }}>{fmtRupiah(selectedSp.harga)} / Unit</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--tx3)', textTransform: 'uppercase' }}>Rata-rata Waktu Datang</div>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--pur)', marginTop: 4 }}>{selectedSp.avgLeadTime > 0 ? `${selectedSp.avgLeadTime.toFixed(1)} Hari` : 'Belum tercatat'}</div>
-                    <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 2 }}>Maks lead time: {selectedSp.maxLeadTime} Hari</div>
-                  </div>
-                </div>
-              )}
             </form>
+          </div>
+        )}
 
-            {/* Procurement Cart UI Table */}
-            {cartItems.length > 0 && (
-              <div style={{ marginTop: 30, animation: 'fadeIn 0.3s ease-out', borderTop: '1px solid var(--br)', paddingTop: 24 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--pur)' }}>🛒 Daftar Item Pengadaan ({cartItems.length})</div>
-                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setCartItems([])} style={{ color: 'var(--red)' }}>
-                    Bersihkan Daftar
-                  </button>
-                </div>
-                <div className="table-wrap" style={{ marginBottom: 20 }}>
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Item ID</th>
-                        <th>Nama Suku Cadang</th>
-                        <th style={{ textAlign: 'center' }}>Jumlah / Qty</th>
-                        <th>Harga Satuan</th>
-                        <th>Subtotal</th>
-                        <th style={{ textAlign: 'right' }}>Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {cartItems.map((item) => (
-                        <tr key={item.id}>
-                          <td className="text-mono text-tiny text-muted">{item.id}</td>
-                          <td style={{ fontWeight: 600 }}>{item.nama}</td>
-                          <td style={{ textAlign: 'center' }}>
-                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                              <button
-                                type="button"
-                                onClick={() => handleUpdateCartQty(item.id, -1)}
-                                className="btn btn-ghost"
-                                style={{ padding: '0 8px', fontSize: 14, height: 24, minWidth: 24 }}
-                              >
-                                -
-                              </button>
-                              <span style={{ fontWeight: 700, fontSize: 13, minWidth: 24, display: 'inline-block', textAlign: 'center' }}>
-                                {item.qty} {item.uom}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => handleUpdateCartQty(item.id, 1)}
-                                className="btn btn-ghost"
-                                style={{ padding: '0 8px', fontSize: 14, height: 24, minWidth: 24 }}
-                              >
-                                +
-                              </button>
-                            </div>
-                          </td>
-                          <td>{fmtRupiah(item.harga)}</td>
-                          <td style={{ fontWeight: 700 }}>{fmtRupiah(item.harga * item.qty)}</td>
-                          <td style={{ textAlign: 'right' }}>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveFromCart(item.id)}
-                              style={{ background: 'none', border: 'none', color: 'var(--red)', fontSize: 18, cursor: 'pointer' }}
-                            >
-                              ×
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: 14, fontWeight: 800, marginBottom: 24 }}>
-                  <span>Total Estimasi: <span style={{ color: 'var(--pur)', fontSize: 16 }}>{fmtRupiah(cartItems.reduce((sum, item) => sum + (item.harga * item.qty), 0))}</span></span>
-                </div>
-
-                {/* Bulk Document & Date Details Form */}
-                <form onSubmit={handleSaveBulkProcurement} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', background: 'var(--sf2)', padding: '20px', borderRadius: 8, border: '1px solid var(--br)' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <label className="form-label" style={{ fontWeight: 700, fontSize: 12 }}>
-                      {targetStatus === 'PR' ? 'Nomor PR Dokumen' : 'Nomor PO Dokumen'} <span style={{ color: 'var(--tx3)' }}>(Opsional - Berlaku untuk Semua Item)</span>
-                    </label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      placeholder={targetStatus === 'PR' ? 'Masukkan Nomor PR (Contoh: PR-MTC-0529)' : 'Masukkan Nomor PO (Contoh: PO-MTC-0529)'}
-                      value={targetStatus === 'PR' ? formNoPr : formNoPo}
-                      onChange={(e) => targetStatus === 'PR' ? setFormNoPr(e.target.value) : setFormNoPo(e.target.value)}
-                      style={{ height: '40px' }}
-                    />
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <label className="form-label" style={{ fontWeight: 700, fontSize: 12 }}>
-                      Tanggal Pengadaan <span style={{ color: 'var(--red)' }}>*</span>
-                    </label>
-                    <input
-                      type="date"
-                      className="form-input"
-                      required
-                      value={formDate}
-                      onChange={(e) => setFormDate(e.target.value)}
-                      style={{ height: '40px' }}
-                    />
-                  </div>
-
-                  <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 12 }}>
-                    <button
-                      type="submit"
-                      className={`btn ${targetStatus === 'PR' ? 'btn-pur' : 'btn-blu'}`}
-                      disabled={actionLoading !== null}
-                      style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 28px', fontWeight: 700 }}
-                    >
-                      {actionLoading === 'bulk-save' ? 'Memproses Penyimpanan...' : `💾 Simpan Semua Pengadaan (${cartItems.length} Suku Cadang)`}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            )}
+        {/* METRICS & SUMMARY KPI CARDS */}
+        <div className="stats-grid" style={{ marginBottom: 24 }}>
+          <div className="stat-card stat-ylw" style={{ cursor: 'pointer' }} onClick={() => setActiveTab('ACTIVE')}>
+            <div className="stat-label">Barang Tahap PR</div>
+            <div className="stat-value">{stats.prCount}</div>
+            <div className="stat-sub">Menunggu PO diterbitkan vendor</div>
+          </div>
+          <div className="stat-card stat-blu" style={{ cursor: 'pointer' }} onClick={() => setActiveTab('ACTIVE')}>
+            <div className="stat-label">Barang Sudah PO</div>
+            <div className="stat-value">{stats.poCount}</div>
+            <div className="stat-sub">Sedang diproses / dalam pengiriman</div>
+          </div>
+          <div className="stat-card stat-red">
+            <div className="stat-label">Pengadaan URGENT</div>
+            <div className="stat-value" style={{ color: 'var(--red)' }}>{stats.urgentCount}</div>
+            <div className="stat-sub">{stats.etaOverdueCount} Item melewati ETA Foom ⚠️</div>
+          </div>
+          <div className="stat-card stat-grn" style={{ cursor: 'pointer' }} onClick={() => setActiveTab('RECEIVED')}>
+            <div className="stat-label">Rerata Lead-Time Pengadaan</div>
+            <div className="stat-value" style={{ color: 'var(--grn)' }}>{stats.avgLeadTime}</div>
+            <div className="stat-sub">Dihitung otomatis dari riwayat kedatangan</div>
           </div>
         </div>
 
-        {/* TABS COMPONENT FOR LISTING */}
-        <div className="card">
-          <div className="card-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div className="card-title">📝 Daftar Pemantauan Pengadaan Aktif</div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <span className="badge badge-ylw">{prItems.length} Menunggu PR</span>
-                <span className="badge badge-blu">{poItems.length} Menunggu PO</span>
-              </div>
+        {/* SEARCH & FILTERS CONTROLS */}
+        <div className="card" style={{ marginBottom: 20, padding: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 16 }}>
+            <div className="search-bar" style={{ width: '100%', marginBottom: 0 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input
+                type="text"
+                placeholder="Cari berdasarkan nama barang, nomor PR, PO, atau item Odoo..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
-            
-            {/* Custom Premium Tabs Navigation */}
-            <div style={{ display: 'flex', gap: 4, background: 'var(--sf2)', padding: 4, borderRadius: 8, alignSelf: 'flex-start' }}>
+
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <select
+                className="form-input form-select"
+                value={urgencyFilter}
+                onChange={(e) => setUrgencyFilter(e.target.value)}
+                style={{ height: '40px' }}
+              >
+                <option value="">— Urgensi (Semua) —</option>
+                <option value="Urgent">🚨 Urgent / Mendesak</option>
+                <option value="Normal">🟢 Normal</option>
+              </select>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <select
+                className="form-input form-select"
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                style={{ height: '40px' }}
+              >
+                <option value="">— Kategori (Semua) —</option>
+                {categoriesList.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Custom Tab Switcher */}
+            <div style={{ display: 'flex', background: 'var(--sf2)', padding: 4, borderRadius: 8, height: '40px', border: '1px solid var(--br)' }}>
               <button
                 type="button"
-                onClick={() => setActiveTab('PR')}
+                className={`ntab`}
+                onClick={() => setActiveTab('ACTIVE')}
                 style={{
-                  padding: '8px 20px',
-                  borderRadius: 6,
+                  flex: 1,
                   border: 'none',
-                  fontSize: 13,
+                  borderRadius: 6,
+                  fontSize: 11,
                   fontWeight: 700,
                   cursor: 'pointer',
-                  background: activeTab === 'PR' ? 'var(--ylw-d)' : 'transparent',
-                  color: activeTab === 'PR' ? 'var(--ylw)' : 'var(--tx2)',
-                  transition: 'all 0.15s ease',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
+                  background: activeTab === 'ACTIVE' ? 'var(--sf3)' : 'transparent',
+                  color: activeTab === 'ACTIVE' ? 'var(--tx)' : 'var(--tx3)',
+                  transition: 'all 0.15s'
                 }}
               >
-                ⏳ Barang Sedang PR ({prItems.length})
+                ⏳ Aktif
               </button>
               <button
                 type="button"
-                onClick={() => setActiveTab('PO')}
+                className={`ntab`}
+                onClick={() => setActiveTab('RECEIVED')}
                 style={{
-                  padding: '8px 20px',
-                  borderRadius: 6,
+                  flex: 1,
                   border: 'none',
-                  fontSize: 13,
+                  borderRadius: 6,
+                  fontSize: 11,
                   fontWeight: 700,
                   cursor: 'pointer',
-                  background: activeTab === 'PO' ? 'var(--blu-d)' : 'transparent',
-                  color: activeTab === 'PO' ? 'var(--blu)' : 'var(--tx2)',
-                  transition: 'all 0.15s ease',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
+                  background: activeTab === 'RECEIVED' ? 'var(--sf3)' : 'transparent',
+                  color: activeTab === 'RECEIVED' ? 'var(--tx)' : 'var(--tx3)',
+                  transition: 'all 0.15s'
                 }}
               >
-                📦 Barang Sudah PO ({poItems.length})
+                ✓ Diterima
               </button>
             </div>
           </div>
+        </div>
 
-          {/* TAB CONTENTS */}
+        {/* MAIN DATA TABLE */}
+        <div className="card">
           <div className="table-wrap" style={{ opacity: loading ? 0.6 : 1, overflowX: 'auto' }}>
-            {activeTab === 'PR' ? (
-              <table style={{ minWidth: 900 }}>
-                <thead>
-                  <tr>
-                    <th>Item ID</th>
-                    <th>Nama Suku Cadang</th>
-                    <th>No PR</th>
-                    <th style={{ textAlign: 'center' }}>Qty PR</th>
-                    <th>SLOC</th>
-                    <th>Stok Saat Ini</th>
-                    <th>Estimasi Biaya</th>
-                    <th>Tanggal PR</th>
-                    <th style={{ textAlign: 'center' }}>Hari Berjalan</th>
-                    <th style={{ textAlign: 'center' }}>Status / Lead-Time</th>
-                    <th style={{ textAlign: 'right' }}>Aksi Kelola</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {prItems.map((sp) => {
-                    const elapsed = getDaysElapsed(sp.prDate);
-                    const avg = sp.avgLeadTime;
-                    const isOverdue = (avg > 0 && elapsed > avg);
-                    return (
-                      <tr key={sp.id}>
-                        <td className="text-mono text-tiny text-muted">{sp.id}</td>
-                        <td style={{ fontWeight: 600 }}>{sp.nama}</td>
-                        <td>
-                          <span className="badge badge-blu" style={{ fontSize: 10 }}>{sp.purchasingNoPr || '—'}</span>
-                        </td>
-                        <td style={{ textAlign: 'center', fontWeight: 700 }}>
-                          <span className="badge badge-pur" style={{ fontSize: 11, padding: '4px 10px' }}>
-                            {sp.purchasingQty || 1} {sp.uom}
-                          </span>
-                        </td>
-                        <td>
-                          <span className="badge badge-blu" style={{ fontSize: 10 }}>{sp.lokasi || '—'}</span>
-                        </td>
-                        <td style={{ fontWeight: 700, color: sp.currentStock <= sp.minQty ? 'var(--red)' : 'var(--tx)' }}>
-                          {sp.currentStock} {sp.uom} <span className="text-tiny text-muted" style={{ fontWeight: 400 }}>/ min {sp.minQty}</span>
-                        </td>
-                        <td style={{ fontWeight: 600 }}>
-                          <div>{fmtRupiah((Number(sp.harga) || 0) * (sp.purchasingQty || 1))}</div>
-                          {(sp.purchasingQty || 1) > 1 && (
-                            <div style={{ fontSize: 9, color: 'var(--tx3)', fontWeight: 400 }}>
-                              {sp.purchasingQty} x {fmtRupiah(sp.harga)}
-                            </div>
-                          )}
-                        </td>
-                        <td className="text-tiny">
-                          {sp.prDate ? new Date(sp.prDate).toLocaleDateString('id-ID', {
-                            day: '2-digit', month: 'short', year: 'numeric'
-                          }) : '—'}
-                        </td>
-                        <td style={{ textAlign: 'center', fontWeight: 800, color: isOverdue ? 'var(--red)' : 'var(--tx)' }}>
-                          {elapsed} Hari
-                        </td>
-                        <td style={{ textAlign: 'center' }}>
-                          {isOverdue ? (
-                            <span className="badge badge-red" style={{ fontSize: 9, padding: '2px 8px', fontWeight: 800 }}>
-                              ⚠️ Overdue ({elapsed} &gt; {avg.toFixed(1)}d)
-                            </span>
-                          ) : avg > 0 ? (
-                            <span className="badge badge-grn" style={{ fontSize: 9, padding: '2px 8px', fontWeight: 700 }}>
-                              ✓ On Track (Avg {avg.toFixed(1)}d)
-                            </span>
-                          ) : (
-                            <span className="badge badge-pur" style={{ fontSize: 9, padding: '2px 8px' }}>
-                              Lead-time Baru
-                            </span>
-                          )}
-                        </td>
-                        <td style={{ textAlign: 'right' }}>
-                          <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
-                            <button
-                              type="button"
-                              className="btn btn-ghost btn-sm"
-                              onClick={() => openEditModal(sp)}
-                              style={{ color: 'var(--pur)', padding: '2px 6px' }}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-ghost btn-sm"
-                              onClick={() => updateStatus(sp.id, 'NONE')}
-                              disabled={actionLoading !== null}
-                              style={{ color: 'var(--red)', padding: '2px 6px' }}
-                            >
-                              Batal
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-blu btn-sm"
-                              onClick={() => openUpgradeModal(sp)}
-                              disabled={actionLoading !== null}
-                              style={{ padding: '4px 10px', fontSize: 11 }}
-                            >
-                              📦 Upgrade PO
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {prItems.length === 0 && !loading && (
-                    <tr>
-                      <td colSpan={11} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--tx3)' }}>
-                        <div style={{ fontSize: 36, marginBottom: 8 }}>⏳</div>
-                        <div>Tidak ada suku cadang dalam tahap PR (Requisition).</div>
+            <table style={{ minWidth: 1200 }}>
+              <thead>
+                <tr>
+                  <th style={{ width: 60 }}>Fb</th>
+                  <th style={{ minWidth: 220 }}>Nama Barang (Sheets)</th>
+                  <th style={{ minWidth: 200 }}>Item Master MTC (Odoo)</th>
+                  <th style={{ textAlign: 'center', width: 60 }}>Qty</th>
+                  <th>Keterangan</th>
+                  <th>Urgensi</th>
+                  <th>Nomor PR & PO</th>
+                  <th>Harga & Vendor</th>
+                  <th>ETA Foom</th>
+                  <th style={{ textAlign: 'center' }}>Hari Berjalan</th>
+                  <th style={{ textAlign: 'center', width: 80 }}>Odoo GR</th>
+                  <th style={{ textAlign: 'right', minWidth: 160 }}>Aksi Penerimaan</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredItems.map((item) => {
+                  const isUrgent = item.urgency === 'Urgent';
+                  const isReceived = item.statusPo === 'DONE';
+                  const hasEtaPassed = item.etaFoom && !isReceived && new Date(item.etaFoom).getTime() < new Date().getTime();
+
+                  return (
+                    <tr key={item.id} style={{ borderLeft: isUrgent && !isReceived ? '4px solid var(--red)' : 'none' }}>
+                      <td className="text-mono text-tiny text-muted" style={{ paddingLeft: isUrgent && !isReceived ? 12 : 16 }}>
+                        {item.fbIndex || '—'}
                       </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            ) : (
-              <table style={{ minWidth: 900 }}>
-                <thead>
-                  <tr>
-                    <th>Item ID</th>
-                    <th>Nama Suku Cadang</th>
-                    <th>No PO</th>
-                    <th style={{ textAlign: 'center' }}>Qty PO</th>
-                    <th>SLOC</th>
-                    <th>Stok Saat Ini</th>
-                    <th>Estimasi Biaya</th>
-                    <th>Tanggal PO</th>
-                    <th style={{ textAlign: 'center' }}>Hari Berjalan</th>
-                    <th style={{ textAlign: 'center' }}>Histori Lead-Time</th>
-                    <th style={{ textAlign: 'right' }}>Aksi Kelola</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {poItems.map((sp) => {
-                    const elapsed = getDaysElapsed(sp.poDate);
-                    const avg = sp.avgLeadTime;
-                    const isOverdue = (avg > 0 && elapsed > avg);
-                    return (
-                      <tr key={sp.id}>
-                        <td className="text-mono text-tiny text-muted">{sp.id}</td>
-                        <td style={{ fontWeight: 600 }}>{sp.nama}</td>
-                        <td>
+                      <td>
+                        <div style={{ fontWeight: 700, color: 'var(--tx)' }}>{item.originalName}</div>
+                        {item.reason && <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 4 }}>Alasan: {item.reason}</div>}
+                      </td>
+                      <td>
+                        {item.sparepart ? (
                           <div>
-                            <span className="badge badge-blu" style={{ fontSize: 10 }}>{sp.purchasingNoPo || '—'}</span>
-                          </div>
-                          {sp.purchasingNoPr && (
-                            <div style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 2 }}>
-                              PR: {sp.purchasingNoPr}
+                            <div style={{ fontWeight: 600, color: 'var(--tx2)' }}>{item.sparepart.nama}</div>
+                            <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 2 }}>
+                              ID: <span className="text-mono">{item.sparepart.id}</span> · SLOC: <span className="badge badge-blu" style={{ fontSize: 8, padding: '1px 4px' }}>{item.sparepart.lokasi || '—'}</span>
                             </div>
-                          )}
-                        </td>
-                        <td style={{ textAlign: 'center', fontWeight: 700 }}>
-                          <span className="badge badge-pur" style={{ fontSize: 11, padding: '4px 10px' }}>
-                            {sp.purchasingQty || 1} {sp.uom}
+                          </div>
+                        ) : (
+                          <div>
+                            <span className="badge badge-red" style={{ fontSize: 9, padding: '3px 8px' }}>⚠️ Unlinked / General</span>
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-sm"
+                              onClick={() => openLinkModal(item)}
+                              style={{ display: 'block', fontSize: 9, padding: '2px 4px', color: 'var(--pur)', marginTop: 4, height: 'auto' }}
+                            >
+                              🔗 Hubungkan ke Master DB
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ textAlign: 'center', fontWeight: 800, fontSize: 13 }}>
+                        {item.qty} <span style={{ fontSize: 9, fontWeight: 400, color: 'var(--tx3)' }}>{item.sparepart?.uom || 'Pcs'}</span>
+                      </td>
+                      <td className="text-tiny">
+                        {item.keterangan || '—'}
+                      </td>
+                      <td>
+                        {isUrgent ? (
+                          <span className="badge badge-red" style={{ fontWeight: 800, fontSize: 9 }}>🚨 URGENT</span>
+                        ) : (
+                          <span className="badge badge-grn" style={{ fontSize: 9 }}>Normal</span>
+                        )}
+                      </td>
+                      <td>
+                        {item.nomorPr && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ fontSize: 9, color: 'var(--tx3)' }}>PR:</span>
+                            <span className="badge badge-ylw" style={{ fontSize: 10, padding: '1px 6px' }}>{item.nomorPr}</span>
+                          </div>
+                        )}
+                        {item.nomorPo && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                            <span style={{ fontSize: 9, color: 'var(--tx3)' }}>PO:</span>
+                            <span className="badge badge-blu" style={{ fontSize: 10, padding: '1px 6px' }}>{item.nomorPo}</span>
+                          </div>
+                        )}
+                        {!item.nomorPr && !item.nomorPo && <span className="text-muted">—</span>}
+                      </td>
+                      <td>
+                        <div style={{ fontWeight: 600 }}>{fmtRupiah(item.harga)}</div>
+                        {item.vendor && <div style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 2 }}>Vendor: {item.vendor}</div>}
+                      </td>
+                      <td>
+                        {item.etaFoom ? (
+                          <div style={{ color: hasEtaPassed ? 'var(--red)' : 'var(--tx)' }}>
+                            {new Date(item.etaFoom).toLocaleDateString('id-ID', {
+                              day: '2-digit', month: 'short', year: 'numeric'
+                            })}
+                            {hasEtaPassed && <div style={{ fontSize: 8, fontWeight: 800, color: 'var(--red)', marginTop: 2 }}>⚠️ LEWAT ETA</div>}
+                          </div>
+                        ) : '—'}
+                      </td>
+                      <td style={{ textAlign: 'center', fontWeight: 700 }}>
+                        {getDaysElapsed(item.tanggalList, item.tanggalTerima)}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        {item.linkGr ? (
+                          <a
+                            href={item.linkGr}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Buka Link GR Odoo"
+                            style={{ fontSize: 18, color: 'var(--pur)', textDecoration: 'none' }}
+                          >
+                            🔗
+                          </a>
+                        ) : '—'}
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        {isReceived ? (
+                          <span className="badge badge-grn" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700 }}>
+                            ✓ Diterima {item.isStocked ? '(Gudang)' : '(Non-Stok)'}
                           </span>
-                        </td>
-                        <td>
-                          <span className="badge badge-blu" style={{ fontSize: 10 }}>{sp.lokasi || '—'}</span>
-                        </td>
-                        <td style={{ fontWeight: 700, color: sp.currentStock <= sp.minQty ? 'var(--red)' : 'var(--tx)' }}>
-                          {sp.currentStock} {sp.uom} <span className="text-tiny text-muted" style={{ fontWeight: 400 }}>/ min {sp.minQty}</span>
-                        </td>
-                        <td style={{ fontWeight: 600 }}>
-                          <div>{fmtRupiah((Number(sp.harga) || 0) * (sp.purchasingQty || 1))}</div>
-                          {(sp.purchasingQty || 1) > 1 && (
-                            <div style={{ fontSize: 9, color: 'var(--tx3)', fontWeight: 400 }}>
-                              {sp.purchasingQty} x {fmtRupiah(sp.harga)}
-                            </div>
-                          )}
-                        </td>
-                        <td className="text-tiny">
-                          {sp.poDate ? new Date(sp.poDate).toLocaleDateString('id-ID', {
-                            day: '2-digit', month: 'short', year: 'numeric'
-                          }) : '—'}
-                        </td>
-                        <td style={{ textAlign: 'center', fontWeight: 800, color: isOverdue ? 'var(--red)' : 'var(--tx)' }}>
-                          {elapsed} Hari
-                        </td>
-                        <td style={{ textAlign: 'center' }}>
-                          {isOverdue ? (
-                            <span className="badge badge-red" style={{ fontSize: 9, padding: '2px 8px', fontWeight: 800 }}>
-                              ⚠️ Overdue ({elapsed} &gt; {avg.toFixed(1)}d)
-                            </span>
-                          ) : avg > 0 ? (
-                            <span className="badge badge-grn" style={{ fontSize: 9, padding: '2px 8px', fontWeight: 700 }}>
-                              ✓ On Track (Avg {avg.toFixed(1)}d)
-                            </span>
-                          ) : (
-                            <span className="badge badge-pur" style={{ fontSize: 9, padding: '2px 8px' }}>
-                              Lead-time Baru
-                            </span>
-                          )}
-                        </td>
-                        <td style={{ textAlign: 'right' }}>
-                          <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
-                            <button
-                              type="button"
-                              className="btn btn-ghost btn-sm"
-                              onClick={() => openEditModal(sp)}
-                              style={{ color: 'var(--pur)', padding: '2px 6px' }}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-ghost btn-sm"
-                              onClick={() => updateStatus(sp.id, 'NONE')}
-                              disabled={actionLoading !== null}
-                              style={{ color: 'var(--red)', padding: '2px 6px' }}
-                            >
-                              Batal
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-grn btn-sm"
-                              onClick={() => openReceiveModal(sp)}
-                              disabled={actionLoading !== null}
-                              style={{ padding: '4px 10px', fontSize: 11 }}
-                            >
-                              📥 Terima Barang
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {poItems.length === 0 && !loading && (
-                    <tr>
-                      <td colSpan={11} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--tx3)' }}>
-                        <div style={{ fontSize: 36, marginBottom: 8 }}>📦</div>
-                        <div>Tidak ada suku cadang dalam tahap PO (Purchase Order).</div>
+                        ) : (
+                          <button
+                            type="button"
+                            className="btn btn-grn btn-sm"
+                            disabled={actionLoading !== null}
+                            onClick={() => openReceiveModal(item)}
+                            style={{ padding: '6px 12px', fontSize: 11, fontWeight: 700 }}
+                          >
+                            📥 Terima Barang
+                          </button>
+                        )}
                       </td>
                     </tr>
-                  )}
-                </tbody>
-              </table>
-            )}
+                  );
+                })}
+
+                {filteredItems.length === 0 && !loading && (
+                  <tr>
+                    <td colSpan={13} style={{ textAlign: 'center', padding: '60px 0', color: 'var(--tx3)' }}>
+                      <div style={{ fontSize: 48, marginBottom: 12 }}>📦</div>
+                      <div style={{ fontWeight: 700, fontSize: 15 }}>Belum Ada Data Pelacakan Pengadaan</div>
+                      <div style={{ fontSize: 12, marginTop: 4 }}>Silakan klik tombol **Sinkronkan Google Sheets** di atas untuk mengunggah CSV atau menyinkronkan link Sheets.</div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
 
-      {showEditModal && editingSp && (
+      {/* MODAL LINK MANUAL SPAREPART */}
+      {showLinkModal && linkingItem && (
         <div className="modal-overlay">
-          <div className="modal-card">
+          <div className="modal-card" style={{ maxWidth: 480 }}>
             <div className="modal-header">
-              <h3>✏️ Edit Informasi Pengadaan</h3>
-              <button className="modal-close" onClick={() => setShowEditModal(false)}>×</button>
+              <h3>🔗 Hubungkan ke Master Suku Cadang MTC</h3>
+              <button className="modal-close" onClick={() => setShowLinkModal(false)}>×</button>
             </div>
-            <form onSubmit={handleEditSubmit}>
-              <div className="modal-body">
-                <div style={{ marginBottom: 14 }}>
-                  <label style={{ fontSize: 11, color: 'var(--tx3)' }}>NAMA SUKU CADANG</label>
-                  <div style={{ fontSize: 14, fontWeight: 700, marginTop: 4 }}>{editingSp.nama} (ID: {editingSp.id})</div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-                  <div>
-                    <label className="form-label">Jumlah / Qty</label>
-                    <input
-                      type="number"
-                      min="1"
-                      required
-                      className="form-input"
-                      value={editQty}
-                      onChange={(e) => setEditQty(Math.max(1, parseInt(e.target.value) || 1))}
-                    />
-                  </div>
-                  <div>
-                    <label className="form-label">Unit of Measure (UOM)</label>
-                    <input type="text" className="form-input" disabled value={editingSp.uom} />
-                  </div>
-                </div>
-
-                {editingSp.purchasingStatus === 'PR' ? (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-                    <div>
-                      <label className="form-label">Nomor PR</label>
-                      <input
-                        type="text"
-                        className="form-input"
-                        placeholder="Contoh: PR-2026-001"
-                        value={editNoPr}
-                        onChange={(e) => setEditNoPr(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="form-label">Tanggal PR</label>
-                      <input
-                        type="date"
-                        className="form-input"
-                        required
-                        value={editPrDate}
-                        onChange={(e) => setEditPrDate(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-                      <div>
-                        <label className="form-label">Nomor PR</label>
-                        <input
-                          type="text"
-                          className="form-input"
-                          placeholder="Contoh: PR-2026-001"
-                          value={editNoPr}
-                          onChange={(e) => setEditNoPr(e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label className="form-label">Tanggal PR</label>
-                        <input
-                          type="date"
-                          className="form-input"
-                          value={editPrDate}
-                          onChange={(e) => setEditPrDate(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-                      <div>
-                        <label className="form-label">Nomor PO</label>
-                        <input
-                          type="text"
-                          className="form-input"
-                          placeholder="Contoh: PO-2026-001"
-                          value={editNoPo}
-                          onChange={(e) => setEditNoPo(e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label className="form-label">Tanggal PO</label>
-                        <input
-                          type="date"
-                          className="form-input"
-                          required
-                          value={editPoDate}
-                          onChange={(e) => setEditPoDate(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  </>
-                )}
+            <div className="modal-body" style={{ padding: 20 }}>
+              <div style={{ marginBottom: 16 }}>
+                <label className="form-label" style={{ fontSize: 10, color: 'var(--tx3)' }}>NAMA BARANG DI SHEETS</label>
+                <div style={{ fontSize: 14, fontWeight: 700, marginTop: 2 }}>{linkingItem.originalName}</div>
+                <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 2 }}>Qty: {linkingItem.qty} · Qty sheets: {linkingItem.qty}</div>
               </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-ghost" onClick={() => setShowEditModal(false)}>Batal</button>
-                <button type="submit" className="btn btn-pur" disabled={actionLoading !== null}>
-                  {actionLoading !== null ? 'Menyimpan...' : 'Simpan Perubahan'}
-                </button>
+
+              <div className="form-group">
+                <label className="form-label">Cari Suku Cadang Resmi</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Ketik Nama, ID, atau Lokasi Suku Cadang..."
+                  value={linkSearch}
+                  onChange={(e) => setLinkSearch(e.target.value)}
+                  autoFocus
+                />
               </div>
-            </form>
+
+              <div style={{ maxHeight: 200, overflowY: 'auto', border: '1px solid var(--br)', borderRadius: 8, background: 'var(--sf2)' }}>
+                {spareparts
+                  .filter(sp => {
+                    if (!linkSearch.trim()) return true;
+                    const q = linkSearch.toLowerCase();
+                    return sp.nama.toLowerCase().includes(q) || sp.id.toLowerCase().includes(q);
+                  })
+                  .slice(0, 10)
+                  .map(sp => (
+                    <div
+                      key={sp.id}
+                      onClick={() => handleLinkSparepart(sp.id)}
+                      className="suggestion-item"
+                      style={{
+                        padding: '10px 14px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        borderBottom: '1px solid var(--br)'
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--sf3)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                    >
+                      <div>
+                        <div style={{ fontSize: 12, fontWeight: 700 }}>{sp.nama}</div>
+                        <div style={{ fontSize: 10, color: 'var(--tx3)' }}>{sp.id} · SLOC: {sp.lokasi || '—'}</div>
+                      </div>
+                      <span className="badge badge-pur" style={{ fontSize: 9 }}>Hubungkan</span>
+                    </div>
+                  ))}
+              </div>
+            </div>
           </div>
         </div>
       )}
 
-      {showUpgradeModal && upgradingSp && (
+      {/* MODAL RECEIVE / GOODS RECEIPT GOODS */}
+      {showReceiveModal && receivingItem && (
         <div className="modal-overlay">
-          <div className="modal-card">
+          <div className="modal-card" style={{ maxWidth: 520 }}>
             <div className="modal-header">
-              <h3>📦 Upgrade ke PO (Purchase Order)</h3>
-              <button className="modal-close" onClick={() => setShowUpgradeModal(false)}>×</button>
-            </div>
-            <form onSubmit={handleUpgradeSubmit}>
-              <div className="modal-body">
-                <div style={{ marginBottom: 14 }}>
-                  <label style={{ fontSize: 11, color: 'var(--tx3)' }}>NAMA SUKU CADANG</label>
-                  <div style={{ fontSize: 14, fontWeight: 700, marginTop: 4 }}>{upgradingSp.nama}</div>
-                  <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 2 }}>
-                    Qty: {upgradingSp.purchasingQty} {upgradingSp.uom} · PR No: {upgradingSp.purchasingNoPr || '—'}
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 14, marginBottom: 14 }}>
-                  <div>
-                    <label className="form-label">Nomor PO <span style={{ color: 'var(--red)' }}>*</span></label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Masukkan Nomor PO..."
-                      className="form-input"
-                      value={upgradeNoPo}
-                      onChange={(e) => setUpgradeNoPo(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className="form-label">Tanggal PO <span style={{ color: 'var(--red)' }}>*</span></label>
-                    <input
-                      type="date"
-                      required
-                      className="form-input"
-                      value={upgradePoDate}
-                      onChange={(e) => setUpgradePoDate(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                {upgradingSp.purchasingNoPr && (
-                  <div style={{ background: 'var(--sf2)', border: '1px solid var(--br)', borderRadius: 6, padding: '10px 14px', fontSize: 11, color: 'var(--tx3)' }}>
-                    💡 <strong>Catatan:</strong> Barang-barang lain dengan Nomor PR <strong>{upgradingSp.purchasingNoPr}</strong> otomatis akan di-upgrade ke PO mewarisi Nomor PO & Tanggal yang sama.
-                  </div>
-                )}
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-ghost" onClick={() => setShowUpgradeModal(false)}>Batal</button>
-                <button type="submit" className="btn btn-blu" disabled={actionLoading !== null}>
-                  {actionLoading !== null ? 'Memproses...' : 'Upgrade Sekarang'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {showReceiveModal && receivingSp && (
-        <div className="modal-overlay">
-          <div className="modal-card">
-            <div className="modal-header">
-              <h3>📥 Terima Barang & Catat Stok Masuk</h3>
+              <h3>📥 Konfirmasi Penerimaan & Update Stok MTC</h3>
               <button className="modal-close" onClick={() => setShowReceiveModal(false)}>×</button>
             </div>
             <form onSubmit={handleReceiveSubmit}>
-              <div className="modal-body">
+              <div className="modal-body" style={{ padding: 20 }}>
                 <div style={{ marginBottom: 14, borderBottom: '1px solid var(--br)', paddingBottom: 10 }}>
-                  <label style={{ fontSize: 11, color: 'var(--tx3)' }}>NAMA SUKU CADANG</label>
-                  <div style={{ fontSize: 14, fontWeight: 700, marginTop: 4 }}>{receivingSp.nama}</div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--pur)', marginTop: 4 }}>
-                    Menerima: {receivingSp.purchasingQty || 1} {receivingSp.uom} · PO No: {receivingSp.purchasingNoPo || '—'}
+                  <label style={{ fontSize: 10, color: 'var(--tx3)' }}>NAMA BARANG DI SHEETS</label>
+                  <div style={{ fontSize: 14, fontWeight: 800, marginTop: 4 }}>{receivingItem.originalName}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--pur)', marginTop: 4 }}>
+                    Kuantitas Masuk: {receivingItem.qty} {receivingItem.sparepart?.uom || 'Unit'} · PO No: {receivingItem.nomorPo || '—'}
                   </div>
                 </div>
 
@@ -1327,20 +781,7 @@ export default function ProcurementPage() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-                  <div>
-                    <label className="form-label">Jenis Pembelian</label>
-                    <select
-                      className="form-input"
-                      value={receiveType}
-                      onChange={(e) => setReceiveType(e.target.value)}
-                      style={{ padding: '0 10px', height: '38px' }}
-                    >
-                      <option value="MTC">MTC</option>
-                      <option value="PROJECT">PROJECT</option>
-                      <option value="INVESTASI">INVESTASI</option>
-                    </select>
-                  </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 14, marginBottom: 14 }}>
                   <div>
                     <label className="form-label">Nama Vendor / Toko</label>
                     <input
@@ -1353,14 +794,76 @@ export default function ProcurementPage() {
                   </div>
                 </div>
 
-                <div style={{ fontSize: 11, color: 'var(--tx3)', background: 'var(--sf2)', padding: 10, borderRadius: 6 }}>
-                  ℹ️ <strong>Informasi:</strong> Menyimpan penerimaan ini akan secara otomatis menambahkan stok barang sebanyak {receivingSp.purchasingQty || 1} unit ke sistem, menghitung Lead-Time pengadaan, serta me-reset status pengadaan suku cadang ini menjadi normal.
+                {/* STOCKING SELECTION TOGGLE */}
+                <div style={{ marginBottom: 16 }}>
+                  <label className="form-label" style={{ fontWeight: 800, marginBottom: 8, display: 'block' }}>Tipe Penyimpanan Gudang</label>
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    <label
+                      style={{
+                        flex: 1,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '12px',
+                        borderRadius: 8,
+                        border: isStocked ? '2px solid var(--grn)' : '1px solid var(--br)',
+                        background: isStocked ? 'rgba(34, 197, 94, 0.05)' : 'var(--sf2)',
+                        cursor: receivingItem.sparepartId ? 'pointer' : 'not-allowed',
+                        opacity: receivingItem.sparepartId ? 1 : 0.5,
+                        transition: 'all 0.15s'
+                      }}
+                      onClick={() => {
+                        if (receivingItem.sparepartId) setIsStocked(true);
+                      }}
+                    >
+                      <span style={{ fontSize: 20, marginBottom: 4 }}>📦</span>
+                      <span style={{ fontWeight: 700, fontSize: 12 }}>Masukkan Stok (Restock)</span>
+                      <span style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 2, textAlign: 'center' }}>
+                        Tambah kuantitas di MTC Inventory
+                      </span>
+                    </label>
+
+                    <label
+                      style={{
+                        flex: 1,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '12px',
+                        borderRadius: 8,
+                        border: !isStocked ? '2px solid var(--pur)' : '1px solid var(--br)',
+                        background: !isStocked ? 'rgba(168, 85, 247, 0.05)' : 'var(--sf2)',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s'
+                      }}
+                      onClick={() => setIsStocked(false)}
+                    >
+                      <span style={{ fontSize: 20, marginBottom: 4 }}>⚡</span>
+                      <span style={{ fontWeight: 700, fontSize: 12 }}>Langsung Pakai (LOG)</span>
+                      <span style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 2, textAlign: 'center' }}>
+                        Catat log anggaran, tanpa ubah stok
+                      </span>
+                    </label>
+                  </div>
+
+                  {!receivingItem.sparepartId && (
+                    <div style={{ fontSize: 10, color: 'var(--red)', fontWeight: 700, marginTop: 8 }}>
+                      ⚠️ Item ini belum dihubungkan ke Master Suku Cadang. Anda hanya bisa menerima sebagai **&quot;Langsung Pakai (Non-Stok)&quot;**. Hubungkan terlebih dahulu jika ingin memasukkannya ke stok gudang MTC.
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-ghost" onClick={() => setShowReceiveModal(false)}>Batal</button>
-                <button type="submit" className="btn btn-grn" disabled={actionLoading !== null}>
-                  {actionLoading !== null ? 'Mencatat...' : 'Terima & Masuk Stok'}
+                <button
+                  type="submit"
+                  className={`btn ${isStocked ? 'btn-grn' : 'btn-pur'}`}
+                  disabled={actionLoading !== null}
+                  style={{ fontWeight: 700, padding: '0 24px' }}
+                >
+                  {actionLoading !== null ? 'Memproses...' : isStocked ? 'Terima & Masuk Stok Gudang' : 'Terima & Catat Pemakaian langsung'}
                 </button>
               </div>
             </form>
@@ -1369,14 +872,8 @@ export default function ProcurementPage() {
       )}
 
       <style jsx global>{`
-        .po-pr-form {
-          animation: fadeIn 0.3s ease-out;
-        }
-        .suggestion-item {
-          border-bottom: 1px solid var(--br);
-        }
-        .suggestion-item:last-child {
-          border-bottom: none;
+        .ntab:hover {
+          color: var(--tx) !important;
         }
         .modal-overlay {
           position: fixed;
@@ -1398,7 +895,6 @@ export default function ProcurementPage() {
           border-radius: 12px;
           box-shadow: 0 8px 32px rgba(0,0,0,0.5);
           width: 90%;
-          max-width: 520px;
           overflow: hidden;
           animation: slideUpCard 0.2s cubic-bezier(0.16, 1, 0.3, 1);
         }
@@ -1425,7 +921,6 @@ export default function ProcurementPage() {
           line-height: 1;
         }
         .modal-body {
-          padding: 20px;
           max-height: 70vh;
           overflow-y: auto;
         }
@@ -1448,11 +943,6 @@ export default function ProcurementPage() {
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(4px); }
           to { opacity: 1; transform: translateY(0); }
-        }
-        @media (max-width: 768px) {
-          .po-pr-form {
-            grid-template-columns: 1fr !important;
-          }
         }
       `}</style>
     </>
