@@ -276,6 +276,20 @@ export default function MasterPage() {
                 + Tambah {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
               </button>
             )}
+            {activeTab === 'bom' && (
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => {
+                  setModalType('mesin');
+                  setIsEdit(false);
+                  setForm({ nama: '', area: '', tipe: 'sparepart', aktif: true });
+                  setModalOpen(true);
+                }}
+              >
+                🏭 + Tambah Mesin BOM
+              </button>
+            )}
           </div>
         </div>
       </div>
