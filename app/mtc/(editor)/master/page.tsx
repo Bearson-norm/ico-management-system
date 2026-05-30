@@ -478,7 +478,6 @@ export default function MasterPage() {
                   <tbody>
                     {mesins
                       .filter(m => m.nama.toLowerCase().includes(search.toLowerCase()))
-                      .filter(m => m.tipe === 'perbaikan')
                       .map(m => (
                       <tr key={m.id}>
                         <td data-label="ID" className="text-muted text-tiny">{m.id}</td>
@@ -571,7 +570,6 @@ export default function MasterPage() {
                   <tbody>
                     {bomMesins
                       .filter(m => m.nama.toLowerCase().includes(search.toLowerCase()))
-                      .filter(m => m.tipe === 'sparepart' || m.tipe === 'keduanya')
                       .map(m => (
                         <React.Fragment key={m.id}>
                         <tr onClick={() => setExpandedMesinId(expandedMesinId === m.id ? null : m.id)} style={{ cursor: 'pointer' }}>
