@@ -1268,7 +1268,7 @@ export default function ProcurementTrackingPage() {
                                           </div>
                                         )}
                                       </div>
-                                    ) : (
+                                    ) : item.nomorPo ? (
                                       <button
                                         type="button"
                                         className="btn btn-grn btn-sm"
@@ -1277,6 +1277,15 @@ export default function ProcurementTrackingPage() {
                                         style={{ padding: '5px 10px', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
                                       >
                                         📥 Terima Barang
+                                      </button>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        disabled={actionLoading !== null}
+                                        onClick={() => openEditModal(item)}
+                                        style={{ padding: '5px 10px', fontSize: 10, fontWeight: 700, cursor: 'pointer', background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: 6 }}
+                                      >
+                                        🚢 Push ke PO
                                       </button>
                                     )}
                                   </div>

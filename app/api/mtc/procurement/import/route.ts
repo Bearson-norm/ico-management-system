@@ -141,6 +141,30 @@ export async function POST(req: NextRequest) {
           });
         }
 
+        // Protect local PO number & status from SCM sheet typos and blanks
+        let finalNomorPr = nomorPr;
+        let finalNomorPo = nomorPo;
+        let finalStatusPo = statusPo;
+        let finalVendor = vendor;
+        let finalHarga = harga;
+        let finalEtaFoom = etaFoom;
+
+        if (trackingItem) {
+          // If local already has a PO number, and SCM sheet PO number is empty, protect the local PO!
+          if (trackingItem.nomorPo && !nomorPo) {
+            finalNomorPo = trackingItem.nomorPo;
+            finalStatusPo = trackingItem.statusPo; // Keep local status (e.g. active or DONE)
+            finalVendor = vendor || trackingItem.vendor;
+            finalHarga = harga || (trackingItem.harga ? Number(trackingItem.harga) : 0);
+            finalEtaFoom = etaFoom || trackingItem.etaFoom;
+          }
+          
+          // Also protect local PR number if local has it but sheet has empty/null
+          if (trackingItem.nomorPr && !nomorPr) {
+            finalNomorPr = trackingItem.nomorPr;
+          }
+        }
+
         const dataPayload = {
           fbIndex,
           originalName,
@@ -154,14 +178,14 @@ export async function POST(req: NextRequest) {
           reason,
           urgency,
           linkReferences,
-          vendor,
-          harga,
-          nomorPr,
+          vendor: finalVendor,
+          harga: finalHarga,
+          nomorPr: finalNomorPr,
           statusPr,
           statusPa,
-          statusPo,
-          nomorPo,
-          etaFoom,
+          statusPo: finalStatusPo,
+          nomorPo: finalNomorPo,
+          etaFoom: finalEtaFoom,
           linkGr,
           tanggalTerima,
         };
