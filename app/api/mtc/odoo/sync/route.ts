@@ -40,6 +40,81 @@ function mapOdooStateToLocal(state: string): string {
   }
 }
 
+// Intelligent best match line item helper using name, substring, digits, and quantity scoring
+function findBestMatchedLine(lines: any[], item: any): any {
+  if (!lines || lines.length === 0) return null;
+
+  const odooItemName = item.sparepart?.nama?.toLowerCase()?.trim() || '';
+  const originalName = item.originalName?.toLowerCase()?.trim() || '';
+  const targetQty = Number(item.qty) || 0;
+
+  // Extract all digits from originalName for sequence/specs matching (e.g. "isi 2" -> ["2"])
+  const originalDigits = originalName.match(/\b\d+\b/g) || [];
+
+  let bestLine = null;
+  let bestScore = -1;
+
+  for (const line of lines) {
+    const prodName = Array.isArray(line.product_id) ? line.product_id[1]?.toLowerCase()?.trim() : '';
+    const lineName = line.name?.toLowerCase()?.trim() || '';
+    const lineQty = Number(line.product_qty) || 0;
+
+    let score = 0;
+
+    // 1. Exact Match (highest priority)
+    if (originalName && (originalName === prodName || originalName === lineName)) {
+      score += 100;
+    }
+    if (odooItemName && (odooItemName === prodName || odooItemName === lineName)) {
+      score += 80;
+    }
+
+    // 2. Substring Match (safeguarded against empty/short strings to prevent bug)
+    if (prodName && prodName.length > 3) {
+      if (originalName.includes(prodName) || prodName.includes(originalName)) {
+        score += 20;
+      }
+      if (odooItemName && (odooItemName.includes(prodName) || prodName.includes(odooItemName))) {
+        score += 15;
+      }
+    }
+
+    if (lineName && lineName.length > 3) {
+      if (originalName.includes(lineName) || lineName.includes(originalName)) {
+        score += 20;
+      }
+      if (odooItemName && (odooItemName.includes(lineName) || lineName.includes(odooItemName))) {
+        score += 15;
+      }
+    }
+
+    // 3. Digit/Number Sequence Match (crucial tie-breaker for multi-spec things)
+    if (originalDigits.length > 0) {
+      let digitMatchCount = 0;
+      for (const d of originalDigits) {
+        const regex = new RegExp('\\b' + d + '\\b');
+        if (regex.test(prodName) || regex.test(lineName)) {
+          digitMatchCount++;
+        }
+      }
+      score += digitMatchCount * 12;
+    }
+
+    // 4. Quantity Match (excellent tie-breaker)
+    if (targetQty > 0 && targetQty === lineQty) {
+      score += 8;
+    }
+
+    // Update best matched line candidate
+    if (score > 0 && score > bestScore) {
+      bestScore = score;
+      bestLine = line;
+    }
+  }
+
+  return bestLine;
+}
+
 // Helper to fetch and format Chatter logs for a specific document model
 async function fetchChatterLogs(
   model: string,
@@ -507,19 +582,7 @@ export async function POST(req: NextRequest) {
               );
 
               if (poLines && poLines.length > 0) {
-                const odooItemName = item.sparepart?.nama?.toLowerCase();
-                const originalName = item.originalName.toLowerCase();
-                
-                const matchedLine = poLines.find((line: any) => {
-                  const lineName = line.name?.toLowerCase() || '';
-                  const prodName = Array.isArray(line.product_id) ? line.product_id[1]?.toLowerCase() : '';
-                  return (
-                    (odooItemName && (lineName.includes(odooItemName) || prodName.includes(odooItemName))) ||
-                    lineName.includes(originalName) ||
-                    originalName.includes(lineName)
-                  );
-                });
-
+                const matchedLine = findBestMatchedLine(poLines, item);
                 if (matchedLine) {
                   matchedPrice = matchedLine.price_unit || 0;
                 }
@@ -726,21 +789,7 @@ export async function POST(req: NextRequest) {
                   );
 
                   if (prLines && prLines.length > 0) {
-                    const odooItemName = item.sparepart?.nama?.toLowerCase();
-                    const originalName = item.originalName.toLowerCase();
-
-                    const matchedLine = prLines.find((line: any) => {
-                      const prodName = Array.isArray(line.product_id) ? line.product_id[1]?.toLowerCase() : '';
-                      const lineName = line.name?.toLowerCase() || '';
-                      return (
-                        (odooItemName && (prodName.includes(odooItemName) || lineName.includes(odooItemName))) ||
-                        originalName.includes(prodName) ||
-                        prodName.includes(originalName) ||
-                        lineName.includes(originalName) ||
-                        originalName.includes(lineName)
-                      );
-                    });
-
+                    const matchedLine = findBestMatchedLine(prLines, item);
                     if (matchedLine) {
                       matchedPrice = matchedLine.price_unit || 0;
                     }
@@ -846,21 +895,7 @@ export async function POST(req: NextRequest) {
                       );
 
                       if (prLines && prLines.length > 0) {
-                        const odooItemName = item.sparepart?.nama?.toLowerCase();
-                        const originalName = item.originalName.toLowerCase();
-
-                        const matchedLine = prLines.find((line: any) => {
-                          const prodName = Array.isArray(line.product_id) ? line.product_id[1]?.toLowerCase() : '';
-                          const lineName = line.name?.toLowerCase() || '';
-                          return (
-                            (odooItemName && (prodName.includes(odooItemName) || lineName.includes(odooItemName))) ||
-                            originalName.includes(prodName) ||
-                            prodName.includes(originalName) ||
-                            lineName.includes(originalName) ||
-                            originalName.includes(lineName)
-                          );
-                        });
-
+                        const matchedLine = findBestMatchedLine(prLines, item);
                         if (matchedLine) {
                           matchedPrice = matchedLine.estimated_cost || 0;
                         }
