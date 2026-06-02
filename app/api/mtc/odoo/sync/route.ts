@@ -512,33 +512,43 @@ export async function POST(req: NextRequest) {
             odooOptions
           );
 
-          // Fuzzy search fallback for purchase.order
+          // Fuzzy search fallback for purchase.order (handles zero padding e.g. P13722 -> P013722 / PO0013722)
           if (!odooPos || odooPos.length === 0) {
             const prMatch = docName.match(/^PR0*(\d+)$/i);
-            if (prMatch) {
-              const seq = prMatch[1];
+            const poMatch = docName.match(/^P(?:O)?0*(\d+)$/i);
+            const isPrPattern = !!prMatch;
+            const seq = prMatch ? prMatch[1] : (poMatch ? poMatch[1] : null);
+
+            if (seq) {
               try {
                 const fuzzyPos = await queryOdoo(
                   'purchase.order',
                   'search_read',
                   [[
                     '|',
+                    '|',
+                    ['name', 'ilike', seq],
                     ['origin', 'ilike', seq],
                     ['partner_ref', 'ilike', seq]
                   ]],
                   {
                     fields: ['id', 'name', 'state', 'amount_total', 'partner_id', 'date_order', 'origin', 'partner_ref', 'create_date'],
-                    limit: 10
+                    limit: 20
                   },
                   odooOptions
                 );
 
                 if (fuzzyPos && fuzzyPos.length > 0) {
-                  const originRegex = new RegExp('(PR|RFQ)[/0-9-]*0*' + seq + '\\b', 'i');
+                  // If it's a PR search, match origin/ref. If PO search, match the PO name.
+                  const seqRegex = isPrPattern 
+                    ? new RegExp('(PR|RFQ)[/0-9-]*0*' + seq + '\\b', 'i')
+                    : new RegExp('^P(?:O)?[/0-9-]*0*' + seq + '$', 'i');
+
                   const matched = fuzzyPos.find((po: any) => {
+                    const name = po.name || '';
                     const origin = po.origin || '';
                     const partnerRef = po.partner_ref || '';
-                    return originRegex.test(origin) || originRegex.test(partnerRef) || origin.includes(docName) || partnerRef.includes(docName);
+                    return seqRegex.test(name) || seqRegex.test(origin) || seqRegex.test(partnerRef) || name.includes(docName);
                   });
                   if (matched) {
                     odooPos = [matched];
@@ -728,11 +738,12 @@ export async function POST(req: NextRequest) {
             updatedOdooCount++;
           } else {
             // Document not found in purchase.order. Try purchase.requisition.
+            const prOrDocName = prNo || docName;
             try {
               let odooReqs = await queryOdoo(
                 'purchase.requisition',
                 'search_read',
-                [[['name', '=', docName]]],
+                [[['name', '=', prOrDocName]]],
                 {
                   fields: ['id', 'name', 'state', 'create_date'],
                   limit: 1
@@ -742,7 +753,7 @@ export async function POST(req: NextRequest) {
 
               // Requisition Fuzzy Fallback
               if (!odooReqs || odooReqs.length === 0) {
-                const prMatch = docName.match(/^PR0*(\d+)$/i);
+                const prMatch = prOrDocName.match(/^PR0*(\d+)$/i);
                 if (prMatch) {
                   const seq = prMatch[1];
                   try {
@@ -757,12 +768,12 @@ export async function POST(req: NextRequest) {
                       odooOptions
                     );
                     if (fuzzyReqs && fuzzyReqs.length > 0) {
-                      const regex = new RegExp('/0*' + seq + '$');
-                      const matched = fuzzyReqs.find((req: any) => regex.test(req.name) || req.name?.includes(docName));
+                      const regex = new RegExp('(?:/|^|-)0*' + seq + '$');
+                      const matched = fuzzyReqs.find((req: any) => regex.test(req.name) || req.name?.includes(prOrDocName));
                       if (matched) odooReqs = [matched];
                     }
                   } catch (errFuzzyReq) {
-                    console.error(`Gagal melakukan fuzzy search PR Requisition untuk ${docName}:`, errFuzzyReq);
+                    console.error(`Gagal melakukan fuzzy search PR Requisition untuk ${prOrDocName}:`, errFuzzyReq);
                   }
                 }
               }
@@ -844,7 +855,7 @@ export async function POST(req: NextRequest) {
                   let odooRequests = await queryOdoo(
                     'purchase.request',
                     'search_read',
-                    [[['name', '=', docName]]],
+                    [[['name', '=', prOrDocName]]],
                     {
                       fields: ['id', 'name', 'state', 'create_date'],
                       limit: 1
@@ -854,7 +865,7 @@ export async function POST(req: NextRequest) {
 
                   // Request Fuzzy Fallback
                   if (!odooRequests || odooRequests.length === 0) {
-                    const prMatch = docName.match(/^PR0*(\d+)$/i);
+                    const prMatch = prOrDocName.match(/^PR0*(\d+)$/i);
                     if (prMatch) {
                       const seq = prMatch[1];
                       try {
@@ -869,12 +880,12 @@ export async function POST(req: NextRequest) {
                           odooOptions
                         );
                         if (fuzzyRequests && fuzzyRequests.length > 0) {
-                          const regex = new RegExp('/0*' + seq + '$');
-                          const matched = fuzzyRequests.find((req: any) => regex.test(req.name) || req.name?.includes(docName));
+                          const regex = new RegExp('(?:/|^|-)0*' + seq + '$');
+                          const matched = fuzzyRequests.find((req: any) => regex.test(req.name) || req.name?.includes(prOrDocName));
                           if (matched) odooRequests = [matched];
                         }
                       } catch (errFuzzyRequest) {
-                        console.error(`Gagal melakukan fuzzy search PR Request untuk ${docName}:`, errFuzzyRequest);
+                        console.error(`Gagal melakukan fuzzy search PR Request untuk ${prOrDocName}:`, errFuzzyRequest);
                       }
                     }
                   }
