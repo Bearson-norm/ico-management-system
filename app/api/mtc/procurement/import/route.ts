@@ -172,6 +172,7 @@ export async function POST(req: NextRequest) {
           keterangan,
           penggunaanBulan,
           kontrak3Bulan,
+          isStocked: kontrak3Bulan,
           tanggalList,
           qty,
           productCategory,

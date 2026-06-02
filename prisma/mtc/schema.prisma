@@ -81,6 +81,10 @@ model Sparepart {
   purchasingNoPo String?   @map("purchasing_no_po")
   prDate       DateTime? @map("pr_date")
   poDate       DateTime? @map("po_date")
+  namaAlias    String?   @map("nama_alias")
+  linkReference String?  @map("link_reference")
+  alasan       String?   @map("alasan")
+  odooNotes    String?   @map("odoo_notes")       // Log pesan Chatter dari Odoo
   createdAt  DateTime  @default(now()) @map("created_at")
   updatedAt  DateTime  @updatedAt @map("updated_at")
 
@@ -185,6 +189,7 @@ model ProcurementTracking {
   linkGr           String?   @map("link_gr")
   tanggalTerima    DateTime? @map("tanggal_terima") // Kapan Terima
   isStocked        Boolean   @default(false) @map("is_stocked")
+  odooNotes        String?   @map("odoo_notes")       // Log pesan Chatter dari Odoo
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt        DateTime  @updatedAt @map("updated_at")
 

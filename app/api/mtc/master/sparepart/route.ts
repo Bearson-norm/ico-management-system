@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireMtcEditor } from '@/lib/auth';
-import { ok, err } from '@/lib/utils';
+import { ok, err, generateItemId } from '@/lib/utils';
 
 export async function GET(req: NextRequest) {
   const session = await requireMtcEditor();
@@ -43,6 +43,64 @@ export async function GET(req: NextRequest) {
   return ok(data);
 }
 
+export async function POST(req: NextRequest) {
+  const session = await requireMtcEditor();
+  if (!session) return err('Akses ditolak', 403);
+
+  const body = await req.json();
+  const {
+    nama,
+    namaAlias,
+    kategoriId,
+    uom,
+    lokasi,
+    harga,
+    minQty,
+    maxLeadTime,
+    avgLeadTime,
+    aktif,
+    mesinIds,
+    purchasingStatus,
+    purchasingQty,
+    linkReference,
+    alasan,
+  } = body;
+
+  if (!nama?.trim()) return err('Nama sparepart resmi wajib diisi');
+
+  const kid = kategoriId === '' ? null : (kategoriId === undefined ? null : Number(kategoriId));
+  const mesinIdNums = Array.isArray(mesinIds) ? mesinIds.map((x: string) => Number(x)) : [];
+
+  try {
+    const id = await generateItemId(prisma);
+    const row = await prisma.sparepart.create({
+      data: {
+        id,
+        nama: nama.trim(),
+        namaAlias: namaAlias?.trim() || null,
+        kategoriId: kid,
+        uom: uom || 'Pcs',
+        lokasi: lokasi || null,
+        harga: harga != null ? Number(harga) : 0,
+        minQty: minQty != null ? Number(minQty) : 0,
+        maxLeadTime: maxLeadTime != null ? parseInt(String(maxLeadTime), 10) || 0 : 0,
+        avgLeadTime: avgLeadTime != null ? parseFloat(String(avgLeadTime)) || 0 : 0,
+        aktif: aktif !== undefined ? Boolean(aktif) : true,
+        purchasingStatus: purchasingStatus || 'WAITING_PRICE',
+        purchasingQty: purchasingQty != null ? Number(purchasingQty) : 0,
+        linkReference: linkReference?.trim() || null,
+        alasan: alasan?.trim() || null,
+        mesins: mesinIdNums.length > 0 ? { connect: mesinIdNums.map((mid) => ({ id: mid })) } : undefined,
+      },
+      include: { kategori: true, mesins: true },
+    });
+    return ok(row);
+  } catch (e: any) {
+    console.error('[POST /api/mtc/master/sparepart]', e);
+    return err(`Gagal membuat sparepart: ${e.message}`, 500);
+  }
+}
+
 export async function PUT(req: NextRequest) {
   const session = await requireMtcEditor();
   if (!session) return err('Akses ditolak', 403);
@@ -66,6 +124,9 @@ export async function PUT(req: NextRequest) {
     purchasingNoPo,
     prDate,
     poDate,
+    namaAlias,
+    linkReference,
+    alasan,
   } = body;
   if (!id) return err('ID wajib');
 
@@ -127,6 +188,9 @@ export async function PUT(req: NextRequest) {
         ...(purchasingNoPo !== undefined && purchasingStatus !== 'NONE' ? { purchasingNoPo: purchasingNoPo || null } : {}),
         ...(prDateVal !== undefined ? { prDate: prDateVal } : {}),
         ...(poDateVal !== undefined ? { poDate: poDateVal } : {}),
+        ...(namaAlias !== undefined ? { namaAlias: namaAlias || null } : {}),
+        ...(linkReference !== undefined ? { linkReference: linkReference || null } : {}),
+        ...(alasan !== undefined ? { alasan: alasan || null } : {}),
         ...(mesinIdNums !== undefined ? { mesins: { set: mesinIdNums.map((mid) => ({ id: mid })) } } : {}),
       },
     });

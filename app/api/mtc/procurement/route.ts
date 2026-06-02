@@ -1,36 +1,42 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireMtcEditor } from '@/lib/auth';
-import { ok, err } from '@/lib/utils';
+import { ok, err, generateItemId } from '@/lib/utils';
 
 // GET /api/mtc/procurement
 export async function GET(req: NextRequest) {
   // We can let viewers see the procurement list, but editor session is required for editing
   // Let's support optional bypass or just check editor session depending on permissions
   const { searchParams } = new URL(req.url);
-  const showArchived = searchParams.get('archived') === 'true';
+  const archivedParam = searchParams.get('archived') || 'false';
+
+  const whereClause: any = {};
+  if (archivedParam === 'true') {
+    whereClause.statusPo = 'DONE';
+  } else if (archivedParam === 'false') {
+    whereClause.OR = [
+      { statusPo: null },
+      { NOT: { statusPo: 'DONE' } },
+    ];
+  }
 
   try {
     const data = await prisma.procurementTracking.findMany({
-      where: {
-        ...(showArchived
-          ? { statusPo: 'DONE' }
-          : {
-              OR: [
-                { statusPo: null },
-                { NOT: { statusPo: 'DONE' } },
-              ],
-            }),
-      },
+      where: whereClause,
       include: {
         sparepart: {
           select: {
             id: true,
             nama: true,
+            namaAlias: true,
             uom: true,
             lokasi: true,
             harga: true,
             minQty: true,
+            linkReference: true,
+            alasan: true,
+            purchasingStatus: true,
+            odooNotes: true,
           },
         },
       },
@@ -73,30 +79,87 @@ export async function POST(req: NextRequest) {
     linkReferences,
     scriptUrl,
     isStocked,
+    nomorPr,
+    isPengadaanBaru,
+    namaAlias,
+    alasan,
+    harga,
+    vendor,
   } = body;
 
   if (!originalName?.trim()) return err('Nama barang asli wajib diisi', 400);
   if (!qty || Number(qty) < 1) return err('Kuantitas wajib diisi dan minimal 1', 400);
 
   try {
+    let finalSparepartId = sparepartId || null;
     let spName = '';
-    if (sparepartId) {
+    let targetStatusPr = 'CONTINUE'; // Default status PR
+    let finalHarga = harga != null ? Number(harga) : null;
+    let finalVendor = vendor || null;
+
+    if (isPengadaanBaru) {
+      // 1. Jalankan Penomoran ID Sparepart Baru secara otomatis
+      const newSpId = await generateItemId(prisma);
+      
+      // 2. Buat Sparepart di database master berstatus WAITING_PRICE
+      const newSp = await prisma.sparepart.create({
+        data: {
+          id: newSpId,
+          nama: originalName.trim(),
+          namaAlias: namaAlias?.trim() || null,
+          uom: 'Pcs',
+          harga: harga != null ? Number(harga) : 0,
+          aktif: true,
+          purchasingStatus: 'WAITING_PRICE',
+          purchasingQty: Number(qty) || 0,
+          purchasingNoPr: nomorPr?.trim() || null,
+          linkReference: linkReferences || null,
+          alasan: alasan || reason || null,
+        }
+      });
+
+      finalSparepartId = newSpId;
+      spName = originalName.trim();
+      targetStatusPr = 'WAITING_PRICE';
+      finalHarga = newSp.harga ? Number(newSp.harga) : 0;
+    } else if (finalSparepartId) {
+      // Repeat Order: Lock Harga dari Database & Set Status READY_ODOO
       const sp = await prisma.sparepart.findUnique({
-        where: { id: sparepartId },
-        select: { nama: true },
+        where: { id: finalSparepartId },
+        select: { nama: true, harga: true }
       });
       if (sp) {
         spName = sp.nama;
+        finalHarga = Number(sp.harga) || 0;
+        
+        // Cari vendor terakhir dari riwayat pengadaan tim
+        const lastProc = await prisma.procurementTracking.findFirst({
+          where: { sparepartId: finalSparepartId, vendor: { not: null } },
+          orderBy: { tanggalList: 'desc' },
+          select: { vendor: true }
+        });
+        finalVendor = lastProc?.vendor || finalVendor;
       }
+      targetStatusPr = 'READY_ODOO';
+
+      // Update Sparepart status di database master
+      await prisma.sparepart.update({
+        where: { id: finalSparepartId },
+        data: {
+          purchasingStatus: 'READY_ODOO',
+          purchasingQty: Number(qty) || 0,
+          purchasingNoPr: nomorPr?.trim() || null,
+        }
+      });
     }
 
     const tDate = new Date();
 
-    // 1. Simpan di Database lokal PostgreSQL
+    // 3. Simpan di Database lokal PostgreSQL
     const tracking = await prisma.procurementTracking.create({
       data: {
         originalName: originalName.trim(),
-        sparepartId: sparepartId || null,
+        sparepartId: finalSparepartId,
         keterangan: keterangan || null,
         penggunaanBulan: penggunaanBulan ? Number(penggunaanBulan) : null,
         kontrak3Bulan: Boolean(kontrak3Bulan),
@@ -106,8 +169,11 @@ export async function POST(req: NextRequest) {
         reason: reason || null,
         urgency: urgency || 'Normal',
         linkReferences: linkReferences || null,
-        statusPr: 'CONTINUE', // Default langsung aktif diajukan
+        nomorPr: nomorPr?.trim() || null,
+        statusPr: targetStatusPr,
         isStocked: isStocked !== undefined ? Boolean(isStocked) : false,
+        harga: finalHarga,
+        vendor: finalVendor,
       },
     });
 
@@ -121,12 +187,12 @@ export async function POST(req: NextRequest) {
         mtcItemName: spName,
         keterangan: keterangan || '',
         penggunaanBulan: penggunaanBulan ? String(penggunaanBulan) : '',
-        kontrak3Bulan: kontrak3Bulan ? 'TRUE' : 'FALSE',
+        isStocked: isStocked ? 'TRUE' : 'FALSE',
         tanggalList: tDate.toLocaleDateString('id-ID'), // Format DD/MM/YYYY
         qty: String(qty),
         productCategory: productCategory || '',
         reason: reason || '',
-        urgency: urgency || 'Normal',
+        urgency: urgency === 'Urgent' ? 'Urgent' : '',
         linkReferences: linkReferences || '',
       };
 
@@ -202,6 +268,8 @@ export async function PATCH(req: NextRequest) {
     productCategory,
     keterangan,
     reason,
+    statusPr,
+    odooNotes,
   } = body;
 
   if (!id) return err('ID record wajib diisi', 400);
@@ -222,8 +290,26 @@ export async function PATCH(req: NextRequest) {
         productCategory: productCategory !== undefined ? (productCategory || null) : undefined,
         keterangan: keterangan !== undefined ? (keterangan || null) : undefined,
         reason: reason !== undefined ? (reason || null) : undefined,
+        statusPr: statusPr !== undefined ? (statusPr || 'DRAFT') : undefined,
+        odooNotes: odooNotes !== undefined ? (odooNotes || null) : undefined,
       },
     });
+
+    // MTC PRO: Propagate status, nomor PR/PO, and chatter notes to Sparepart master database table
+    if (updated.sparepartId) {
+      const spUpdateData: any = {};
+      if (updated.statusPr) spUpdateData.purchasingStatus = updated.statusPr;
+      if (updated.nomorPr !== undefined) spUpdateData.purchasingNoPr = updated.nomorPr;
+      if (updated.nomorPo !== undefined) spUpdateData.purchasingNoPo = updated.nomorPo;
+      if (updated.odooNotes !== undefined) spUpdateData.odooNotes = updated.odooNotes;
+
+      if (Object.keys(spUpdateData).length > 0) {
+        await prisma.sparepart.update({
+          where: { id: updated.sparepartId },
+          data: spUpdateData
+        });
+      }
+    }
 
     return ok({
       msg: 'Detail pelacakan berhasil diperbarui!',

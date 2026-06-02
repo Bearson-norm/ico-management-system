@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     return err('Format JSON tidak valid', 400);
   }
 
-  const { id, tanggalTerima, isStocked, harga, vendor } = body;
+  const { id, tanggalTerima, isStocked, harga, vendor, qtyPerPack, receivedParts } = body;
 
   if (!id) return err('ID pengadaan wajib diisi', 400);
   if (!tanggalTerima) return err('Tanggal terima wajib diisi', 400);
@@ -38,6 +38,78 @@ export async function POST(req: NextRequest) {
     const elapsedMs = tDate.getTime() - new Date(tracking.tanggalList).getTime();
     const elapsedDays = Math.max(1, elapsedMs / (1000 * 60 * 60 * 24));
 
+    // A. JIKA PAKETAN GABUNGAN (MULTI-ITEM)
+    if (receivedParts && Array.isArray(receivedParts) && receivedParts.length > 0) {
+      await prisma.$transaction(async (tx) => {
+        for (const part of receivedParts) {
+          const partSpId = part.sparepartId;
+          const partQty = Number(part.qty) || 1;
+          const partHarga = Number(part.harga) || 0;
+
+          const sp = await tx.sparepart.findUnique({
+            where: { id: partSpId },
+          });
+
+          if (!sp) throw new Error(`Master Suku Cadang '${partSpId}' tidak ditemukan.`);
+
+          // 1. Buat StockMovement tipe IN atau LOG
+          await tx.stockMovement.create({
+            data: {
+              tipe: isStocked ? 'IN' : 'LOG',
+              sparepartId: sp.id,
+              namaItem: sp.nama,
+              qty: partQty,
+              harga: partHarga,
+              lokasi: isStocked ? sp.lokasi : null,
+              purchaseType: 'PO',
+              vendor: finalVendor,
+              keterangan: `[Penerimaan Paket PR: ${tracking.nomorPr || '—'} / PO: ${tracking.nomorPo || '—'}] Bagian dari paket gabungan: ${tracking.originalName}`,
+              tanggal: tDate,
+            },
+          });
+
+          // 2. Hitung Lead Time Baru untuk Sparepart
+          const calculatedAvgLeadTime = sp.avgLeadTime === 0
+            ? elapsedDays
+            : Number((sp.avgLeadTime * 0.8 + elapsedDays * 0.2).toFixed(2));
+          const calculatedMaxLeadTime = Math.max(sp.maxLeadTime, Math.round(elapsedDays));
+
+          // 3. Update Master Sparepart
+          await tx.sparepart.update({
+            where: { id: sp.id },
+            data: {
+              harga: partHarga,
+              purchasingStatus: 'NONE',
+              purchasingQty: 0,
+              prDate: null,
+              poDate: null,
+              avgLeadTime: calculatedAvgLeadTime,
+              maxLeadTime: calculatedMaxLeadTime,
+            },
+          });
+        }
+
+        // 4. Update data pelacakan utama
+        await tx.procurementTracking.update({
+          where: { id: tracking.id },
+          data: {
+            tanggalTerima: tDate,
+            isStocked: Boolean(isStocked),
+            statusPo: 'DONE',
+            harga: finalHarga,
+            vendor: finalVendor,
+          },
+        });
+      });
+
+      return ok({ msg: `Berhasil menerima paket gabungan '${tracking.originalName}' ke dalam ${isStocked ? 'stok gudang' : 'pemakaian langsung'} MTC.` });
+    }
+
+    // B. JIKA SATU ITEM (BISA DENGAN KONVERSI KEMASAN)
+    const multiplier = qtyPerPack && Number(qtyPerPack) > 0 ? Number(qtyPerPack) : 1;
+    const movementQty = tracking.qty * multiplier;
+    const movementHarga = finalHarga / multiplier;
+
     if (isStocked) {
       // OPSI A: Masukkan ke Stok Gudang
       if (!tracking.sparepartId) {
@@ -57,12 +129,12 @@ export async function POST(req: NextRequest) {
             tipe: 'IN',
             sparepartId: sp.id,
             namaItem: sp.nama,
-            qty: tracking.qty,
-            harga: finalHarga,
+            qty: movementQty,
+            harga: movementHarga,
             lokasi: sp.lokasi,
             purchaseType: 'PO',
             vendor: finalVendor,
-            keterangan: `[Penerimaan Pengadaan PR: ${tracking.nomorPr || '—'} / PO: ${tracking.nomorPo || '—'}]`,
+            keterangan: `[Penerimaan Pengadaan PR: ${tracking.nomorPr || '—'} / PO: ${tracking.nomorPo || '—'}]` + (multiplier > 1 ? ` (Kemasan: ${tracking.qty} x ${multiplier})` : ''),
             tanggal: tDate,
           },
         });
@@ -77,7 +149,7 @@ export async function POST(req: NextRequest) {
         await tx.sparepart.update({
           where: { id: sp.id },
           data: {
-            harga: finalHarga,
+            harga: movementHarga,
             purchasingStatus: 'NONE',
             purchasingQty: 0,
             prDate: null,
@@ -110,11 +182,11 @@ export async function POST(req: NextRequest) {
             tipe: 'LOG',
             sparepartId: tracking.sparepartId || null,
             namaItem: tracking.originalName,
-            qty: tracking.qty,
-            harga: finalHarga,
+            qty: movementQty,
+            harga: movementHarga,
             purchaseType: 'PO',
             vendor: finalVendor,
-            keterangan: `[Penerimaan Pengadaan - Langsung Pakai] Alasan: ${tracking.reason || 'Kebutuhan pemakaian langsung'}`,
+            keterangan: `[Penerimaan Pengadaan - Langsung Pakai]` + (multiplier > 1 ? ` (Kemasan: ${tracking.qty} x ${multiplier})` : '') + ` Alasan: ${tracking.reason || 'Kebutuhan pemakaian langsung'}`,
             tanggal: tDate,
           },
         });

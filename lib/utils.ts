@@ -46,6 +46,30 @@ export function fmtTanggal(d: Date | string): string {
   });
 }
 
+/** Bersihkan nama barang panjang dari marketplace menjadi format alias ringkas */
+export function generateAutoAlias(rawName: string): string {
+  if (!rawName) return '';
+  let clean = rawName;
+  
+  // 1. Hapus teks spam di dalam kurung yang berisi opsi "/" (e.g., Mati/Hidup/Rem/Screw/WO)
+  clean = clean.replace(/\([^)]*\/[^)]*\)/g, '');
+  
+  // 2. Hapus kata kunci duplikat/SEO marketplace yang tidak esensial
+  const spamWords = [/kastor/gi, /caster/gi, /troli/gi, /heavy duty/gi, /double bearing/gi];
+  spamWords.forEach(word => {
+    clean = clean.replace(word, '');
+  });
+  
+  // 3. Normalisasi istilah dimensi (inchi/inch -> ")
+  clean = clean.replace(/inchi|inch/gi, '"');
+  
+  // 4. Bersihkan spasi berlebih dan simbol pemisah yang menggantung
+  clean = clean.replace(/\s+/g, ' ').replace(/\s*-\s*/g, ' - ').trim();
+  
+  // 5. Ubah ke Title Case biar rapi
+  return clean.replace(/\b\w/g, char => char.toUpperCase());
+}
+
 /** Response helper */
 export function ok<T>(data: T, status = 200) {
   return Response.json({ success: true, data }, { status });
