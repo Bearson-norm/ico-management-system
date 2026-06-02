@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Fragment } from 'react';
 
 type Sparepart = {
   id: string;
@@ -8,6 +8,12 @@ type Sparepart = {
   lokasi: string | null;
   harga: number;
   minQty: number;
+  namaAlias?: string | null;
+  linkReference?: string | null;
+  alasan?: string | null;
+  purchasingStatus?: string | null;
+  odooNotes?: string | null;
+  vendor?: string | null;
 };
 
 type TrackingItem = {
@@ -37,6 +43,8 @@ type TrackingItem = {
   tanggalTerima: string | null;
   isStocked: boolean;
   sparepart?: Sparepart | null;
+  odooNotes?: string | null;
+  isPengadaanBaru?: boolean;
 };
 
 export default function ProcurementTrackingPage() {
@@ -48,6 +56,10 @@ export default function ProcurementTrackingPage() {
   // Saved configurations
   const [scriptUrl, setScriptUrl] = useState('');
   const [sheetUrl, setSheetUrl] = useState('');
+  const [odooPassword, setOdooPassword] = useState('');
+  const [odooDb, setOdooDb] = useState('foom-production-5808833');
+  const [odooUid, setOdooUid] = useState('34');
+  const [odooSessionId, setOdooSessionId] = useState('');
   
   // Modal states
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -57,6 +69,10 @@ export default function ProcurementTrackingPage() {
   // Temporary Settings states
   const [tempSheetUrl, setTempSheetUrl] = useState('');
   const [tempScriptUrl, setTempScriptUrl] = useState('');
+  const [tempOdooPassword, setTempOdooPassword] = useState('');
+  const [tempOdooDb, setTempOdooDb] = useState('foom-production-5808833');
+  const [tempOdooUid, setTempOdooUid] = useState('34');
+  const [tempOdooSessionId, setTempOdooSessionId] = useState('');
   const [csvFileText, setCsvFileText] = useState('');
   const [csvFileName, setCsvFileName] = useState('');
   const [manualSyncStatus, setManualSyncStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
@@ -72,6 +88,43 @@ export default function ProcurementTrackingPage() {
   const [reqLinkReferences, setReqLinkReferences] = useState('');
   const [reqIsStocked, setReqIsStocked] = useState(true); // Default true for maintenance parts
   const [requestStatus, setRequestStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+
+  // MTC PRO added states
+  const [reqVendor, setReqVendor] = useState('');
+  const [isPengadaanBaru, setIsPengadaanBaru] = useState(false);
+  const [reqNamaAlias, setReqNamaAlias] = useState('');
+  const [reqLinkReference, setReqLinkReference] = useState('');
+  const [reqAlasan, setReqAlasan] = useState('');
+
+  // Catalog search/autocomplete states
+  const [catalogSearch, setCatalogSearch] = useState('');
+  const [showCatalogDropdown, setShowCatalogDropdown] = useState(false);
+
+  // Odoo processed modal state
+  const [showOdooProcessedModal, setShowOdooProcessedModal] = useState(false);
+  const [odooProcessedItem, setOdooProcessedItem] = useState<TrackingItem | null>(null);
+  const [odooProcessedPrNo, setOdooProcessedPrNo] = useState('');
+  const [odooProcessedStatus, setOdooProcessedStatus] = useState<'DRAFT' | 'TO_APPROVE'>('DRAFT');
+
+  // Expanded rows state for Odoo chatter timeline
+  const [expandedRows, setExpandedRows] = useState<{ [key: number]: boolean }>({});
+  
+  const toggleRowExpand = (itemId: number) => {
+    setExpandedRows(prev => ({
+      ...prev,
+      [itemId]: !prev[itemId]
+    }));
+  };
+
+  const openOdooProcessedModal = (item: TrackingItem) => {
+    setOdooProcessedItem(item);
+    setOdooProcessedPrNo(item.nomorPr || '');
+    setOdooProcessedStatus('DRAFT');
+    setShowOdooProcessedModal(true);
+  };
+
+  // Quick Copy Popover state
+  const [activeCopyPopoverId, setActiveCopyPopoverId] = useState<number | null>(null);
   
   // Filter & Search states
   const [searchQuery, setSearchQuery] = useState('');
@@ -83,14 +136,72 @@ export default function ProcurementTrackingPage() {
     'DRAFT': true
   });
   
-  // Tabs for main view
-  const [activeTab, setActiveTab] = useState<'ACTIVE' | 'RECEIVED' | 'ALL'>('ACTIVE');
+  // Tabs for main view (updated to support Odoo status types)
+  const [activeTab, setActiveTab] = useState<'ACTIVE' | 'RECEIVED' | 'ALL' | 'READY_ODOO' | 'DRAFT' | 'TO_APPROVE' | 'APPROVED' | 'RFQ' | 'PO' | 'CANCELLED'>('ACTIVE');
   
   // Link Modal States
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [linkingItem, setLinkingItem] = useState<TrackingItem | null>(null);
   const [linkSearch, setLinkSearch] = useState('');
+
+  function generateAutoAlias(fullName: string) {
+    const clean = fullName
+      .replace(/[^a-zA-Z0-9\s]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return clean.replace(/\b\w/g, char => char.toUpperCase());
+  }
+
+  function getStatusBadgeStyles(status: string) {
+    switch (status.toUpperCase()) {
+      case 'DRAFT':
+        return { background: '#f3f4f6', color: '#4b5563', border: '1px solid #d1d5db' };
+      case 'TO_APPROVE':
+        return { background: '#fffbeb', color: '#d97706', border: '1px solid #fcd34d' };
+      case 'APPROVED':
+        return { background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe' };
+      case 'RFQ':
+        return { background: '#f9f5f7', color: '#875A7B', border: '1px solid #e9d5df' };
+      case 'PO':
+        return { background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0' };
+      case 'CANCELLED':
+        return { background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' };
+      default:
+        return { background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', border: '1px solid rgba(168, 85, 247, 0.3)' };
+    }
+  }
   
+  async function handleOdooProcessedSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!odooProcessedItem) return;
+    
+    setActionLoading(`odoo-${odooProcessedItem.id}`);
+    try {
+      const res = await fetch('/api/mtc/procurement', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: odooProcessedItem.id,
+          nomorPr: odooProcessedPrNo,
+          statusPr: odooProcessedStatus, // DRAFT / TO_APPROVE
+        })
+      });
+      const json = await res.json();
+      if (json.success) {
+        alert('Status PR Odoo resmi berhasil dicatat!');
+        setShowOdooProcessedModal(false);
+        setOdooProcessedItem(null);
+        await fetchData();
+      } else {
+        alert(`Gagal memperbarui status: ${json.error}`);
+      }
+    } catch (err) {
+      alert('Terjadi kesalahan jaringan.');
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
   // Receive Modal States
   const [showReceiveModal, setShowReceiveModal] = useState(false);
   const [receivingItem, setReceivingItem] = useState<TrackingItem | null>(null);
@@ -130,6 +241,32 @@ export default function ProcurementTrackingPage() {
         setSheetUrl(savedSheetUrl);
         setTempSheetUrl(savedSheetUrl);
       }
+      const savedOdooPassword = localStorage.getItem('mtc_odoo_password');
+      if (savedOdooPassword) {
+        setOdooPassword(savedOdooPassword);
+        setTempOdooPassword(savedOdooPassword);
+      }
+      const savedOdooDb = localStorage.getItem('mtc_odoo_db');
+      if (savedOdooDb) {
+        setOdooDb(savedOdooDb);
+        setTempOdooDb(savedOdooDb);
+      } else {
+        setOdooDb('foom-production-5808833');
+        setTempOdooDb('foom-production-5808833');
+      }
+      const savedOdooUid = localStorage.getItem('mtc_odoo_uid');
+      if (savedOdooUid) {
+        setOdooUid(savedOdooUid);
+        setTempOdooUid(savedOdooUid);
+      } else {
+        setOdooUid('34');
+        setTempOdooUid('34');
+      }
+      const savedOdooSessionId = localStorage.getItem('mtc_odoo_session_id');
+      if (savedOdooSessionId) {
+        setOdooSessionId(savedOdooSessionId);
+        setTempOdooSessionId(savedOdooSessionId);
+      }
     }
   }, []);
 
@@ -138,10 +275,18 @@ export default function ProcurementTrackingPage() {
     e.preventDefault();
     setScriptUrl(tempScriptUrl);
     setSheetUrl(tempSheetUrl);
+    setOdooPassword(tempOdooPassword);
+    setOdooDb(tempOdooDb);
+    setOdooUid(tempOdooUid);
+    setOdooSessionId(tempOdooSessionId);
     
     if (typeof window !== 'undefined') {
       localStorage.setItem('mtc_procurement_script_url', tempScriptUrl);
       localStorage.setItem('mtc_procurement_sheet_url', tempSheetUrl);
+      localStorage.setItem('mtc_odoo_password', tempOdooPassword);
+      localStorage.setItem('mtc_odoo_db', tempOdooDb);
+      localStorage.setItem('mtc_odoo_uid', tempOdooUid);
+      localStorage.setItem('mtc_odoo_session_id', tempOdooSessionId);
     }
     
     setManualSyncStatus({ type: 'success', msg: 'Pengaturan koneksi berhasil disimpan!' });
@@ -154,8 +299,7 @@ export default function ProcurementTrackingPage() {
   async function fetchData() {
     setLoading(true);
     try {
-      const showArchived = activeTab === 'RECEIVED';
-      const res = await fetch(`/api/mtc/procurement?archived=${showArchived}`);
+      const res = await fetch('/api/mtc/procurement?archived=all');
       const json = await res.json();
       if (json.success) {
         setItems(json.data || []);
@@ -166,11 +310,6 @@ export default function ProcurementTrackingPage() {
       setLoading(false);
     }
   }
-
-  // Refetch when tab changes
-  useEffect(() => {
-    fetchData();
-  }, [activeTab]);
 
   async function fetchSpareparts() {
     try {
@@ -184,7 +323,7 @@ export default function ProcurementTrackingPage() {
     }
   }
 
-  // One-Click Google Sheets Sync
+  // One-Click Sheets & Odoo Cloud Sync
   async function handleOneClickSync() {
     if (!sheetUrl || !sheetUrl.trim()) {
       setTempSheetUrl('');
@@ -195,14 +334,20 @@ export default function ProcurementTrackingPage() {
 
     setActionLoading('sync-main');
     try {
-      const res = await fetch('/api/mtc/procurement/import', {
+      const res = await fetch('/api/mtc/odoo/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sheetUrl: sheetUrl.trim() }),
+        body: JSON.stringify({
+          sheetUrl: sheetUrl.trim(),
+          odooPassword: odooPassword,
+          odooDb: odooDb,
+          odooUid: parseInt(odooUid) || 34,
+          odooSessionId: odooSessionId
+        }),
       });
       const json = await res.json();
       if (json.success) {
-        alert(json.data?.msg || '✓ Sinkronisasi data Google Sheets berhasil!');
+        alert(json.data?.msg || '✓ Sinkronisasi Google Sheets & Odoo Cloud sukses!');
         await fetchData();
         await fetchSpareparts();
       } else {
@@ -267,17 +412,25 @@ export default function ProcurementTrackingPage() {
     setActionLoading('request');
     setRequestStatus(null);
 
+    const selectedSp = spareparts.find(s => s.id === reqSparepartId);
     const payload = {
       originalName: reqOriginalName,
       sparepartId: reqSparepartId || null,
       keterangan: reqKeterangan,
       qty: reqQty,
       productCategory: reqProductCategory,
-      reason: reqReason,
+      reason: isPengadaanBaru ? reqReason : 'Repeat Order',
       urgency: reqUrgency,
-      linkReferences: reqLinkReferences,
+      linkReferences: isPengadaanBaru ? reqLinkReferences : (selectedSp?.linkReference || ''),
       isStocked: reqIsStocked,
-      scriptUrl: scriptUrl || null, // Auto-push to GSheets if configured
+      scriptUrl: scriptUrl || null,
+      
+      // MTC PRO fields expected by the backend
+      isPengadaanBaru: isPengadaanBaru,
+      namaAlias: isPengadaanBaru ? reqNamaAlias : (selectedSp?.namaAlias || ''),
+      alasan: isPengadaanBaru ? reqReason : (selectedSp?.alasan || 'Repeat Order'),
+      vendor: isPengadaanBaru ? reqVendor : (selectedSp?.vendor || ''),
+      harga: isPengadaanBaru ? 0 : (selectedSp?.harga || 0),
     };
 
     try {
@@ -448,6 +601,25 @@ export default function ProcurementTrackingPage() {
   // Filter items in memory
   const filteredItems = useMemo(() => {
     return items.filter(item => {
+      // Tab filter
+      const isItemReceived = !!item.tanggalTerima;
+      if (activeTab === 'ACTIVE') {
+        if (isItemReceived) return false;
+      } else if (activeTab === 'RECEIVED') {
+        if (!isItemReceived) return false;
+      } else if (activeTab === 'READY_ODOO') {
+        if (item.statusPr !== 'READY_ODOO' || isItemReceived) return false;
+      } else if (activeTab === 'DRAFT') {
+        const spStatus = item.statusPr || 'DRAFT';
+        if (spStatus !== 'DRAFT' || isItemReceived) return false;
+      } else if (activeTab !== 'ALL') {
+        // Odoo statuses
+        const spStatus = item.statusPr || 'DRAFT';
+        const poStatus = item.statusPo || '';
+        if (spStatus.toUpperCase() !== activeTab && poStatus.toUpperCase() !== activeTab) return false;
+        if (isItemReceived) return false;
+      }
+
       // Search query filter
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
@@ -466,7 +638,7 @@ export default function ProcurementTrackingPage() {
 
       return true;
     });
-  }, [items, searchQuery, urgencyFilter, categoryFilter]);
+  }, [items, searchQuery, urgencyFilter, categoryFilter, activeTab]);
 
   // Group items by nomorPr
   const groupedPrItems = useMemo(() => {
@@ -507,14 +679,14 @@ export default function ProcurementTrackingPage() {
         if (item.nomorPo?.trim()) posSet.add(item.nomorPo.trim());
         if (item.urgency === 'Urgent') hasUrgent = true;
         
-        const isReceived = item.statusPo === 'DONE';
+        const isReceived = !!item.tanggalTerima;
         if (isReceived) {
           someDone = true;
         } else {
           allDone = false;
         }
 
-        if (item.nomorPo && item.statusPo !== 'DONE') {
+        if (item.nomorPo && !item.tanggalTerima) {
           hasPoActive = true;
         }
 
@@ -587,8 +759,8 @@ export default function ProcurementTrackingPage() {
 
   // Lead time stats & overdue counts
   const stats = useMemo(() => {
-    const active = items.filter(i => i.statusPo !== 'DONE');
-    const received = items.filter(i => i.statusPo === 'DONE' && i.tanggalTerima && i.tanggalList);
+    const active = items.filter(i => !i.tanggalTerima);
+    const received = items.filter(i => !!i.tanggalTerima && i.tanggalList);
     
     let totalDays = 0;
     received.forEach(item => {
@@ -605,7 +777,7 @@ export default function ProcurementTrackingPage() {
     }).length;
 
     const prCount = active.filter(i => i.statusPr === 'CONTINUE' && !i.nomorPo).length;
-    const poCount = active.filter(i => i.nomorPo && i.statusPo !== 'DONE').length;
+    const poCount = active.filter(i => i.nomorPo && !i.tanggalTerima).length;
 
     return { avgLeadTime, urgentCount, etaOverdueCount, prCount, poCount };
   }, [items]);
@@ -731,35 +903,211 @@ export default function ProcurementTrackingPage() {
               )}
             </div>
             <form onSubmit={handleRequestSubmit} style={{ padding: 20 }}>
+              {/* MTC PRO: Mode Toggle Pill Selection */}
+              <div style={{ marginBottom: 16, background: 'var(--sf2)', padding: 4, borderRadius: 8, display: 'inline-flex', border: '1px solid var(--br)' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsPengadaanBaru(false);
+                    setReqOriginalName('');
+                    setReqSparepartId('');
+                    setReqLinkReferences('');
+                    setReqReason('');
+                  }}
+                  style={{
+                    padding: '6px 16px',
+                    fontSize: 11,
+                    fontWeight: 800,
+                    borderRadius: 6,
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: !isPengadaanBaru ? 'var(--sf3)' : 'transparent',
+                    color: !isPengadaanBaru ? 'var(--pur)' : 'var(--tx3)',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  🔄 Repeat Order (Pencarian Katalog)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsPengadaanBaru(true);
+                    setReqOriginalName('');
+                    setReqSparepartId('');
+                    setReqNamaAlias('');
+                    setReqLinkReferences('');
+                    setReqReason('');
+                    setReqVendor('');
+                  }}
+                  style={{
+                    padding: '6px 16px',
+                    fontSize: 11,
+                    fontWeight: 800,
+                    borderRadius: 6,
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: isPengadaanBaru ? 'var(--sf3)' : 'transparent',
+                    color: isPengadaanBaru ? 'var(--pur)' : 'var(--tx3)',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  ➕ Pengadaan Baru (Entri Suku Cadang Baru)
+                </button>
+              </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 20, marginBottom: 16 }}>
                 
                 {/* Left Column (Core info) */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {!isPengadaanBaru ? (
+                    // Mode A: Autocomplete Catalog Search for Repeat Orders
+                    <div className="form-group" style={{ position: 'relative' }}>
+                      <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Cari Suku Cadang Resmi MTC (Autocomplete Riwayat)</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="Ketik kata kunci untuk mencari di database riwayat..."
+                        value={catalogSearch}
+                        onChange={(e) => {
+                          setCatalogSearch(e.target.value);
+                          setShowCatalogDropdown(true);
+                        }}
+                        onFocus={() => setShowCatalogDropdown(true)}
+                      />
+                      
+                      {showCatalogDropdown && (() => {
+                        const hasSearchText = catalogSearch.trim().length > 0;
+                        const displayItems = hasSearchText 
+                          ? spareparts.filter(sp => 
+                              sp.nama.toLowerCase().includes(catalogSearch.toLowerCase()) ||
+                              (sp.namaAlias && sp.namaAlias.toLowerCase().includes(catalogSearch.toLowerCase()))
+                            ).slice(0, 8)
+                          : spareparts.slice(0, 5);
+                        
+                        if (displayItems.length === 0 && !hasSearchText) return null;
+                        
+                        return (
+                          <div style={{
+                            position: 'absolute',
+                            top: '100%',
+                            left: 0,
+                            right: 0,
+                            background: 'var(--sf2)',
+                            border: '1px solid var(--br)',
+                            borderRadius: 8,
+                            boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                            zIndex: 99,
+                            maxHeight: 220,
+                            overflowY: 'auto',
+                            marginTop: 6
+                          }}>
+                            <div style={{ padding: '6px 10px', fontSize: 9, fontWeight: 800, color: 'var(--tx3)', borderBottom: '1px solid var(--br)', textTransform: 'uppercase', background: 'rgba(0,0,0,0.1)' }}>
+                              {hasSearchText ? '🔍 Hasil Pencarian Suku Cadang' : '📋 5 Suku Cadang Riwayat Teratas'}
+                            </div>
+                            
+                            {displayItems.map((catItem, idx) => (
+                              <div
+                                key={idx}
+                                onClick={() => {
+                                  setReqOriginalName(catItem.nama);
+                                  setReqSparepartId(catItem.id);
+                                  setReqKeterangan('repeat order');
+                                  setReqProductCategory('Sparepart');
+                                  setReqIsStocked(true);
+                                  setReqLinkReferences(catItem.linkReference || '');
+                                  setReqReason(catItem.alasan || 'Repeat Order');
+                                  
+                                  setReqNamaAlias(catItem.namaAlias || '');
+                                  setReqVendor(catItem.vendor || '');
+                                  setReqAlasan(catItem.alasan || 'Repeat Order');
+                                  setReqLinkReference(catItem.linkReference || '');
+                                  
+                                  setShowCatalogDropdown(false);
+                                  setCatalogSearch('');
+                                }}
+                                style={{
+                                  padding: '8px 12px',
+                                  cursor: 'pointer',
+                                  fontSize: 11,
+                                  borderBottom: '1px solid var(--br)',
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center',
+                                  transition: 'background 0.15s'
+                                }}
+                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--sf3)')}
+                                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                              >
+                                <div>
+                                  <div style={{ fontWeight: 700 }}>{catItem.nama}</div>
+                                  <div style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 2 }}>
+                                    ID: {catItem.id} · Lokasi: {catItem.lokasi || '—'}
+                                  </div>
+                                </div>
+                                <span className="badge badge-grn" style={{ fontSize: 8 }}>Pilih</span>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  ) : (
+                    // Mode B: Manual Title Case Generator for New Request
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Nama Barang Asli (Original Material Name) <span className="req" style={{ color: 'var(--red)' }}>*</span></label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        required
+                        placeholder="Ketik nama suku cadang panjang resmi..."
+                        value={reqOriginalName}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setReqOriginalName(val);
+                          setReqNamaAlias(generateAutoAlias(val));
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {isPengadaanBaru && (
+                    <div className="form-group" style={{ animation: 'fadeIn 0.2s ease-out' }}>
+                      <label className="form-label" style={{ fontWeight: 700, fontSize: 11, color: 'var(--pur)' }}>Nama Alias Pendek (Title Case - Otomatis)</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        required
+                        placeholder="Generate alias name..."
+                        value={reqNamaAlias}
+                        onChange={(e) => setReqNamaAlias(e.target.value)}
+                        style={{ border: '1px solid var(--pur)', background: 'rgba(168, 85, 247, 0.02)' }}
+                      />
+                    </div>
+                  )}
+
+                  {isPengadaanBaru && (
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Rekomendasi Vendor / Toko</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="Contoh: Tokopedia PT ABC..."
+                        value={reqVendor}
+                        onChange={(e) => setReqVendor(e.target.value)}
+                      />
+                    </div>
+                  )}
+
                   <div className="form-group">
-                    <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Nama Barang Asli (Original Material Name) <span className="req" style={{ color: 'var(--red)' }}>*</span></label>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Suku Cadang Resmi Terhubung</label>
                     <input
                       type="text"
                       className="form-input"
-                      required
-                      placeholder="Ketik nama sesuai toko online / penawaran vendor..."
-                      value={reqOriginalName}
-                      onChange={(e) => setReqOriginalName(e.target.value)}
+                      disabled
+                      placeholder="Terisi otomatis saat memilih suku cadang..."
+                      value={reqSparepartId ? `${reqOriginalName} (${reqSparepartId})` : '— Tanpa Koneksi (General/Suku Cadang Baru) —'}
+                      style={{ opacity: 0.7, background: 'var(--sf2)' }}
                     />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Hubungkan Suku Cadang Resmi MTC (Dropdown Master DB)</label>
-                    <select
-                      className="form-input form-select"
-                      value={reqSparepartId}
-                      onChange={(e) => setReqSparepartId(e.target.value)}
-                      style={{ height: '38px' }}
-                    >
-                      <option value="">— Bukan untuk Suku Cadang Terdaftar / Umum —</option>
-                      {spareparts.map(sp => (
-                        <option key={sp.id} value={sp.id}>{sp.nama} ({sp.id})</option>
-                      ))}
-                    </select>
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 14 }}>
@@ -857,9 +1205,15 @@ export default function ProcurementTrackingPage() {
                     <input
                       type="url"
                       className="form-input"
-                      placeholder="Tempel link Tokopedia, Shopee, atau dokumen penawaran..."
+                      placeholder={!isPengadaanBaru ? "Terkunci untuk repeat order" : "Tempel link Tokopedia, Shopee..."}
                       value={reqLinkReferences}
                       onChange={(e) => setReqLinkReferences(e.target.value)}
+                      readOnly={!isPengadaanBaru}
+                      style={{
+                        background: !isPengadaanBaru ? 'var(--sf2)' : 'var(--sf3)',
+                        opacity: !isPengadaanBaru ? 0.7 : 1,
+                        cursor: !isPengadaanBaru ? 'not-allowed' : 'text'
+                      }}
                     />
                   </div>
                 </div>
@@ -869,11 +1223,19 @@ export default function ProcurementTrackingPage() {
                 <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Alasan Pembelian (Reason / Deskripsi Kebutuhan Mesin)</label>
                 <textarea
                   className="form-input"
-                  placeholder="Jelaskan detail untuk mesin apa, kerusakan apa, atau kenapa barang ini mendesak..."
+                  placeholder={!isPengadaanBaru ? "Terkunci untuk repeat order" : "Jelaskan detail untuk mesin apa, kerusakan apa..."}
                   rows={2}
                   value={reqReason}
                   onChange={(e) => setReqReason(e.target.value)}
-                  style={{ height: '54px', padding: '8px 12px', resize: 'none' }}
+                  readOnly={!isPengadaanBaru}
+                  style={{
+                    height: '54px',
+                    padding: '8px 12px',
+                    resize: 'none',
+                    background: !isPengadaanBaru ? 'var(--sf2)' : 'var(--sf3)',
+                    opacity: !isPengadaanBaru ? 0.7 : 1,
+                    cursor: !isPengadaanBaru ? 'not-allowed' : 'text'
+                  }}
                 />
               </div>
 
@@ -964,44 +1326,43 @@ export default function ProcurementTrackingPage() {
               </select>
             </div>
 
-            {/* Custom Tab Switcher */}
-            <div style={{ display: 'flex', background: 'var(--sf2)', padding: 4, borderRadius: 8, height: '40px', border: '1px solid var(--br)' }}>
-              <button
-                type="button"
-                className="ntab"
-                onClick={() => setActiveTab('ACTIVE')}
-                style={{
-                  flex: 1,
-                  border: 'none',
-                  borderRadius: 6,
-                  fontSize: 11,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  background: activeTab === 'ACTIVE' ? 'var(--sf3)' : 'transparent',
-                  color: activeTab === 'ACTIVE' ? 'var(--tx)' : 'var(--tx3)',
-                  transition: 'all 0.15s'
-                }}
-              >
-                ⏳ Aktif ({items.filter(i => i.statusPo !== 'DONE').length})
-              </button>
-              <button
-                type="button"
-                className="ntab"
-                onClick={() => setActiveTab('RECEIVED')}
-                style={{
-                  flex: 1,
-                  border: 'none',
-                  borderRadius: 6,
-                  fontSize: 11,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  background: activeTab === 'RECEIVED' ? 'var(--sf3)' : 'transparent',
-                  color: activeTab === 'RECEIVED' ? 'var(--tx)' : 'var(--tx3)',
-                  transition: 'all 0.15s'
-                }}
-              >
-                ✓ Diterima ({items.filter(i => i.statusPo === 'DONE').length})
-              </button>
+            {/* Custom Premium Odoo-style Tab Switcher */}
+            <div style={{ gridColumn: 'span 4', display: 'flex', background: 'var(--sf2)', padding: 3, borderRadius: 8, height: '36px', border: '1px solid var(--br)', overflowX: 'auto', gap: 4 }}>
+              {[
+                { id: 'ACTIVE', label: '⏳ Aktif', count: items.filter(i => !i.tanggalTerima).length },
+                { id: 'READY_ODOO', label: '📋 Siap Odoo', count: items.filter(i => i.statusPr === 'READY_ODOO' && !i.tanggalTerima).length },
+                { id: 'DRAFT', label: '⚙️ Draft Odoo', count: items.filter(i => (i.statusPr || 'DRAFT') === 'DRAFT' && i.statusPr !== 'READY_ODOO' && !i.tanggalTerima).length },
+                { id: 'TO_APPROVE', label: '⏳ To Approve', count: items.filter(i => i.statusPr === 'TO_APPROVE' && !i.tanggalTerima).length },
+                { id: 'APPROVED', label: '✓ Approved', count: items.filter(i => i.statusPr === 'APPROVED' && !i.tanggalTerima).length },
+                { id: 'RFQ', label: '📦 RFQ', count: items.filter(i => i.statusPr === 'RFQ' && !i.tanggalTerima).length },
+                { id: 'PO', label: '🚢 PO', count: items.filter(i => i.statusPr === 'PO' && !i.tanggalTerima).length },
+                { id: 'CANCELLED', label: '✖ Cancelled', count: items.filter(i => i.statusPr === 'CANCELLED' && !i.tanggalTerima).length },
+                { id: 'RECEIVED', label: '✓ Diterima', count: items.filter(i => !!i.tanggalTerima).length },
+                { id: 'ALL', label: '🌐 Semua', count: items.length }
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  className="ntab"
+                  onClick={() => setActiveTab(tab.id as any)}
+                  style={{
+                    flex: '1 0 auto',
+                    border: 'none',
+                    padding: '0 12px',
+                    borderRadius: 6,
+                    fontSize: 10,
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    background: activeTab === tab.id ? 'var(--sf3)' : 'transparent',
+                    color: activeTab === tab.id ? 'var(--pur)' : 'var(--tx3)',
+                    boxShadow: activeTab === tab.id ? '0 1px 4px rgba(0,0,0,0.2)' : 'none',
+                    transition: 'all 0.15s',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {tab.label} ({tab.count})
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -1148,162 +1509,495 @@ export default function ProcurementTrackingPage() {
                         <tbody>
                           {group.items.map((item) => {
                             const isItemUrgent = item.urgency === 'Urgent';
-                            const isItemReceived = item.statusPo === 'DONE';
+                            const isItemReceived = !!item.tanggalTerima;
                             const hasEtaPassed = item.etaFoom && !isItemReceived && new Date(item.etaFoom).getTime() < new Date().getTime();
 
                             return (
-                              <tr 
-                                key={item.id} 
-                                style={{ 
-                                  borderBottom: '1px solid var(--br)',
-                                  backgroundColor: isItemUrgent && !isItemReceived ? 'rgba(239, 68, 68, 0.02)' : 'transparent'
-                                }}
-                              >
-                                {/* index nomor list (Fb) */}
-                                <td className="text-mono text-tiny text-muted" style={{ textAlign: 'center', paddingLeft: 20 }}>
-                                  {item.fbIndex || '—'}
-                                </td>
-                                
-                                {/* Original item name */}
-                                <td>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    {isItemUrgent && !isItemReceived && <span style={{ color: 'var(--red)', fontSize: 12 }}>🚨</span>}
-                                    <span style={{ fontWeight: 700, color: 'var(--tx)' }}>{item.originalName}</span>
-                                  </div>
-                                  {item.reason && <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 4, fontStyle: 'italic' }}>&quot;{item.reason}&quot;</div>}
-                                </td>
-
-                                {/* Odoo Connected Item */}
-                                <td>
-                                  {item.sparepart ? (
-                                    <div>
-                                      <div style={{ fontWeight: 700, color: 'var(--tx2)', fontSize: 12 }}>{item.sparepart.nama}</div>
-                                      <div style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 2, display: 'flex', gap: 6, alignItems: 'center' }}>
-                                        <span className="text-mono">{item.sparepart.id}</span>
-                                        ·
-                                        <span>SLOC:</span>
-                                        <span className="badge badge-blu" style={{ fontSize: 8, padding: '1px 4px' }}>{item.sparepart.lokasi || '—'}</span>
-                                        ·
-                                        <span className="badge badge-grn" style={{ fontSize: 8, padding: '1px 4px', background: 'rgba(34, 197, 94, 0.1)', color: '#4ade80' }}>✓ Terhubung</span>
+                              <Fragment key={item.id}>
+                                <tr 
+                                  style={{ 
+                                    borderBottom: '1px solid var(--br)',
+                                    backgroundColor: isItemUrgent && !isItemReceived ? 'rgba(239, 68, 68, 0.02)' : 'transparent',
+                                    cursor: 'pointer'
+                                  }}
+                                  onClick={() => toggleRowExpand(item.id)}
+                                >
+                                  {/* index nomor list (Fb) */}
+                                  <td className="text-mono text-tiny text-muted" style={{ textAlign: 'center', paddingLeft: 20 }}>
+                                    {item.fbIndex || '—'}
+                                  </td>
+                                  
+                                  {/* Original item name with Quick Copy popover */}
+                                  <td>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        {isItemUrgent && !isItemReceived && <span style={{ color: 'var(--red)', fontSize: 12 }}>🚨</span>}
+                                        <span style={{ fontWeight: 700, color: 'var(--tx)' }}>{item.originalName}</span>
                                       </div>
+                                      
+                                      {item.statusPr === 'READY_ODOO' && (
+                                        <div style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+                                          <button
+                                            type="button"
+                                            className="btn btn-ghost btn-sm"
+                                            onClick={() => setActiveCopyPopoverId(activeCopyPopoverId === item.id ? null : item.id)}
+                                            style={{ padding: '2px 6px', fontSize: 10, height: 'auto', borderRadius: 4, background: 'rgba(124, 58, 237, 0.15)', color: '#c084fc', border: '1px solid rgba(124, 58, 237, 0.3)' }}
+                                          >
+                                            📋 Salin Odoo
+                                          </button>
+                                          
+                                          {activeCopyPopoverId === item.id && (
+                                            <div style={{
+                                              position: 'absolute',
+                                              top: '100%',
+                                              right: 0,
+                                              background: 'var(--sf3)',
+                                              border: '1px solid var(--br)',
+                                              borderRadius: 8,
+                                              boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+                                              zIndex: 100,
+                                              padding: 8,
+                                              display: 'flex',
+                                              flexDirection: 'column',
+                                              gap: 6,
+                                              minWidth: 160,
+                                              marginTop: 4
+                                            }}>
+                                              <div style={{ fontSize: 9, fontWeight: 800, color: 'var(--tx3)', borderBottom: '1px solid var(--br)', paddingBottom: 4, marginBottom: 2 }}>
+                                                Widget Quick-Copy
+                                              </div>
+                                              <button
+                                                type="button"
+                                                className="btn btn-ghost btn-sm"
+                                                onClick={() => {
+                                                  navigator.clipboard.writeText(item.sparepart?.nama || item.originalName);
+                                                  alert('✓ Nama Resmi disalin!');
+                                                  setActiveCopyPopoverId(null);
+                                                }}
+                                                style={{ justifyContent: 'flex-start', fontSize: 10, padding: '4px 8px' }}
+                                              >
+                                                📄 Nama Resmi
+                                              </button>
+                                              <button
+                                                type="button"
+                                                className="btn btn-ghost btn-sm"
+                                                onClick={() => {
+                                                  navigator.clipboard.writeText(String(item.harga || 0));
+                                                  alert('✓ Harga disalin!');
+                                                  setActiveCopyPopoverId(null);
+                                                }}
+                                                style={{ justifyContent: 'flex-start', fontSize: 10, padding: '4px 8px' }}
+                                              >
+                                                💰 Harga Satuan
+                                              </button>
+                                              <button
+                                                type="button"
+                                                className="btn btn-ghost btn-sm"
+                                                onClick={() => {
+                                                  navigator.clipboard.writeText(String(item.qty));
+                                                  alert('✓ Qty disalin!');
+                                                  setActiveCopyPopoverId(null);
+                                                }}
+                                                style={{ justifyContent: 'flex-start', fontSize: 10, padding: '4px 8px' }}
+                                              >
+                                                📦 Jumlah (Qty)
+                                              </button>
+                                              <button
+                                                type="button"
+                                                className="btn btn-ghost btn-sm"
+                                                disabled={!item.linkReferences}
+                                                onClick={() => {
+                                                  if (item.linkReferences) {
+                                                    navigator.clipboard.writeText(item.linkReferences);
+                                                    alert('✓ Link Referensi disalin!');
+                                                  }
+                                                  setActiveCopyPopoverId(null);
+                                                }}
+                                                style={{ justifyContent: 'flex-start', fontSize: 10, padding: '4px 8px', opacity: item.linkReferences ? 1 : 0.5 }}
+                                              >
+                                                🔗 Link Referensi
+                                              </button>
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
                                     </div>
-                                  ) : (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                      <span className="badge badge-red" style={{ fontSize: 9, padding: '2px 6px' }}>⚠️ Unlinked / General</span>
+                                    {item.reason && <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 4, fontStyle: 'italic' }}>&quot;{item.reason}&quot;</div>}
+                                  </td>
+
+                                  {/* Odoo Connected Item */}
+                                  <td>
+                                    {item.sparepart ? (
+                                      <div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                          <div style={{ fontWeight: 700, color: 'var(--tx2)', fontSize: 12 }}>{item.sparepart.nama}</div>
+                                          {item.statusPr && item.statusPr !== 'READY_ODOO' && (
+                                            <span className="badge" style={{ fontSize: 8, padding: '1px 5px', fontWeight: 800, ...getStatusBadgeStyles(item.statusPr) }}>
+                                              {item.statusPr}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 2, display: 'flex', gap: 6, alignItems: 'center' }}>
+                                          <span className="text-mono">{item.sparepart.id}</span>
+                                          ·
+                                          <span>SLOC:</span>
+                                          <span className="badge badge-blu" style={{ fontSize: 8, padding: '1px 4px' }}>{item.sparepart.lokasi || '—'}</span>
+                                          ·
+                                          <span className="badge badge-grn" style={{ fontSize: 8, padding: '1px 4px', background: 'rgba(34, 197, 94, 0.1)', color: '#4ade80' }}>✓ Terhubung</span>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} onClick={(e) => e.stopPropagation()}>
+                                        <span className="badge badge-red" style={{ fontSize: 9, padding: '2px 6px' }}>⚠️ Unlinked / General</span>
+                                        <button
+                                          type="button"
+                                          className="btn btn-ghost btn-sm"
+                                          onClick={() => openLinkModal(item)}
+                                          style={{ fontSize: 9, padding: '2px 6px', color: 'var(--pur)', height: 'auto', border: '1px solid rgba(168, 85, 247, 0.3)' }}
+                                        >
+                                          🔗 Hubungkan
+                                        </button>
+                                      </div>
+                                    )}
+                                  </td>
+
+                                  {/* Stock Foundation Badge (User requested foundation) */}
+                                  <td style={{ textAlign: 'center' }}>
+                                    {item.isStocked ? (
+                                      <span className="badge badge-grn" style={{ padding: '3px 8px', fontSize: 10, fontWeight: 700, background: 'rgba(34, 197, 94, 0.15)', color: '#22c55e' }}>
+                                        📦 Masuk Stok
+                                      </span>
+                                    ) : (
+                                      <span className="badge badge-pur" style={{ padding: '3px 8px', fontSize: 10, fontWeight: 700, background: 'rgba(168, 85, 247, 0.15)', color: '#a855f7' }}>
+                                        ⚡ Langsung Pakai
+                                      </span>
+                                    )}
+                                  </td>
+
+                                  {/* Quantity */}
+                                  <td style={{ textAlign: 'center', fontWeight: 800, fontSize: 12 }}>
+                                    {item.qty} <span style={{ fontSize: 9, fontWeight: 400, color: 'var(--tx3)' }}>{item.sparepart?.uom || 'Pcs'}</span>
+                                  </td>
+
+                                  {/* Price & Notes */}
+                                  <td>
+                                    <div style={{ fontWeight: 700 }}>{fmtRupiah(item.harga)}</div>
+                                    <div style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 2 }}>
+                                      Kat: {item.productCategory || 'Sparepart'} · Tipe: {item.keterangan || 'consumable'}
+                                    </div>
+                                  </td>
+
+                                  {/* ETA Foom */}
+                                  <td>
+                                    {item.etaFoom ? (
+                                      <div style={{ color: hasEtaPassed ? 'var(--red)' : 'var(--tx)' }}>
+                                        <div style={{ fontSize: 11, fontWeight: 600 }}>
+                                          {new Date(item.etaFoom).toLocaleDateString('id-ID', {
+                                            day: '2-digit', month: 'short', year: 'numeric'
+                                          })}
+                                        </div>
+                                        {hasEtaPassed && <div style={{ fontSize: 8, fontWeight: 800, color: 'var(--red)', marginTop: 2 }}>⚠️ LEWAT ESTIMASI</div>}
+                                      </div>
+                                    ) : '—'}
+                                  </td>
+
+                                  {/* Link GR Odoo */}
+                                  <td style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+                                    {item.linkGr ? (
+                                      <a
+                                        href={item.linkGr}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        title="Buka Lembar GR Odoo"
+                                        style={{ fontSize: 15, color: 'var(--pur)', textDecoration: 'none' }}
+                                      >
+                                        🔗
+                                      </a>
+                                    ) : '—'}
+                                  </td>
+
+                                  {/* Receive Action Column */}
+                                  <td style={{ textAlign: 'right', paddingRight: 20 }} onClick={(e) => e.stopPropagation()}>
+                                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
                                       <button
                                         type="button"
                                         className="btn btn-ghost btn-sm"
-                                        onClick={() => openLinkModal(item)}
-                                        style={{ fontSize: 9, padding: '2px 6px', color: 'var(--pur)', height: 'auto', border: '1px solid rgba(168, 85, 247, 0.3)' }}
-                                      >
-                                        🔗 Hubungkan
-                                      </button>
-                                    </div>
-                                  )}
-                                </td>
-
-                                {/* Stock Foundation Badge (User requested foundation) */}
-                                <td style={{ textAlign: 'center' }}>
-                                  {item.isStocked ? (
-                                    <span className="badge badge-grn" style={{ padding: '3px 8px', fontSize: 10, fontWeight: 700, background: 'rgba(34, 197, 94, 0.15)', color: '#22c55e' }}>
-                                      📦 Masuk Stok
-                                    </span>
-                                  ) : (
-                                    <span className="badge badge-pur" style={{ padding: '3px 8px', fontSize: 10, fontWeight: 700, background: 'rgba(168, 85, 247, 0.15)', color: '#a855f7' }}>
-                                      ⚡ Langsung Pakai
-                                    </span>
-                                  )}
-                                </td>
-
-                                {/* Quantity */}
-                                <td style={{ textAlign: 'center', fontWeight: 800, fontSize: 12 }}>
-                                  {item.qty} <span style={{ fontSize: 9, fontWeight: 400, color: 'var(--tx3)' }}>{item.sparepart?.uom || 'Pcs'}</span>
-                                </td>
-
-                                {/* Price & Notes */}
-                                <td>
-                                  <div style={{ fontWeight: 700 }}>{fmtRupiah(item.harga)}</div>
-                                  <div style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 2 }}>
-                                    Kat: {item.productCategory || 'Sparepart'} · Tipe: {item.keterangan || 'consumable'}
-                                  </div>
-                                </td>
-
-                                {/* ETA Foom */}
-                                <td>
-                                  {item.etaFoom ? (
-                                    <div style={{ color: hasEtaPassed ? 'var(--red)' : 'var(--tx)' }}>
-                                      <div style={{ fontSize: 11, fontWeight: 600 }}>
-                                        {new Date(item.etaFoom).toLocaleDateString('id-ID', {
-                                          day: '2-digit', month: 'short', year: 'numeric'
-                                        })}
-                                      </div>
-                                      {hasEtaPassed && <div style={{ fontSize: 8, fontWeight: 800, color: 'var(--red)', marginTop: 2 }}>⚠️ LEWAT ESTIMASI</div>}
-                                    </div>
-                                  ) : '—'}
-                                </td>
-
-                                {/* Link GR Odoo */}
-                                <td style={{ textAlign: 'center' }}>
-                                  {item.linkGr ? (
-                                    <a
-                                      href={item.linkGr}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      title="Buka Lembar GR Odoo"
-                                      style={{ fontSize: 15, color: 'var(--pur)', textDecoration: 'none' }}
-                                    >
-                                      🔗
-                                    </a>
-                                  ) : '—'}
-                                </td>
-
-                                {/* Receive Action Column */}
-                                <td style={{ textAlign: 'right', paddingRight: 20 }}>
-                                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
-                                    <button
-                                      type="button"
-                                      className="btn btn-ghost btn-sm"
-                                      onClick={() => openEditModal(item)}
-                                      style={{ padding: '5px 8px', fontSize: 10, height: 'auto', border: '1px solid var(--br)', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}
-                                      title="Edit Detail SCM / PR / PO"
-                                    >
-                                      ✏️ Edit
-                                    </button>
-
-                                    {isItemReceived ? (
-                                      <div style={{ textAlign: 'right' }}>
-                                        <span className="badge badge-grn" style={{ padding: '4px 8px', fontSize: 10, fontWeight: 700 }}>
-                                          ✓ Diterima {item.isStocked ? '(Gudang)' : '(Non-Stok)'}
-                                        </span>
-                                        {item.tanggalTerima && (
-                                          <div style={{ fontSize: 8, color: 'var(--tx3)', marginTop: 2 }}>
-                                            Tgl: {new Date(item.tanggalTerima).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit' })}
-                                          </div>
-                                        )}
-                                      </div>
-                                    ) : item.nomorPo ? (
-                                      <button
-                                        type="button"
-                                        className="btn btn-grn btn-sm"
-                                        disabled={actionLoading !== null}
-                                        onClick={() => openReceiveModal(item)}
-                                        style={{ padding: '5px 10px', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
-                                      >
-                                        📥 Terima Barang
-                                      </button>
-                                    ) : (
-                                      <button
-                                        type="button"
-                                        disabled={actionLoading !== null}
                                         onClick={() => openEditModal(item)}
-                                        style={{ padding: '5px 10px', fontSize: 10, fontWeight: 700, cursor: 'pointer', background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: 6 }}
+                                        style={{ padding: '5px 8px', fontSize: 10, height: 'auto', border: '1px solid var(--br)', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}
+                                        title="Edit Detail SCM / PR / PO"
                                       >
-                                        🚢 Push ke PO
+                                        ✏️ Edit
                                       </button>
-                                    )}
-                                  </div>
-                                </td>
-                              </tr>
+
+                                      {isItemReceived ? (
+                                        <div style={{ textAlign: 'right' }}>
+                                          <span className="badge badge-grn" style={{ padding: '4px 8px', fontSize: 10, fontWeight: 700 }}>
+                                            ✓ Diterima {item.isStocked ? '(Gudang)' : '(Non-Stok)'}
+                                          </span>
+                                          {item.tanggalTerima && (
+                                            <div style={{ fontSize: 8, color: 'var(--tx3)', marginTop: 2 }}>
+                                              Tgl: {new Date(item.tanggalTerima).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit' })}
+                                            </div>
+                                          )}
+                                        </div>
+                                      ) : item.statusPr === 'READY_ODOO' && item.sparepartId ? (
+                                        <button
+                                          type="button"
+                                          className="btn btn-pur btn-sm"
+                                          disabled={actionLoading !== null}
+                                          onClick={() => openOdooProcessedModal(item)}
+                                          style={{ padding: '5px 10px', fontSize: 10, fontWeight: 700, cursor: 'pointer', background: 'linear-gradient(135deg, var(--pur) 0%, #4f46e5 100%)', color: '#fff', border: 'none', borderRadius: 6 }}
+                                        >
+                                          🚀 Selesai Odoo
+                                        </button>
+                                      ) : item.nomorPo ? (
+                                        <button
+                                          type="button"
+                                          className="btn btn-grn btn-sm"
+                                          disabled={actionLoading !== null}
+                                          onClick={() => openReceiveModal(item)}
+                                          style={{ padding: '5px 10px', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
+                                        >
+                                          📥 Terima Barang
+                                        </button>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          disabled={actionLoading !== null}
+                                          onClick={() => openEditModal(item)}
+                                          style={{ padding: '5px 10px', fontSize: 10, fontWeight: 700, cursor: 'pointer', background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: 6 }}
+                                        >
+                                          🚢 Push ke PO
+                                        </button>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+
+                                {/* Expanded Timeline Chatter Log Row */}
+                                {expandedRows[item.id] && (
+                                  <tr style={{ background: 'rgba(0,0,0,0.18)' }}>
+                                    <td colSpan={9} style={{ padding: '16px 24px', borderBottom: '1px solid var(--br)' }}>
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                        <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--pur)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                          💬 Log Pelacakan & Komentar Chatter Odoo (Mail Messages)
+                                        </div>
+                                        
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 20, paddingLeft: 8, paddingRight: 8 }}>
+                                          <style dangerouslySetInnerHTML={{ __html: `
+                                            .chatter-body ul {
+                                              list-style-type: disc !important;
+                                              padding-left: 20px !important;
+                                              margin: 6px 0 !important;
+                                            }
+                                            .chatter-body li {
+                                              margin-bottom: 3px !important;
+                                            }
+                                            .chatter-body p {
+                                              margin: 6px 0 !important;
+                                            }
+                                            .chatter-body a {
+                                              color: var(--pur) !important;
+                                              text-decoration: underline !important;
+                                            }
+                                          `}} />
+
+                                          {(() => {
+                                            const rawNotes = item.odooNotes || item.sparepart?.odooNotes;
+                                            if (!rawNotes) {
+                                              return (
+                                                <div style={{ fontSize: 11, color: 'var(--tx3)', fontStyle: 'italic', paddingLeft: 12, borderLeft: '2px dashed var(--br)' }}>
+                                                  Belum ada log catatan chatter Odoo untuk item ini. Lakukan sinkronisasi atau masukkan nomor PR Odoo resmi.
+                                                </div>
+                                              );
+                                            }
+                                            try {
+                                              if (rawNotes.trim().startsWith('[')) {
+                                                const logs = JSON.parse(rawNotes);
+                                                if (logs.length === 0) {
+                                                  return <div style={{ fontSize: 11, color: 'var(--tx3)', fontStyle: 'italic', paddingLeft: 12, borderLeft: '2px dashed var(--br)' }}>Belum ada komentar chatter Odoo.</div>;
+                                                }
+
+                                                // Helper to format date header
+                                                const formatDateHeader = (dateStr: string) => {
+                                                  if (!dateStr) return 'Tanggal Tidak Diketahui';
+                                                  try {
+                                                    const d = new Date(dateStr.replace(' ', 'T'));
+                                                    if (isNaN(d.getTime())) {
+                                                      const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+                                                      if (match) return `${match[3]}/${match[2]}/${match[1]}`;
+                                                      return dateStr.split(' ')[0];
+                                                    }
+                                                    return d.toLocaleDateString('id-ID', {
+                                                      day: 'numeric',
+                                                      month: 'long',
+                                                      year: 'numeric'
+                                                    });
+                                                  } catch {
+                                                    return dateStr.split(' ')[0];
+                                                  }
+                                                };
+
+                                                // Helper to format time
+                                                const formatTime = (dateStr: string) => {
+                                                  if (!dateStr) return '';
+                                                  try {
+                                                    const d = new Date(dateStr.replace(' ', 'T'));
+                                                    if (isNaN(d.getTime())) {
+                                                      const match = dateStr.match(/(\d{2}):(\d{2}):(\d{2})/);
+                                                      if (match) return `${match[1]}:${match[2]}`;
+                                                      return '';
+                                                    }
+                                                    return d.toLocaleTimeString('id-ID', {
+                                                      hour: '2-digit',
+                                                      minute: '2-digit'
+                                                    });
+                                                  } catch {
+                                                    return '';
+                                                  }
+                                                };
+
+                                                // Group logs by date
+                                                const groupedLogs: { [key: string]: any[] } = {};
+                                                logs.forEach((log: any) => {
+                                                  const header = formatDateHeader(log.date);
+                                                  if (!groupedLogs[header]) {
+                                                    groupedLogs[header] = [];
+                                                  }
+                                                  groupedLogs[header].push(log);
+                                                });
+
+                                                // Get chronological date headers in order
+                                                const dateHeaders = Object.keys(groupedLogs);
+
+                                                return (
+                                                  <div style={{ display: 'flex', flexDirection: 'column', gap: 24, position: 'relative' }}>
+                                                    {/* Central timeline track line */}
+                                                    <div style={{
+                                                      position: 'absolute',
+                                                      left: 20,
+                                                      top: 10,
+                                                      bottom: 10,
+                                                      width: 2,
+                                                      background: 'linear-gradient(to bottom, var(--pur) 0%, rgba(168, 85, 247, 0.1) 100%)',
+                                                      zIndex: 1
+                                                    }} />
+
+                                                    {dateHeaders.map((dateHeader) => (
+                                                      <div key={dateHeader} style={{ display: 'flex', flexDirection: 'column', gap: 14, zIndex: 2 }}>
+                                                        {/* Date Header Row */}
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                                          {/* Bullet dot indicator on line */}
+                                                          <div style={{
+                                                            width: 12,
+                                                            height: 12,
+                                                            borderRadius: '50%',
+                                                            background: 'var(--pur)',
+                                                            border: '3px solid var(--sf1)',
+                                                            boxShadow: '0 0 8px var(--pur)',
+                                                            marginLeft: 15,
+                                                            zIndex: 3
+                                                          }} />
+                                                          <span style={{
+                                                            fontSize: 10,
+                                                            fontWeight: 900,
+                                                            color: 'var(--tx3)',
+                                                            background: 'rgba(168, 85, 247, 0.1)',
+                                                            padding: '2px 8px',
+                                                            borderRadius: 12,
+                                                            border: '1px solid rgba(168, 85, 247, 0.25)',
+                                                            letterSpacing: '0.5px'
+                                                          }}>
+                                                            🗓️ {dateHeader}
+                                                          </span>
+                                                        </div>
+
+                                                        {/* Logs under this Date */}
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingLeft: 42 }}>
+                                                          {groupedLogs[dateHeader].map((log, logIdx) => {
+                                                            const isPoPhase = log.phase === 'PO';
+                                                            return (
+                                                              <div
+                                                                key={logIdx}
+                                                                style={{
+                                                                  display: 'flex',
+                                                                  flexDirection: 'column',
+                                                                  gap: 8,
+                                                                  padding: '12px 16px',
+                                                                  background: isPoPhase ? 'rgba(34, 197, 94, 0.04)' : 'rgba(168, 85, 247, 0.04)',
+                                                                  borderRadius: 10,
+                                                                  border: isPoPhase ? '1px solid rgba(34, 197, 94, 0.15)' : '1px solid rgba(168, 85, 247, 0.15)',
+                                                                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                                                                  transition: 'all 0.2s',
+                                                                  position: 'relative'
+                                                                }}
+                                                                onMouseEnter={(e) => {
+                                                                  e.currentTarget.style.borderColor = isPoPhase ? 'rgba(34, 197, 94, 0.4)' : 'rgba(168, 85, 247, 0.4)';
+                                                                  e.currentTarget.style.transform = 'translateY(-1px)';
+                                                                }}
+                                                                onMouseLeave={(e) => {
+                                                                  e.currentTarget.style.borderColor = isPoPhase ? 'rgba(34, 197, 94, 0.15)' : 'rgba(168, 85, 247, 0.15)';
+                                                                  e.currentTarget.style.transform = 'translateY(0)';
+                                                                }}
+                                                              >
+                                                                {/* Log Header Line */}
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                                                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                                    <span style={{ fontWeight: 800, color: 'var(--tx)', fontSize: 11.5 }}>
+                                                                      👤 {log.author || 'Odoo System'}
+                                                                    </span>
+                                                                    {isPoPhase ? (
+                                                                      <span className="badge badge-grn" style={{ fontSize: 8.5, padding: '2px 6px', fontWeight: 800, background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80' }}>
+                                                                        🛒 FASE PO
+                                                                      </span>
+                                                                    ) : (
+                                                                      <span className="badge badge-pur" style={{ fontSize: 8.5, padding: '2px 6px', fontWeight: 800, background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc' }}>
+                                                                        📋 FASE PR / DRAFT / PENAWARAN
+                                                                      </span>
+                                                                    )}
+                                                                  </div>
+                                                                  
+                                                                  <span style={{ fontSize: 9.5, color: 'var(--tx3)', fontWeight: 600 }}>
+                                                                    ⏱️ {formatTime(log.date)}
+                                                                  </span>
+                                                                </div>
+
+                                                                {/* Log Body content */}
+                                                                <div
+                                                                  style={{
+                                                                    color: 'var(--tx2)',
+                                                                    fontSize: 11,
+                                                                    lineHeight: 1.5,
+                                                                    wordBreak: 'break-word',
+                                                                    paddingLeft: 4,
+                                                                    borderLeft: isPoPhase ? '2px solid rgba(34, 197, 94, 0.3)' : '2px solid rgba(168, 85, 247, 0.3)'
+                                                                  }}
+                                                                  className="chatter-body"
+                                                                  dangerouslySetInnerHTML={{ __html: log.body || '' }}
+                                                                />
+                                                              </div>
+                                                            );
+                                                          })}
+                                                        </div>
+                                                      </div>
+                                                    ))}
+                                                  </div>
+                                                );
+                                              } else {
+                                                return rawNotes.split('\n').map((line: string, idx: number) => (
+                                                  <div key={idx} style={{ fontSize: 11, color: 'var(--tx2)', lineHeight: 1.4, paddingLeft: 12, borderLeft: '2px solid var(--pur)' }}>{line}</div>
+                                                ));
+                                              }
+                                            } catch (e) {
+                                              return <div style={{ fontSize: 11, color: 'var(--tx2)', whiteSpace: 'pre-wrap', lineHeight: 1.4, paddingLeft: 12, borderLeft: '2px solid var(--pur)' }}>{rawNotes}</div>;
+                                            }
+                                          })()}
+                                        </div>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )}
+                              </Fragment>
                             );
                           })}
                         </tbody>
@@ -1377,6 +2071,60 @@ export default function ProcurementTrackingPage() {
                   <span style={{ fontSize: 9, color: 'var(--tx3)', display: 'block', marginTop: 4 }}>
                     💡 Web App URL dari script Google Sheets. Mengizinkan form MTC **menulis baris request baru secara otomatis** langsung ke Sheets Anda.
                   </span>
+                </div>
+
+                <div style={{ borderTop: '1px solid var(--br)', paddingTop: 16, marginTop: 16, marginBottom: 16 }}>
+                  <h4 style={{ margin: '0 0 12px 0', fontSize: 13, color: 'var(--pur)', fontWeight: 800 }}>🔑 Kredensial Odoo Cloud (Lacak Status & Chatter)</h4>
+                  
+                  <div className="form-group" style={{ marginBottom: 12 }}>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: 11, color: 'var(--pur)' }}>Odoo Browser Session ID (Cookie - Jalan Ninja/Mandiri)</label>
+                    <input
+                      type="password"
+                      className="form-input"
+                      placeholder="Masukkan nilai cookie session_id dari browser..."
+                      value={tempOdooSessionId}
+                      onChange={(e) => setTempOdooSessionId(e.target.value)}
+                      style={{ border: tempOdooSessionId ? '1px solid var(--pur)' : '1px solid var(--br)' }}
+                    />
+                    <span style={{ fontSize: 9, color: 'var(--tx3)', display: 'block', marginTop: 4 }}>
+                      💡 <b>Sangat Berguna untuk Akun Pinjaman:</b> Login ke Odoo di browser, cari cookie bernama <code>session_id</code> lewat Inspect Element (F12) lalu pilih Cookies, lalu tempel di sini. Jika kolom ini terisi, setelan API Key, DB, dan UID di bawah akan otomatis dilewati.
+                    </span>
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: 12 }}>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Odoo RPC Password / API Key</label>
+                    <input
+                      type="password"
+                      className="form-input"
+                      placeholder="Masukkan Kata Sandi Odoo atau Developer API Key..."
+                      value={tempOdooPassword}
+                      onChange={(e) => setTempOdooPassword(e.target.value)}
+                    />
+                    <span style={{ fontSize: 9, color: 'var(--tx3)', display: 'block', marginTop: 4 }}>
+                      💡 Kata sandi akun Odoo Anda (e.g. untuk puput@foom.id) atau Developer API Key yang digenerate dari profil Odoo Anda.
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Odoo Database Name</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={tempOdooDb}
+                        onChange={(e) => setTempOdooDb(e.target.value)}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Odoo UID</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={tempOdooUid}
+                        onChange={(e) => setTempOdooUid(e.target.value)}
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <button
@@ -1834,6 +2582,70 @@ export default function ProcurementTrackingPage() {
                   style={{ fontWeight: 700, padding: '0 24px' }}
                 >
                   {actionLoading !== null ? 'Memproses...' : '💾 Simpan Perubahan'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL MARK AS PROCESSED (READY_ODOO -> DRAFT / TO_APPROVE) */}
+      {showOdooProcessedModal && odooProcessedItem && (
+        <div className="modal-overlay" style={{ zIndex: 1090 }}>
+          <div className="modal-card" style={{ maxWidth: 480 }}>
+            <div className="modal-header" style={{ background: 'var(--sf2)', borderBottom: '1px solid var(--br)' }}>
+              <h3 style={{ margin: 0, fontSize: 14, fontWeight: 800, color: 'var(--tx)' }}>🚀 Catat PR Odoo Resmi (Mark Processed)</h3>
+              <button className="modal-close" onClick={() => setShowOdooProcessedModal(false)}>×</button>
+            </div>
+            <form onSubmit={handleOdooProcessedSubmit}>
+              <div className="modal-body" style={{ padding: 20 }}>
+                <div style={{ marginBottom: 16, borderBottom: '1px solid var(--br)', paddingBottom: 10 }}>
+                  <label style={{ fontSize: 9, color: 'var(--tx3)', fontWeight: 800 }}>NAMA BARANG DI SHEETS</label>
+                  <div style={{ fontSize: 13, fontWeight: 800, marginTop: 4, color: 'var(--tx)' }}>{odooProcessedItem.originalName}</div>
+                  <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 2 }}>
+                    Kategori: {odooProcessedItem.productCategory || 'Sparepart'} · Qty: {odooProcessedItem.qty} Pcs
+                  </div>
+                </div>
+
+                <div className="form-group" style={{ marginBottom: 14 }}>
+                  <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Nomor PR Odoo Resmi <span style={{ color: 'var(--red)' }}>*</span></label>
+                  <input
+                    type="text"
+                    required
+                    className="form-input"
+                    placeholder="Contoh: PR/2026/06/0012"
+                    value={odooProcessedPrNo}
+                    onChange={(e) => setOdooProcessedPrNo(e.target.value)}
+                    autoFocus
+                  />
+                  <span style={{ fontSize: 9, color: 'var(--tx3)', display: 'block', marginTop: 4 }}>
+                    💡 Nomor PR ini akan digunakan sebagai &quot;Jangkar Pelacakan&quot; untuk menyinkronkan status langsung dari server Odoo Cloud secara otomatis.
+                  </span>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Status Draf Odoo Awal</label>
+                  <select
+                    className="form-input form-select"
+                    value={odooProcessedStatus}
+                    onChange={(e) => setOdooProcessedStatus(e.target.value as any)}
+                    style={{ height: '38px' }}
+                  >
+                    <option value="DRAFT">⚙️ DRAFT (Belum diajukan di Odoo)</option>
+                    <option value="TO_APPROVE">⏳ TO APPROVE (Menunggu Approval di Odoo)</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div className="modal-footer" style={{ background: 'var(--sf2)', borderTop: '1px solid var(--br)' }}>
+                <button type="button" className="btn btn-ghost" onClick={() => setShowOdooProcessedModal(false)}>Batal</button>
+                <button
+                  type="submit"
+                  className="btn btn-pur"
+                  disabled={actionLoading !== null}
+                  style={{ fontWeight: 700, padding: '0 24px', background: 'linear-gradient(135deg, var(--pur) 0%, #4f46e5 100%)', border: 'none', color: '#fff' }}
+                >
+                  {actionLoading !== null ? 'Memproses...' : '🚀 Simpan Nomor PR & Hubungkan'}
                 </button>
               </div>
             </form>
