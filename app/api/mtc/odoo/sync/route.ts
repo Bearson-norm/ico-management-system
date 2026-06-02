@@ -687,7 +687,7 @@ export async function POST(req: NextRequest) {
                 nomorPo: poName,
                 odooNotes: chatterNotes || null,
               };
-              if (vendorName && !item.vendor) updateData.vendor = vendorName;
+              if (vendorName) updateData.vendor = vendorName;
               if (parsedOdooDate && !isNaN(parsedOdooDate.getTime())) {
                 updateData.tanggalList = parsedOdooDate;
               }

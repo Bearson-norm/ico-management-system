@@ -96,6 +96,10 @@ export default function ProcurementTrackingPage() {
   const [reqLinkReference, setReqLinkReference] = useState('');
   const [reqAlasan, setReqAlasan] = useState('');
 
+  // PR Cart states
+  const [cartItems, setCartItems] = useState<any[]>([]);
+  const [batchPrNo, setBatchPrNo] = useState('');
+
   // Catalog search/autocomplete states
   const [catalogSearch, setCatalogSearch] = useState('');
   const [showCatalogDropdown, setShowCatalogDropdown] = useState(false);
@@ -140,6 +144,7 @@ export default function ProcurementTrackingPage() {
   
   // Tabs for main view (updated to support Odoo status types)
   const [activeTab, setActiveTab] = useState<'ACTIVE' | 'DRAFT_PR' | 'TO_APPROVE' | 'APPROVED' | 'PO_RFQ' | 'RECEIVED' | 'ALL'>('ACTIVE');
+  const [groupingMode, setGroupingMode] = useState<'PR' | 'PO'>('PR');
   
   // Link Modal States
   const [showLinkModal, setShowLinkModal] = useState(false);
@@ -260,6 +265,15 @@ export default function ProcurementTrackingPage() {
       if (savedOdooSessionId) {
         setOdooSessionId(savedOdooSessionId);
         setTempOdooSessionId(savedOdooSessionId);
+      }
+
+      const savedCart = localStorage.getItem('mtc_pr_cart');
+      if (savedCart) {
+        try {
+          setCartItems(JSON.parse(savedCart));
+        } catch (e) {
+          console.error('Failed to parse saved cart:', e);
+        }
       }
 
       // Real-Time Auto Sync on page load (silently in background)
@@ -490,6 +504,118 @@ export default function ProcurementTrackingPage() {
     }
   }
 
+  // Helper to save cart to localStorage
+  const saveCartToLocalStorage = (newCart: any[]) => {
+    setCartItems(newCart);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('mtc_pr_cart', JSON.stringify(newCart));
+    }
+  };
+
+  // Add current form data to Cart
+  function handleAddToCart() {
+    if (!reqOriginalName?.trim()) {
+      alert('Nama barang asli wajib diisi!');
+      return;
+    }
+    if (!reqQty || Number(reqQty) < 1) {
+      alert('Jumlah / Qty minimal harus 1!');
+      return;
+    }
+
+    const selectedSp = spareparts.find(s => s.id === reqSparepartId);
+    const newItem = {
+      id: Date.now(),
+      originalName: reqOriginalName.trim(),
+      sparepartId: reqSparepartId || null,
+      keterangan: reqKeterangan,
+      qty: Number(reqQty),
+      productCategory: reqProductCategory,
+      reason: isPengadaanBaru ? reqReason : 'Repeat Order',
+      urgency: reqUrgency,
+      linkReferences: isPengadaanBaru ? reqLinkReferences : (selectedSp?.linkReference || ''),
+      isStocked: reqIsStocked,
+      isPengadaanBaru: isPengadaanBaru,
+      namaAlias: isPengadaanBaru ? reqNamaAlias : (selectedSp?.namaAlias || ''),
+      alasan: isPengadaanBaru ? reqReason : (selectedSp?.alasan || 'Repeat Order'),
+      vendor: isPengadaanBaru ? reqVendor : (selectedSp?.vendor || ''),
+      harga: isPengadaanBaru ? 0 : (selectedSp?.harga || 0),
+    };
+
+    const updatedCart = [...cartItems, newItem];
+    saveCartToLocalStorage(updatedCart);
+
+    // Reset Form Fields
+    setReqOriginalName('');
+    setReqSparepartId('');
+    setReqKeterangan('consumable');
+    setReqQty(1);
+    setReqProductCategory('Sparepart');
+    setReqReason('');
+    setReqUrgency('Normal');
+    setReqLinkReferences('');
+    setReqIsStocked(true);
+    setReqVendor('');
+    setReqNamaAlias('');
+    setReqLinkReference('');
+    setReqAlasan('');
+    setCatalogSearch('');
+
+    setRequestStatus({ type: 'success', msg: '✓ Berhasil ditambahkan ke keranjang belanja!' });
+    setTimeout(() => setRequestStatus(null), 3000);
+  }
+
+  // Remove single item from Cart
+  function handleRemoveFromCart(id: number) {
+    const updatedCart = cartItems.filter(item => item.id !== id);
+    saveCartToLocalStorage(updatedCart);
+  }
+
+  // Submit entire Cart in Batch
+  async function handleBatchSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!batchPrNo.trim()) {
+      alert('Nomor PR Bersama wajib diisi!');
+      return;
+    }
+    if (cartItems.length === 0) {
+      alert('Keranjang belanja kosong!');
+      return;
+    }
+
+    setActionLoading('batch-request');
+    setRequestStatus(null);
+
+    try {
+      const res = await fetch('/api/mtc/procurement/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: cartItems,
+          nomorPr: batchPrNo.trim(),
+          scriptUrl: scriptUrl || null,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setRequestStatus({ type: 'success', msg: json.data?.msg || `✓ Berhasil mengajukan ${cartItems.length} item secara masal!` });
+        saveCartToLocalStorage([]);
+        setBatchPrNo('');
+        await fetchData();
+        setTimeout(() => {
+          setShowRequestForm(false);
+          setRequestStatus(null);
+        }, 3000);
+      } else {
+        setRequestStatus({ type: 'error', msg: json.error || 'Gagal mengirim pengajuan masal.' });
+      }
+    } catch (err) {
+      setRequestStatus({ type: 'error', msg: 'Terjadi kesalahan koneksi jaringan.' });
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
   // Handle Goods Receipt (Terima Barang)
   async function handleReceiveSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -641,7 +767,8 @@ export default function ProcurementTrackingPage() {
       } else if (activeTab === 'APPROVED') {
         if (isItemReceived || spStatus !== 'APPROVED') return false;
       } else if (activeTab === 'PO_RFQ') {
-        if (isItemReceived || (spStatus !== 'PO' && spStatus !== 'RFQ' && poStatus !== 'PO' && poStatus !== 'RFQ')) return false;
+        const hasPo = spStatus === 'PO' || spStatus === 'RFQ' || poStatus === 'PO' || poStatus === 'RFQ' || (item.nomorPo && item.nomorPo.trim() !== '');
+        if (isItemReceived || !hasPo) return false;
       } else if (activeTab === 'RECEIVED') {
         if (!isItemReceived) return false;
       }
@@ -715,12 +842,15 @@ export default function ProcurementTrackingPage() {
     return !monthFilter && !yearFilter;
   };
 
-  // Group items by nomorPr
+  // Group items dynamically by PR or PO
   const groupedPrItems = useMemo(() => {
     const groups: { [key: string]: TrackingItem[] } = {};
 
     filteredItems.forEach(item => {
-      const key = item.nomorPr?.trim() || 'DRAFT';
+      const key = groupingMode === 'PR' 
+        ? (item.nomorPr?.trim() || 'DRAFT')
+        : (item.nomorPo?.trim() || 'BELUM_ADA_PO');
+      
       if (!groups[key]) {
         groups[key] = [];
       }
@@ -728,9 +858,15 @@ export default function ProcurementTrackingPage() {
     });
 
     const sortedKeys = Object.keys(groups).sort((a, b) => {
-      if (a === 'DRAFT') return -1; // Drafts first
-      if (b === 'DRAFT') return 1;
-      return b.localeCompare(a); // Descending order of PR numbers
+      if (groupingMode === 'PR') {
+        if (a === 'DRAFT') return -1;
+        if (b === 'DRAFT') return 1;
+        return b.localeCompare(a);
+      } else {
+        if (a === 'BELUM_ADA_PO') return -1;
+        if (b === 'BELUM_ADA_PO') return 1;
+        return b.localeCompare(a);
+      }
     });
 
     return sortedKeys.map(key => {
@@ -739,6 +875,7 @@ export default function ProcurementTrackingPage() {
       let totalCost = 0;
       const vendorsSet = new Set<string>();
       const posSet = new Set<string>();
+      const prsSet = new Set<string>();
       let hasUrgent = false;
       let allDone = true;
       let someDone = false;
@@ -752,6 +889,7 @@ export default function ProcurementTrackingPage() {
         totalCost += (Number(item.harga) || 0) * item.qty;
         if (item.vendor?.trim()) vendorsSet.add(item.vendor.trim());
         if (item.nomorPo?.trim()) posSet.add(item.nomorPo.trim());
+        if (item.nomorPr?.trim()) prsSet.add(item.nomorPr.trim());
         if (item.urgency === 'Urgent') hasUrgent = true;
         
         const isReceived = !!item.tanggalTerima;
@@ -779,16 +917,28 @@ export default function ProcurementTrackingPage() {
       }
 
       let overallStatus: 'DRAFT' | 'PR_PROCESS' | 'PO_ACTIVE' | 'PARTIAL' | 'DONE' = 'PR_PROCESS';
-      if (key === 'DRAFT') {
-        overallStatus = 'DRAFT';
-      } else if (allDone) {
-        overallStatus = 'DONE';
-      } else if (someDone) {
-        overallStatus = 'PARTIAL';
-      } else if (hasPoActive) {
-        overallStatus = 'PO_ACTIVE';
+      if (groupingMode === 'PR') {
+        if (key === 'DRAFT') {
+          overallStatus = 'DRAFT';
+        } else if (allDone) {
+          overallStatus = 'DONE';
+        } else if (someDone) {
+          overallStatus = 'PARTIAL';
+        } else if (hasPoActive) {
+          overallStatus = 'PO_ACTIVE';
+        } else {
+          overallStatus = 'PR_PROCESS';
+        }
       } else {
-        overallStatus = 'PR_PROCESS';
+        if (key === 'BELUM_ADA_PO') {
+          overallStatus = 'PR_PROCESS';
+        } else if (allDone) {
+          overallStatus = 'DONE';
+        } else if (someDone) {
+          overallStatus = 'PARTIAL';
+        } else {
+          overallStatus = 'PO_ACTIVE';
+        }
       }
 
       let daysRunningStr = '';
@@ -802,19 +952,21 @@ export default function ProcurementTrackingPage() {
       }
 
       return {
-        nomorPr: key === 'DRAFT' ? null : key,
+        nomorPr: groupingMode === 'PR' ? (key === 'DRAFT' ? null : key) : (Array.from(prsSet).join(', ') || null),
+        nomorPo: groupingMode === 'PO' ? (key === 'BELUM_ADA_PO' ? null : key) : (Array.from(posSet).join(', ') || null),
         items: itemsInGroup,
         totalQty,
         totalCost,
         vendors: Array.from(vendorsSet).join(', ') || '—',
         poNumbers: Array.from(posSet).join(', ') || '—',
+        prNumbers: Array.from(prsSet).join(', ') || '—',
         hasUrgent,
         overallStatus,
         daysRunningStr,
         oldestDateStr: oldestDate ? oldestDate.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—',
       };
     });
-  }, [filteredItems]);
+  }, [filteredItems, groupingMode]);
 
   const toggleGroupExpand = (prKey: string) => {
     setExpandedGroups(prev => ({
@@ -1322,16 +1474,153 @@ export default function ProcurementTrackingPage() {
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
                 <button type="button" className="btn btn-ghost" onClick={() => setShowRequestForm(false)} style={{ cursor: 'pointer' }}>Batal</button>
+                
+                <button
+                  type="button"
+                  className="btn btn-grn"
+                  onClick={handleAddToCart}
+                  style={{ fontWeight: 800, padding: '0 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  🛒 Tambahkan ke Keranjang
+                </button>
+
                 <button
                   type="submit"
                   className="btn btn-pur"
                   disabled={actionLoading === 'request'}
                   style={{ fontWeight: 800, padding: '0 24px', cursor: 'pointer' }}
                 >
-                  {actionLoading === 'request' ? 'Menyimpan...' : '💾 Kirim Pengajuan'}
+                  {actionLoading === 'request' ? 'Menyimpan...' : '💾 Kirim Langsung'}
                 </button>
               </div>
             </form>
+
+            {/* PR Cart Section */}
+            {cartItems.length > 0 && (
+              <>
+                <div style={{ borderTop: '1px dashed var(--br)', margin: '0 20px 20px 20px' }}></div>
+                
+                <div style={{ padding: '0 20px 12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 18 }}>🛒</span>
+                    <span style={{ fontWeight: 800, fontSize: 13, color: 'var(--pur)' }}>
+                      Keranjang Rencana PR Sementara ({cartItems.length} Item)
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    onClick={() => {
+                      if (confirm('Apakah Anda yakin ingin mengosongkan keranjang?')) {
+                        saveCartToLocalStorage([]);
+                      }
+                    }}
+                    style={{ fontSize: 11, padding: '4px 10px', color: 'var(--red)', border: '1px solid rgba(239, 68, 68, 0.2)', height: 'auto', background: 'transparent' }}
+                  >
+                    🗑️ Kosongkan
+                  </button>
+                </div>
+
+                <div style={{ padding: '0 20px 20px 20px' }}>
+                  <div style={{ border: '1px solid var(--br)', borderRadius: 8, background: 'var(--sf2)', overflowX: 'auto', marginBottom: 16 }}>
+                    <table style={{ width: '100%', fontSize: 11, borderCollapse: 'collapse', minWidth: 600 }}>
+                      <thead>
+                        <tr style={{ background: 'rgba(0,0,0,0.15)', borderBottom: '1px solid var(--br)' }}>
+                          <th style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 700, width: 40 }}>No</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 700 }}>Nama Suku Cadang / Barang</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 700, width: 60 }}>Qty</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 700, width: 100 }}>Kategori</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 700, width: 100 }}>Urgensi</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 700, width: 120 }}>Rencana Simpan</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 700, width: 60 }}>Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {cartItems.map((item, idx) => (
+                          <tr key={item.id} style={{ borderBottom: idx < cartItems.length - 1 ? '1px solid var(--br)' : 'none' }}>
+                            <td style={{ padding: '10px 12px', textAlign: 'center', color: 'var(--tx3)' }}>{idx + 1}</td>
+                            <td style={{ padding: '10px 12px' }}>
+                              <div style={{ fontWeight: 700 }}>{item.originalName}</div>
+                              {item.sparepartId && (
+                                <div style={{ fontSize: 9, color: 'var(--pur)', marginTop: 2 }}>ID Master: {item.sparepartId}</div>
+                              )}
+                            </td>
+                            <td style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 800 }}>{item.qty} Pcs</td>
+                            <td style={{ padding: '10px 12px' }}>
+                              <span className="badge" style={{ background: 'var(--sf3)', border: '1px solid var(--br)', fontSize: 9 }}>{item.productCategory}</span>
+                            </td>
+                            <td style={{ padding: '10px 12px' }}>
+                              <span className={`badge ${item.urgency === 'Urgent' ? 'badge-red' : 'badge-grn'}`} style={{ fontSize: 9 }}>
+                                {item.urgency === 'Urgent' ? '🚨 Urgent' : '🟢 Normal'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '10px 12px' }}>
+                              <span className={`badge ${item.isStocked ? 'badge-grn' : 'badge-pur'}`} style={{ fontSize: 9 }}>
+                                {item.isStocked ? '📦 Masuk Stok' : '⚡ Konsumsi'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveFromCart(item.id)}
+                                style={{ background: 'transparent', border: 'none', color: 'var(--red)', cursor: 'pointer', padding: '4px', fontSize: 12 }}
+                                title="Hapus dari keranjang"
+                              >
+                                ❌
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Batch Submit Controls */}
+                  <form onSubmit={handleBatchSubmit} style={{ display: 'flex', gap: 16, alignItems: 'flex-end', justifyContent: 'space-between', padding: 16, background: 'rgba(124, 58, 237, 0.05)', border: '1px dashed var(--pur)', borderRadius: 8, flexWrap: 'wrap' }}>
+                    <div style={{ flex: '1 1 200px' }}>
+                      <label className="form-label" style={{ fontWeight: 800, fontSize: 11, color: 'var(--pur)', display: 'block', marginBottom: 6 }}>
+                        Nomor PR Bersama (Cap PR Group) <span className="req" style={{ color: 'var(--red)' }}>*</span>
+                      </label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        required
+                        placeholder="Contoh: PR/2026/06/001"
+                        value={batchPrNo}
+                        onChange={(e) => setBatchPrNo(e.target.value)}
+                        style={{ width: '100%', maxWidth: 280, border: '1px solid var(--pur)' }}
+                      />
+                    </div>
+                    
+                    <button
+                      type="submit"
+                      className="btn btn-pur"
+                      disabled={actionLoading === 'batch-request'}
+                      style={{
+                        fontWeight: 800,
+                        padding: '0 24px',
+                        height: '38px',
+                        background: 'linear-gradient(135deg, #4f46e5 0%, var(--pur) 100%)',
+                        boxShadow: '0 4px 14px rgba(124, 58, 237, 0.3)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {actionLoading === 'batch-request' ? (
+                        <>
+                          <span className="spinner" style={{ display: 'inline-block', width: 12, height: 12, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                          Mengirim Masal...
+                        </>
+                      ) : (
+                        '🚢 Kirim Pengajuan PR Masal'
+                      )}
+                    </button>
+                  </form>
+                </div>
+              </>
+            )}
           </div>
         )}
 
@@ -1436,7 +1725,7 @@ export default function ProcurementTrackingPage() {
                 { id: 'DRAFT_PR', label: '⚙️ Draft PR', count: items.filter(i => !i.tanggalTerima && checkMonthYear(i, false) && ((i.statusPr || 'DRAFT') === 'DRAFT' || i.statusPr === 'READY_ODOO')).length },
                 { id: 'TO_APPROVE', label: '⏳ Tunggu Approve', count: items.filter(i => !i.tanggalTerima && checkMonthYear(i, false) && i.statusPr === 'TO_APPROVE').length },
                 { id: 'APPROVED', label: '✓ Disetujui', count: items.filter(i => !i.tanggalTerima && checkMonthYear(i, false) && i.statusPr === 'APPROVED').length },
-                { id: 'PO_RFQ', label: '🚢 Dalam Proses PO', count: items.filter(i => !i.tanggalTerima && checkMonthYear(i, false) && (i.statusPr === 'PO' || i.statusPr === 'RFQ' || i.statusPo === 'PO' || i.statusPo === 'RFQ')).length },
+                { id: 'PO_RFQ', label: '🚢 Dalam Proses PO', count: items.filter(i => !i.tanggalTerima && checkMonthYear(i, false) && (i.statusPr === 'PO' || i.statusPr === 'RFQ' || i.statusPo === 'PO' || i.statusPo === 'RFQ' || (i.nomorPo && i.nomorPo.trim() !== ''))).length },
                 { id: 'RECEIVED', label: '📦 Diterima', count: items.filter(i => !!i.tanggalTerima && checkMonthYear(i, true)).length },
                 { id: 'ALL', label: '🌐 Semua Dokumen', count: items.filter(i => !!i.tanggalTerima ? checkMonthYear(i, true) : checkMonthYear(i, false)).length }
               ].map(tab => (
@@ -1467,26 +1756,86 @@ export default function ProcurementTrackingPage() {
           </div>
         </div>
 
+        {/* Grouping Mode Toggle */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--tx2)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span>📋</span> Daftar Pengadaan SCM ({filteredItems.length} Item Terfilter)
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--sf2)', padding: 3, borderRadius: 8, border: '1px solid var(--br)' }}>
+            <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--tx3)', padding: '0 8px' }}>KELOMPOKKAN BY:</span>
+            <button
+              type="button"
+              onClick={() => setGroupingMode('PR')}
+              style={{
+                border: 'none',
+                padding: '4px 12px',
+                borderRadius: 6,
+                fontSize: 10,
+                fontWeight: 800,
+                cursor: 'pointer',
+                background: groupingMode === 'PR' ? 'var(--sf3)' : 'transparent',
+                color: groupingMode === 'PR' ? 'var(--pur)' : 'var(--tx3)',
+                boxShadow: groupingMode === 'PR' ? '0 1px 4px rgba(0,0,0,0.2)' : 'none',
+                transition: 'all 0.15s'
+              }}
+            >
+              📋 Nomor PR
+            </button>
+            <button
+              type="button"
+              onClick={() => setGroupingMode('PO')}
+              style={{
+                border: 'none',
+                padding: '4px 12px',
+                borderRadius: 6,
+                fontSize: 10,
+                fontWeight: 800,
+                cursor: 'pointer',
+                background: groupingMode === 'PO' ? 'var(--sf3)' : 'transparent',
+                color: groupingMode === 'PO' ? 'var(--pur)' : 'var(--tx3)',
+                boxShadow: groupingMode === 'PO' ? '0 1px 4px rgba(0,0,0,0.2)' : 'none',
+                transition: 'all 0.15s'
+              }}
+            >
+              🚢 Nomor PO & Vendor
+            </button>
+          </div>
+        </div>
+
         {/* GROUPED ACCORDION PR LIST */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {groupedPrItems.map((group) => {
-            const isPrDraft = group.nomorPr === null;
-            const prKey = isPrDraft ? 'DRAFT' : group.nomorPr!;
+            const isPrDraft = groupingMode === 'PR' ? group.nomorPr === null : group.nomorPo === null;
+            const prKey = groupingMode === 'PR' 
+              ? (group.nomorPr === null ? 'DRAFT' : group.nomorPr)
+              : (group.nomorPo === null ? 'BELUM_ADA_PO' : group.nomorPo);
             const isExpanded = !!expandedGroups[prKey];
             const hasUrgentItem = group.hasUrgent;
 
             // Determine status color and text for header
             let statusBadge = null;
-            if (isPrDraft) {
-              statusBadge = <span className="badge badge-ylw" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700 }}>📋 Draft / Pending PR</span>;
-            } else if (group.overallStatus === 'DONE') {
-              statusBadge = <span className="badge badge-grn" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700 }}>✓ Diterima Lengkap</span>;
-            } else if (group.overallStatus === 'PARTIAL') {
-              statusBadge = <span className="badge badge-ylw" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700, background: 'rgba(234, 179, 8, 0.15)', color: '#facc15' }}>⏳ Sebagian Diterima</span>;
-            } else if (group.overallStatus === 'PO_ACTIVE') {
-              statusBadge = <span className="badge badge-blu" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700 }}>🚢 Sedang Diproses (PO)</span>;
+            if (groupingMode === 'PR') {
+              if (isPrDraft) {
+                statusBadge = <span className="badge badge-ylw" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700 }}>📋 Draft / Pending PR</span>;
+              } else if (group.overallStatus === 'DONE') {
+                statusBadge = <span className="badge badge-grn" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700 }}>✓ Diterima Lengkap</span>;
+              } else if (group.overallStatus === 'PARTIAL') {
+                statusBadge = <span className="badge badge-ylw" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700, background: 'rgba(234, 179, 8, 0.15)', color: '#facc15' }}>⏳ Sebagian Diterima</span>;
+              } else if (group.overallStatus === 'PO_ACTIVE') {
+                statusBadge = <span className="badge badge-blu" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700 }}>🚢 Sedang Diproses (PO)</span>;
+              } else {
+                statusBadge = <span className="badge" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700, background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc' }}>📝 Pengajuan PR SCM</span>;
+              }
             } else {
-              statusBadge = <span className="badge" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700, background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc' }}>📝 Pengajuan PR SCM</span>;
+              if (isPrDraft) {
+                statusBadge = <span className="badge badge-ylw" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700 }}>⏳ Tahap PR / SCM</span>;
+              } else if (group.overallStatus === 'DONE') {
+                statusBadge = <span className="badge badge-grn" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700 }}>✓ Diterima Lengkap</span>;
+              } else if (group.overallStatus === 'PARTIAL') {
+                statusBadge = <span className="badge badge-ylw" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700, background: 'rgba(234, 179, 8, 0.15)', color: '#facc15' }}>⏳ Sebagian Diterima</span>;
+              } else {
+                statusBadge = <span className="badge badge-blu" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700 }}>🚢 Sedang Diproses (PO)</span>;
+              }
             }
 
             return (
@@ -1522,44 +1871,83 @@ export default function ProcurementTrackingPage() {
                       ▶
                     </span>
 
-                    {/* PR Info */}
+                    {/* PR/PO Info */}
                     <div>
-                      {isPrDraft ? (
-                        <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--ylw)' }}>
-                          📝 DRAFT PENDING / BELUM ADA NO PR
-                        </div>
+                      {groupingMode === 'PR' ? (
+                        isPrDraft ? (
+                          <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--ylw)' }}>
+                            📝 DRAFT PENDING / BELUM ADA NO PR
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 11, color: 'var(--tx3)', fontWeight: 600 }}>NOMOR PR:</span>
+                            <span 
+                              className="badge badge-ylw" 
+                              style={{ fontSize: 12, padding: '2px 8px', fontWeight: 800, cursor: 'text', userSelect: 'text' }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {group.nomorPr}
+                            </span>
+                          </div>
+                        )
                       ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontSize: 11, color: 'var(--tx3)', fontWeight: 600 }}>NOMOR PR:</span>
-                          <span 
-                            className="badge badge-ylw" 
-                            style={{ fontSize: 12, padding: '2px 8px', fontWeight: 800, cursor: 'text', userSelect: 'text' }}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {group.nomorPr}
-                          </span>
-                        </div>
+                        isPrDraft ? (
+                          <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--pur)' }}>
+                            ⏳ TAHAP PR / BELUM TERBIT PO (SCM)
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 11, color: 'var(--tx3)', fontWeight: 600 }}>NOMOR PO:</span>
+                            <span 
+                              className="badge badge-blu" 
+                              style={{ fontSize: 12, padding: '2px 8px', fontWeight: 800, cursor: 'text', userSelect: 'text' }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {group.nomorPo}
+                            </span>
+                          </div>
+                        )
                       )}
+                      
                       <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 4 }}>
-                        Tanggal Pengajuan: <strong style={{ color: 'var(--tx2)' }}>{group.oldestDateStr}</strong> · Lead Time: <strong style={{ color: 'var(--tx)' }}>{group.daysRunningStr}</strong>
+                        {groupingMode === 'PR' ? 'Tanggal Pengajuan: ' : 'Tanggal Pengadaan: ' }
+                        <strong style={{ color: 'var(--tx2)' }}>{group.oldestDateStr}</strong> · Lead Time: <strong style={{ color: 'var(--tx)' }}>{group.daysRunningStr}</strong>
                       </div>
                     </div>
 
-                    {/* PO Badges */}
-                    {!isPrDraft && group.poNumbers !== '—' && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontSize: 9, color: 'var(--tx3)', fontWeight: 600 }}>PO NO:</span>
-                        {group.poNumbers.split(', ').map(po => (
-                          <span 
-                            key={po} 
-                            className="badge badge-blu" 
-                            style={{ fontSize: 11, padding: '2px 8px', fontWeight: 800, cursor: 'text', userSelect: 'text' }}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {po}
-                          </span>
-                        ))}
-                      </div>
+                    {/* Secondary Badges (PO numbers if grouping by PR, or PR numbers if grouping by PO) */}
+                    {groupingMode === 'PR' ? (
+                      !isPrDraft && group.poNumbers !== '—' && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: 9, color: 'var(--tx3)', fontWeight: 600 }}>PO NO:</span>
+                          {group.poNumbers.split(', ').map(po => (
+                            <span 
+                              key={po} 
+                              className="badge badge-blu" 
+                              style={{ fontSize: 11, padding: '2px 8px', fontWeight: 800, cursor: 'text', userSelect: 'text' }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {po}
+                            </span>
+                          ))}
+                        </div>
+                      )
+                    ) : (
+                      !isPrDraft && group.prNumbers !== '—' && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: 9, color: 'var(--tx3)', fontWeight: 600 }}>PR NO:</span>
+                          {group.prNumbers.split(', ').map(pr => (
+                            <span 
+                              key={pr} 
+                              className="badge badge-ylw" 
+                              style={{ fontSize: 11, padding: '2px 8px', fontWeight: 800, cursor: 'text', userSelect: 'text' }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {pr}
+                            </span>
+                          ))}
+                        </div>
+                      )
                     )}
 
                     {/* Vendor summary */}
