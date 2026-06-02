@@ -506,7 +506,7 @@ export async function POST(req: NextRequest) {
               ['partner_ref', '=', docName]
             ]],
             {
-              fields: ['id', 'name', 'state', 'amount_total', 'partner_id', 'date_order', 'origin', 'partner_ref'],
+              fields: ['id', 'name', 'state', 'amount_total', 'partner_id', 'date_order', 'origin', 'partner_ref', 'create_date'],
               limit: 1
             },
             odooOptions
@@ -527,7 +527,7 @@ export async function POST(req: NextRequest) {
                     ['partner_ref', 'ilike', seq]
                   ]],
                   {
-                    fields: ['id', 'name', 'state', 'amount_total', 'partner_id', 'date_order', 'origin', 'partner_ref'],
+                    fields: ['id', 'name', 'state', 'amount_total', 'partner_id', 'date_order', 'origin', 'partner_ref', 'create_date'],
                     limit: 10
                   },
                   odooOptions
@@ -677,6 +677,10 @@ export async function POST(req: NextRequest) {
               // Direct Odoo PO URL
               const odooPoUrl = `https://foomx.odoo.com/web#id=${poId}&model=purchase.order&view_type=form`;
 
+              // Parse Odoo date (date_order or create_date)
+              const odooDateRaw = odooPo.date_order || odooPo.create_date;
+              const parsedOdooDate = odooDateRaw ? new Date(odooDateRaw) : null;
+
               // Update tracking item
               const updateData: any = {
                 statusPr: localStatusPr,
@@ -684,6 +688,9 @@ export async function POST(req: NextRequest) {
                 odooNotes: chatterNotes || null,
               };
               if (vendorName && !item.vendor) updateData.vendor = vendorName;
+              if (parsedOdooDate && !isNaN(parsedOdooDate.getTime())) {
+                updateData.tanggalList = parsedOdooDate;
+              }
               
               // Populate Odoo PO URL as linkReferences if empty
               if (!item.linkReferences) {
@@ -727,7 +734,7 @@ export async function POST(req: NextRequest) {
                 'search_read',
                 [[['name', '=', docName]]],
                 {
-                  fields: ['id', 'name', 'state'],
+                  fields: ['id', 'name', 'state', 'create_date'],
                   limit: 1
                 },
                 odooOptions
@@ -744,7 +751,7 @@ export async function POST(req: NextRequest) {
                       'search_read',
                       [[['name', 'ilike', seq]]],
                       {
-                        fields: ['id', 'name', 'state'],
+                        fields: ['id', 'name', 'state', 'create_date'],
                         limit: 10
                       },
                       odooOptions
@@ -798,6 +805,9 @@ export async function POST(req: NextRequest) {
                   console.error(`Gagal mengambil detail line item PR Requisition ${docName}:`, errReqLines);
                 }
 
+                const odooDateRaw = odooReq.create_date;
+                const parsedOdooDate = odooDateRaw ? new Date(odooDateRaw) : null;
+
                 await prisma.$transaction(async (tx) => {
                   const updateData: any = {
                     statusPr: localStatusPr,
@@ -805,6 +815,9 @@ export async function POST(req: NextRequest) {
                   };
                   if (matchedPrice > 0) {
                     updateData.harga = matchedPrice;
+                  }
+                  if (parsedOdooDate && !isNaN(parsedOdooDate.getTime())) {
+                    updateData.tanggalList = parsedOdooDate;
                   }
 
                   const updatedItem = await tx.procurementTracking.update({
@@ -833,7 +846,7 @@ export async function POST(req: NextRequest) {
                     'search_read',
                     [[['name', '=', docName]]],
                     {
-                      fields: ['id', 'name', 'state'],
+                      fields: ['id', 'name', 'state', 'create_date'],
                       limit: 1
                     },
                     odooOptions
@@ -850,7 +863,7 @@ export async function POST(req: NextRequest) {
                           'search_read',
                           [[['name', 'ilike', seq]]],
                           {
-                            fields: ['id', 'name', 'state'],
+                            fields: ['id', 'name', 'state', 'create_date'],
                             limit: 10
                           },
                           odooOptions
@@ -904,6 +917,9 @@ export async function POST(req: NextRequest) {
                       console.error(`Gagal mengambil detail line item PR Request ${docName}:`, errReqLines);
                     }
 
+                    const odooDateRaw = odooReq.create_date;
+                    const parsedOdooDate = odooDateRaw ? new Date(odooDateRaw) : null;
+
                     await prisma.$transaction(async (tx) => {
                       const updateData: any = {
                         statusPr: localStatusPr,
@@ -911,6 +927,9 @@ export async function POST(req: NextRequest) {
                       };
                       if (matchedPrice > 0) {
                         updateData.harga = matchedPrice;
+                      }
+                      if (parsedOdooDate && !isNaN(parsedOdooDate.getTime())) {
+                        updateData.tanggalList = parsedOdooDate;
                       }
 
                       const updatedItem = await tx.procurementTracking.update({
