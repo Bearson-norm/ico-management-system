@@ -183,8 +183,8 @@ async function queryOdoo(
         'Cookie': `session_id=${odooSessionId}`
       },
       body: JSON.stringify(payload),
-      // 5 seconds timeout
-      signal: AbortSignal.timeout(5000)
+      // 15 seconds timeout to prevent VPS latency failures
+      signal: AbortSignal.timeout(15000)
     });
 
     if (!res.ok) {
@@ -229,8 +229,8 @@ async function queryOdoo(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
-      // 5 seconds timeout
-      signal: AbortSignal.timeout(5000)
+      // 15 seconds timeout to prevent VPS latency failures
+      signal: AbortSignal.timeout(15000)
     });
 
     if (!res.ok) {
