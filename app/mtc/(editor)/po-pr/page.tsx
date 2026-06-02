@@ -130,6 +130,8 @@ export default function ProcurementTrackingPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [urgencyFilter, setUrgencyFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [monthFilter, setMonthFilter] = useState('');
+  const [yearFilter, setYearFilter] = useState('');
   
   // Expanded PR Groups state (default: expand drafts/new items)
   const [expandedGroups, setExpandedGroups] = useState<{ [key: string]: boolean }>({
@@ -137,7 +139,7 @@ export default function ProcurementTrackingPage() {
   });
   
   // Tabs for main view (updated to support Odoo status types)
-  const [activeTab, setActiveTab] = useState<'ACTIVE' | 'RECEIVED' | 'ALL' | 'READY_ODOO' | 'DRAFT' | 'TO_APPROVE' | 'APPROVED' | 'RFQ' | 'PO' | 'CANCELLED'>('ACTIVE');
+  const [activeTab, setActiveTab] = useState<'ACTIVE' | 'DRAFT_PR' | 'TO_APPROVE' | 'APPROVED' | 'PO_RFQ' | 'RECEIVED' | 'ALL'>('ACTIVE');
   
   // Link Modal States
   const [showLinkModal, setShowLinkModal] = useState(false);
@@ -241,31 +243,50 @@ export default function ProcurementTrackingPage() {
         setSheetUrl(savedSheetUrl);
         setTempSheetUrl(savedSheetUrl);
       }
-      const savedOdooPassword = localStorage.getItem('mtc_odoo_password');
+      const savedOdooPassword = localStorage.getItem('mtc_odoo_password') || '';
       if (savedOdooPassword) {
         setOdooPassword(savedOdooPassword);
         setTempOdooPassword(savedOdooPassword);
       }
-      const savedOdooDb = localStorage.getItem('mtc_odoo_db');
-      if (savedOdooDb) {
-        setOdooDb(savedOdooDb);
-        setTempOdooDb(savedOdooDb);
-      } else {
-        setOdooDb('foom-production-5808833');
-        setTempOdooDb('foom-production-5808833');
-      }
-      const savedOdooUid = localStorage.getItem('mtc_odoo_uid');
-      if (savedOdooUid) {
-        setOdooUid(savedOdooUid);
-        setTempOdooUid(savedOdooUid);
-      } else {
-        setOdooUid('34');
-        setTempOdooUid('34');
-      }
-      const savedOdooSessionId = localStorage.getItem('mtc_odoo_session_id');
+      const savedOdooDb = localStorage.getItem('mtc_odoo_db') || 'foom-production-5808833';
+      setOdooDb(savedOdooDb);
+      setTempOdooDb(savedOdooDb);
+      
+      const savedOdooUid = localStorage.getItem('mtc_odoo_uid') || '34';
+      setOdooUid(savedOdooUid);
+      setTempOdooUid(savedOdooUid);
+      
+      const savedOdooSessionId = localStorage.getItem('mtc_odoo_session_id') || '';
       if (savedOdooSessionId) {
         setOdooSessionId(savedOdooSessionId);
         setTempOdooSessionId(savedOdooSessionId);
+      }
+
+      // Real-Time Auto Sync on page load (silently in background)
+      if (savedSheetUrl && (savedOdooPassword || savedOdooSessionId)) {
+        fetch('/api/mtc/odoo/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sheetUrl: savedSheetUrl.trim(),
+            odooPassword: savedOdooPassword,
+            odooDb: savedOdooDb,
+            odooUid: parseInt(savedOdooUid) || 34,
+            odooSessionId: savedOdooSessionId
+          })
+        }).then(res => res.json())
+          .then(json => {
+            if (json.success) {
+              const odooError = json.data?.odoo?.error;
+              if (odooError && (odooError.toLowerCase().includes('session') || odooError.toLowerCase().includes('expired') || odooError.toLowerCase().includes('uid'))) {
+                console.warn('Odoo Session Expired!');
+              } else if (json.data?.odoo?.success) {
+                // Silently refresh to pull real-time data
+                fetchData();
+                fetchSpareparts();
+              }
+            }
+          }).catch(err => console.error('Background sync failed:', err));
       }
     }
   }, []);
@@ -347,7 +368,12 @@ export default function ProcurementTrackingPage() {
       });
       const json = await res.json();
       if (json.success) {
-        alert(json.data?.msg || '✓ Sinkronisasi Google Sheets & Odoo Cloud sukses!');
+        const odooError = json.data?.odoo?.error;
+        if (odooError && (odooError.toLowerCase().includes('session') || odooError.toLowerCase().includes('expired') || odooError.toLowerCase().includes('uid'))) {
+          alert('⚠️ Sesi Odoo (Cookie session_id) Anda telah kedaluwarsa atau tidak valid! Silakan perbarui session_id baru di menu Pengaturan (⚙️).');
+        } else {
+          alert('✓ Sinkronisasi Google Sheets & Odoo Cloud sukses!');
+        }
         await fetchData();
         await fetchSpareparts();
       } else {
@@ -603,21 +629,21 @@ export default function ProcurementTrackingPage() {
     return items.filter(item => {
       // Tab filter
       const isItemReceived = !!item.tanggalTerima;
+      const spStatus = (item.statusPr || 'DRAFT').toUpperCase();
+      const poStatus = (item.statusPo || '').toUpperCase();
+
       if (activeTab === 'ACTIVE') {
         if (isItemReceived) return false;
+      } else if (activeTab === 'DRAFT_PR') {
+        if (isItemReceived || (spStatus !== 'DRAFT' && spStatus !== 'READY_ODOO')) return false;
+      } else if (activeTab === 'TO_APPROVE') {
+        if (isItemReceived || spStatus !== 'TO_APPROVE') return false;
+      } else if (activeTab === 'APPROVED') {
+        if (isItemReceived || spStatus !== 'APPROVED') return false;
+      } else if (activeTab === 'PO_RFQ') {
+        if (isItemReceived || (spStatus !== 'PO' && spStatus !== 'RFQ' && poStatus !== 'PO' && poStatus !== 'RFQ')) return false;
       } else if (activeTab === 'RECEIVED') {
         if (!isItemReceived) return false;
-      } else if (activeTab === 'READY_ODOO') {
-        if (item.statusPr !== 'READY_ODOO' || isItemReceived) return false;
-      } else if (activeTab === 'DRAFT') {
-        const spStatus = item.statusPr || 'DRAFT';
-        if (spStatus !== 'DRAFT' || isItemReceived) return false;
-      } else if (activeTab !== 'ALL') {
-        // Odoo statuses
-        const spStatus = item.statusPr || 'DRAFT';
-        const poStatus = item.statusPo || '';
-        if (spStatus.toUpperCase() !== activeTab && poStatus.toUpperCase() !== activeTab) return false;
-        if (isItemReceived) return false;
       }
 
       // Search query filter
@@ -636,9 +662,45 @@ export default function ProcurementTrackingPage() {
       // Kategori filter
       if (categoryFilter && item.productCategory !== categoryFilter) return false;
 
+      // Month & Year filter
+      if (item.tanggalList) {
+        const dateObj = new Date(item.tanggalList);
+        if (yearFilter && dateObj.getFullYear().toString() !== yearFilter) return false;
+        if (monthFilter && (dateObj.getMonth() + 1).toString() !== monthFilter) return false;
+      } else if (monthFilter || yearFilter) {
+        return false;
+      }
+
       return true;
     });
-  }, [items, searchQuery, urgencyFilter, categoryFilter, activeTab]);
+  }, [items, searchQuery, urgencyFilter, categoryFilter, activeTab, monthFilter, yearFilter]);
+
+  // Extract years dynamically
+  const yearsList = useMemo(() => {
+    const set = new Set<string>();
+    items.forEach(item => {
+      if (item.tanggalList) {
+        const year = new Date(item.tanggalList).getFullYear().toString();
+        set.add(year);
+      }
+    });
+    return Array.from(set).sort((a, b) => b.localeCompare(a));
+  }, [items]);
+
+  const monthsList = [
+    { value: '1', label: 'Januari' },
+    { value: '2', label: 'Februari' },
+    { value: '3', label: 'Maret' },
+    { value: '4', label: 'April' },
+    { value: '5', label: 'Mei' },
+    { value: '6', label: 'Juni' },
+    { value: '7', label: 'Juli' },
+    { value: '8', label: 'Agustus' },
+    { value: '9', label: 'September' },
+    { value: '10', label: 'Oktober' },
+    { value: '11', label: 'November' },
+    { value: '12', label: 'Desember' }
+  ];
 
   // Group items by nomorPr
   const groupedPrItems = useMemo(() => {
@@ -1286,7 +1348,7 @@ export default function ProcurementTrackingPage() {
 
         {/* SEARCH & FILTERS CONTROL CARD */}
         <div className="card" style={{ marginBottom: 20, padding: 16 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1.2fr', gap: 16, alignItems: 'center' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '2.2fr 1fr 1fr 1fr 1fr', gap: 16, alignItems: 'center' }}>
             <div className="search-bar" style={{ width: '100%', marginBottom: 0 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
@@ -1326,19 +1388,44 @@ export default function ProcurementTrackingPage() {
               </select>
             </div>
 
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <select
+                className="form-input form-select"
+                value={monthFilter}
+                onChange={(e) => setMonthFilter(e.target.value)}
+                style={{ height: '40px' }}
+              >
+                <option value="">— Bulan (Semua) —</option>
+                {monthsList.map(m => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <select
+                className="form-input form-select"
+                value={yearFilter}
+                onChange={(e) => setYearFilter(e.target.value)}
+                style={{ height: '40px' }}
+              >
+                <option value="">— Tahun (Semua) —</option>
+                {yearsList.map(yr => (
+                  <option key={yr} value={yr}>{yr}</option>
+                ))}
+              </select>
+            </div>
+
             {/* Custom Premium Odoo-style Tab Switcher */}
-            <div style={{ gridColumn: 'span 4', display: 'flex', background: 'var(--sf2)', padding: 3, borderRadius: 8, height: '36px', border: '1px solid var(--br)', overflowX: 'auto', gap: 4 }}>
+            <div style={{ gridColumn: 'span 5', display: 'flex', background: 'var(--sf2)', padding: 3, borderRadius: 8, height: '36px', border: '1px solid var(--br)', overflowX: 'auto', gap: 4 }}>
               {[
-                { id: 'ACTIVE', label: '⏳ Aktif', count: items.filter(i => !i.tanggalTerima).length },
-                { id: 'READY_ODOO', label: '📋 Siap Odoo', count: items.filter(i => i.statusPr === 'READY_ODOO' && !i.tanggalTerima).length },
-                { id: 'DRAFT', label: '⚙️ Draft Odoo', count: items.filter(i => (i.statusPr || 'DRAFT') === 'DRAFT' && i.statusPr !== 'READY_ODOO' && !i.tanggalTerima).length },
-                { id: 'TO_APPROVE', label: '⏳ To Approve', count: items.filter(i => i.statusPr === 'TO_APPROVE' && !i.tanggalTerima).length },
-                { id: 'APPROVED', label: '✓ Approved', count: items.filter(i => i.statusPr === 'APPROVED' && !i.tanggalTerima).length },
-                { id: 'RFQ', label: '📦 RFQ', count: items.filter(i => i.statusPr === 'RFQ' && !i.tanggalTerima).length },
-                { id: 'PO', label: '🚢 PO', count: items.filter(i => i.statusPr === 'PO' && !i.tanggalTerima).length },
-                { id: 'CANCELLED', label: '✖ Cancelled', count: items.filter(i => i.statusPr === 'CANCELLED' && !i.tanggalTerima).length },
-                { id: 'RECEIVED', label: '✓ Diterima', count: items.filter(i => !!i.tanggalTerima).length },
-                { id: 'ALL', label: '🌐 Semua', count: items.length }
+                { id: 'ACTIVE', label: '⏳ Semua Aktif', count: items.filter(i => !i.tanggalTerima).length },
+                { id: 'DRAFT_PR', label: '⚙️ Draft PR', count: items.filter(i => !i.tanggalTerima && ((i.statusPr || 'DRAFT') === 'DRAFT' || i.statusPr === 'READY_ODOO')).length },
+                { id: 'TO_APPROVE', label: '⏳ Tunggu Approve', count: items.filter(i => !i.tanggalTerima && i.statusPr === 'TO_APPROVE').length },
+                { id: 'APPROVED', label: '✓ Disetujui', count: items.filter(i => !i.tanggalTerima && i.statusPr === 'APPROVED').length },
+                { id: 'PO_RFQ', label: '🚢 Dalam Proses PO', count: items.filter(i => !i.tanggalTerima && (i.statusPr === 'PO' || i.statusPr === 'RFQ' || i.statusPo === 'PO' || i.statusPo === 'RFQ')).length },
+                { id: 'RECEIVED', label: '📦 Diterima', count: items.filter(i => !!i.tanggalTerima).length },
+                { id: 'ALL', label: '🌐 Semua Dokumen', count: items.length }
               ].map(tab => (
                 <button
                   key={tab.id}
