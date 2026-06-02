@@ -663,8 +663,9 @@ export default function ProcurementTrackingPage() {
       if (categoryFilter && item.productCategory !== categoryFilter) return false;
 
       // Month & Year filter
-      if (item.tanggalList) {
-        const dateObj = new Date(item.tanggalList);
+      const dateToCheck = isItemReceived ? (item.tanggalTerima || item.tanggalList) : item.tanggalList;
+      if (dateToCheck) {
+        const dateObj = new Date(dateToCheck);
         if (yearFilter && dateObj.getFullYear().toString() !== yearFilter) return false;
         if (monthFilter && (dateObj.getMonth() + 1).toString() !== monthFilter) return false;
       } else if (monthFilter || yearFilter) {
@@ -701,6 +702,18 @@ export default function ProcurementTrackingPage() {
     { value: '11', label: 'November' },
     { value: '12', label: 'Desember' }
   ];
+
+  // Month & Year filter check for tab counts
+  const checkMonthYear = (item: any, isReceived: boolean) => {
+    const dateToCheck = isReceived ? (item.tanggalTerima || item.tanggalList) : item.tanggalList;
+    if (dateToCheck) {
+      const dateObj = new Date(dateToCheck);
+      if (yearFilter && dateObj.getFullYear().toString() !== yearFilter) return false;
+      if (monthFilter && (dateObj.getMonth() + 1).toString() !== monthFilter) return false;
+      return true;
+    }
+    return !monthFilter && !yearFilter;
+  };
 
   // Group items by nomorPr
   const groupedPrItems = useMemo(() => {
@@ -1419,13 +1432,13 @@ export default function ProcurementTrackingPage() {
             {/* Custom Premium Odoo-style Tab Switcher */}
             <div style={{ gridColumn: 'span 5', display: 'flex', background: 'var(--sf2)', padding: 3, borderRadius: 8, height: '36px', border: '1px solid var(--br)', overflowX: 'auto', gap: 4 }}>
               {[
-                { id: 'ACTIVE', label: '⏳ Semua Aktif', count: items.filter(i => !i.tanggalTerima).length },
-                { id: 'DRAFT_PR', label: '⚙️ Draft PR', count: items.filter(i => !i.tanggalTerima && ((i.statusPr || 'DRAFT') === 'DRAFT' || i.statusPr === 'READY_ODOO')).length },
-                { id: 'TO_APPROVE', label: '⏳ Tunggu Approve', count: items.filter(i => !i.tanggalTerima && i.statusPr === 'TO_APPROVE').length },
-                { id: 'APPROVED', label: '✓ Disetujui', count: items.filter(i => !i.tanggalTerima && i.statusPr === 'APPROVED').length },
-                { id: 'PO_RFQ', label: '🚢 Dalam Proses PO', count: items.filter(i => !i.tanggalTerima && (i.statusPr === 'PO' || i.statusPr === 'RFQ' || i.statusPo === 'PO' || i.statusPo === 'RFQ')).length },
-                { id: 'RECEIVED', label: '📦 Diterima', count: items.filter(i => !!i.tanggalTerima).length },
-                { id: 'ALL', label: '🌐 Semua Dokumen', count: items.length }
+                { id: 'ACTIVE', label: '⏳ Semua Aktif', count: items.filter(i => !i.tanggalTerima && checkMonthYear(i, false)).length },
+                { id: 'DRAFT_PR', label: '⚙️ Draft PR', count: items.filter(i => !i.tanggalTerima && checkMonthYear(i, false) && ((i.statusPr || 'DRAFT') === 'DRAFT' || i.statusPr === 'READY_ODOO')).length },
+                { id: 'TO_APPROVE', label: '⏳ Tunggu Approve', count: items.filter(i => !i.tanggalTerima && checkMonthYear(i, false) && i.statusPr === 'TO_APPROVE').length },
+                { id: 'APPROVED', label: '✓ Disetujui', count: items.filter(i => !i.tanggalTerima && checkMonthYear(i, false) && i.statusPr === 'APPROVED').length },
+                { id: 'PO_RFQ', label: '🚢 Dalam Proses PO', count: items.filter(i => !i.tanggalTerima && checkMonthYear(i, false) && (i.statusPr === 'PO' || i.statusPr === 'RFQ' || i.statusPo === 'PO' || i.statusPo === 'RFQ')).length },
+                { id: 'RECEIVED', label: '📦 Diterima', count: items.filter(i => !!i.tanggalTerima && checkMonthYear(i, true)).length },
+                { id: 'ALL', label: '🌐 Semua Dokumen', count: items.filter(i => !!i.tanggalTerima ? checkMonthYear(i, true) : checkMonthYear(i, false)).length }
               ].map(tab => (
                 <button
                   key={tab.id}

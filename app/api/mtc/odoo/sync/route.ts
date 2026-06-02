@@ -420,7 +420,7 @@ export async function POST(req: NextRequest) {
 
         try {
           // 1. Search for PO/RFQ in Odoo matching name, origin, or partner_ref (Vendor Reference)
-          const odooPos = await queryOdoo(
+          let odooPos = await queryOdoo(
             'purchase.order',
             'search_read',
             [[
@@ -436,6 +436,44 @@ export async function POST(req: NextRequest) {
             },
             odooOptions
           );
+
+          // Fuzzy search fallback for purchase.order
+          if (!odooPos || odooPos.length === 0) {
+            const prMatch = docName.match(/^PR0*(\d+)$/i);
+            if (prMatch) {
+              const seq = prMatch[1];
+              try {
+                const fuzzyPos = await queryOdoo(
+                  'purchase.order',
+                  'search_read',
+                  [[
+                    '|',
+                    ['origin', 'ilike', seq],
+                    ['partner_ref', 'ilike', seq]
+                  ]],
+                  {
+                    fields: ['id', 'name', 'state', 'amount_total', 'partner_id', 'date_order', 'origin', 'partner_ref'],
+                    limit: 10
+                  },
+                  odooOptions
+                );
+
+                if (fuzzyPos && fuzzyPos.length > 0) {
+                  const originRegex = new RegExp('(PR|RFQ)[/0-9-]*0*' + seq + '\\b', 'i');
+                  const matched = fuzzyPos.find((po: any) => {
+                    const origin = po.origin || '';
+                    const partnerRef = po.partner_ref || '';
+                    return originRegex.test(origin) || originRegex.test(partnerRef) || origin.includes(docName) || partnerRef.includes(docName);
+                  });
+                  if (matched) {
+                    odooPos = [matched];
+                  }
+                }
+              } catch (errFuzzyPo) {
+                console.error(`Gagal melakukan fuzzy search PO untuk ${docName}:`, errFuzzyPo);
+              }
+            }
+          }
 
           if (odooPos && odooPos.length > 0) {
             const odooPo = odooPos[0];
@@ -621,7 +659,7 @@ export async function POST(req: NextRequest) {
           } else {
             // Document not found in purchase.order. Try purchase.requisition.
             try {
-              const odooReqs = await queryOdoo(
+              let odooReqs = await queryOdoo(
                 'purchase.requisition',
                 'search_read',
                 [[['name', '=', docName]]],
@@ -631,6 +669,33 @@ export async function POST(req: NextRequest) {
                 },
                 odooOptions
               );
+
+              // Requisition Fuzzy Fallback
+              if (!odooReqs || odooReqs.length === 0) {
+                const prMatch = docName.match(/^PR0*(\d+)$/i);
+                if (prMatch) {
+                  const seq = prMatch[1];
+                  try {
+                    const fuzzyReqs = await queryOdoo(
+                      'purchase.requisition',
+                      'search_read',
+                      [[['name', 'ilike', seq]]],
+                      {
+                        fields: ['id', 'name', 'state'],
+                        limit: 10
+                      },
+                      odooOptions
+                    );
+                    if (fuzzyReqs && fuzzyReqs.length > 0) {
+                      const regex = new RegExp('/0*' + seq + '$');
+                      const matched = fuzzyReqs.find((req: any) => regex.test(req.name) || req.name?.includes(docName));
+                      if (matched) odooReqs = [matched];
+                    }
+                  } catch (errFuzzyReq) {
+                    console.error(`Gagal melakukan fuzzy search PR Requisition untuk ${docName}:`, errFuzzyReq);
+                  }
+                }
+              }
 
               if (odooReqs && odooReqs.length > 0) {
                 const odooReq = odooReqs[0];
@@ -646,7 +711,7 @@ export async function POST(req: NextRequest) {
                 prLogs.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
                 const chatterNotes = prLogs.length > 0 ? JSON.stringify(prLogs) : '';
 
-                // Fetch requisition lines to extract the price
+                // Fetch requisition lines to extract the price (include 'name' for desc match)
                 let matchedPrice = 0;
                 try {
                   const prLines = await queryOdoo(
@@ -654,7 +719,7 @@ export async function POST(req: NextRequest) {
                     'search_read',
                     [[['requisition_id', '=', reqId]]],
                     {
-                      fields: ['product_id', 'product_qty', 'price_unit'],
+                      fields: ['product_id', 'product_qty', 'price_unit', 'name'],
                       limit: 50
                     },
                     odooOptions
@@ -666,10 +731,13 @@ export async function POST(req: NextRequest) {
 
                     const matchedLine = prLines.find((line: any) => {
                       const prodName = Array.isArray(line.product_id) ? line.product_id[1]?.toLowerCase() : '';
+                      const lineName = line.name?.toLowerCase() || '';
                       return (
-                        (odooItemName && prodName.includes(odooItemName)) ||
+                        (odooItemName && (prodName.includes(odooItemName) || lineName.includes(odooItemName))) ||
                         originalName.includes(prodName) ||
-                        prodName.includes(originalName)
+                        prodName.includes(originalName) ||
+                        lineName.includes(originalName) ||
+                        originalName.includes(lineName)
                       );
                     });
 
@@ -711,7 +779,7 @@ export async function POST(req: NextRequest) {
               } else {
                 // Try purchase.request (Purchase Request fallback)
                 try {
-                  const odooRequests = await queryOdoo(
+                  let odooRequests = await queryOdoo(
                     'purchase.request',
                     'search_read',
                     [[['name', '=', docName]]],
@@ -721,6 +789,33 @@ export async function POST(req: NextRequest) {
                     },
                     odooOptions
                   );
+
+                  // Request Fuzzy Fallback
+                  if (!odooRequests || odooRequests.length === 0) {
+                    const prMatch = docName.match(/^PR0*(\d+)$/i);
+                    if (prMatch) {
+                      const seq = prMatch[1];
+                      try {
+                        const fuzzyRequests = await queryOdoo(
+                          'purchase.request',
+                          'search_read',
+                          [[['name', 'ilike', seq]]],
+                          {
+                            fields: ['id', 'name', 'state'],
+                            limit: 10
+                          },
+                          odooOptions
+                        );
+                        if (fuzzyRequests && fuzzyRequests.length > 0) {
+                          const regex = new RegExp('/0*' + seq + '$');
+                          const matched = fuzzyRequests.find((req: any) => regex.test(req.name) || req.name?.includes(docName));
+                          if (matched) odooRequests = [matched];
+                        }
+                      } catch (errFuzzyRequest) {
+                        console.error(`Gagal melakukan fuzzy search PR Request untuk ${docName}:`, errFuzzyRequest);
+                      }
+                    }
+                  }
 
                   if (odooRequests && odooRequests.length > 0) {
                     const odooReq = odooRequests[0];
@@ -736,7 +831,7 @@ export async function POST(req: NextRequest) {
                     prLogs.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
                     const chatterNotes = prLogs.length > 0 ? JSON.stringify(prLogs) : '';
 
-                    // Fetch request lines to extract the estimated cost
+                    // Fetch request lines to extract the estimated cost (include 'name' for desc match)
                     let matchedPrice = 0;
                     try {
                       const prLines = await queryOdoo(
@@ -744,7 +839,7 @@ export async function POST(req: NextRequest) {
                         'search_read',
                         [[['request_id', '=', reqId]]],
                         {
-                          fields: ['product_id', 'product_qty', 'estimated_cost'],
+                          fields: ['product_id', 'product_qty', 'estimated_cost', 'name'],
                           limit: 50
                         },
                         odooOptions
@@ -756,10 +851,13 @@ export async function POST(req: NextRequest) {
 
                         const matchedLine = prLines.find((line: any) => {
                           const prodName = Array.isArray(line.product_id) ? line.product_id[1]?.toLowerCase() : '';
+                          const lineName = line.name?.toLowerCase() || '';
                           return (
-                            (odooItemName && prodName.includes(odooItemName)) ||
+                            (odooItemName && (prodName.includes(odooItemName) || lineName.includes(odooItemName))) ||
                             originalName.includes(prodName) ||
-                            prodName.includes(originalName)
+                            prodName.includes(originalName) ||
+                            lineName.includes(originalName) ||
+                            originalName.includes(lineName)
                           );
                         });
 
