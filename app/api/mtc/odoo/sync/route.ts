@@ -775,6 +775,15 @@ export async function POST(req: NextRequest) {
             combinedLogs.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
             const chatterNotes = combinedLogs.length > 0 ? JSON.stringify(combinedLogs) : '';
 
+            // Fallback: if prCreateDate is still null, extract the oldest date from the chatter logs (representing PR creation)
+            if (!prCreateDate && combinedLogs.length > 0) {
+              const oldestLog = combinedLogs[combinedLogs.length - 1];
+              const parsedLogDate = new Date(oldestLog.date);
+              if (!isNaN(parsedLogDate.getTime())) {
+                prCreateDate = parsedLogDate;
+              }
+            }
+
             // 3. Update locally
             await prisma.$transaction(async (tx) => {
               // Direct Odoo PO URL
@@ -885,7 +894,14 @@ export async function POST(req: NextRequest) {
                 }
 
                 const odooDateRaw = matchedPR.create_date;
-                const parsedOdooDate = odooDateRaw ? new Date(odooDateRaw) : null;
+                let parsedOdooDate = odooDateRaw ? new Date(odooDateRaw) : null;
+                if ((!parsedOdooDate || isNaN(parsedOdooDate.getTime())) && prLogs.length > 0) {
+                  const oldestLog = prLogs[prLogs.length - 1];
+                  const tempDate = new Date(oldestLog.date);
+                  if (tempDate && !isNaN(tempDate.getTime())) {
+                    parsedOdooDate = tempDate;
+                  }
+                }
 
                 await prisma.$transaction(async (tx) => {
                   const updateData: any = {
