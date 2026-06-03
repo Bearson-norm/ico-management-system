@@ -3,6 +3,18 @@ import { prisma } from '@/lib/prisma';
 import { requireMtcEditor } from '@/lib/auth';
 import { ok, err } from '@/lib/utils';
 import { parse } from 'csv-parse/sync';
+import fs from 'fs';
+import path from 'path';
+
+function logDebug(message: string) {
+  try {
+    const logPath = path.join(process.cwd(), 'odoo_sync_debug.txt');
+    const timestamp = new Date().toISOString();
+    fs.appendFileSync(logPath, `[${timestamp}] ${message}\n`);
+  } catch (e) {
+    console.error('Failed to write debug log:', e);
+  }
+}
 
 function parseCleanPrice(raw: string | undefined | null): number {
   if (!raw || !raw.trim() || raw.trim() === '-' || raw.trim() === '#N/A') return 0;
@@ -162,6 +174,8 @@ async function queryOdoo(
 ) {
   const odooSessionId = options.odooSessionId || process.env.ODOO_SESSION_ID || '';
 
+  logDebug(`RPC Request -> Model: ${model}, Method: ${method}, Args: ${JSON.stringify(args)}, Kwargs: ${JSON.stringify(kwargs)}`);
+
   if (odooSessionId) {
     // METHOD A: Internal browser API using Cookie session_id
     const payload = {
@@ -188,14 +202,17 @@ async function queryOdoo(
     });
 
     if (!res.ok) {
+      logDebug(`RPC HTTP Error: status ${res.status}`);
       throw new Error(`HTTP error! status: ${res.status}`);
     }
 
     const json = await res.json();
     if (json.error) {
+      logDebug(`RPC Error Response: ${JSON.stringify(json.error)}`);
       throw new Error(json.error.message || JSON.stringify(json.error));
     }
 
+    logDebug(`RPC Success Response (Length: ${Array.isArray(json.result) ? json.result.length : 'Object'})`);
     return json.result;
   } else {
     // METHOD B: Standard Developer / RPC API
@@ -245,6 +262,102 @@ async function queryOdoo(
     return json.result;
   }
 }
+
+// Helper to find Requisitions or Requests by name with fuzzy fallback
+async function findOdooPR(
+  prName: string,
+  odooOptions: any
+): Promise<{ model: 'purchase.requisition' | 'purchase.request'; id: number; name: string; state: string; create_date?: string } | null> {
+  const cleanPrName = prName.trim();
+  if (!cleanPrName) return null;
+
+  // 1. Try exact purchase.requisition
+  try {
+    const reqs = await queryOdoo(
+      'purchase.requisition',
+      'search_read',
+      [[['name', '=', cleanPrName]]],
+      { fields: ['id', 'name', 'state', 'create_date'], limit: 1 },
+      odooOptions
+    );
+    if (reqs && reqs.length > 0) {
+      logDebug(`Exact Requisition Match found for ${cleanPrName}: ${reqs[0].name}`);
+      return { model: 'purchase.requisition', ...reqs[0] };
+    }
+  } catch (e: any) {
+    logDebug(`Error querying exact purchase.requisition: ${e.message || e}`);
+  }
+
+  // 2. Try fuzzy purchase.requisition
+  const prMatch = cleanPrName.match(/^PR0*(\d+)$/i);
+  if (prMatch) {
+    const seq = prMatch[1];
+    try {
+      const fuzzyReqs = await queryOdoo(
+        'purchase.requisition',
+        'search_read',
+        [[['name', 'ilike', seq]]],
+        { fields: ['id', 'name', 'state', 'create_date'], limit: 20 },
+        odooOptions
+      );
+      if (fuzzyReqs && fuzzyReqs.length > 0) {
+        const regex = new RegExp('(?:\\D|^)0*' + seq + '\\\\b', 'i');
+        const matched = fuzzyReqs.find((req: any) => regex.test(req.name) || req.name?.includes(cleanPrName));
+        if (matched) {
+          logDebug(`Fuzzy Requisition Match selected for seq ${seq}: ${matched.name}`);
+          return { model: 'purchase.requisition', ...matched };
+        }
+      }
+    } catch (e: any) {
+      logDebug(`Error querying fuzzy purchase.requisition: ${e.message || e}`);
+    }
+  }
+
+  // 3. Try exact purchase.request
+  try {
+    const reqs = await queryOdoo(
+      'purchase.request',
+      'search_read',
+      [[['name', '=', cleanPrName]]],
+      { fields: ['id', 'name', 'state', 'create_date'], limit: 1 },
+      odooOptions
+    );
+    if (reqs && reqs.length > 0) {
+      logDebug(`Exact Request Match found for ${cleanPrName}: ${reqs[0].name}`);
+      return { model: 'purchase.request', ...reqs[0] };
+    }
+  } catch (e: any) {
+    logDebug(`Error querying exact purchase.request: ${e.message || e}`);
+  }
+
+  // 4. Try fuzzy purchase.request
+  if (prMatch) {
+    const seq = prMatch[1];
+    try {
+      const fuzzyReqs = await queryOdoo(
+        'purchase.request',
+        'search_read',
+        [[['name', 'ilike', seq]]],
+        { fields: ['id', 'name', 'state', 'create_date'], limit: 20 },
+        odooOptions
+      );
+      if (fuzzyReqs && fuzzyReqs.length > 0) {
+        const regex = new RegExp('(?:\\D|^)0*' + seq + '\\\\b', 'i');
+        const matched = fuzzyReqs.find((req: any) => regex.test(req.name) || req.name?.includes(cleanPrName));
+        if (matched) {
+          logDebug(`Fuzzy Request Match selected for seq ${seq}: ${matched.name}`);
+          return { model: 'purchase.request', ...matched };
+        }
+      }
+    } catch (e: any) {
+      logDebug(`Error querying fuzzy purchase.request: ${e.message || e}`);
+    }
+  }
+
+  logDebug(`Requisition/Request not found in Odoo for ${cleanPrName}`);
+  return null;
+}
+
 
 // POST /api/mtc/odoo/sync
 export async function POST(req: NextRequest) {
@@ -504,6 +617,7 @@ export async function POST(req: NextRequest) {
         if (!docName) continue;
 
         try {
+          logDebug(`PO Search for item ID ${item.id} -> docName: ${docName}, poNo: ${poNo}, prNo: ${prNo}`);
           // 1. Search for PO/RFQ in Odoo matching name, origin, or partner_ref (Vendor Reference)
           let odooPos = await queryOdoo(
             'purchase.order',
@@ -522,8 +636,13 @@ export async function POST(req: NextRequest) {
             odooOptions
           );
 
+          if (odooPos && odooPos.length > 0) {
+            logDebug(`Exact PO Match found: ${JSON.stringify(odooPos[0])}`);
+          }
+
           // Fuzzy search fallback for purchase.order (handles zero padding e.g. P13722 -> P013722 / PO0013722)
           if (!odooPos || odooPos.length === 0) {
+            logDebug(`Exact PO Match failed, entering fuzzy PO search...`);
             const prMatch = docName.match(/^PR0*(\d+)$/i);
             const poMatch = docName.match(/^P(?:O)?0*(\d+)$/i);
             const isPrPattern = !!prMatch;
@@ -548,23 +667,33 @@ export async function POST(req: NextRequest) {
                   odooOptions
                 );
 
+                logDebug(`Fuzzy PO Search returned ${fuzzyPos ? fuzzyPos.length : 0} items for seq: ${seq}`);
+
                 if (fuzzyPos && fuzzyPos.length > 0) {
                   // If it's a PR search, match origin/ref. If PO search, match the PO name.
                   const seqRegex = isPrPattern 
-                    ? new RegExp('(PR|RFQ)[/0-9-]*0*' + seq + '\\b', 'i')
-                    : new RegExp('(?:\\D|^)0*' + seq + '$', 'i');
+                    ? new RegExp('(PR|RFQ)[/0-9-]*0*' + seq + '\\\\b', 'i')
+                    : new RegExp('(?:\\\\D|^)0*' + seq + '\\\\b', 'i');
+
+                  logDebug(`Fuzzy match regex: ${seqRegex.source}`);
 
                   const matched = fuzzyPos.find((po: any) => {
                     const name = po.name || '';
                     const origin = po.origin || '';
                     const partnerRef = po.partner_ref || '';
-                    return seqRegex.test(name) || seqRegex.test(origin) || seqRegex.test(partnerRef) || name.includes(docName);
+                    const isMatched = seqRegex.test(name) || seqRegex.test(origin) || seqRegex.test(partnerRef) || name.includes(docName);
+                    logDebug(`  Testing PO: ${name}, origin: ${origin}, ref: ${partnerRef} -> Matched? ${isMatched}`);
+                    return isMatched;
                   });
                   if (matched) {
+                    logDebug(`Fuzzy match selected PO: ${JSON.stringify(matched)}`);
                     odooPos = [matched];
+                  } else {
+                    logDebug(`Fuzzy matches failed filter regex.`);
                   }
                 }
               } catch (errFuzzyPo) {
+                logDebug(`Fuzzy search error: ${errFuzzyPo}`);
                 console.error(`Gagal melakukan fuzzy search PO untuk ${docName}:`, errFuzzyPo);
               }
             }
@@ -611,71 +740,17 @@ export async function POST(req: NextRequest) {
               console.error(`Gagal mengambil detail line item PO ${poName}:`, errLines);
             }
 
-            // Fetch PR logs if origin is present
-            if (originDoc) {
+            // Fetch PR logs if originDoc or prNo are present
+            const prTargets = Array.from(new Set([originDoc, prNo].filter(Boolean) as string[]));
+            for (const target of prTargets) {
               try {
-                // Try purchase.requisition
-                const odooReqs = await queryOdoo(
-                  'purchase.requisition',
-                  'search_read',
-                  [[['name', '=', originDoc]]],
-                  { fields: ['id'], limit: 1 },
-                  odooOptions
-                );
-
-                if (odooReqs && odooReqs.length > 0) {
-                  const prLogs = await fetchChatterLogs('purchase.requisition', odooReqs[0].id, 'PR', odooOptions);
+                const matchedPR = await findOdooPR(target, odooOptions);
+                if (matchedPR) {
+                  const prLogs = await fetchChatterLogs(matchedPR.model, matchedPR.id, 'PR', odooOptions);
                   combinedLogs.push(...prLogs);
-                } else {
-                  // Try purchase.request
-                  const odooRequests = await queryOdoo(
-                    'purchase.request',
-                    'search_read',
-                    [[['name', '=', originDoc]]],
-                    { fields: ['id'], limit: 1 },
-                    odooOptions
-                  );
-                  if (odooRequests && odooRequests.length > 0) {
-                    const prLogs = await fetchChatterLogs('purchase.request', odooRequests[0].id, 'PR', odooOptions);
-                    combinedLogs.push(...prLogs);
-                  }
                 }
-              } catch (errOrigin) {
-                console.error(`Gagal mengambil log asal PR untuk PO ${poName}:`, errOrigin);
-              }
-            }
-
-            // Also check if the db item's nomorPr is different and try to fetch its logs directly
-            if (prNo && prNo !== originDoc) {
-              try {
-                // Try purchase.requisition
-                const odooReqs = await queryOdoo(
-                  'purchase.requisition',
-                  'search_read',
-                  [[['name', '=', prNo]]],
-                  { fields: ['id'], limit: 1 },
-                  odooOptions
-                );
-
-                if (odooReqs && odooReqs.length > 0) {
-                  const prLogs = await fetchChatterLogs('purchase.requisition', odooReqs[0].id, 'PR', odooOptions);
-                  combinedLogs.push(...prLogs);
-                } else {
-                  // Try purchase.request
-                  const odooRequests = await queryOdoo(
-                    'purchase.request',
-                    'search_read',
-                    [[['name', '=', prNo]]],
-                    { fields: ['id'], limit: 1 },
-                    odooOptions
-                  );
-                  if (odooRequests && odooRequests.length > 0) {
-                    const prLogs = await fetchChatterLogs('purchase.request', odooRequests[0].id, 'PR', odooOptions);
-                    combinedLogs.push(...prLogs);
-                  }
-                }
-              } catch (errPrNo) {
-                console.error(`Gagal mengambil log prNo direct untuk PO ${poName}:`, errPrNo);
+              } catch (errPRLogs) {
+                console.error(`Gagal mengambil log PR untuk target ${target}:`, errPRLogs);
               }
             }
 
@@ -747,70 +822,46 @@ export async function POST(req: NextRequest) {
 
             updatedOdooCount++;
           } else {
-            // Document not found in purchase.order. Try purchase.requisition.
+            // Document not found in purchase.order. Try purchase.requisition/request.
             const prOrDocName = prNo || docName;
+            logDebug(`PO not found in purchase.order. Falling back to purchase.requisition/request query for prOrDocName: ${prOrDocName}...`);
             try {
-              let odooReqs = await queryOdoo(
-                'purchase.requisition',
-                'search_read',
-                [[['name', '=', prOrDocName]]],
-                {
-                  fields: ['id', 'name', 'state', 'create_date'],
-                  limit: 1
-                },
-                odooOptions
-              );
-
-              // Requisition Fuzzy Fallback
-              if (!odooReqs || odooReqs.length === 0) {
-                const prMatch = prOrDocName.match(/^PR0*(\d+)$/i);
-                if (prMatch) {
-                  const seq = prMatch[1];
-                  try {
-                    const fuzzyReqs = await queryOdoo(
-                      'purchase.requisition',
-                      'search_read',
-                      [[['name', 'ilike', seq]]],
-                      {
-                        fields: ['id', 'name', 'state', 'create_date'],
-                        limit: 10
-                      },
-                      odooOptions
-                    );
-                    if (fuzzyReqs && fuzzyReqs.length > 0) {
-                      const regex = new RegExp('(?:/|^|-)0*' + seq + '$');
-                      const matched = fuzzyReqs.find((req: any) => regex.test(req.name) || req.name?.includes(prOrDocName));
-                      if (matched) odooReqs = [matched];
-                    }
-                  } catch (errFuzzyReq) {
-                    console.error(`Gagal melakukan fuzzy search PR Requisition untuk ${prOrDocName}:`, errFuzzyReq);
-                  }
-                }
-              }
-
-              if (odooReqs && odooReqs.length > 0) {
-                const odooReq = odooReqs[0];
-                const reqId = odooReq.id;
-                const reqState = odooReq.state; // e.g. draft, in_progress, open, done, cancel
+              const matchedPR = await findOdooPR(prOrDocName, odooOptions);
+              if (matchedPR) {
+                const reqId = matchedPR.id;
+                const reqState = matchedPR.state;
+                const isRequisition = matchedPR.model === 'purchase.requisition';
+                
                 let localStatusPr = 'DRAFT';
-                if (reqState === 'in_progress') localStatusPr = 'TO_APPROVE';
-                else if (reqState === 'open') localStatusPr = 'RFQ';
-                else if (reqState === 'done') localStatusPr = 'APPROVED';
-                else if (reqState === 'cancel') localStatusPr = 'CANCELLED';
+                if (isRequisition) {
+                  if (reqState === 'in_progress') localStatusPr = 'TO_APPROVE';
+                  else if (reqState === 'open') localStatusPr = 'RFQ';
+                  else if (reqState === 'done') localStatusPr = 'APPROVED';
+                  else if (reqState === 'cancel') localStatusPr = 'CANCELLED';
+                } else {
+                  if (reqState === 'to_approve') localStatusPr = 'TO_APPROVE';
+                  else if (reqState === 'approved') localStatusPr = 'APPROVED';
+                  else if (reqState === 'rejected') localStatusPr = 'CANCELLED';
+                  else if (reqState === 'done') localStatusPr = 'PO';
+                }
 
-                const prLogs = await fetchChatterLogs('purchase.requisition', reqId, 'PR', odooOptions);
+                const prLogs = await fetchChatterLogs(matchedPR.model, reqId, 'PR', odooOptions);
                 prLogs.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
                 const chatterNotes = prLogs.length > 0 ? JSON.stringify(prLogs) : '';
 
-                // Fetch requisition lines to extract the price (include 'name' for desc match)
+                // Fetch line items price
                 let matchedPrice = 0;
                 try {
+                  const lineModel = isRequisition ? 'purchase.requisition.line' : 'purchase.request.line';
+                  const parentField = isRequisition ? 'requisition_id' : 'request_id';
+                  const priceField = isRequisition ? 'price_unit' : 'estimated_cost';
+
                   const prLines = await queryOdoo(
-                    'purchase.requisition.line',
+                    lineModel,
                     'search_read',
-                    [[['requisition_id', '=', reqId]]],
+                    [[[parentField, '=', reqId]]],
                     {
-                      fields: ['product_id', 'product_qty', 'price_unit', 'name'],
+                      fields: ['product_id', 'product_qty', priceField, 'name'],
                       limit: 50
                     },
                     odooOptions
@@ -819,14 +870,14 @@ export async function POST(req: NextRequest) {
                   if (prLines && prLines.length > 0) {
                     const matchedLine = findBestMatchedLine(prLines, item);
                     if (matchedLine) {
-                      matchedPrice = matchedLine.price_unit || 0;
+                      matchedPrice = matchedLine[priceField] || 0;
                     }
                   }
                 } catch (errReqLines) {
-                  console.error(`Gagal mengambil detail line item PR Requisition ${docName}:`, errReqLines);
+                  console.error(`Gagal mengambil detail line item ${matchedPR.model} ${matchedPR.name}:`, errReqLines);
                 }
 
-                const odooDateRaw = odooReq.create_date;
+                const odooDateRaw = matchedPR.create_date;
                 const parsedOdooDate = odooDateRaw ? new Date(odooDateRaw) : null;
 
                 await prisma.$transaction(async (tx) => {
@@ -859,125 +910,9 @@ export async function POST(req: NextRequest) {
                   }
                 });
                 updatedOdooCount++;
-              } else {
-                // Try purchase.request (Purchase Request fallback)
-                try {
-                  let odooRequests = await queryOdoo(
-                    'purchase.request',
-                    'search_read',
-                    [[['name', '=', prOrDocName]]],
-                    {
-                      fields: ['id', 'name', 'state', 'create_date'],
-                      limit: 1
-                    },
-                    odooOptions
-                  );
-
-                  // Request Fuzzy Fallback
-                  if (!odooRequests || odooRequests.length === 0) {
-                    const prMatch = prOrDocName.match(/^PR0*(\d+)$/i);
-                    if (prMatch) {
-                      const seq = prMatch[1];
-                      try {
-                        const fuzzyRequests = await queryOdoo(
-                          'purchase.request',
-                          'search_read',
-                          [[['name', 'ilike', seq]]],
-                          {
-                            fields: ['id', 'name', 'state', 'create_date'],
-                            limit: 10
-                          },
-                          odooOptions
-                        );
-                        if (fuzzyRequests && fuzzyRequests.length > 0) {
-                          const regex = new RegExp('(?:/|^|-)0*' + seq + '$');
-                          const matched = fuzzyRequests.find((req: any) => regex.test(req.name) || req.name?.includes(prOrDocName));
-                          if (matched) odooRequests = [matched];
-                        }
-                      } catch (errFuzzyRequest) {
-                        console.error(`Gagal melakukan fuzzy search PR Request untuk ${prOrDocName}:`, errFuzzyRequest);
-                      }
-                    }
-                  }
-
-                  if (odooRequests && odooRequests.length > 0) {
-                    const odooReq = odooRequests[0];
-                    const reqId = odooReq.id;
-                    const reqState = odooReq.state; // e.g. draft, to_approve, approved, rejected, done
-                    let localStatusPr = 'DRAFT';
-                    if (reqState === 'to_approve') localStatusPr = 'TO_APPROVE';
-                    else if (reqState === 'approved') localStatusPr = 'APPROVED';
-                    else if (reqState === 'rejected') localStatusPr = 'CANCELLED';
-                    else if (reqState === 'done') localStatusPr = 'PO';
-
-                    const prLogs = await fetchChatterLogs('purchase.request', reqId, 'PR', odooOptions);
-                    prLogs.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
-                    const chatterNotes = prLogs.length > 0 ? JSON.stringify(prLogs) : '';
-
-                    // Fetch request lines to extract the estimated cost (include 'name' for desc match)
-                    let matchedPrice = 0;
-                    try {
-                      const prLines = await queryOdoo(
-                        'purchase.request.line',
-                        'search_read',
-                        [[['request_id', '=', reqId]]],
-                        {
-                          fields: ['product_id', 'product_qty', 'estimated_cost', 'name'],
-                          limit: 50
-                        },
-                        odooOptions
-                      );
-
-                      if (prLines && prLines.length > 0) {
-                        const matchedLine = findBestMatchedLine(prLines, item);
-                        if (matchedLine) {
-                          matchedPrice = matchedLine.estimated_cost || 0;
-                        }
-                      }
-                    } catch (errReqLines) {
-                      console.error(`Gagal mengambil detail line item PR Request ${docName}:`, errReqLines);
-                    }
-
-                    const odooDateRaw = odooReq.create_date;
-                    const parsedOdooDate = odooDateRaw ? new Date(odooDateRaw) : null;
-
-                    await prisma.$transaction(async (tx) => {
-                      const updateData: any = {
-                        statusPr: localStatusPr,
-                        odooNotes: chatterNotes || null
-                      };
-                      if (matchedPrice > 0) {
-                        updateData.harga = matchedPrice;
-                      }
-                      if (parsedOdooDate && !isNaN(parsedOdooDate.getTime())) {
-                        updateData.tanggalList = parsedOdooDate;
-                      }
-
-                      const updatedItem = await tx.procurementTracking.update({
-                        where: { id: item.id },
-                        data: updateData
-                      });
-
-                      if (updatedItem.sparepartId) {
-                        await tx.sparepart.update({
-                          where: { id: updatedItem.sparepartId },
-                          data: {
-                            purchasingStatus: localStatusPr,
-                            purchasingNoPr: updatedItem.nomorPr,
-                            odooNotes: chatterNotes || null,
-                            ...(matchedPrice > 0 ? { harga: matchedPrice } : {})
-                          }
-                        });
-                      }
-                    });
-                    updatedOdooCount++;
-                  }
-                } catch (errRequest) {
-                  console.error(`Gagal melacak purchase.request Odoo untuk ${docName}:`, errRequest);
-                }
               }
             } catch (errReq) {
-              console.error(`Gagal melacak purchase.requisition Odoo untuk ${docName}:`, errReq);
+              console.error(`Gagal melacak PR Requisition/Request Odoo untuk ${docName}:`, errReq);
             }
           }
         } catch (errItem) {
