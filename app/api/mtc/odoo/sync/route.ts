@@ -741,6 +741,7 @@ export async function POST(req: NextRequest) {
             }
 
             // Fetch PR logs if originDoc or prNo are present
+            let prCreateDate: Date | null = null;
             const prTargets = Array.from(new Set([originDoc, prNo].filter(Boolean) as string[]));
             for (const target of prTargets) {
               try {
@@ -748,6 +749,13 @@ export async function POST(req: NextRequest) {
                 if (matchedPR) {
                   const prLogs = await fetchChatterLogs(matchedPR.model, matchedPR.id, 'PR', odooOptions);
                   combinedLogs.push(...prLogs);
+
+                  if (matchedPR.create_date) {
+                    const parsedPrDate = new Date(matchedPR.create_date);
+                    if (!isNaN(parsedPrDate.getTime())) {
+                      prCreateDate = parsedPrDate;
+                    }
+                  }
                 }
               } catch (errPRLogs) {
                 console.error(`Gagal mengambil log PR untuk target ${target}:`, errPRLogs);
@@ -772,10 +780,6 @@ export async function POST(req: NextRequest) {
               // Direct Odoo PO URL
               const odooPoUrl = `https://foomx.odoo.com/web#id=${poId}&model=purchase.order&view_type=form`;
 
-              // Parse Odoo date (date_order or create_date)
-              const odooDateRaw = odooPo.date_order || odooPo.create_date;
-              const parsedOdooDate = odooDateRaw ? new Date(odooDateRaw) : null;
-
               // Update tracking item
               const updateData: any = {
                 statusPr: localStatusPr,
@@ -783,8 +787,11 @@ export async function POST(req: NextRequest) {
                 odooNotes: chatterNotes || null,
               };
               if (vendorName) updateData.vendor = vendorName;
-              if (parsedOdooDate && !isNaN(parsedOdooDate.getTime())) {
-                updateData.tanggalList = parsedOdooDate;
+
+              // Set tanggalList to the actual PR creation date from Odoo, NOT the PO creation date.
+              // This ensures that lead time calculations are based on the original request date.
+              if (prCreateDate) {
+                updateData.tanggalList = prCreateDate;
               }
               
               // Populate Odoo PO URL as linkReferences if empty
