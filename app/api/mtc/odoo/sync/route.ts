@@ -952,6 +952,52 @@ export async function POST(req: NextRequest) {
   }
 
   // -------------------------------------------------------------
+  // STEP 3: RE-CALIBRATE HISTORICAL DATES FROM CACHED CHATTER LOGS
+  // -------------------------------------------------------------
+  try {
+    const allItemsWithNotes = await prisma.procurementTracking.findMany({
+      where: {
+        odooNotes: { not: null }
+      },
+      select: {
+        id: true,
+        tanggalList: true,
+        odooNotes: true
+      }
+    });
+
+    let fixedCount = 0;
+    await prisma.$transaction(async (tx) => {
+      for (const item of allItemsWithNotes) {
+        if (!item.odooNotes) continue;
+        try {
+          const logs = JSON.parse(item.odooNotes);
+          if (Array.isArray(logs) && logs.length > 0) {
+            // Logs are sorted descending (newest first), so the last is the oldest
+            const oldestLog = logs[logs.length - 1];
+            const oldestLogDate = new Date(oldestLog.date);
+            if (oldestLogDate && !isNaN(oldestLogDate.getTime())) {
+              const diffMs = Math.abs(new Date(item.tanggalList).getTime() - oldestLogDate.getTime());
+              if (diffMs > 12 * 60 * 60 * 1000) { // difference > 12 hours
+                await tx.procurementTracking.update({
+                  where: { id: item.id },
+                  data: { tanggalList: oldestLogDate }
+                });
+                fixedCount++;
+              }
+            }
+          }
+        } catch (e) {
+          // ignore parsing error
+        }
+      }
+    });
+    console.log(`[Sync Route] Re-calibrated ${fixedCount} historical dates from cached chatter logs.`);
+  } catch (errCalibrate) {
+    console.error('[Sync Route] Failed to re-calibrate historical dates:', errCalibrate);
+  }
+
+  // -------------------------------------------------------------
   // RETURN INTEGRATED RESPONSE
   // -------------------------------------------------------------
   return ok({
