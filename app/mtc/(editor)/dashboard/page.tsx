@@ -24,7 +24,15 @@ export default async function DashboardPage() {
     }),
     prisma.procurementTracking.findMany({
       take: 15,
-      orderBy: { updatedAt: 'desc' },
+      orderBy: [
+        {
+          tanggalTerima: {
+            sort: 'asc',
+            nulls: 'first',
+          },
+        },
+        { updatedAt: 'desc' },
+      ],
       include: {
         sparepart: {
           select: {
@@ -417,6 +425,7 @@ export default async function DashboardPage() {
                 <tr>
                   <th>Item ID</th>
                   <th>Nama Barang</th>
+                  <th>Tgl List</th>
                   <th>SLOC</th>
                   <th>Stok Saat Ini</th>
                   <th>Status Pengadaan</th>
@@ -442,7 +451,7 @@ export default async function DashboardPage() {
                       statusBadge = (
                         <span className="badge badge-grn" style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, padding: '6px 12px' }}>
                           <span style={{ fontWeight: 800 }}>🟢 Diterima</span>
-                          <span style={{ fontSize: 9, opacity: 0.85, fontWeight: 600 }}>Tgl: {tDate}</span>
+                          <span style={{ fontSize: 9, opacity: 0.85, fontWeight: 600 }}>Tgl Terima: {tDate}</span>
                         </span>
                       );
                     } else if (item.nomorPo) {
@@ -480,6 +489,15 @@ export default async function DashboardPage() {
                             </div>
                           )}
                         </td>
+                        <td className="text-muted text-tiny">
+                          {item.tanggalList
+                            ? new Date(item.tanggalList).toLocaleDateString('id-ID', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric',
+                              })
+                            : '—'}
+                        </td>
                         <td>
                           <span className="badge badge-blu" style={{ fontSize: 10 }}>
                             {item.sparepart?.lokasi || '—'}
@@ -504,7 +522,7 @@ export default async function DashboardPage() {
                 })()}
                 {recentProcurements.length === 0 && (
                   <tr>
-                    <td colSpan={5} style={{ textAlign: 'center', padding: 24, color: 'var(--tx3)' }}>
+                    <td colSpan={6} style={{ textAlign: 'center', padding: 24, color: 'var(--tx3)' }}>
                       Tidak ada barang yang sedang dalam proses pengadaan (PR/PO).
                     </td>
                   </tr>
