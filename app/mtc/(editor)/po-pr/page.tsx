@@ -146,6 +146,7 @@ export default function ProcurementTrackingPage() {
   // Tabs for main view (updated to support Odoo status types)
   const [activeTab, setActiveTab] = useState<'ACTIVE' | 'DRAFT_PR' | 'TO_APPROVE' | 'APPROVED' | 'PO_RFQ' | 'RECEIVED' | 'ALL'>('ACTIVE');
   const [groupingMode, setGroupingMode] = useState<'PR' | 'PO'>('PR');
+  const [sortBy, setSortBy] = useState<'document' | 'vendor' | 'date'>('document');
   
   // Link Modal States
   const [showLinkModal, setShowLinkModal] = useState(false);
@@ -792,7 +793,7 @@ export default function ProcurementTrackingPage() {
       if (categoryFilter && item.productCategory !== categoryFilter) return false;
 
       // Vendor filter
-      if (vendorFilter && item.vendor !== vendorFilter) return false;
+      if (vendorFilter && item.vendor?.trim() !== vendorFilter) return false;
 
       // Month & Year filter
       const dateToCheck = isItemReceived ? (item.tanggalTerima || item.tanggalList) : item.tanggalList;
@@ -885,7 +886,7 @@ export default function ProcurementTrackingPage() {
       }
     });
 
-    return sortedKeys.map(key => {
+    const mappedGroups = sortedKeys.map(key => {
       const itemsInGroup = groups[key];
       let totalQty = 0;
       let totalCost = 0;
@@ -979,10 +980,27 @@ export default function ProcurementTrackingPage() {
         hasUrgent,
         overallStatus,
         daysRunningStr,
+        oldestDate,
         oldestDateStr: oldestDate ? oldestDate.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—',
       };
     });
-  }, [filteredItems, groupingMode]);
+
+    if (sortBy === 'vendor') {
+      mappedGroups.sort((a, b) => {
+        const aVendor = a.vendors === '—' ? 'zzz' : a.vendors.toLowerCase();
+        const bVendor = b.vendors === '—' ? 'zzz' : b.vendors.toLowerCase();
+        return aVendor.localeCompare(bVendor, 'id');
+      });
+    } else if (sortBy === 'date') {
+      mappedGroups.sort((a, b) => {
+        const aTime = a.oldestDate ? a.oldestDate.getTime() : 0;
+        const bTime = b.oldestDate ? b.oldestDate.getTime() : 0;
+        return bTime - aTime; // newest first
+      });
+    }
+
+    return mappedGroups;
+  }, [filteredItems, groupingMode, sortBy]);
 
   const toggleGroupExpand = (prKey: string) => {
     setExpandedGroups(prev => ({
@@ -1791,44 +1809,69 @@ export default function ProcurementTrackingPage() {
           <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--tx2)', display: 'flex', alignItems: 'center', gap: 8 }}>
             <span>📋</span> Daftar Pengadaan SCM ({filteredItems.length} Item Terfilter)
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--sf2)', padding: 3, borderRadius: 8, border: '1px solid var(--br)' }}>
-            <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--tx3)', padding: '0 8px' }}>KELOMPOKKAN BY:</span>
-            <button
-              type="button"
-              onClick={() => setGroupingMode('PR')}
-              style={{
-                border: 'none',
-                padding: '4px 12px',
-                borderRadius: 6,
-                fontSize: 10,
-                fontWeight: 800,
-                cursor: 'pointer',
-                background: groupingMode === 'PR' ? 'var(--sf3)' : 'transparent',
-                color: groupingMode === 'PR' ? 'var(--pur)' : 'var(--tx3)',
-                boxShadow: groupingMode === 'PR' ? '0 1px 4px rgba(0,0,0,0.2)' : 'none',
-                transition: 'all 0.15s'
-              }}
-            >
-              📋 Nomor PR
-            </button>
-            <button
-              type="button"
-              onClick={() => setGroupingMode('PO')}
-              style={{
-                border: 'none',
-                padding: '4px 12px',
-                borderRadius: 6,
-                fontSize: 10,
-                fontWeight: 800,
-                cursor: 'pointer',
-                background: groupingMode === 'PO' ? 'var(--sf3)' : 'transparent',
-                color: groupingMode === 'PO' ? 'var(--pur)' : 'var(--tx3)',
-                boxShadow: groupingMode === 'PO' ? '0 1px 4px rgba(0,0,0,0.2)' : 'none',
-                transition: 'all 0.15s'
-              }}
-            >
-              🚢 Nomor PO & Vendor
-            </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            {/* Sort Control */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--sf2)', padding: '3px 8px', borderRadius: 8, border: '1px solid var(--br)', height: '36px' }}>
+              <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--tx3)' }}>URUTKAN BY:</span>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--tx2)',
+                  fontSize: 10,
+                  fontWeight: 800,
+                  outline: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="document" style={{ background: 'var(--sf3)', color: 'var(--tx)' }}>Nomor Dokumen</option>
+                <option value="vendor" style={{ background: 'var(--sf3)', color: 'var(--tx)' }}>Nama Vendor</option>
+                <option value="date" style={{ background: 'var(--sf3)', color: 'var(--tx)' }}>Tanggal</option>
+              </select>
+            </div>
+
+            {/* Grouping Mode Toggle */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--sf2)', padding: 3, borderRadius: 8, border: '1px solid var(--br)' }}>
+              <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--tx3)', padding: '0 8px' }}>KELOMPOKKAN BY:</span>
+              <button
+                type="button"
+                onClick={() => setGroupingMode('PR')}
+                style={{
+                  border: 'none',
+                  padding: '4px 12px',
+                  borderRadius: 6,
+                  fontSize: 10,
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  background: groupingMode === 'PR' ? 'var(--sf3)' : 'transparent',
+                  color: groupingMode === 'PR' ? 'var(--pur)' : 'var(--tx3)',
+                  boxShadow: groupingMode === 'PR' ? '0 1px 4px rgba(0,0,0,0.2)' : 'none',
+                  transition: 'all 0.15s'
+                }}
+              >
+                📋 Nomor PR
+              </button>
+              <button
+                type="button"
+                onClick={() => setGroupingMode('PO')}
+                style={{
+                  border: 'none',
+                  padding: '4px 12px',
+                  borderRadius: 6,
+                  fontSize: 10,
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  background: groupingMode === 'PO' ? 'var(--sf3)' : 'transparent',
+                  color: groupingMode === 'PO' ? 'var(--pur)' : 'var(--tx3)',
+                  boxShadow: groupingMode === 'PO' ? '0 1px 4px rgba(0,0,0,0.2)' : 'none',
+                  transition: 'all 0.15s'
+                }}
+              >
+                🚢 Nomor PO & Vendor
+              </button>
+            </div>
           </div>
         </div>
 
