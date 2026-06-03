@@ -468,16 +468,26 @@ export async function POST(req: NextRequest) {
     odooMessage = 'Sinkronisasi Odoo dilewati (Kredensial Odoo tidak dikonfigurasi).';
   } else {
     try {
-      // Find all active tracking items that have a PR or PO number and are not yet complete
+      // Find all active tracking items that have a PR or PO number and are not yet complete,
+      // OR completed items that are still missing vendor names or Odoo chatter notes.
       const trackingItems = await prisma.procurementTracking.findMany({
         where: {
-          OR: [
-            { nomorPr: { not: null } },
-            { nomorPo: { not: null } },
-          ],
-          NOT: {
-            statusPo: 'DONE'
-          }
+          AND: [
+            {
+              OR: [
+                { nomorPr: { not: null } },
+                { nomorPo: { not: null } },
+              ],
+            },
+            {
+              OR: [
+                { statusPo: null },
+                { NOT: { statusPo: 'DONE' } },
+                { vendor: null },
+                { odooNotes: null },
+              ],
+            }
+          ]
         },
         include: {
           sparepart: true
@@ -542,7 +552,7 @@ export async function POST(req: NextRequest) {
                   // If it's a PR search, match origin/ref. If PO search, match the PO name.
                   const seqRegex = isPrPattern 
                     ? new RegExp('(PR|RFQ)[/0-9-]*0*' + seq + '\\b', 'i')
-                    : new RegExp('^P(?:O)?[/0-9-]*0*' + seq + '$', 'i');
+                    : new RegExp('(?:\\D|^)0*' + seq + '$', 'i');
 
                   const matched = fuzzyPos.find((po: any) => {
                     const name = po.name || '';
