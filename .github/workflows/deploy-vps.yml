@@ -68,13 +68,14 @@ jobs:
               git config --global --add safe.directory "$APP_PATH"
             fi
             export NODE_ENV=production
+            export NODE_OPTIONS="--max-old-space-size=1024"
             git fetch origin
             echo ">>> Menyelaraskan repo dengan remote (perubahan lokal pada file ter-track akan dibuang; .env tidak ikut karena di-ignore Git)."
             TARGET_BRANCH="${{ github.ref_name }}"
             echo ">>> Deploying branch: $TARGET_BRANCH"
             git checkout "$TARGET_BRANCH"
             git reset --hard "origin/$TARGET_BRANCH"
-            npm ci
+            npm ci --no-audit --no-fund --preferred-offline
             echo ">>> DATABASE_URL_* dari file .env di VPS (password disamarkan). Prisma migrate memakai file ini — bukan .env.example."
             grep -E '^[[:space:]]*DATABASE_URL_(MTC|GA)=' .env | sed -E 's|(postgresql://[^:]+:)[^@]+(@)|\1***\2|' || true
             npm run prisma:generate

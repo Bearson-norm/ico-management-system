@@ -7,6 +7,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const nextConfig = {
   experimental: { typedRoutes: false },
   // Tanpa "standalone": PM2 memakai `next start` (bind HOST/PORT lewat ecosystem / .env).
+  typescript: {
+    // CI handles typescript checking, so we disable it during next build on VPS to save memory/CPU
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    // CI handles linting, so we disable it during next build on VPS to save memory/CPU
+    ignoreDuringBuilds: true,
+  },
   webpack: (config) => {
     // Pastikan @/* resolve di semua OS (Linux/VPS); mengandalkan paths tsconfig saja kadang gagal saat build.
     const a = config.resolve.alias;
