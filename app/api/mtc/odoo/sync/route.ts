@@ -502,7 +502,7 @@ export async function POST(req: NextRequest) {
                   penggunaanBulan: penggunaanBulan || trackingItem.penggunaanBulan,
                   kontrak3Bulan: kontrak3Bulan || trackingItem.kontrak3Bulan,
                   isStocked: kontrak3Bulan || trackingItem.isStocked,
-                  tanggalList: tanggalList || trackingItem.tanggalList,
+                  tanggalList: (trackingItem.nomorPr || trackingItem.nomorPo) ? trackingItem.tanggalList : (tanggalList || trackingItem.tanggalList),
                   qty: qty || trackingItem.qty,
                   productCategory: productCategory || trackingItem.productCategory,
                   reason: reason || trackingItem.reason,

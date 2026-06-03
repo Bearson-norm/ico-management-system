@@ -148,6 +148,7 @@ export async function POST(req: NextRequest) {
         let finalVendor = vendor;
         let finalHarga = harga;
         let finalEtaFoom = etaFoom;
+        let finalTanggalList = tanggalList;
 
         if (trackingItem) {
           // If local already has a PO number, and SCM sheet PO number is empty, protect the local PO!
@@ -163,6 +164,11 @@ export async function POST(req: NextRequest) {
           if (trackingItem.nomorPr && !nomorPr) {
             finalNomorPr = trackingItem.nomorPr;
           }
+
+          // Protect tanggalList from being overwritten by Google Sheets if PR or PO number exists
+          if (trackingItem.nomorPr || trackingItem.nomorPo) {
+            finalTanggalList = trackingItem.tanggalList;
+          }
         }
 
         const dataPayload = {
@@ -173,7 +179,7 @@ export async function POST(req: NextRequest) {
           penggunaanBulan,
           kontrak3Bulan,
           isStocked: kontrak3Bulan,
-          tanggalList,
+          tanggalList: finalTanggalList,
           qty,
           productCategory,
           reason,
