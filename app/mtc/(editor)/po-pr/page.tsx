@@ -655,11 +655,12 @@ export default function ProcurementTrackingPage() {
     if (!linkingItem) return;
     setActionLoading(`link-${linkingItem.id}`);
     try {
-      const res = await fetch('/api/mtc/procurement/import', {
-        method: 'POST',
+      const res = await fetch('/api/mtc/procurement', {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          csvText: `Fb,Original Material Name,MTC Item Name (ODOO),Qty\n${linkingItem.fbIndex || ''},"${linkingItem.originalName}","${spareparts.find(s => s.id === sparepartId)?.nama || ''}",${linkingItem.qty}`,
+          id: linkingItem.id,
+          sparepartId: sparepartId,
         }),
       });
       const json = await res.json();

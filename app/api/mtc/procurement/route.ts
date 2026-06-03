@@ -270,6 +270,7 @@ export async function PATCH(req: NextRequest) {
     reason,
     statusPr,
     odooNotes,
+    sparepartId,
   } = body;
 
   if (!id) return err('ID record wajib diisi', 400);
@@ -292,6 +293,7 @@ export async function PATCH(req: NextRequest) {
         reason: reason !== undefined ? (reason || null) : undefined,
         statusPr: statusPr !== undefined ? (statusPr || 'DRAFT') : undefined,
         odooNotes: odooNotes !== undefined ? (odooNotes || null) : undefined,
+        sparepartId: sparepartId !== undefined ? (sparepartId || null) : undefined,
       },
     });
 
