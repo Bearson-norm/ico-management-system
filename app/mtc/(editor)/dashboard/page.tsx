@@ -15,12 +15,26 @@ export default async function DashboardPage() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const [totalReportHariIni, recentMovements] = await Promise.all([
+  const [totalReportHariIni, recentMovements, recentProcurements] = await Promise.all([
     prisma.maintenanceReport.count({ where: { tanggal: { gte: today } } }),
     prisma.stockMovement.findMany({
       take: 5,
       orderBy: { createdAt: 'desc' },
       include: { pic: true },
+    }),
+    prisma.procurementTracking.findMany({
+      take: 15,
+      orderBy: { updatedAt: 'desc' },
+      include: {
+        sparepart: {
+          select: {
+            id: true,
+            nama: true,
+            lokasi: true,
+            uom: true,
+          },
+        },
+      },
     }),
   ]);
 
@@ -140,7 +154,7 @@ export default async function DashboardPage() {
             📊 Ringkasan Nilai Aset MTC
           </div>
           <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', marginBottom: 0 }}>
-            <div className="stat-card" style={{
+            <Link href="/mtc/master" className="stat-card stat-card--link" style={{
               background: 'linear-gradient(135deg, rgba(62,181,116,0.08) 0%, rgba(19,19,26,0.65) 100%)',
               border: '1px solid var(--grn-b)',
               borderLeft: '4px solid var(--grn)',
@@ -150,7 +164,9 @@ export default async function DashboardPage() {
               flexDirection: 'column',
               justifyContent: 'space-between',
               transition: 'all 0.2s ease',
-              borderRadius: 'var(--r)'
+              borderRadius: 'var(--r)',
+              textDecoration: 'none',
+              cursor: 'pointer'
             }}>
               <div>
                 <div className="stat-label" style={{ color: 'var(--grn)', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 800 }}>
@@ -163,9 +179,9 @@ export default async function DashboardPage() {
               <div className="stat-sub" style={{ color: 'var(--tx2)', marginTop: 16, fontSize: 12 }}>
                 Dihitung dari: <span style={{ fontWeight: 600, color: 'var(--tx)' }}>Stok Aktif × Harga Master</span>
               </div>
-            </div>
+            </Link>
 
-            <div className="stat-card" style={{
+            <Link href="/mtc/history?tipe=LOG" className="stat-card stat-card--link" style={{
               background: 'linear-gradient(135deg, rgba(139,92,246,0.08) 0%, rgba(19,19,26,0.65) 100%)',
               border: '1px solid var(--pur-b)',
               borderLeft: '4px solid var(--pur)',
@@ -175,7 +191,9 @@ export default async function DashboardPage() {
               flexDirection: 'column',
               justifyContent: 'space-between',
               transition: 'all 0.2s ease',
-              borderRadius: 'var(--r)'
+              borderRadius: 'var(--r)',
+              textDecoration: 'none',
+              cursor: 'pointer'
             }}>
               <div>
                 <div className="stat-label" style={{ color: 'var(--pur)', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 800 }}>
@@ -188,7 +206,7 @@ export default async function DashboardPage() {
               <div className="stat-sub" style={{ color: 'var(--tx2)', marginTop: 16, fontSize: 12 }}>
                 Dihitung dari: <span style={{ fontWeight: 600, color: 'var(--tx)' }}>Akumulasi Transaksi Non-Stok</span>
               </div>
-            </div>
+            </Link>
           </div>
         </div>
 
@@ -405,29 +423,86 @@ export default async function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {[...prItems, ...poItems].map((sp) => (
-                  <tr key={sp.id}>
-                    <td className="text-mono text-tiny text-muted">{sp.id}</td>
-                    <td style={{ fontWeight: 600 }}>{sp.nama}</td>
-                    <td>
-                      <span className="badge badge-blu" style={{ fontSize: 10 }}>
-                        {sp.lokasi || '—'}
-                      </span>
-                    </td>
-                    <td style={{ fontWeight: 700 }}>
-                      {sp.currentStock} {sp.uom}
-                    </td>
-                    <td>
-                      {sp.purchasingStatus === 'PR' && (
-                        <span className="badge badge-ylw">⏳ Sedang PR</span>
-                      )}
-                      {sp.purchasingStatus === 'PO' && (
-                        <span className="badge badge-blu">📦 Sudah PO</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                {prItems.length === 0 && poItems.length === 0 && (
+                {(() => {
+                  const stockMap = new Map(sparepartsWithStock.map((sp) => [sp.id, sp]));
+                  return recentProcurements.map((item) => {
+                    const linkedSp = item.sparepartId ? stockMap.get(item.sparepartId) : null;
+                    const currentStock = linkedSp ? linkedSp.currentStock : null;
+                    const uom = linkedSp ? linkedSp.uom : 'Pcs';
+                    const isStocked = item.isStocked;
+
+                    // Tentukan format status pengadaan & tanggal
+                    let statusBadge = null;
+                    if (item.tanggalTerima) {
+                      const tDate = new Date(item.tanggalTerima).toLocaleDateString('id-ID', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      });
+                      statusBadge = (
+                        <span className="badge badge-grn" style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, padding: '6px 12px' }}>
+                          <span style={{ fontWeight: 800 }}>🟢 Diterima</span>
+                          <span style={{ fontSize: 9, opacity: 0.85, fontWeight: 600 }}>Tgl: {tDate}</span>
+                        </span>
+                      );
+                    } else if (item.nomorPo) {
+                      const etaDate = item.etaFoom
+                        ? new Date(item.etaFoom).toLocaleDateString('id-ID', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                          })
+                        : null;
+                      statusBadge = (
+                        <span className="badge badge-blu" style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, padding: '6px 12px' }}>
+                          <span style={{ fontWeight: 800 }}>🚢 Sudah PO</span>
+                          <span style={{ fontSize: 9, opacity: 0.85, fontWeight: 600 }}>
+                            {etaDate ? `ETA: ${etaDate}` : '(Belum Diterima)'}
+                          </span>
+                        </span>
+                      );
+                    } else if (item.nomorPr) {
+                      statusBadge = <span className="badge badge-ylw" style={{ padding: '6px 12px', fontWeight: 800 }}>⏳ Sedang PR</span>;
+                    } else {
+                      statusBadge = <span className="badge badge-red" style={{ padding: '6px 12px', fontWeight: 800 }}>Draft PR</span>;
+                    }
+
+                    return (
+                      <tr key={item.id}>
+                        <td className="text-mono text-tiny text-muted">{item.sparepartId || '—'}</td>
+                        <td style={{ fontWeight: 600 }}>
+                          <div>{item.sparepart?.nama || item.originalName}</div>
+                          {(item.nomorPr || item.nomorPo) && (
+                            <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 4, fontFamily: 'monospace' }}>
+                              {item.nomorPr && <span>PR: {item.nomorPr}</span>}
+                              {item.nomorPr && item.nomorPo && <span style={{ margin: '0 4px' }}>|</span>}
+                              {item.nomorPo && <span>PO: {item.nomorPo}</span>}
+                            </div>
+                          )}
+                        </td>
+                        <td>
+                          <span className="badge badge-blu" style={{ fontSize: 10 }}>
+                            {item.sparepart?.lokasi || '—'}
+                          </span>
+                        </td>
+                        <td style={{ fontWeight: 700 }}>
+                          {currentStock !== null ? `${currentStock} ${uom}` : '—'}
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            {statusBadge}
+                            {item.tanggalTerima && (
+                              <span style={{ fontSize: 10, color: 'var(--tx3)' }}>
+                                ({isStocked ? 'Masuk Stok' : 'Langsung Pakai'})
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  });
+                })()}
+                {recentProcurements.length === 0 && (
                   <tr>
                     <td colSpan={5} style={{ textAlign: 'center', padding: 24, color: 'var(--tx3)' }}>
                       Tidak ada barang yang sedang dalam proses pengadaan (PR/PO).

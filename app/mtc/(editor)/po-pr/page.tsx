@@ -134,6 +134,7 @@ export default function ProcurementTrackingPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [urgencyFilter, setUrgencyFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [vendorFilter, setVendorFilter] = useState('');
   const [monthFilter, setMonthFilter] = useState('');
   const [yearFilter, setYearFilter] = useState('');
   
@@ -790,6 +791,9 @@ export default function ProcurementTrackingPage() {
       // Kategori filter
       if (categoryFilter && item.productCategory !== categoryFilter) return false;
 
+      // Vendor filter
+      if (vendorFilter && item.vendor !== vendorFilter) return false;
+
       // Month & Year filter
       const dateToCheck = isItemReceived ? (item.tanggalTerima || item.tanggalList) : item.tanggalList;
       if (dateToCheck) {
@@ -802,7 +806,7 @@ export default function ProcurementTrackingPage() {
 
       return true;
     });
-  }, [items, searchQuery, urgencyFilter, categoryFilter, activeTab, monthFilter, yearFilter]);
+  }, [items, searchQuery, urgencyFilter, categoryFilter, vendorFilter, activeTab, monthFilter, yearFilter]);
 
   // Extract years dynamically
   const yearsList = useMemo(() => {
@@ -814,6 +818,17 @@ export default function ProcurementTrackingPage() {
       }
     });
     return Array.from(set).sort((a, b) => b.localeCompare(a));
+  }, [items]);
+
+  // Extract vendors dynamically
+  const uniqueVendors = useMemo(() => {
+    const set = new Set<string>();
+    items.forEach(item => {
+      if (item.vendor?.trim()) {
+        set.add(item.vendor.trim());
+      }
+    });
+    return Array.from(set).sort();
   }, [items]);
 
   const monthsList = [
@@ -1651,7 +1666,7 @@ export default function ProcurementTrackingPage() {
 
         {/* SEARCH & FILTERS CONTROL CARD */}
         <div className="card" style={{ marginBottom: 20, padding: 16 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '2.2fr 1fr 1fr 1fr 1fr', gap: 16, alignItems: 'center' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '2.2fr 1fr 1fr 1.2fr 1fr 1fr', gap: 16, alignItems: 'center' }}>
             <div className="search-bar" style={{ width: '100%', marginBottom: 0 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
@@ -1694,6 +1709,20 @@ export default function ProcurementTrackingPage() {
             <div className="form-group" style={{ marginBottom: 0 }}>
               <select
                 className="form-input form-select"
+                value={vendorFilter}
+                onChange={(e) => setVendorFilter(e.target.value)}
+                style={{ height: '40px' }}
+              >
+                <option value="">— Vendor (Semua) —</option>
+                {uniqueVendors.map(v => (
+                  <option key={v} value={v}>{v}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <select
+                className="form-input form-select"
                 value={monthFilter}
                 onChange={(e) => setMonthFilter(e.target.value)}
                 style={{ height: '40px' }}
@@ -1720,7 +1749,7 @@ export default function ProcurementTrackingPage() {
             </div>
 
             {/* Custom Premium Odoo-style Tab Switcher */}
-            <div style={{ gridColumn: 'span 5', display: 'flex', background: 'var(--sf2)', padding: 3, borderRadius: 8, height: '36px', border: '1px solid var(--br)', overflowX: 'auto', gap: 4 }}>
+            <div style={{ gridColumn: 'span 6', display: 'flex', background: 'var(--sf2)', padding: 3, borderRadius: 8, height: '36px', border: '1px solid var(--br)', overflowX: 'auto', gap: 4 }}>
               {[
                 { id: 'ACTIVE', label: '⏳ Semua Aktif', count: items.filter(i => !i.tanggalTerima && checkMonthYear(i, false)).length },
                 { id: 'DRAFT_PR', label: '⚙️ Draft PR', count: items.filter(i => !i.tanggalTerima && checkMonthYear(i, false) && ((i.statusPr || 'DRAFT') === 'DRAFT' || i.statusPr === 'READY_ODOO')).length },

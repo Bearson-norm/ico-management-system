@@ -1,7 +1,18 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 
-export default function HistoryPage() {
+function fmtRupiah(value: number): string {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(value);
+}
+
+function HistoryContent() {
+  const searchParams = useSearchParams();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -13,6 +24,12 @@ export default function HistoryPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [sort, setSort] = useState<'desc' | 'asc'>('desc');
+
+  // Sync with query parameter `tipe`
+  useEffect(() => {
+    const qTipe = searchParams.get('tipe') || '';
+    setTipe(qTipe);
+  }, [searchParams]);
 
   useEffect(() => {
     fetchData();
@@ -80,6 +97,7 @@ export default function HistoryPage() {
                   <th>Tipe</th>
                   <th>Item / Sparepart</th>
                   <th style={{ textAlign: 'right' }}>Qty</th>
+                  <th style={{ textAlign: 'right' }}>Harga</th>
                   <th>PIC</th>
                   <th>No Report</th>
                   <th>Keterangan</th>
@@ -100,6 +118,9 @@ export default function HistoryPage() {
                       {d.sparepartId && <div className="text-tiny text-muted">{d.sparepartId}</div>}
                     </td>
                     <td style={{ textAlign: 'right', fontWeight: 700 }}>{d.qty}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 600 }}>
+                      {d.harga && Number(d.harga) > 0 ? fmtRupiah(Number(d.harga)) : '—'}
+                    </td>
                     <td>{d.pic?.nama || '—'}</td>
                     <td className="text-mono text-tiny">{d.noReport || '—'}</td>
                     <td className="text-tiny">{[d.keterangan, d.purchaseType, d.vendor].filter(Boolean).join(' · ') || '—'}</td>
@@ -107,7 +128,7 @@ export default function HistoryPage() {
                 ))}
                 {data.length === 0 && !loading && (
                   <tr>
-                    <td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: 'var(--tx3)' }}>
+                    <td colSpan={9} style={{ textAlign: 'center', padding: '40px', color: 'var(--tx3)' }}>
                       Tidak ada riwayat ditemukan
                     </td>
                   </tr>
@@ -124,5 +145,23 @@ export default function HistoryPage() {
         </div>
       </div>
     </>
+  );
+}
+
+export default function HistoryPage() {
+  return (
+    <Suspense fallback={
+      <>
+        <div className="page-header">
+          <div className="page-title">Riwayat INOUT</div>
+          <div className="page-sub">Memuat data riwayat...</div>
+        </div>
+        <div className="page-body">
+          <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--tx3)' }}>Memuat…</div>
+        </div>
+      </>
+    }>
+      <HistoryContent />
+    </Suspense>
   );
 }
