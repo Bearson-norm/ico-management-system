@@ -503,7 +503,7 @@ export async function POST(req: NextRequest) {
                   kontrak3Bulan: kontrak3Bulan || trackingItem.kontrak3Bulan,
                   isStocked: kontrak3Bulan || trackingItem.isStocked,
                   tanggalList: (trackingItem.nomorPr || trackingItem.nomorPo) ? trackingItem.tanggalList : (tanggalList || trackingItem.tanggalList),
-                  qty: qty || trackingItem.qty,
+                  qty: (trackingItem.nomorPr || trackingItem.nomorPo) ? trackingItem.qty : (qty || trackingItem.qty),
                   productCategory: productCategory || trackingItem.productCategory,
                   reason: reason || trackingItem.reason,
                   urgency: urgency || trackingItem.urgency,
@@ -718,6 +718,7 @@ export async function POST(req: NextRequest) {
 
             // Fetch specific PO Line Item Price & Details
             let matchedPrice = 0;
+            let matchedQty = 0;
             try {
               const poLines = await queryOdoo(
                 'purchase.order.line',
@@ -734,6 +735,7 @@ export async function POST(req: NextRequest) {
                 const matchedLine = findBestMatchedLine(poLines, item);
                 if (matchedLine) {
                   matchedPrice = matchedLine.price_unit || 0;
+                  matchedQty = matchedLine.product_qty || 0;
                 }
               }
             } catch (errLines) {
@@ -815,6 +817,11 @@ export async function POST(req: NextRequest) {
                 updateData.harga = amountTotal;
               }
 
+              // Update quantity from Odoo
+              if (matchedQty > 0) {
+                updateData.qty = Math.round(matchedQty);
+              }
+
               const updatedItem = await tx.procurementTracking.update({
                 where: { id: item.id },
                 data: updateData
@@ -829,6 +836,7 @@ export async function POST(req: NextRequest) {
                     purchasingNoPr: updatedItem.nomorPr,
                     purchasingNoPo: updatedItem.nomorPo,
                     odooNotes: updatedItem.odooNotes,
+                    purchasingQty: updatedItem.qty,
                     // Also propagate unit price to master DB if fetched from PO line
                     ...(matchedPrice > 0 ? { harga: matchedPrice } : {})
                   }
@@ -867,6 +875,7 @@ export async function POST(req: NextRequest) {
 
                 // Fetch line items price
                 let matchedPrice = 0;
+                let matchedQty = 0;
                 try {
                   const lineModel = isRequisition ? 'purchase.requisition.line' : 'purchase.request.line';
                   const parentField = isRequisition ? 'requisition_id' : 'request_id';
@@ -887,6 +896,7 @@ export async function POST(req: NextRequest) {
                     const matchedLine = findBestMatchedLine(prLines, item);
                     if (matchedLine) {
                       matchedPrice = matchedLine[priceField] || 0;
+                      matchedQty = matchedLine.product_qty || 0;
                     }
                   }
                 } catch (errReqLines) {
@@ -903,13 +913,16 @@ export async function POST(req: NextRequest) {
                   }
                 }
 
-                await prisma.$transaction(async (tx) => {
+                 await prisma.$transaction(async (tx) => {
                   const updateData: any = {
                     statusPr: localStatusPr,
                     odooNotes: chatterNotes || null
                   };
                   if (matchedPrice > 0) {
                     updateData.harga = matchedPrice;
+                  }
+                  if (matchedQty > 0) {
+                    updateData.qty = Math.round(matchedQty);
                   }
                   if (parsedOdooDate && !isNaN(parsedOdooDate.getTime())) {
                     updateData.tanggalList = parsedOdooDate;
@@ -927,6 +940,7 @@ export async function POST(req: NextRequest) {
                         purchasingStatus: localStatusPr,
                         purchasingNoPr: updatedItem.nomorPr,
                         odooNotes: chatterNotes || null,
+                        purchasingQty: updatedItem.qty,
                         ...(matchedPrice > 0 ? { harga: matchedPrice } : {})
                       }
                     });
