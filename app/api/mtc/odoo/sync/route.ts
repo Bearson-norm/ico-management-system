@@ -786,10 +786,43 @@ export async function POST(req: NextRequest) {
               }
             }
 
+            // 2b. Search for associated Good Received (GR) in Odoo
+            let odooGrDate: Date | null = null;
+            let isGrDone = false;
+            let odooGrLink: string | null = null;
+            try {
+              const odooGrs = await queryOdoo(
+                'good.received',
+                'search_read',
+                [[['purchase_id', '=', poId]]],
+                {
+                  fields: ['id', 'state', 'write_date', 'name'],
+                  limit: 1
+                },
+                odooOptions
+              );
+
+              if (odooGrs && odooGrs.length > 0) {
+                const odooGr = odooGrs[0];
+                odooGrLink = `https://foomx.odoo.com/web#id=${odooGr.id}&model=good.received&view_type=form`;
+                if (odooGr.state === 'done') {
+                  isGrDone = true;
+                  if (odooGr.write_date) {
+                    const parsedGrDate = new Date(odooGr.write_date);
+                    if (!isNaN(parsedGrDate.getTime())) {
+                      odooGrDate = parsedGrDate;
+                    }
+                  }
+                }
+              }
+            } catch (errGr: any) {
+              logDebug(`Gagal mencari Good Received Odoo untuk PO ID ${poId}: ${errGr.message || errGr}`);
+            }
+
             // 3. Update locally
             await prisma.$transaction(async (tx) => {
               // Direct Odoo PO URL
-              const odooPoUrl = `https://foomx.odoo.com/web#id=${poId}&model=purchase.order&view_type=form`;
+               const odooPoUrl = `https://foomx.odoo.com/web#id=${poId}&model=purchase.order&view_type=form`;
 
               // Update tracking item
               const updateData: any = {
@@ -822,6 +855,17 @@ export async function POST(req: NextRequest) {
                 updateData.qty = Math.round(matchedQty);
               }
 
+              // If Good Received is Done in Odoo, update statusPo & tanggalTerima
+              if (isGrDone) {
+                updateData.statusPo = 'DONE';
+                if (odooGrDate) {
+                  updateData.tanggalTerima = odooGrDate;
+                }
+                if (odooGrLink) {
+                  updateData.linkGr = odooGrLink;
+                }
+              }
+
               const updatedItem = await tx.procurementTracking.update({
                 where: { id: item.id },
                 data: updateData
@@ -829,17 +873,36 @@ export async function POST(req: NextRequest) {
 
               // Propagate to master Spareparts DB
               if (updatedItem.sparepartId) {
+                const spUpdate: any = {
+                  purchasingStatus: isGrDone ? 'NONE' : localStatusPr,
+                  purchasingNoPr: isGrDone ? null : updatedItem.nomorPr,
+                  purchasingNoPo: isGrDone ? null : updatedItem.nomorPo,
+                  odooNotes: updatedItem.odooNotes,
+                  purchasingQty: isGrDone ? 0 : updatedItem.qty,
+                  // Also propagate unit price to master DB if fetched from PO line
+                  ...(matchedPrice > 0 ? { harga: matchedPrice } : {})
+                };
+
+                if (isGrDone && odooGrDate) {
+                  const sp = await tx.sparepart.findUnique({ where: { id: updatedItem.sparepartId } });
+                  if (sp) {
+                    const elapsedMs = odooGrDate.getTime() - new Date(updatedItem.tanggalList).getTime();
+                    const elapsedDays = Math.max(1, elapsedMs / (1000 * 60 * 60 * 24));
+                    const calculatedAvgLeadTime = sp.avgLeadTime === 0
+                      ? elapsedDays
+                      : Number((sp.avgLeadTime * 0.8 + elapsedDays * 0.2).toFixed(2));
+                    const calculatedMaxLeadTime = Math.max(sp.maxLeadTime, Math.round(elapsedDays));
+                    
+                    spUpdate.avgLeadTime = calculatedAvgLeadTime;
+                    spUpdate.maxLeadTime = calculatedMaxLeadTime;
+                    spUpdate.prDate = null;
+                    spUpdate.poDate = null;
+                  }
+                }
+
                 await tx.sparepart.update({
                   where: { id: updatedItem.sparepartId },
-                  data: {
-                    purchasingStatus: localStatusPr,
-                    purchasingNoPr: updatedItem.nomorPr,
-                    purchasingNoPo: updatedItem.nomorPo,
-                    odooNotes: updatedItem.odooNotes,
-                    purchasingQty: updatedItem.qty,
-                    // Also propagate unit price to master DB if fetched from PO line
-                    ...(matchedPrice > 0 ? { harga: matchedPrice } : {})
-                  }
+                  data: spUpdate
                 });
               }
             });
