@@ -229,6 +229,7 @@ export default function ProcurementTrackingPage() {
   const [editingItem, setEditingItem] = useState<TrackingItem | null>(null);
   const [editPrNo, setEditPrNo] = useState('');
   const [editPoNo, setEditPoNo] = useState('');
+  const [editStatusPr, setEditStatusPr] = useState('');
   const [editVendor, setEditVendor] = useState('');
   const [editPrice, setEditPrice] = useState(0);
   const [editQty, setEditQty] = useState(1);
@@ -728,6 +729,7 @@ export default function ProcurementTrackingPage() {
     setEditingItem(item);
     setEditPrNo(item.nomorPr || '');
     setEditPoNo(item.nomorPo || '');
+    setEditStatusPr(item.statusPr || 'DRAFT');
     setEditVendor(item.vendor || '');
     setEditPrice(Number(item.harga) || 0);
     setEditQty(item.qty || 1);
@@ -753,6 +755,7 @@ export default function ProcurementTrackingPage() {
           id: editingItem.id,
           nomorPr: editPrNo,
           nomorPo: editPoNo,
+          statusPr: editStatusPr,
           vendor: editVendor,
           harga: editPrice,
           qty: editQty,
@@ -3283,7 +3286,25 @@ export default function ProcurementTrackingPage() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 14 }}>
+                  <div>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Status PR</label>
+                    <select
+                      className="form-input form-select"
+                      value={editStatusPr}
+                      onChange={(e) => setEditStatusPr(e.target.value)}
+                      style={{ height: '38px' }}
+                    >
+                      <option value="DRAFT">⚙️ DRAFT</option>
+                      <option value="WAITING_PRICE">⏳ WAITING_PRICE</option>
+                      <option value="READY_ODOO">🚀 READY_ODOO (Siap Odoo)</option>
+                      <option value="TO_APPROVE">⏳ TO APPROVE</option>
+                      <option value="APPROVED">✓ APPROVED</option>
+                      <option value="PO">🚢 PO</option>
+                      <option value="RFQ">📄 RFQ</option>
+                      <option value="CANCELLED">❌ CANCELLED</option>
+                    </select>
+                  </div>
                   <div>
                     <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Nomor PR</label>
                     <input
@@ -3293,9 +3314,6 @@ export default function ProcurementTrackingPage() {
                       value={editPrNo}
                       onChange={(e) => setEditPrNo(e.target.value)}
                     />
-                    <span style={{ fontSize: 8, color: 'var(--tx3)', display: 'block', marginTop: 2 }}>
-                      💡 Masukkan nomor PR dari SCM untuk pengelompokan.
-                    </span>
                   </div>
                   <div>
                     <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Nomor PO</label>
@@ -3306,9 +3324,6 @@ export default function ProcurementTrackingPage() {
                       value={editPoNo}
                       onChange={(e) => setEditPoNo(e.target.value)}
                     />
-                    <span style={{ fontSize: 8, color: 'var(--tx3)', display: 'block', marginTop: 2 }}>
-                      💡 Selesaikan typo PO atau tambahkan PO manual di sini.
-                    </span>
                   </div>
                 </div>
 
