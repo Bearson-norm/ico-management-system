@@ -3345,7 +3345,13 @@ export default function ProcurementTrackingPage() {
                       min="0"
                       className="form-input"
                       value={editPrice}
-                      onChange={(e) => setEditPrice(Math.max(0, parseFloat(e.target.value) || 0))}
+                      onChange={(e) => {
+                        const val = Math.max(0, parseFloat(e.target.value) || 0);
+                        setEditPrice(val);
+                        if (val > 0 && (editStatusPr === 'WAITING_PRICE' || editStatusPr === 'DRAFT' || !editStatusPr)) {
+                          setEditStatusPr('READY_ODOO');
+                        }
+                      }}
                     />
                   </div>
                 </div>

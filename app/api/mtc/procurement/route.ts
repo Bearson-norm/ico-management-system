@@ -276,13 +276,49 @@ export async function PATCH(req: NextRequest) {
   if (!id) return err('ID record wajib diisi', 400);
 
   try {
+    const existing = await prisma.procurementTracking.findUnique({
+      where: { id: Number(id) }
+    });
+    if (!existing) return err('Data pengadaan tidak ditemukan', 404);
+
+    let finalHarga = harga !== undefined ? (harga ? Number(harga) : null) : existing.harga;
+    let finalStatusPr = statusPr !== undefined ? statusPr : existing.statusPr;
+    let finalVendor = vendor !== undefined ? (vendor?.trim() || null) : existing.vendor;
+
+    // Jika sparepart baru saja dihubungkan, coba ambil harga dari master & vendor dari riwayat
+    if (sparepartId && sparepartId !== existing.sparepartId) {
+      const sp = await prisma.sparepart.findUnique({
+        where: { id: sparepartId },
+        select: { harga: true }
+      });
+      if (sp) {
+        if (harga === undefined && sp.harga) {
+          finalHarga = Number(sp.harga);
+        }
+      }
+      
+      const lastProc = await prisma.procurementTracking.findFirst({
+        where: { sparepartId: sparepartId, vendor: { not: null } },
+        orderBy: { tanggalList: 'desc' },
+        select: { vendor: true }
+      });
+      if (lastProc && vendor === undefined) {
+        finalVendor = lastProc.vendor;
+      }
+    }
+
+    // Auto READY_ODOO logic: Jika status saat ini adalah WAITING_PRICE/DRAFT dan ada harga masuk > 0
+    if ((finalStatusPr === 'WAITING_PRICE' || finalStatusPr === 'DRAFT' || !finalStatusPr) && Number(finalHarga) > 0) {
+      finalStatusPr = 'READY_ODOO';
+    }
+
     const updated = await prisma.procurementTracking.update({
       where: { id: Number(id) },
       data: {
         nomorPr: nomorPr !== undefined ? (nomorPr?.trim() || null) : undefined,
         nomorPo: nomorPo !== undefined ? (nomorPo?.trim() || null) : undefined,
-        vendor: vendor !== undefined ? (vendor?.trim() || null) : undefined,
-        harga: harga !== undefined ? (harga ? Number(harga) : null) : undefined,
+        vendor: vendor !== undefined ? finalVendor : (sparepartId && sparepartId !== existing.sparepartId ? finalVendor : undefined),
+        harga: harga !== undefined ? finalHarga : (sparepartId && sparepartId !== existing.sparepartId ? finalHarga : undefined),
         etaFoom: etaFoom !== undefined ? (etaFoom ? new Date(etaFoom) : null) : undefined,
         linkGr: linkGr !== undefined ? (linkGr?.trim() || null) : undefined,
         urgency: urgency !== undefined ? (urgency || 'Normal') : undefined,
@@ -291,7 +327,7 @@ export async function PATCH(req: NextRequest) {
         productCategory: productCategory !== undefined ? (productCategory || null) : undefined,
         keterangan: keterangan !== undefined ? (keterangan || null) : undefined,
         reason: reason !== undefined ? (reason || null) : undefined,
-        statusPr: statusPr !== undefined ? (statusPr || 'DRAFT') : undefined,
+        statusPr: finalStatusPr,
         odooNotes: odooNotes !== undefined ? (odooNotes || null) : undefined,
         sparepartId: sparepartId !== undefined ? (sparepartId || null) : undefined,
       },
