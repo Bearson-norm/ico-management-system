@@ -177,6 +177,21 @@ export async function POST(req: NextRequest) {
           }
         }
 
+        const isDraftStatus = (s: string | null | undefined) => !s || s === 'DRAFT' || s === 'WAITING_PRICE' || s === 'CONTINUE';
+        let finalStatusPr = statusPr;
+
+        if (trackingItem) {
+          // Protect advanced local status
+          if (!isDraftStatus(trackingItem.statusPr) && isDraftStatus(statusPr)) {
+            finalStatusPr = trackingItem.statusPr;
+          }
+        }
+
+        // Auto-promote to READY_ODOO if price is set (> 0) and status is draft/initial
+        if (finalHarga > 0 && isDraftStatus(finalStatusPr)) {
+          finalStatusPr = 'READY_ODOO';
+        }
+
         const dataPayload = {
           fbIndex,
           originalName,
@@ -194,7 +209,7 @@ export async function POST(req: NextRequest) {
           vendor: finalVendor,
           harga: finalHarga,
           nomorPr: finalNomorPr,
-          statusPr,
+          statusPr: finalStatusPr,
           statusPa,
           statusPo: finalStatusPo,
           nomorPo: finalNomorPo,
@@ -213,6 +228,32 @@ export async function POST(req: NextRequest) {
           // Buat data pelacakan baru jika belum ada
           await tx.procurementTracking.create({
             data: dataPayload,
+          });
+        }
+
+        // If Sparepart is matched, update its price and status in the master spareparts DB too
+        const targetSpId = sparepartId || (trackingItem ? trackingItem.sparepartId : null);
+        if (targetSpId) {
+          const sp = await tx.sparepart.findUnique({
+            where: { id: targetSpId },
+            select: { purchasingStatus: true, harga: true }
+          });
+          const currentSpStatus = sp?.purchasingStatus || 'NONE';
+          const isPriceUpdate = finalHarga > 0 && (currentSpStatus === 'NONE' || currentSpStatus === 'WAITING_PRICE' || currentSpStatus === 'DRAFT');
+
+          await tx.sparepart.update({
+            where: { id: targetSpId },
+            data: {
+              ...(isPriceUpdate ? {
+                harga: finalHarga,
+                purchasingStatus: 'READY_ODOO',
+              } : {
+                harga: finalHarga > 0 ? finalHarga : undefined,
+              }),
+              ...(finalNomorPr ? { purchasingNoPr: finalNomorPr } : {}),
+              ...(finalNomorPo ? { purchasingNoPo: finalNomorPo } : {}),
+              ...(linkReferences ? { linkReference: linkReferences } : {}),
+            }
           });
         }
         importedCount++;

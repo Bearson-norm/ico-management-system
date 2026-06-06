@@ -101,16 +101,19 @@ export async function POST(req: NextRequest) {
       // 1. Jalankan Penomoran ID Sparepart Baru secara otomatis
       const newSpId = await generateItemId(prisma);
       
-      // 2. Buat Sparepart di database master berstatus WAITING_PRICE
+      const priceVal = harga != null ? Number(harga) : 0;
+      const initialStatus = priceVal > 0 ? 'READY_ODOO' : 'WAITING_PRICE';
+
+      // 2. Buat Sparepart di database master berstatus WAITING_PRICE atau READY_ODOO
       const newSp = await prisma.sparepart.create({
         data: {
           id: newSpId,
           nama: originalName.trim(),
           namaAlias: namaAlias?.trim() || null,
           uom: 'Pcs',
-          harga: harga != null ? Number(harga) : 0,
+          harga: priceVal,
           aktif: true,
-          purchasingStatus: 'WAITING_PRICE',
+          purchasingStatus: initialStatus,
           purchasingQty: Number(qty) || 0,
           purchasingNoPr: nomorPr?.trim() || null,
           linkReference: linkReferences || null,
@@ -120,8 +123,8 @@ export async function POST(req: NextRequest) {
 
       finalSparepartId = newSpId;
       spName = originalName.trim();
-      targetStatusPr = 'WAITING_PRICE';
-      finalHarga = newSp.harga ? Number(newSp.harga) : 0;
+      targetStatusPr = initialStatus;
+      finalHarga = priceVal;
     } else if (finalSparepartId) {
       // Repeat Order: Lock Harga dari Database & Set Status READY_ODOO
       const sp = await prisma.sparepart.findUnique({
@@ -307,8 +310,9 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
-    // Auto READY_ODOO logic: Jika status saat ini adalah WAITING_PRICE/DRAFT dan ada harga masuk > 0
-    if ((finalStatusPr === 'WAITING_PRICE' || finalStatusPr === 'DRAFT' || !finalStatusPr) && Number(finalHarga) > 0) {
+    // Auto READY_ODOO logic: Jika status saat ini adalah draf/prep dan ada harga masuk > 0
+    const isDraftStatus = (s: string | null | undefined) => !s || s === 'DRAFT' || s === 'WAITING_PRICE' || s === 'CONTINUE';
+    if (isDraftStatus(finalStatusPr) && Number(finalHarga) > 0) {
       finalStatusPr = 'READY_ODOO';
     }
 
@@ -333,13 +337,16 @@ export async function PATCH(req: NextRequest) {
       },
     });
 
-    // MTC PRO: Propagate status, nomor PR/PO, and chatter notes to Sparepart master database table
+    // MTC PRO: Propagate status, nomor PR/PO, price, and chatter notes to Sparepart master database table
     if (updated.sparepartId) {
       const spUpdateData: any = {};
       if (updated.statusPr) spUpdateData.purchasingStatus = updated.statusPr;
       if (updated.nomorPr !== undefined) spUpdateData.purchasingNoPr = updated.nomorPr;
       if (updated.nomorPo !== undefined) spUpdateData.purchasingNoPo = updated.nomorPo;
       if (updated.odooNotes !== undefined) spUpdateData.odooNotes = updated.odooNotes;
+      if (updated.harga !== null && updated.harga !== undefined) {
+        spUpdateData.harga = updated.harga;
+      }
 
       if (Object.keys(spUpdateData).length > 0) {
         await prisma.sparepart.update({

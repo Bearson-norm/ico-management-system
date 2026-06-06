@@ -44,17 +44,19 @@ export async function POST(req: NextRequest) {
         if (item.isPengadaanBaru) {
           // A. Jalankan Penomoran ID Sparepart Baru secara otomatis di dalam transaksi
           const newSpId = await generateItemId(tx as any);
+          const priceVal = item.harga ? Number(item.harga) : 0;
+          const initialStatus = priceVal > 0 ? 'READY_ODOO' : 'WAITING_PRICE';
 
-          // B. Buat Sparepart di database master berstatus WAITING_PRICE
+          // B. Buat Sparepart di database master berstatus WAITING_PRICE atau READY_ODOO
           const newSp = await tx.sparepart.create({
             data: {
               id: newSpId,
               nama: item.originalName.trim(),
               namaAlias: item.namaAlias?.trim() || null,
               uom: 'Pcs',
-              harga: item.harga ? Number(item.harga) : 0,
+              harga: priceVal,
               aktif: true,
-              purchasingStatus: 'WAITING_PRICE',
+              purchasingStatus: initialStatus,
               purchasingQty: Number(item.qty) || 0,
               purchasingNoPr: nomorPr?.trim() || null,
               linkReference: item.linkReferences || null,
@@ -63,8 +65,8 @@ export async function POST(req: NextRequest) {
           });
 
           finalSparepartId = newSpId;
-          targetStatusPr = 'WAITING_PRICE';
-          finalHarga = newSp.harga ? Number(newSp.harga) : 0;
+          targetStatusPr = initialStatus;
+          finalHarga = priceVal;
         } else if (finalSparepartId) {
           // Repeat Order: Lock Harga dari Database & Set Status READY_ODOO
           const sp = await tx.sparepart.findUnique({
@@ -93,6 +95,11 @@ export async function POST(req: NextRequest) {
               purchasingNoPr: nomorPr?.trim() || null,
             }
           });
+        }
+
+        // Auto READY_ODOO logic: jika ada harga > 0, otomatis READY_ODOO
+        if (finalHarga && Number(finalHarga) > 0) {
+          targetStatusPr = 'READY_ODOO';
         }
 
         const created = await tx.procurementTracking.create({

@@ -3348,7 +3348,7 @@ export default function ProcurementTrackingPage() {
                       onChange={(e) => {
                         const val = Math.max(0, parseFloat(e.target.value) || 0);
                         setEditPrice(val);
-                        if (val > 0 && (editStatusPr === 'WAITING_PRICE' || editStatusPr === 'DRAFT' || !editStatusPr)) {
+                        if (val > 0 && (editStatusPr === 'WAITING_PRICE' || editStatusPr === 'DRAFT' || editStatusPr === 'CONTINUE' || !editStatusPr)) {
                           setEditStatusPr('READY_ODOO');
                         }
                       }}
