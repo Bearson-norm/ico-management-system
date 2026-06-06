@@ -1,5 +1,5 @@
 import { prismaGa } from '@/lib/prisma-ga';
-import { getGaCurrentStock, getGaCurrentStockMap } from '@/lib/ga/stockQty';
+import { getGaCurrentStockMap } from '@/lib/ga/stockQty';
 import {
   buildLokasiProgress,
   formatIncompleteLokasiMessage,
@@ -230,11 +230,21 @@ export async function postOpnameSession(
     );
   }
 
+  const stockMap = await getGaCurrentStockMap(
+    prismaGa,
+    session.lines.map((l) => l.itemId)
+  );
+
   const adjustments = session.lines
-    .map((l) => ({
-      line: l,
-      diff: (l.qtyFisik ?? 0) - l.qtySistem,
-    }))
+    .map((l) => {
+      const currentStock = stockMap.get(l.itemId) ?? 0;
+      const qtyFisik = l.qtyFisik ?? 0;
+      return {
+        line: l,
+        currentStock,
+        diff: qtyFisik - currentStock,
+      };
+    })
     .filter((x) => x.diff !== 0);
 
   const tanggal = new Date(input.tanggal + 'T12:00:00');
@@ -242,10 +252,10 @@ export async function postOpnameSession(
 
   for (const adj of adjustments) {
     if (adj.diff < 0) {
-      const stok = await getGaCurrentStock(prismaGa, adj.line.itemId);
-      if (stok < Math.abs(adj.diff)) {
+      const keluar = Math.abs(adj.diff);
+      if (adj.currentStock < keluar) {
         throw new Error(
-          `Stok ${adj.line.item.nama} tidak cukup untuk penyesuaian (sisa: ${stok}, butuh keluar: ${Math.abs(adj.diff)})`
+          `Stok ${adj.line.item.nama} tidak cukup untuk penyesuaian (sisa: ${adj.currentStock}, butuh keluar: ${keluar})`
         );
       }
     }

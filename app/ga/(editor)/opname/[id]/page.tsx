@@ -145,8 +145,8 @@ export default function GaOpnameDetailPage() {
     return { counted, surplus, shortage };
   }, [lines, draft]);
 
-  async function saveLines(targetIds?: number[]) {
-    if (!isDraft) return;
+  async function saveLines(targetIds?: number[]): Promise<boolean> {
+    if (!isDraft) return true;
     const target = targetIds ? lines.filter((l) => targetIds.includes(l.id)) : lines;
     const updates = target.map((l) => {
       const raw = draft[l.id];
@@ -154,7 +154,7 @@ export default function GaOpnameDetailPage() {
       return { id: l.id, qtyFisik };
     });
 
-    if (updates.length === 0) return;
+    if (updates.length === 0) return true;
 
     setSaving(true);
     setErr(null);
@@ -175,9 +175,10 @@ export default function GaOpnameDetailPage() {
       setDraft(d);
       setMsg('Perubahan disimpan');
       setTimeout(() => setMsg(null), 2500);
-    } else {
-      setErr(j.error || 'Gagal menyimpan');
+      return true;
     }
+    setErr(j.error || 'Gagal menyimpan');
+    return false;
   }
 
   function setQty(lineId: number, value: string) {
@@ -214,7 +215,11 @@ export default function GaOpnameDetailPage() {
       return;
     }
     if (!postForm.picNama.trim()) return alert('PIC wajib');
-    await saveLines();
+    const saved = await saveLines();
+    if (!saved) {
+      alert('Gagal menyimpan hitungan terakhir. Perbaiki lalu coba posting lagi.');
+      return;
+    }
     setPosting(true);
     setErr(null);
     const res = await fetch(`/api/ga/opname/${id}/post`, {
@@ -229,6 +234,7 @@ export default function GaOpnameDetailPage() {
       setMsg(j.data.msg);
       await load();
     } else {
+      console.error('Post opname gagal:', j.error);
       setErr(j.error || 'Gagal posting');
     }
   }
