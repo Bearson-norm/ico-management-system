@@ -149,6 +149,7 @@ export default function ProcurementTrackingPage() {
   const [activeTab, setActiveTab] = useState<'ACTIVE' | 'DRAFT_PR' | 'TO_APPROVE' | 'APPROVED' | 'PO_RFQ' | 'RECEIVED' | 'ALL'>('ACTIVE');
   const [groupingMode, setGroupingMode] = useState<'PR' | 'PO'>('PR');
   const [sortBy, setSortBy] = useState<'document' | 'vendor' | 'date'>('document');
+  const [cardFilter, setCardFilter] = useState<'WAITING_PRICE' | 'PR_PENDING' | 'PO_RECEIVED' | 'PO_PENDING_GR' | null>(null);
   
   // Link Modal States
   const [showLinkModal, setShowLinkModal] = useState(false);
@@ -782,24 +783,36 @@ export default function ProcurementTrackingPage() {
   // Filter items in memory
   const filteredItems = useMemo(() => {
     return items.filter(item => {
-      // Tab filter
+      // Tab or Card filter
       const isItemReceived = !!item.tanggalTerima;
       const spStatus = (item.statusPr || 'DRAFT').toUpperCase();
       const poStatus = (item.statusPo || '').toUpperCase();
 
-      if (activeTab === 'ACTIVE') {
-        if (isItemReceived) return false;
-      } else if (activeTab === 'DRAFT_PR') {
-        if (isItemReceived || (spStatus !== 'DRAFT' && spStatus !== 'READY_ODOO')) return false;
-      } else if (activeTab === 'TO_APPROVE') {
-        if (isItemReceived || spStatus !== 'TO_APPROVE') return false;
-      } else if (activeTab === 'APPROVED') {
-        if (isItemReceived || spStatus !== 'APPROVED') return false;
-      } else if (activeTab === 'PO_RFQ') {
-        const hasPo = spStatus === 'PO' || spStatus === 'RFQ' || poStatus === 'PO' || poStatus === 'RFQ' || (item.nomorPo && item.nomorPo.trim() !== '');
-        if (isItemReceived || !hasPo) return false;
-      } else if (activeTab === 'RECEIVED') {
-        if (!isItemReceived) return false;
+      if (cardFilter) {
+        if (cardFilter === 'WAITING_PRICE') {
+          if (isItemReceived || item.statusPr !== 'WAITING_PRICE') return false;
+        } else if (cardFilter === 'PR_PENDING') {
+          if (isItemReceived || !item.nomorPr || item.nomorPo) return false;
+        } else if (cardFilter === 'PO_RECEIVED') {
+          if (!item.nomorPo || !isItemReceived) return false;
+        } else if (cardFilter === 'PO_PENDING_GR') {
+          if (isItemReceived || !item.nomorPo) return false;
+        }
+      } else {
+        if (activeTab === 'ACTIVE') {
+          if (isItemReceived) return false;
+        } else if (activeTab === 'DRAFT_PR') {
+          if (isItemReceived || (spStatus !== 'DRAFT' && spStatus !== 'READY_ODOO')) return false;
+        } else if (activeTab === 'TO_APPROVE') {
+          if (isItemReceived || spStatus !== 'TO_APPROVE') return false;
+        } else if (activeTab === 'APPROVED') {
+          if (isItemReceived || spStatus !== 'APPROVED') return false;
+        } else if (activeTab === 'PO_RFQ') {
+          const hasPo = spStatus === 'PO' || spStatus === 'RFQ' || poStatus === 'PO' || poStatus === 'RFQ' || (item.nomorPo && item.nomorPo.trim() !== '');
+          if (isItemReceived || !hasPo) return false;
+        } else if (activeTab === 'RECEIVED') {
+          if (!isItemReceived) return false;
+        }
       }
 
       // Search query filter
@@ -833,7 +846,7 @@ export default function ProcurementTrackingPage() {
 
       return true;
     });
-  }, [items, searchQuery, urgencyFilter, categoryFilter, vendorFilter, activeTab, monthFilter, yearFilter]);
+  }, [items, searchQuery, urgencyFilter, categoryFilter, vendorFilter, activeTab, monthFilter, yearFilter, cardFilter]);
 
   // Extract years dynamically
   const yearsList = useMemo(() => {
@@ -1069,10 +1082,10 @@ export default function ProcurementTrackingPage() {
     // 2. Baru PR & Tunggu persetujuan
     const prPendingCount = active.filter(i => i.nomorPr && !i.nomorPo).length;
 
-    // 3. Sudah Jadi PO (Total PO Aktif + Selesai)
-    const poTotalCount = items.filter(i => i.nomorPo).length;
+    // 3. PO Sudah Di-GR (Selesai)
+    const poReceivedCount = items.filter(i => i.nomorPo && i.tanggalTerima).length;
 
-    // 4. Sudah Jadi PO tapi Belum di-GR
+    // 4. PO Belum Di-GR (Belum Selesai)
     const poPendingGrCount = active.filter(i => i.nomorPo).length;
 
     return {
@@ -1081,7 +1094,7 @@ export default function ProcurementTrackingPage() {
       etaOverdueCount,
       noPriceCount,
       prPendingCount,
-      poTotalCount,
+      poReceivedCount,
       poPendingGrCount
     };
   }, [items]);
@@ -1703,23 +1716,95 @@ export default function ProcurementTrackingPage() {
 
         {/* METRICS & KPI CARDS SECTION */}
         <div className="stats-grid" style={{ marginBottom: 24 }}>
-          <div className="stat-card stat-ylw" style={{ cursor: 'pointer', transition: 'all 0.2s', borderLeft: '4px solid var(--ylw)' }} onClick={() => setActiveTab('ACTIVE')}>
+          <div 
+            className="stat-card stat-ylw" 
+            style={{ 
+              cursor: 'pointer', 
+              transition: 'all 0.2s', 
+              borderLeft: '4px solid var(--ylw)',
+              boxShadow: cardFilter === 'WAITING_PRICE' ? '0 0 0 2px var(--ylw), 0 4px 20px rgba(234, 179, 8, 0.25)' : 'none',
+              transform: cardFilter === 'WAITING_PRICE' ? 'scale(1.02)' : 'scale(1)',
+              opacity: cardFilter && cardFilter !== 'WAITING_PRICE' ? 0.6 : 1
+            }} 
+            onClick={() => {
+              if (cardFilter === 'WAITING_PRICE') {
+                setCardFilter(null);
+              } else {
+                setCardFilter('WAITING_PRICE');
+                setActiveTab('ACTIVE');
+              }
+            }}
+          >
             <div className="stat-label">Belum Ada Harga (Pengadaan Baru)</div>
             <div className="stat-value">{stats.noPriceCount}</div>
             <div className="stat-sub">Barang baru diajukan, menunggu harga dari SCM</div>
           </div>
-          <div className="stat-card stat-blu" style={{ cursor: 'pointer', transition: 'all 0.2s', borderLeft: '4px solid var(--blu)' }} onClick={() => setActiveTab('ACTIVE')}>
+          <div 
+            className="stat-card stat-blu" 
+            style={{ 
+              cursor: 'pointer', 
+              transition: 'all 0.2s', 
+              borderLeft: '4px solid var(--blu)',
+              boxShadow: cardFilter === 'PR_PENDING' ? '0 0 0 2px var(--blu), 0 4px 20px rgba(59, 130, 246, 0.25)' : 'none',
+              transform: cardFilter === 'PR_PENDING' ? 'scale(1.02)' : 'scale(1)',
+              opacity: cardFilter && cardFilter !== 'PR_PENDING' ? 0.6 : 1
+            }} 
+            onClick={() => {
+              if (cardFilter === 'PR_PENDING') {
+                setCardFilter(null);
+              } else {
+                setCardFilter('PR_PENDING');
+                setActiveTab('ACTIVE');
+              }
+            }}
+          >
             <div className="stat-label">PR Tunggu Persetujuan</div>
             <div className="stat-value">{stats.prPendingCount}</div>
             <div className="stat-sub">PR sudah dibuat, menunggu proses PO oleh SCM</div>
           </div>
-          <div className="stat-card stat-pur" style={{ cursor: 'pointer', transition: 'all 0.2s', borderLeft: '4px solid var(--pur)' }} onClick={() => setActiveTab('ACTIVE')}>
-            <div className="stat-label">Total Dokumen PO</div>
-            <div className="stat-value">{stats.poTotalCount}</div>
-            <div className="stat-sub">Jumlah total PO terbit (Aktif & Diterima)</div>
+          <div 
+            className="stat-card stat-pur" 
+            style={{ 
+              cursor: 'pointer', 
+              transition: 'all 0.2s', 
+              borderLeft: '4px solid var(--pur)',
+              boxShadow: cardFilter === 'PO_RECEIVED' ? '0 0 0 2px var(--pur), 0 4px 20px rgba(168, 85, 247, 0.25)' : 'none',
+              transform: cardFilter === 'PO_RECEIVED' ? 'scale(1.02)' : 'scale(1)',
+              opacity: cardFilter && cardFilter !== 'PO_RECEIVED' ? 0.6 : 1
+            }} 
+            onClick={() => {
+              if (cardFilter === 'PO_RECEIVED') {
+                setCardFilter(null);
+              } else {
+                setCardFilter('PO_RECEIVED');
+                setActiveTab('RECEIVED');
+              }
+            }}
+          >
+            <div className="stat-label">PO Sudah Di-GR (Selesai)</div>
+            <div className="stat-value">{stats.poReceivedCount}</div>
+            <div className="stat-sub">Barang sudah datang dan sukses dicatat GR</div>
           </div>
-          <div className="stat-card stat-grn" style={{ cursor: 'pointer', transition: 'all 0.2s', borderLeft: '4px solid var(--grn)' }} onClick={() => setActiveTab('ACTIVE')}>
-            <div className="stat-label">PO Belum Di-GR</div>
+          <div 
+            className="stat-card stat-grn" 
+            style={{ 
+              cursor: 'pointer', 
+              transition: 'all 0.2s', 
+              borderLeft: '4px solid var(--grn)',
+              boxShadow: cardFilter === 'PO_PENDING_GR' ? '0 0 0 2px var(--grn), 0 4px 20px rgba(34, 197, 94, 0.25)' : 'none',
+              transform: cardFilter === 'PO_PENDING_GR' ? 'scale(1.02)' : 'scale(1)',
+              opacity: cardFilter && cardFilter !== 'PO_PENDING_GR' ? 0.6 : 1
+            }} 
+            onClick={() => {
+              if (cardFilter === 'PO_PENDING_GR') {
+                setCardFilter(null);
+              } else {
+                setCardFilter('PO_PENDING_GR');
+                setActiveTab('ACTIVE');
+              }
+            }}
+          >
+            <div className="stat-label">PO Belum Di-GR (Belum Selesai)</div>
             <div className="stat-value">{stats.poPendingGrCount}</div>
             <div className="stat-sub">Barang dalam proses pengiriman, belum dicatat GR</div>
           </div>
@@ -1786,6 +1871,50 @@ export default function ProcurementTrackingPage() {
             </div>
           );
         })()}
+
+        {cardFilter && (
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 16,
+            background: 'rgba(168, 85, 247, 0.08)',
+            border: '1px solid rgba(168, 85, 247, 0.25)',
+            borderRadius: 8,
+            padding: '10px 16px',
+            animation: 'fadeIn 0.2s ease-out'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 14 }}>🎯</span>
+              <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--tx1)' }}>
+                Filter Aktif Kartu Metrik: &quot;{
+                  cardFilter === 'WAITING_PRICE' ? 'Belum Ada Harga (Pengadaan Baru)' :
+                  cardFilter === 'PR_PENDING' ? 'PR Tunggu Persetujuan' :
+                  cardFilter === 'PO_RECEIVED' ? 'PO Sudah Di-GR (Selesai)' :
+                  'PO Belum Di-GR (Belum Selesai)'
+                }&quot;
+              </span>
+            </div>
+            <button
+              type="button"
+              className="btn btn-pur btn-sm"
+              onClick={() => setCardFilter(null)}
+              style={{
+                fontSize: 10,
+                fontWeight: 800,
+                padding: '4px 10px',
+                height: 'auto',
+                background: 'linear-gradient(135deg, var(--pur) 0%, #4f46e5 100%)',
+                border: 'none',
+                color: '#fff',
+                cursor: 'pointer',
+                borderRadius: 4
+              }}
+            >
+              ✕ Hapus Filter Kartu
+            </button>
+          </div>
+        )}
 
         {/* SEARCH & FILTERS CONTROL CARD */}
         <div className="card" style={{ marginBottom: 20, padding: 16 }}>
@@ -1886,7 +2015,10 @@ export default function ProcurementTrackingPage() {
                   key={tab.id}
                   type="button"
                   className="ntab"
-                  onClick={() => setActiveTab(tab.id as any)}
+                  onClick={() => {
+                    setActiveTab(tab.id as any);
+                    setCardFilter(null);
+                  }}
                   style={{
                     flex: '1 0 auto',
                     border: 'none',
@@ -2295,11 +2427,28 @@ export default function ProcurementTrackingPage() {
                                   <td>
                                     {item.sparepart ? (
                                       <div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                                           <div style={{ fontWeight: 700, color: 'var(--tx2)', fontSize: 12 }}>{item.sparepart.nama}</div>
                                           {item.statusPr && item.statusPr !== 'READY_ODOO' && (
                                             <span className="badge" style={{ fontSize: 8, padding: '1px 5px', fontWeight: 800, ...getStatusBadgeStyles(item.statusPr) }}>
                                               {item.statusPr}
+                                            </span>
+                                          )}
+                                          {item.nomorPo && (
+                                            <span 
+                                              className="badge" 
+                                              style={{ 
+                                                fontSize: 8, 
+                                                padding: '2px 6px', 
+                                                fontWeight: 800,
+                                                background: isItemReceived ? 'rgba(34, 197, 94, 0.15)' : 'rgba(59, 130, 246, 0.15)',
+                                                color: isItemReceived ? '#22c55e' : '#3b82f6',
+                                                border: isItemReceived ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(59, 130, 246, 0.3)',
+                                                marginLeft: 4
+                                              }}
+                                              title={isItemReceived ? "PO Selesai / Sudah di-GR" : "PO Aktif / Belum di-GR"}
+                                            >
+                                              {isItemReceived ? `✓ PO: ${item.nomorPo} (GR)` : `🚢 PO: ${item.nomorPo}`}
                                             </span>
                                           )}
                                         </div>
@@ -2313,16 +2462,36 @@ export default function ProcurementTrackingPage() {
                                         </div>
                                       </div>
                                     ) : (
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} onClick={(e) => e.stopPropagation()}>
-                                        <span className="badge badge-red" style={{ fontSize: 9, padding: '2px 6px' }}>⚠️ Unlinked / General</span>
-                                        <button
-                                          type="button"
-                                          className="btn btn-ghost btn-sm"
-                                          onClick={() => openLinkModal(item)}
-                                          style={{ fontSize: 9, padding: '2px 6px', color: 'var(--pur)', height: 'auto', border: '1px solid rgba(168, 85, 247, 0.3)' }}
-                                        >
-                                          🔗 Hubungkan
-                                        </button>
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} onClick={(e) => e.stopPropagation()}>
+                                          <span className="badge badge-red" style={{ fontSize: 9, padding: '2px 6px' }}>⚠️ Unlinked / General</span>
+                                          <button
+                                            type="button"
+                                            className="btn btn-ghost btn-sm"
+                                            onClick={() => openLinkModal(item)}
+                                            style={{ fontSize: 9, padding: '2px 6px', color: 'var(--pur)', height: 'auto', border: '1px solid rgba(168, 85, 247, 0.3)' }}
+                                          >
+                                            🔗 Hubungkan
+                                          </button>
+                                        </div>
+                                        {item.nomorPo && (
+                                          <div style={{ marginTop: 2 }}>
+                                            <span 
+                                              className="badge" 
+                                              style={{ 
+                                                fontSize: 8, 
+                                                padding: '2px 6px', 
+                                                fontWeight: 800,
+                                                background: isItemReceived ? 'rgba(34, 197, 94, 0.15)' : 'rgba(59, 130, 246, 0.15)',
+                                                color: isItemReceived ? '#22c55e' : '#3b82f6',
+                                                border: isItemReceived ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(59, 130, 246, 0.3)'
+                                              }}
+                                              title={isItemReceived ? "PO Selesai / Sudah di-GR" : "PO Aktif / Belum di-GR"}
+                                            >
+                                              {isItemReceived ? `✓ PO: ${item.nomorPo} (GR)` : `🚢 PO: ${item.nomorPo}`}
+                                            </span>
+                                          </div>
+                                        )}
                                       </div>
                                     )}
                                   </td>
