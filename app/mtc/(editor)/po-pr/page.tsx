@@ -45,6 +45,8 @@ type TrackingItem = {
   sparepart?: Sparepart | null;
   odooNotes?: string | null;
   isPengadaanBaru?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export default function ProcurementTrackingPage() {
@@ -152,6 +154,8 @@ export default function ProcurementTrackingPage() {
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [linkingItem, setLinkingItem] = useState<TrackingItem | null>(null);
   const [linkSearch, setLinkSearch] = useState('');
+  const [linkSuggestions, setLinkSuggestions] = useState<any[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
 
   function generateAutoAlias(fullName: string) {
     const clean = fullName
@@ -306,6 +310,28 @@ export default function ProcurementTrackingPage() {
       }
     }
   }, []);
+
+  // Dynamic fetch for Link Modal Suggestions
+  useEffect(() => {
+    if (!showLinkModal) return;
+    
+    setLoadingSuggestions(true);
+    const delayDebounceFn = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/mtc/master/sparepart?simple=true&search=${encodeURIComponent(linkSearch)}`);
+        const json = await res.json();
+        if (json.success) {
+          setLinkSuggestions(json.data || []);
+        }
+      } catch (err) {
+        console.error('Gagal memuat saran link sparepart:', err);
+      } finally {
+        setLoadingSuggestions(false);
+      }
+    }, linkSearch ? 300 : 0);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [linkSearch, showLinkModal]);
 
   // Sync settings saver
   function handleSaveSettings(e: React.FormEvent) {
@@ -1037,10 +1063,27 @@ export default function ProcurementTrackingPage() {
       return new Date(i.etaFoom).getTime() < today;
     }).length;
 
-    const prCount = active.filter(i => i.statusPr === 'CONTINUE' && !i.nomorPo).length;
-    const poCount = active.filter(i => i.nomorPo && !i.tanggalTerima).length;
+    // 1. Belum ada harganya & Pengadaan baru
+    const noPriceCount = active.filter(i => i.statusPr === 'WAITING_PRICE').length;
 
-    return { avgLeadTime, urgentCount, etaOverdueCount, prCount, poCount };
+    // 2. Baru PR & Tunggu persetujuan
+    const prPendingCount = active.filter(i => i.nomorPr && !i.nomorPo).length;
+
+    // 3. Sudah Jadi PO (Total PO Aktif + Selesai)
+    const poTotalCount = items.filter(i => i.nomorPo).length;
+
+    // 4. Sudah Jadi PO tapi Belum di-GR
+    const poPendingGrCount = active.filter(i => i.nomorPo).length;
+
+    return {
+      avgLeadTime,
+      urgentCount,
+      etaOverdueCount,
+      noPriceCount,
+      prPendingCount,
+      poTotalCount,
+      poPendingGrCount
+    };
   }, [items]);
 
   // Format currency helper
@@ -1661,26 +1704,88 @@ export default function ProcurementTrackingPage() {
         {/* METRICS & KPI CARDS SECTION */}
         <div className="stats-grid" style={{ marginBottom: 24 }}>
           <div className="stat-card stat-ylw" style={{ cursor: 'pointer', transition: 'all 0.2s', borderLeft: '4px solid var(--ylw)' }} onClick={() => setActiveTab('ACTIVE')}>
-            <div className="stat-label">Barang Tahap PR</div>
-            <div className="stat-value">{stats.prCount}</div>
-            <div className="stat-sub">Menunggu PO terbit dari SCM / Vendor</div>
+            <div className="stat-label">Belum Ada Harga (Pengadaan Baru)</div>
+            <div className="stat-value">{stats.noPriceCount}</div>
+            <div className="stat-sub">Barang baru diajukan, menunggu harga dari SCM</div>
           </div>
           <div className="stat-card stat-blu" style={{ cursor: 'pointer', transition: 'all 0.2s', borderLeft: '4px solid var(--blu)' }} onClick={() => setActiveTab('ACTIVE')}>
-            <div className="stat-label">Barang Sudah PO</div>
-            <div className="stat-value">{stats.poCount}</div>
-            <div className="stat-sub">Sedang diproses vendor / dalam pengiriman</div>
+            <div className="stat-label">PR Tunggu Persetujuan</div>
+            <div className="stat-value">{stats.prPendingCount}</div>
+            <div className="stat-sub">PR sudah dibuat, menunggu proses PO oleh SCM</div>
           </div>
-          <div className="stat-card stat-red" style={{ borderLeft: '4px solid var(--red)' }}>
-            <div className="stat-label">Pengadaan URGENT</div>
-            <div className="stat-value" style={{ color: 'var(--red)' }}>{stats.urgentCount}</div>
-            <div className="stat-sub">{stats.etaOverdueCount} Item melewati ETA Foom ⚠️</div>
+          <div className="stat-card stat-pur" style={{ cursor: 'pointer', transition: 'all 0.2s', borderLeft: '4px solid var(--pur)' }} onClick={() => setActiveTab('ACTIVE')}>
+            <div className="stat-label">Total Dokumen PO</div>
+            <div className="stat-value">{stats.poTotalCount}</div>
+            <div className="stat-sub">Jumlah total PO terbit (Aktif & Diterima)</div>
           </div>
-          <div className="stat-card stat-grn" style={{ cursor: 'pointer', transition: 'all 0.2s', borderLeft: '4px solid var(--grn)' }} onClick={() => setActiveTab('RECEIVED')}>
-            <div className="stat-label">Rerata Lead-Time Pengadaan</div>
-            <div className="stat-value" style={{ color: 'var(--grn)' }}>{stats.avgLeadTime}</div>
-            <div className="stat-sub">Dihitung otomatis dari riwayat kedatangan</div>
+          <div className="stat-card stat-grn" style={{ cursor: 'pointer', transition: 'all 0.2s', borderLeft: '4px solid var(--grn)' }} onClick={() => setActiveTab('ACTIVE')}>
+            <div className="stat-label">PO Belum Di-GR</div>
+            <div className="stat-value">{stats.poPendingGrCount}</div>
+            <div className="stat-sub">Barang dalam proses pengiriman, belum dicatat GR</div>
           </div>
         </div>
+
+        {(() => {
+          const recentUpdates = items.filter(item => {
+            const upd = item.updatedAt;
+            if (!upd) return false;
+            const diffHours = (new Date().getTime() - new Date(upd).getTime()) / (1000 * 60 * 60);
+            return diffHours <= 72;
+          });
+
+          if (recentUpdates.length === 0) return null;
+
+          return (
+            <div className="card" style={{ marginBottom: 20, border: '1px solid rgba(168, 85, 247, 0.2)', background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.02) 0%, rgba(168, 85, 247, 0.02) 100%)', borderRadius: 12, padding: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <span style={{ fontSize: 18 }}>📢</span>
+                <span style={{ fontWeight: 800, fontSize: 13, color: 'var(--pur)' }}>Pemberitahuan Perubahan Status Terbaru (72 Jam Terakhir)</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 150, overflowY: 'auto', paddingRight: 8 }}>
+                {recentUpdates.map((item) => {
+                  let badgeText = 'Update';
+                  let badgeBg = 'var(--sf3)';
+                  let message = `Barang "${item.originalName}" telah diperbarui.`;
+                  const updateTime = item.updatedAt
+                    ? new Date(item.updatedAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date(item.updatedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
+                    : '';
+
+                  if (item.statusPr === 'WAITING_PRICE') {
+                    badgeText = 'Menunggu Harga';
+                    badgeBg = 'rgba(234, 179, 8, 0.15)';
+                    message = `Barang baru "${item.originalName}" diajukan dan sedang menunggu input harga resmi dari SCM.`;
+                  } else if (item.statusPr === 'READY_ODOO') {
+                    badgeText = 'Harga Siap';
+                    badgeBg = 'rgba(34, 197, 94, 0.15)';
+                    message = `Harga barang "${item.originalName}" selesai diupdate oleh SCM (${fmtRupiah(Number(item.harga))}), siap diajukan ke Odoo.`;
+                  } else if (item.tanggalTerima) {
+                    badgeText = 'Diterima';
+                    badgeBg = 'rgba(34, 197, 94, 0.25)';
+                    message = `Barang "${item.originalName}" telah dicatat masuk (Good Received / GR) pada ${new Date(item.tanggalTerima).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}.`;
+                  } else if (item.nomorPo) {
+                    badgeText = 'PO Terbit';
+                    badgeBg = 'rgba(59, 130, 246, 0.2)';
+                    message = `Nomor PO "${item.nomorPo}" telah diterbitkan untuk "${item.originalName}" (Vendor: ${item.vendor || '—'}).`;
+                  } else if (item.nomorPr) {
+                    badgeText = 'PR Diajukan';
+                    badgeBg = 'rgba(168, 85, 247, 0.15)';
+                    message = `Nomor PR "${item.nomorPr}" telah diajukan untuk "${item.originalName}".`;
+                  }
+
+                  return (
+                    <div key={item.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--sf2)', border: '1px solid var(--br)', borderRadius: 8, fontSize: 11, gap: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span className="badge" style={{ background: badgeBg, color: 'var(--tx1)', border: '1px solid var(--br)', fontSize: 9, padding: '3px 8px' }}>{badgeText}</span>
+                        <span style={{ color: 'var(--tx2)' }}>{message}</span>
+                      </div>
+                      <span style={{ fontSize: 9, color: 'var(--tx3)', whiteSpace: 'nowrap' }}>{updateTime}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* SEARCH & FILTERS CONTROL CARD */}
         <div className="card" style={{ marginBottom: 20, padding: 16 }}>
@@ -2816,14 +2921,17 @@ export default function ProcurementTrackingPage() {
               </div>
 
               <div style={{ maxHeight: 200, overflowY: 'auto', border: '1px solid var(--br)', borderRadius: 8, background: 'var(--sf2)' }}>
-                {spareparts
-                  .filter(sp => {
-                    if (!linkSearch.trim()) return true;
-                    const q = linkSearch.toLowerCase();
-                    return sp.nama.toLowerCase().includes(q) || sp.id.toLowerCase().includes(q);
-                  })
-                  .slice(0, 10)
-                  .map(sp => (
+                {loadingSuggestions ? (
+                  <div style={{ padding: 14, textAlign: 'center', fontSize: 11, color: 'var(--tx3)' }}>
+                    <span className="spinner" style={{ display: 'inline-block', width: 12, height: 12, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'var(--pur)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginRight: 6 }} />
+                    Mencari...
+                  </div>
+                ) : linkSuggestions.length === 0 ? (
+                  <div style={{ padding: 14, textAlign: 'center', fontSize: 11, color: 'var(--tx3)' }}>
+                    Tidak ada suku cadang resmi yang cocok.
+                  </div>
+                ) : (
+                  linkSuggestions.slice(0, 15).map(sp => (
                     <div
                       key={sp.id}
                       onClick={() => handleLinkSparepart(sp.id)}
@@ -2845,7 +2953,8 @@ export default function ProcurementTrackingPage() {
                       </div>
                       <span className="badge badge-pur" style={{ fontSize: 9 }}>Hubungkan</span>
                     </div>
-                  ))}
+                  ))
+                )}
               </div>
             </div>
           </div>
