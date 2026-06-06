@@ -803,7 +803,8 @@ export default function ProcurementTrackingPage() {
         if (activeTab === 'ACTIVE') {
           if (isItemReceived) return false;
         } else if (activeTab === 'DRAFT_PR') {
-          if (isItemReceived || (spStatus !== 'DRAFT' && spStatus !== 'READY_ODOO')) return false;
+          const isDraft = !item.nomorPr || item.nomorPr.trim() === '' || spStatus === 'DRAFT' || spStatus === 'READY_ODOO' || spStatus === 'WAITING_PRICE' || spStatus === 'CONTINUE';
+          if (isItemReceived || !isDraft) return false;
         } else if (activeTab === 'TO_APPROVE') {
           if (isItemReceived || spStatus !== 'TO_APPROVE') return false;
         } else if (activeTab === 'APPROVED') {
@@ -2005,7 +2006,7 @@ export default function ProcurementTrackingPage() {
             <div style={{ gridColumn: 'span 6', display: 'flex', background: 'var(--sf2)', padding: 3, borderRadius: 8, height: '36px', border: '1px solid var(--br)', overflowX: 'auto', gap: 4 }}>
               {[
                 { id: 'ACTIVE', label: '⏳ Semua Aktif', count: items.filter(i => !i.tanggalTerima && checkMonthYear(i, false)).length },
-                { id: 'DRAFT_PR', label: '⚙️ Draft PR', count: items.filter(i => !i.tanggalTerima && checkMonthYear(i, false) && ((i.statusPr || 'DRAFT') === 'DRAFT' || i.statusPr === 'READY_ODOO')).length },
+                { id: 'DRAFT_PR', label: '⚙️ Draft PR', count: items.filter(i => !i.tanggalTerima && checkMonthYear(i, false) && (!i.nomorPr || i.nomorPr.trim() === '' || i.statusPr === 'DRAFT' || i.statusPr === 'READY_ODOO' || i.statusPr === 'WAITING_PRICE' || i.statusPr === 'CONTINUE')).length },
                 { id: 'TO_APPROVE', label: '⏳ Tunggu Approve', count: items.filter(i => !i.tanggalTerima && checkMonthYear(i, false) && i.statusPr === 'TO_APPROVE').length },
                 { id: 'APPROVED', label: '✓ Disetujui', count: items.filter(i => !i.tanggalTerima && checkMonthYear(i, false) && i.statusPr === 'APPROVED').length },
                 { id: 'PO_RFQ', label: '🚢 Dalam Proses PO', count: items.filter(i => !i.tanggalTerima && checkMonthYear(i, false) && (i.statusPr === 'PO' || i.statusPr === 'RFQ' || i.statusPo === 'PO' || i.statusPo === 'RFQ' || (i.nomorPo && i.nomorPo.trim() !== ''))).length },
