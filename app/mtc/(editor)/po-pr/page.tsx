@@ -350,7 +350,7 @@ export default function ProcurementTrackingPage() {
 
   async function fetchSpareparts() {
     try {
-      const res = await fetch('/api/mtc/master/sparepart');
+      const res = await fetch('/api/mtc/master/sparepart?simple=true');
       const json = await res.json();
       if (json.success) {
         setSpareparts(json.data || []);

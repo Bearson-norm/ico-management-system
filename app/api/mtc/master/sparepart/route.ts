@@ -9,6 +9,7 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const search = (searchParams.get('search') ?? '').trim();
+  const simple = searchParams.get('simple') === 'true';
 
   const rows = await prisma.sparepart.findMany({
     where: {
@@ -27,13 +28,20 @@ export async function GET(req: NextRequest) {
     include: {
       kategori: true,
       mesins: { select: { id: true, nama: true } },
-      movements: { where: { tipe: { in: ['IN', 'OUT'] } }, select: { tipe: true, qty: true } },
+      ...(simple
+        ? {}
+        : {
+            movements: { where: { tipe: { in: ['IN', 'OUT'] } }, select: { tipe: true, qty: true } },
+          }),
     },
     orderBy: { nama: 'asc' },
     take: 1000,
   });
 
   const data = rows.map((sp) => {
+    if (simple) {
+      return { ...sp, currentStock: 0 };
+    }
     const totalIn = sp.movements.filter((m) => m.tipe === 'IN').reduce((s, m) => s + m.qty, 0);
     const totalOut = sp.movements.filter((m) => m.tipe === 'OUT').reduce((s, m) => s + m.qty, 0);
     const { movements: _movements, ...rest } = sp;
