@@ -790,7 +790,7 @@ export default function ProcurementTrackingPage() {
 
       if (cardFilter) {
         if (cardFilter === 'WAITING_PRICE') {
-          if (isItemReceived || item.statusPr !== 'WAITING_PRICE') return false;
+          if (isItemReceived || (item.harga !== 0 && item.harga != null)) return false;
         } else if (cardFilter === 'PR_PENDING') {
           if (isItemReceived || !item.nomorPr || item.nomorPo) return false;
         } else if (cardFilter === 'PO_RECEIVED') {
@@ -1077,7 +1077,8 @@ export default function ProcurementTrackingPage() {
     }).length;
 
     // 1. Belum ada harganya & Pengadaan baru
-    const noPriceCount = active.filter(i => i.statusPr === 'WAITING_PRICE').length;
+    // 1. Belum ada harganya (harga 0 atau null)
+    const noPriceCount = active.filter(i => i.harga === 0 || i.harga == null).length;
 
     // 2. Baru PR & Tunggu persetujuan
     const prPendingCount = active.filter(i => i.nomorPr && !i.nomorPo).length;
