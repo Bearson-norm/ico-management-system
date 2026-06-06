@@ -361,8 +361,24 @@ async function findOdooPR(
 
 // POST /api/mtc/odoo/sync
 export async function POST(req: NextRequest) {
-  const session = await requireMtcEditor();
-  if (!session) return err('Akses ditolak', 403);
+  // Check CRON_TOKEN bypass
+  const authHeader = req.headers.get('Authorization');
+  const queryToken = req.nextUrl.searchParams.get('token');
+  const reqToken = (authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null) || queryToken;
+  
+  let isAuthorized = false;
+  if (reqToken && process.env.CRON_TOKEN && reqToken === process.env.CRON_TOKEN) {
+    isAuthorized = true;
+  } else {
+    const session = await requireMtcEditor();
+    if (session) {
+      isAuthorized = true;
+    }
+  }
+
+  if (!isAuthorized) {
+    return err('Akses ditolak', 403);
+  }
 
   let body: any = {};
   try {
@@ -371,7 +387,26 @@ export async function POST(req: NextRequest) {
     // Graceful if empty body
   }
 
-  const { sheetUrl, odooPassword: bodyOdooPassword, odooDb: bodyOdooDb, odooUid: bodyOdooUid, odooSessionId: bodyOdooSessionId } = body;
+  const {
+    sheetUrl: bodySheetUrl,
+    odooPassword: bodyOdooPassword,
+    odooDb: bodyOdooDb,
+    odooUid: bodyOdooUid,
+    odooSessionId: bodyOdooSessionId
+  } = body || {};
+
+  const sheetUrl = bodySheetUrl?.trim() || process.env.SCM_SHEET_URL?.trim() || '';
+  const odooPassword = bodyOdooPassword || process.env.ODOO_PASSWORD || '';
+  const odooSessionId = bodyOdooSessionId || process.env.ODOO_SESSION_ID || '';
+  const odooDb = bodyOdooDb || process.env.ODOO_DB || 'foom-production-5808833';
+  
+  let odooUid = 34;
+  if (bodyOdooUid != null) {
+    odooUid = Number(bodyOdooUid);
+  } else if (process.env.ODOO_UID) {
+    odooUid = parseInt(process.env.ODOO_UID) || 34;
+  }
+
   let sheetsSynced = false;
   let odooSynced = false;
   let sheetsMessage = '';
@@ -570,11 +605,6 @@ export async function POST(req: NextRequest) {
   // -------------------------------------------------------------
   // STEP 2: SINKRONISASI ODOO CLOUD VIA JSON-RPC / COOKIE
   // -------------------------------------------------------------
-  const odooPassword = bodyOdooPassword || process.env.ODOO_PASSWORD || '';
-  const odooSessionId = bodyOdooSessionId || process.env.ODOO_SESSION_ID || '';
-  const odooDb = bodyOdooDb || 'foom-production-5808833';
-  const odooUid = bodyOdooUid || 34;
-
   const odooOptions = { odooPassword, odooDb, odooUid, odooSessionId };
 
   if (!odooPassword && !odooSessionId) {

@@ -45,6 +45,16 @@ export default withAuth(
         return NextResponse.next();
       }
       
+      // Cron auto-sync bypass
+      if (pathname === '/api/mtc/odoo/sync') {
+        const authHeader = req.headers.get('Authorization');
+        const queryToken = req.nextUrl.searchParams.get('token');
+        const reqToken = (authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null) || queryToken;
+        if (reqToken && process.env.CRON_TOKEN && reqToken === process.env.CRON_TOKEN) {
+          return NextResponse.next();
+        }
+      }
+      
       const secret = req.nextUrl.searchParams.get('secret');
       const allowedSecret = process.env.QUICK_IN_SECRET || 'MTCI';
       if (secret === allowedSecret) {
