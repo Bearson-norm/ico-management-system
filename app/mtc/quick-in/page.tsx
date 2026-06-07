@@ -470,7 +470,7 @@ export default function QuickStockInPage() {
                   <label className="form-label">Daftar Barang Non-Stok ({logItems.length}) <span className="req">*</span></label>
                   {logItems.length === 0 ? (
                     <div style={{ padding: 20, textAlign: 'center', background: 'var(--sf2)', borderRadius: 8, color: 'var(--tx3)' }}>
-                      Belum ada barang dalam daftar. Isi form di atas lalu klik "Tambah ke Daftar".
+                      Belum ada barang dalam daftar. Isi form di atas lalu klik &quot;Tambah ke Daftar&quot;.
                     </div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
