@@ -146,7 +146,7 @@ export default function ProcurementTrackingPage() {
   });
   
   // Tabs for main view (updated to support Odoo status types)
-  const [activeTab, setActiveTab] = useState<'ACTIVE' | 'DRAFT_PR' | 'TO_APPROVE' | 'APPROVED' | 'PO_RFQ' | 'RECEIVED' | 'ALL'>('ACTIVE');
+  const [activeTab, setActiveTab] = useState<'ACTIVE' | 'DRAFT_PR' | 'READY_ODOO' | 'TO_APPROVE' | 'APPROVED' | 'PO_RFQ' | 'RECEIVED' | 'ALL'>('ACTIVE');
   const [groupingMode, setGroupingMode] = useState<'PR' | 'PO'>('PR');
   const [sortBy, setSortBy] = useState<'document' | 'vendor' | 'date'>('document');
   const [cardFilter, setCardFilter] = useState<'WAITING_PRICE' | 'PR_PENDING' | 'PO_RECEIVED' | 'PO_PENDING_GR' | null>(null);
@@ -806,8 +806,10 @@ export default function ProcurementTrackingPage() {
         if (activeTab === 'ACTIVE') {
           if (isItemReceived) return false;
         } else if (activeTab === 'DRAFT_PR') {
-          const isDraft = !item.nomorPr || item.nomorPr.trim() === '' || spStatus === 'DRAFT' || spStatus === 'READY_ODOO' || spStatus === 'WAITING_PRICE' || spStatus === 'CONTINUE';
+          const isDraft = (!spStatus || spStatus === 'DRAFT' || spStatus === 'WAITING_PRICE' || spStatus === 'CONTINUE') && (!item.nomorPr || item.nomorPr.trim() === '');
           if (isItemReceived || !isDraft) return false;
+        } else if (activeTab === 'READY_ODOO') {
+          if (isItemReceived || spStatus !== 'READY_ODOO') return false;
         } else if (activeTab === 'TO_APPROVE') {
           if (isItemReceived || spStatus !== 'TO_APPROVE') return false;
         } else if (activeTab === 'APPROVED') {
@@ -2009,7 +2011,8 @@ export default function ProcurementTrackingPage() {
             <div style={{ gridColumn: 'span 6', display: 'flex', background: 'var(--sf2)', padding: 3, borderRadius: 8, height: '36px', border: '1px solid var(--br)', overflowX: 'auto', gap: 4 }}>
               {[
                 { id: 'ACTIVE', label: '⏳ Semua Aktif', count: items.filter(i => !i.tanggalTerima && checkMonthYear(i, false)).length },
-                { id: 'DRAFT_PR', label: '⚙️ Draft PR', count: items.filter(i => !i.tanggalTerima && checkMonthYear(i, false) && (!i.nomorPr || i.nomorPr.trim() === '' || i.statusPr === 'DRAFT' || i.statusPr === 'READY_ODOO' || i.statusPr === 'WAITING_PRICE' || i.statusPr === 'CONTINUE')).length },
+                { id: 'DRAFT_PR', label: '⚙️ Draft PR', count: items.filter(i => !i.tanggalTerima && checkMonthYear(i, false) && (!i.statusPr || i.statusPr === 'DRAFT' || i.statusPr === 'WAITING_PRICE' || i.statusPr === 'CONTINUE') && (!i.nomorPr || i.nomorPr.trim() === '')).length },
+                { id: 'READY_ODOO', label: '🚀 Siap Odoo', count: items.filter(i => !i.tanggalTerima && checkMonthYear(i, false) && i.statusPr === 'READY_ODOO').length },
                 { id: 'TO_APPROVE', label: '⏳ Tunggu Approve', count: items.filter(i => !i.tanggalTerima && checkMonthYear(i, false) && i.statusPr === 'TO_APPROVE').length },
                 { id: 'APPROVED', label: '✓ Disetujui', count: items.filter(i => !i.tanggalTerima && checkMonthYear(i, false) && i.statusPr === 'APPROVED').length },
                 { id: 'PO_RFQ', label: '🚢 Dalam Proses PO', count: items.filter(i => !i.tanggalTerima && checkMonthYear(i, false) && (i.statusPr === 'PO' || i.statusPr === 'RFQ' || i.statusPo === 'PO' || i.statusPo === 'RFQ' || (i.nomorPo && i.nomorPo.trim() !== ''))).length },
@@ -2050,6 +2053,37 @@ export default function ProcurementTrackingPage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
           <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--tx2)', display: 'flex', alignItems: 'center', gap: 8 }}>
             <span>📋</span> Daftar Pengadaan SCM ({filteredItems.length} Item Terfilter)
+            {activeTab === 'READY_ODOO' && filteredItems.length > 0 && (
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={() => {
+                  const text = filteredItems.map((item, idx) => {
+                    const name = item.sparepart?.nama || item.originalName;
+                    const qty = item.qty;
+                    const harga = Number(item.harga) || 0;
+                    const link = item.linkReferences || '—';
+                    return `${idx + 1}. Nama: ${name} | Qty: ${qty} | Harga: Rp ${harga.toLocaleString('id-ID')} | Ref: ${link}`;
+                  }).join('\n');
+                  navigator.clipboard.writeText(text);
+                  alert(`✓ Berhasil menyalin ${filteredItems.length} item Siap Odoo ke clipboard!`);
+                }}
+                style={{
+                  padding: '4px 10px',
+                  fontSize: 10,
+                  fontWeight: 800,
+                  borderRadius: 6,
+                  background: 'linear-gradient(135deg, var(--pur) 0%, #4f46e5 100%)',
+                  color: '#fff',
+                  border: 'none',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(124, 58, 237, 0.25)',
+                  marginLeft: 10
+                }}
+              >
+                📋 Salin Semua Item Siap Odoo
+              </button>
+            )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             {/* Sort Control */}
@@ -2419,6 +2453,24 @@ export default function ProcurementTrackingPage() {
                                                 style={{ justifyContent: 'flex-start', fontSize: 10, padding: '4px 8px', opacity: item.linkReferences ? 1 : 0.5 }}
                                               >
                                                 🔗 Link Referensi
+                                              </button>
+                                              <div style={{ height: '1px', background: 'var(--br)', margin: '4px 0' }} />
+                                              <button
+                                                type="button"
+                                                className="btn btn-ghost btn-sm"
+                                                onClick={() => {
+                                                  const name = item.sparepart?.nama || item.originalName;
+                                                  const qty = item.qty;
+                                                  const harga = Number(item.harga) || 0;
+                                                  const link = item.linkReferences || '—';
+                                                  const text = `Nama: ${name}\nQty: ${qty}\nHarga: Rp ${harga.toLocaleString('id-ID')}\nLink Ref: ${link}`;
+                                                  navigator.clipboard.writeText(text);
+                                                  alert('✓ 4 Info berhasil disalin sekaligus!');
+                                                  setActiveCopyPopoverId(null);
+                                                }}
+                                                style={{ justifyContent: 'flex-start', fontSize: 10, padding: '4px 8px', color: '#c084fc', fontWeight: 'bold' }}
+                                              >
+                                                ⚡ Salin 4 Info Sekaligus
                                               </button>
                                             </div>
                                           )}
