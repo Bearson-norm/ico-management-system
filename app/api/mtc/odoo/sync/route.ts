@@ -39,6 +39,29 @@ function parseDateString(raw: string | undefined | null): Date | null {
   return isNaN(parsed.getTime()) ? null : parsed;
 }
 
+function hasActualChanges(existingItem: any, updateData: any): boolean {
+  for (const key of Object.keys(updateData)) {
+    const newVal = updateData[key];
+    const oldVal = existingItem[key];
+
+    if (newVal === undefined) continue;
+
+    if (newVal === null && oldVal === null) continue;
+    if (newVal === null || oldVal === null) return true;
+
+    if (newVal instanceof Date || oldVal instanceof Date) {
+      const newTime = newVal instanceof Date ? newVal.getTime() : new Date(newVal).getTime();
+      const oldTime = oldVal instanceof Date ? oldVal.getTime() : new Date(oldVal).getTime();
+      if (newTime !== oldTime) return true;
+    } else if (key === 'harga') {
+      if (Number(newVal) !== Number(oldVal)) return true;
+    } else {
+      if (newVal !== oldVal) return true;
+    }
+  }
+  return false;
+}
+
 // Map Odoo's state to our local statusPr values
 function mapOdooStateToLocal(state: string): string {
   switch (state) {
@@ -957,44 +980,49 @@ export async function POST(req: NextRequest) {
                   }
                 }
 
-                const updatedItem = await tx.procurementTracking.update({
-                  where: { id: item.id },
-                  data: updateData
-                });
+                const hasChanges = hasActualChanges(item, updateData);
+                let updatedItem = item;
 
-                // Propagate to master Spareparts DB
-                if (updatedItem.sparepartId) {
-                  const spUpdate: any = {
-                    purchasingStatus: isGrDone ? 'NONE' : localStatusPr,
-                    purchasingNoPr: isGrDone ? null : updatedItem.nomorPr,
-                    purchasingNoPo: isGrDone ? null : updatedItem.nomorPo,
-                    odooNotes: updatedItem.odooNotes,
-                    purchasingQty: isGrDone ? 0 : updatedItem.qty,
-                    // Also propagate unit price to master DB if fetched from PO line
-                    ...(matchedPrice > 0 ? { harga: matchedPrice } : {})
-                  };
-
-                  if (isGrDone && odooGrDate) {
-                    const sp = await tx.sparepart.findUnique({ where: { id: updatedItem.sparepartId } });
-                    if (sp) {
-                      const elapsedMs = odooGrDate.getTime() - new Date(updatedItem.tanggalList).getTime();
-                      const elapsedDays = Math.max(1, elapsedMs / (1000 * 60 * 60 * 24));
-                      const calculatedAvgLeadTime = sp.avgLeadTime === 0
-                        ? elapsedDays
-                        : Number((sp.avgLeadTime * 0.8 + elapsedDays * 0.2).toFixed(2));
-                      const calculatedMaxLeadTime = Math.max(sp.maxLeadTime, Math.round(elapsedDays));
-                      
-                      spUpdate.avgLeadTime = calculatedAvgLeadTime;
-                      spUpdate.maxLeadTime = calculatedMaxLeadTime;
-                      spUpdate.prDate = null;
-                      spUpdate.poDate = null;
-                    }
-                  }
-
-                  await tx.sparepart.update({
-                    where: { id: updatedItem.sparepartId },
-                    data: spUpdate
+                if (hasChanges) {
+                  updatedItem = await tx.procurementTracking.update({
+                    where: { id: item.id },
+                    data: updateData
                   });
+
+                  // Propagate to master Spareparts DB
+                  if (updatedItem.sparepartId) {
+                    const spUpdate: any = {
+                      purchasingStatus: isGrDone ? 'NONE' : localStatusPr,
+                      purchasingNoPr: isGrDone ? null : updatedItem.nomorPr,
+                      purchasingNoPo: isGrDone ? null : updatedItem.nomorPo,
+                      odooNotes: updatedItem.odooNotes,
+                      purchasingQty: isGrDone ? 0 : updatedItem.qty,
+                      // Also propagate unit price to master DB if fetched from PO line
+                      ...(matchedPrice > 0 ? { harga: matchedPrice } : {})
+                    };
+
+                    if (isGrDone && odooGrDate) {
+                      const sp = await tx.sparepart.findUnique({ where: { id: updatedItem.sparepartId } });
+                      if (sp) {
+                        const elapsedMs = odooGrDate.getTime() - new Date(updatedItem.tanggalList).getTime();
+                        const elapsedDays = Math.max(1, elapsedMs / (1000 * 60 * 60 * 24));
+                        const calculatedAvgLeadTime = sp.avgLeadTime === 0
+                          ? elapsedDays
+                          : Number((sp.avgLeadTime * 0.8 + elapsedDays * 0.2).toFixed(2));
+                        const calculatedMaxLeadTime = Math.max(sp.maxLeadTime, Math.round(elapsedDays));
+                        
+                        spUpdate.avgLeadTime = calculatedAvgLeadTime;
+                        spUpdate.maxLeadTime = calculatedMaxLeadTime;
+                        spUpdate.prDate = null;
+                        spUpdate.poDate = null;
+                      }
+                    }
+
+                    await tx.sparepart.update({
+                      where: { id: updatedItem.sparepartId },
+                      data: spUpdate
+                    });
+                  }
                 }
               }
             });
@@ -1087,22 +1115,27 @@ export async function POST(req: NextRequest) {
                       updateData.tanggalList = parsedOdooDate;
                     }
 
-                    const updatedItem = await tx.procurementTracking.update({
-                      where: { id: item.id },
-                      data: updateData
-                    });
+                    const hasChanges = hasActualChanges(item, updateData);
+                    let updatedItem = item;
 
-                    if (updatedItem.sparepartId) {
-                      await tx.sparepart.update({
-                        where: { id: updatedItem.sparepartId },
-                        data: {
-                          purchasingStatus: localStatusPr,
-                          purchasingNoPr: updatedItem.nomorPr,
-                          odooNotes: chatterNotes || null,
-                          purchasingQty: updatedItem.qty,
-                          ...(matchedPrice > 0 ? { harga: matchedPrice } : {})
-                        }
+                    if (hasChanges) {
+                      updatedItem = await tx.procurementTracking.update({
+                        where: { id: item.id },
+                        data: updateData
                       });
+
+                      if (updatedItem.sparepartId) {
+                        await tx.sparepart.update({
+                          where: { id: updatedItem.sparepartId },
+                          data: {
+                            purchasingStatus: localStatusPr,
+                            purchasingNoPr: updatedItem.nomorPr,
+                            odooNotes: chatterNotes || null,
+                            purchasingQty: updatedItem.qty,
+                            ...(matchedPrice > 0 ? { harga: matchedPrice } : {})
+                          }
+                        });
+                      }
                     }
                   }
                 });
