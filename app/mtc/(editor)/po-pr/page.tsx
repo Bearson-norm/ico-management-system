@@ -2331,17 +2331,16 @@ export default function ProcurementTrackingPage() {
                     <div className="table-wrap" style={{ overflowX: 'auto', border: 'none', borderRadius: 0 }}>
                       <table style={{ minWidth: 1200, background: 'transparent' }}>
                         <thead>
-                          <tr style={{ background: 'rgba(0,0,0,0.1)' }}>
-                            <th style={{ width: 60, textAlign: 'center', paddingLeft: 20 }}>Fb</th>
-                            <th style={{ minWidth: 260 }}>Nama Barang Pengajuan (Sheets)</th>
-                            <th style={{ minWidth: 240 }}>Koneksi Database Resmi MTC (Odoo)</th>
-                            <th style={{ minWidth: 140, textAlign: 'center' }}>Fondasi Stok</th>
-                            <th style={{ width: 80, textAlign: 'center' }}>Qty</th>
-                            <th style={{ minWidth: 160 }}>Harga & Keterangan</th>
-                            <th style={{ minWidth: 110 }}>ETA Foom</th>
-                            <th style={{ width: 60, textAlign: 'center' }}>GR Link</th>
-                            <th style={{ textAlign: 'right', minWidth: 220, paddingRight: 20 }}>Aksi & Detail</th>
-                          </tr>
+                           <tr style={{ background: 'rgba(0,0,0,0.1)' }}>
+                             <th style={{ width: 60, textAlign: 'center', paddingLeft: 20 }}>Nomor</th>
+                             <th style={{ minWidth: 260 }}>Nama Barang Pengajuan (Sheets)</th>
+                             <th style={{ minWidth: 240 }}>Koneksi Database Resmi MTC (Odoo)</th>
+                             <th style={{ minWidth: 140, textAlign: 'center' }}>Fondasi Stok</th>
+                             <th style={{ width: 80, textAlign: 'center' }}>Qty</th>
+                             <th style={{ minWidth: 160 }}>Harga & Keterangan</th>
+                             <th style={{ width: 60, textAlign: 'center' }}>GR Link</th>
+                             <th style={{ textAlign: 'right', minWidth: 220, paddingRight: 20 }}>Aksi & Detail</th>
+                           </tr>
                         </thead>
                         <tbody>
                           {group.items.map((item) => {
@@ -2579,19 +2578,7 @@ export default function ProcurementTrackingPage() {
                                     </div>
                                   </td>
 
-                                  {/* ETA Foom */}
-                                  <td>
-                                    {item.etaFoom ? (
-                                      <div style={{ color: hasEtaPassed ? 'var(--red)' : 'var(--tx)' }}>
-                                        <div style={{ fontSize: 11, fontWeight: 600 }}>
-                                          {new Date(item.etaFoom).toLocaleDateString('id-ID', {
-                                            day: '2-digit', month: 'short', year: 'numeric'
-                                          })}
-                                        </div>
-                                        {hasEtaPassed && <div style={{ fontSize: 8, fontWeight: 800, color: 'var(--red)', marginTop: 2 }}>⚠️ LEWAT ESTIMASI</div>}
-                                      </div>
-                                    ) : '—'}
-                                  </td>
+
 
                                   {/* Link GR Odoo */}
                                   <td style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
