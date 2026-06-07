@@ -680,6 +680,188 @@ export async function POST(req: NextRequest) {
     odooMessage = 'Sinkronisasi Odoo dilewati (Kredensial Odoo tidak dikonfigurasi).';
   } else {
     try {
+      // 2a. Import new PRs from Odoo created by this user in the last 45 days
+      const thirtyDaysAgoDate = new Date();
+      thirtyDaysAgoDate.setDate(thirtyDaysAgoDate.getDate() - 45);
+      const thirtyDaysAgoStr = thirtyDaysAgoDate.toISOString().replace('T', ' ').substring(0, 19);
+      const parsedUid = parseInt(String(odooUid)) || 34;
+
+      let importedPrCount = 0;
+
+      // Import from purchase.requisition
+      try {
+        logDebug(`Mencari purchase.requisition baru di Odoo sejak ${thirtyDaysAgoStr} untuk UID ${parsedUid}...`);
+        const recentRequisitions = await queryOdoo(
+          'purchase.requisition',
+          'search_read',
+          [[
+            ['create_date', '>=', thirtyDaysAgoStr],
+            ['create_uid', '=', parsedUid]
+          ]],
+          { fields: ['id', 'name', 'state', 'create_date', 'description'] },
+          odooOptions
+        );
+
+        if (recentRequisitions && recentRequisitions.length > 0) {
+          logDebug(`Ditemukan ${recentRequisitions.length} purchase.requisition baru di Odoo.`);
+          for (const req of recentRequisitions) {
+            const prName = req.name?.trim();
+            if (!prName) continue;
+
+            // Check if we already have this PR in procurementTracking
+            const existingCount = await prisma.procurementTracking.count({
+              where: { nomorPr: prName }
+            });
+
+            if (existingCount === 0) {
+              logDebug(`PR Requisition baru "${prName}" belum ada di DB lokal. Mengimpor line items...`);
+              // Fetch line items
+              const lines = await queryOdoo(
+                'purchase.requisition.line',
+                'search_read',
+                [[['requisition_id', '=', req.id]]],
+                { fields: ['product_id', 'product_qty', 'price_unit', 'name'], limit: 50 },
+                odooOptions
+              );
+
+              if (lines && lines.length > 0) {
+                let localStatusPr = 'DRAFT';
+                const reqState = req.state;
+                if (reqState === 'in_progress') localStatusPr = 'TO_APPROVE';
+                else if (reqState === 'open') localStatusPr = 'RFQ';
+                else if (reqState === 'done') localStatusPr = 'APPROVED';
+                else if (reqState === 'cancel') localStatusPr = 'CANCELLED';
+
+                const prDate = req.create_date ? new Date(req.create_date) : new Date();
+
+                await prisma.$transaction(async (tx) => {
+                  for (const line of lines) {
+                    const prodName = Array.isArray(line.product_id) ? line.product_id[1] : (line.name || 'Produk Tanpa Nama');
+                    const qty = Number(line.product_qty) || 1;
+                    const price = Number(line.price_unit) || 0;
+
+                    // Match sparepart master if possible
+                    let sparepartId: string | null = null;
+                    const matchedSp = await tx.sparepart.findFirst({
+                      where: { nama: { equals: prodName, mode: 'insensitive' } }
+                    });
+                    if (matchedSp) {
+                      sparepartId = matchedSp.id;
+                    }
+
+                    await tx.procurementTracking.create({
+                      data: {
+                        originalName: prodName,
+                        qty,
+                        harga: price,
+                        nomorPr: prName,
+                        statusPr: localStatusPr,
+                        tanggalList: prDate,
+                        keterangan: line.name || null,
+                        sparepartId,
+                        productCategory: 'Sparepart',
+                        urgency: 'Normal'
+                      }
+                    });
+                  }
+                });
+                importedPrCount++;
+              }
+            }
+          }
+        }
+      } catch (errReqImport) {
+        console.error('Gagal mengimpor purchase.requisition baru dari Odoo:', errReqImport);
+        logDebug(`Error requisition import: ${errReqImport}`);
+      }
+
+      // Import from purchase.request
+      try {
+        logDebug(`Mencari purchase.request baru di Odoo sejak ${thirtyDaysAgoStr} untuk UID ${parsedUid}...`);
+        const recentRequests = await queryOdoo(
+          'purchase.request',
+          'search_read',
+          [[
+            ['create_date', '>=', thirtyDaysAgoStr],
+            ['create_uid', '=', parsedUid]
+          ]],
+          { fields: ['id', 'name', 'state', 'create_date', 'description'] },
+          odooOptions
+        );
+
+        if (recentRequests && recentRequests.length > 0) {
+          logDebug(`Ditemukan ${recentRequests.length} purchase.request baru di Odoo.`);
+          for (const req of recentRequests) {
+            const prName = req.name?.trim();
+            if (!prName) continue;
+
+            // Check if we already have this PR in procurementTracking
+            const existingCount = await prisma.procurementTracking.count({
+              where: { nomorPr: prName }
+            });
+
+            if (existingCount === 0) {
+              logDebug(`PR Request baru "${prName}" belum ada di DB lokal. Mengimpor line items...`);
+              // Fetch line items
+              const lines = await queryOdoo(
+                'purchase.request.line',
+                'search_read',
+                [[['request_id', '=', req.id]]],
+                { fields: ['product_id', 'product_qty', 'estimated_cost', 'name'], limit: 50 },
+                odooOptions
+              );
+
+              if (lines && lines.length > 0) {
+                let localStatusPr = 'DRAFT';
+                const reqState = req.state;
+                if (reqState === 'to_approve') localStatusPr = 'TO_APPROVE';
+                else if (reqState === 'approved') localStatusPr = 'APPROVED';
+                else if (reqState === 'rejected') localStatusPr = 'CANCELLED';
+                else if (reqState === 'done') localStatusPr = 'PO';
+
+                const prDate = req.create_date ? new Date(req.create_date) : new Date();
+
+                await prisma.$transaction(async (tx) => {
+                  for (const line of lines) {
+                    const prodName = Array.isArray(line.product_id) ? line.product_id[1] : (line.name || 'Produk Tanpa Nama');
+                    const qty = Number(line.product_qty) || 1;
+                    const price = Number(line.estimated_cost) || 0;
+
+                    // Match sparepart master if possible
+                    let sparepartId: string | null = null;
+                    const matchedSp = await tx.sparepart.findFirst({
+                      where: { nama: { equals: prodName, mode: 'insensitive' } }
+                    });
+                    if (matchedSp) {
+                      sparepartId = matchedSp.id;
+                    }
+
+                    await tx.procurementTracking.create({
+                      data: {
+                        originalName: prodName,
+                        qty,
+                        harga: price,
+                        nomorPr: prName,
+                        statusPr: localStatusPr,
+                        tanggalList: prDate,
+                        keterangan: line.name || null,
+                        sparepartId,
+                        productCategory: 'Sparepart',
+                        urgency: 'Normal'
+                      }
+                    });
+                  }
+                });
+                importedPrCount++;
+              }
+            }
+          }
+        }
+      } catch (errReqImport) {
+        console.error('Gagal mengimpor purchase.request baru dari Odoo:', errReqImport);
+        logDebug(`Error request import: ${errReqImport}`);
+      }
+
       // Find all active tracking items that have a PR or PO number and are not yet complete,
       // OR completed items that are still missing vendor names or Odoo chatter notes.
       const trackingItems = await prisma.procurementTracking.findMany({
@@ -1151,7 +1333,7 @@ export async function POST(req: NextRequest) {
       }
 
       odooSynced = true;
-      odooMessage = `Berhasil melacak status & Chatter dari ${updatedOdooCount} dokumen Odoo Cloud.`;
+      odooMessage = `Berhasil melacak status & Chatter dari ${updatedOdooCount} dokumen Odoo Cloud (Mengimpor ${importedPrCount} PR baru).`;
     } catch (e: any) {
       odooErrorStr = e.message || String(e);
       console.error('[Sync Route Odoo Error]', e);
