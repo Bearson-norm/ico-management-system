@@ -113,20 +113,24 @@ export async function POST(req: NextRequest) {
     }
 
     // log
-    await prisma.stockMovement.create({
-      data: {
-        tipe: 'LOG',
-        sparepartId: null,
-        namaItem: p.nama,
-        qty: p.qty,
-        harga: p.harga,
-        purchaseType: p.purchaseType || null,
-        vendor: p.vendor || null,
-        keterangan: 'keterangan' in p ? p.keterangan : null,
-        tanggal,
-      },
+    await prisma.$transaction(async (tx) => {
+      for (const it of p.items) {
+        await tx.stockMovement.create({
+          data: {
+            tipe: 'LOG',
+            sparepartId: null,
+            namaItem: it.nama,
+            qty: it.qty,
+            harga: it.harga,
+            purchaseType: p.purchaseType || null,
+            vendor: p.vendor || null,
+            keterangan: it.keterangan || null,
+            tanggal,
+          },
+        });
+      }
     });
-    return ok({ msg: 'Transaksi log (non-stok) tercatat' });
+    return ok({ msg: `Transaksi log (non-stok) tercatat: ${p.items.length} jenis barang` });
   } catch (e) {
     console.error('[POST /api/mtc/stock/in]', e);
     const msg = e instanceof Error ? e.message : 'Gagal menyimpan';

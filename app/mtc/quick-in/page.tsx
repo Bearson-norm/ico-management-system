@@ -38,6 +38,28 @@ export default function QuickStockInPage() {
     nama: '', harga: '', qty: ''
   });
 
+  const [logItems, setLogItems] = useState<{ nama: string; qty: number; harga: number }[]>([]);
+
+  const handleAddLogItem = () => {
+    if (!logForm.nama.trim()) return alert('Nama barang / deskripsi wajib diisi');
+    if (!logForm.qty || Number(logForm.qty) < 1) return alert('Jumlah / Qty minimal 1');
+
+    setLogItems(prev => [
+      ...prev,
+      {
+        nama: logForm.nama.trim(),
+        qty: Number(logForm.qty),
+        harga: Number(logForm.harga) || 0
+      }
+    ]);
+
+    setLogForm({
+      nama: '',
+      qty: '',
+      harga: ''
+    });
+  };
+
   // 1. Ambil dan simpan secret dari URL / localStorage
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -133,7 +155,16 @@ export default function QuickStockInPage() {
         mesinIds: newForm.mesinId ? [newForm.mesinId] : []
       };
     } else if (activeTab === 'log') {
-      payload = { ...payload, ...logForm, harga: Number(logForm.harga)||0, qty: Number(logForm.qty)||0 };
+      if (!logItems.length) {
+        setSubmitting(false);
+        return alert('Tambahkan minimal 1 barang ke daftar');
+      }
+      payload.items = logItems.map(item => ({
+        nama: item.nama,
+        qty: item.qty,
+        harga: item.harga,
+        keterangan: ''
+      }));
     }
 
     try {
@@ -149,6 +180,7 @@ export default function QuickStockInPage() {
         setExistingItems([]);
         setNewForm({ nama: '', kategoriId: '', lokasi: '', harga: '', qty: '', minQty: '', mesinId: '' });
         setLogForm({ nama: '', harga: '', qty: '' });
+        setLogItems([]);
         // Refresh master
         fetch(`/api/mtc/stock?secret=${secret}`).then(r => r.json()).then(rs => { if(rs.success) setSpareparts(rs.data); });
         window.scrollTo(0,0);
@@ -381,19 +413,87 @@ export default function QuickStockInPage() {
                 <div className="alert alert-ylw" style={{ marginBottom: 12 }}>
                   📝 Mode ini <strong>TIDAK AKAN</strong> menambah stok di inventory. Hanya mencatat pembelian barang yang langsung habis dipakai (misal: Air Minum, Majun, dll).
                 </div>
-                <div className="form-grid-3">
-                  <div className="form-group">
-                    <label className="form-label">Nama Barang / Deskripsi <span className="req">*</span></label>
-                    <input type="text" className="form-input" required value={logForm.nama} onChange={e => setLogForm({...logForm, nama: e.target.value})} />
+
+                {/* Form input item baru untuk ditambahkan ke daftar */}
+                <div style={{ background: 'var(--sf2)', padding: 16, borderRadius: 8, border: '1px dashed var(--br)', marginBottom: 16 }}>
+                  <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 12, color: 'var(--pur)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span>➕</span> Tambah Item Non-Stok
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Jumlah / Qty <span className="req">*</span></label>
-                    <input type="number" className="form-input" min="1" required value={logForm.qty} onChange={e => setLogForm({...logForm, qty: e.target.value})} />
+                  <div className="form-grid-3">
+                    <div className="form-group">
+                      <label className="form-label">Nama Barang / Deskripsi</label>
+                      <input 
+                        type="text" 
+                        className="form-input" 
+                        placeholder="Nama barang..." 
+                        value={logForm.nama} 
+                        onChange={e => setLogForm({...logForm, nama: e.target.value})} 
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Jumlah / Qty</label>
+                      <input 
+                        type="number" 
+                        className="form-input" 
+                        min="1" 
+                        placeholder="1" 
+                        value={logForm.qty} 
+                        onChange={e => setLogForm({...logForm, qty: e.target.value})} 
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Harga Total</label>
+                      <input 
+                        type="number" 
+                        className="form-input" 
+                        placeholder="Harga total..." 
+                        value={logForm.harga} 
+                        onChange={e => setLogForm({...logForm, harga: e.target.value})} 
+                      />
+                    </div>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Harga Total</label>
-                    <input type="number" className="form-input" value={logForm.harga} onChange={e => setLogForm({...logForm, harga: e.target.value})} />
+                  
+                  <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end' }}>
+                    <button 
+                      type="button" 
+                      className="btn btn-ghost btn-sm" 
+                      onClick={handleAddLogItem}
+                      style={{ border: '1px solid var(--pur)', color: 'var(--pur)', padding: '6px 16px' }}
+                    >
+                      ➕ Tambah ke Daftar
+                    </button>
                   </div>
+                </div>
+
+                {/* List item dalam keranjang */}
+                <div style={{ marginBottom: 12 }}>
+                  <label className="form-label">Daftar Barang Non-Stok ({logItems.length}) <span className="req">*</span></label>
+                  {logItems.length === 0 ? (
+                    <div style={{ padding: 20, textAlign: 'center', background: 'var(--sf2)', borderRadius: 8, color: 'var(--tx3)' }}>
+                      Belum ada barang dalam daftar. Isi form di atas lalu klik "Tambah ke Daftar".
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {logItems.map((item, idx) => (
+                        <div key={idx} className="sp-item" style={{ borderLeft: '4px solid var(--ylw)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--sf2)', border: '1px solid var(--br)', borderRadius: 8 }}>
+                          <div className="sp-info" style={{ flex: 1 }}>
+                            <div className="sp-name" style={{ fontWeight: 600, fontSize: 13, color: 'var(--tx1)' }}>{item.nama}</div>
+                            <div className="sp-sub" style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 2 }}>
+                              Qty: <strong>{item.qty}</strong> · Harga Total: <strong>Rp {item.harga.toLocaleString('id-ID')}</strong>
+                            </div>
+                          </div>
+                          <button 
+                            type="button" 
+                            className="sp-del" 
+                            onClick={() => setLogItems(prev => prev.filter((_, i) => i !== idx))}
+                            style={{ background: 'none', border: 'none', color: 'var(--red)', fontSize: 18, cursor: 'pointer', padding: '0 8px' }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </>
             )}

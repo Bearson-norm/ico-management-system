@@ -1818,12 +1818,14 @@ export default function ProcurementTrackingPage() {
         </div>
 
         {(() => {
-          const recentUpdates = items.filter(item => {
-            const upd = item.updatedAt;
-            if (!upd) return false;
-            const diffHours = (new Date().getTime() - new Date(upd).getTime()) / (1000 * 60 * 60);
-            return diffHours <= 72;
-          });
+          const recentUpdates = items
+            .filter(item => {
+              const upd = item.updatedAt;
+              if (!upd) return false;
+              const diffHours = (new Date().getTime() - new Date(upd).getTime()) / (1000 * 60 * 60);
+              return diffHours <= 72;
+            })
+            .sort((a, b) => new Date(b.updatedAt!).getTime() - new Date(a.updatedAt!).getTime());
 
           if (recentUpdates.length === 0) return null;
 
@@ -1839,7 +1841,10 @@ export default function ProcurementTrackingPage() {
                   let badgeBg = 'var(--sf3)';
                   let message = `Barang "${item.originalName}" telah diperbarui.`;
                   const updateTime = item.updatedAt
-                    ? new Date(item.updatedAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' ' + new Date(item.updatedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
+                    ? new Date(item.updatedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) +
+                      ', ' +
+                      new Date(item.updatedAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }).replace('.', ':') +
+                      ' WIB'
                     : '';
 
                   if (item.statusPr === 'WAITING_PRICE') {
@@ -1853,7 +1858,7 @@ export default function ProcurementTrackingPage() {
                   } else if (item.tanggalTerima) {
                     badgeText = 'Diterima';
                     badgeBg = 'rgba(34, 197, 94, 0.25)';
-                    message = `Barang "${item.originalName}" telah dicatat masuk (Good Received / GR) pada ${new Date(item.tanggalTerima).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}.`;
+                    message = `Barang "${item.originalName}" telah dicatat masuk (Goods Received / GR) pada ${new Date(item.tanggalTerima).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}.`;
                   } else if (item.nomorPo) {
                     badgeText = 'PO Terbit';
                     badgeBg = 'rgba(59, 130, 246, 0.2)';

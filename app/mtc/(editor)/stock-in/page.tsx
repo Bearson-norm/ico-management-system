@@ -60,6 +60,33 @@ export default function StockInPage() {
     nama: '', harga: '', qty: '', kebutuhan: '', kebutuhanDetail: ''
   });
 
+  const [logItems, setLogItems] = useState<{ nama: string; qty: number; harga: number; kebutuhan: string; kebutuhanDetail: string }[]>([]);
+
+  const handleAddLogItem = () => {
+    if (!logForm.nama.trim()) return alert('Nama barang / deskripsi wajib diisi');
+    if (!logForm.qty || Number(logForm.qty) < 1) return alert('Jumlah / Qty minimal 1');
+    if (!logForm.kebutuhan) return alert('Tipe kebutuhan wajib dipilih');
+    if (!logForm.kebutuhanDetail.trim()) return alert('Keterangan penggunaan wajib diisi');
+
+    setLogItems(prev => [
+      ...prev,
+      {
+        nama: logForm.nama.trim(),
+        qty: Number(logForm.qty),
+        harga: Number(logForm.harga) || 0,
+        kebutuhan: logForm.kebutuhan,
+        kebutuhanDetail: logForm.kebutuhanDetail.trim()
+      }
+    ]);
+
+    setLogForm(prev => ({
+      ...prev,
+      nama: '',
+      qty: '',
+      harga: ''
+    }));
+  };
+
   // Kebutuhan Options — dinamis, disimpan di localStorage
   const [kebutuhanOptions, setKebutuhanOptions] = useState<{ id: string; label: string }[]>(DEFAULT_KEBUTUHAN);
   const [kebutuhanModalOpen, setKebutuhanModalOpen] = useState(false);
@@ -168,17 +195,16 @@ export default function StockInPage() {
         mesinIds: newForm.mesinId ? [newForm.mesinId] : []
       };
     } else if (activeTab === 'log') {
-      if (!logForm.kebutuhan || !logForm.kebutuhanDetail) {
+      if (!logItems.length) {
         setSubmitting(false);
-        return alert('Tipe Kebutuhan dan Keterangan Penggunaan wajib diisi');
+        return alert('Tambahkan minimal 1 barang ke daftar');
       }
-      payload = { 
-        ...payload, 
-        nama: logForm.nama,
-        harga: Number(logForm.harga)||0, 
-        qty: Number(logForm.qty)||0,
-        keterangan: `[${logForm.kebutuhan}] ${logForm.kebutuhanDetail}`
-      };
+      payload.items = logItems.map(item => ({
+        nama: item.nama,
+        qty: item.qty,
+        harga: item.harga,
+        keterangan: `[${item.kebutuhan}] ${item.kebutuhanDetail}`
+      }));
     }
 
     try {
@@ -190,6 +216,7 @@ export default function StockInPage() {
         setExistingItems([]);
         setNewForm({ nama: '', kategoriId: '', lokasi: '', harga: '', qty: '', minQty: '', mesinId: '' });
         setLogForm({ nama: '', harga: '', qty: '', kebutuhan: '', kebutuhanDetail: '' });
+        setLogItems([]);
         // Refresh master
         fetch('/api/mtc/stock').then(r => r.json()).then(rs => { if(rs.success) setSpareparts(rs.data); });
         window.scrollTo(0,0);
@@ -365,75 +392,144 @@ export default function StockInPage() {
                 <div className="alert alert-ylw" style={{ marginBottom: 12 }}>
                   📝 Mode ini <strong>TIDAK AKAN</strong> menambah stok di inventory. Hanya mencatat pembelian barang yang langsung habis dipakai (misal: Air Minum, Majun, dll).
                 </div>
-                <div className="form-grid-3">
-                  <div className="form-group">
-                    <label className="form-label">Nama Barang / Deskripsi <span className="req">*</span></label>
-                    <input type="text" className="form-input" required value={logForm.nama} onChange={e => setLogForm({...logForm, nama: e.target.value})} />
+
+                {/* Form input item baru untuk ditambahkan ke daftar */}
+                <div style={{ background: 'var(--sf2)', padding: 16, borderRadius: 8, border: '1px dashed var(--br)', marginBottom: 16 }}>
+                  <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 12, color: 'var(--pur)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span>➕</span> Tambah Item Non-Stok
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Jumlah / Qty <span className="req">*</span></label>
-                    <input type="number" className="form-input" min="1" required value={logForm.qty} onChange={e => setLogForm({...logForm, qty: e.target.value})} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Harga Total</label>
-                    <input type="number" className="form-input" value={logForm.harga} onChange={e => setLogForm({...logForm, harga: e.target.value})} />
-                  </div>
-                </div>
-                
-                <div className="form-grid-2" style={{ marginTop: 16 }}>
-                  <div className="form-group">
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                      <label className="form-label" style={{ margin: 0 }}>Tipe Kebutuhan <span className="req">*</span></label>
-                      <button
-                        type="button"
-                        title="Kelola opsi kebutuhan"
-                        onClick={() => setKebutuhanModalOpen(true)}
-                        style={{
-                          background: 'var(--sf3)',
-                          border: '1px solid var(--br)',
-                          borderRadius: 6,
-                          color: 'var(--tx3)',
-                          padding: '2px 8px',
-                          fontSize: 11,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          transition: 'all .15s'
-                        }}
-                      >
-                        ⚙️ Kelola
-                      </button>
+                  <div className="form-grid-3">
+                    <div className="form-group">
+                      <label className="form-label">Nama Barang / Deskripsi</label>
+                      <input 
+                        type="text" 
+                        className="form-input" 
+                        placeholder="Nama barang..." 
+                        value={logForm.nama} 
+                        onChange={e => setLogForm({...logForm, nama: e.target.value})} 
+                      />
                     </div>
-                    <div style={{ position: 'relative', width: '100%' }}>
-                      <select 
-                        className="form-input form-select" 
-                        required 
-                        value={logForm.kebutuhan} 
-                        onChange={e => setLogForm({...logForm, kebutuhan: e.target.value})}
-                        style={{ padding: '6px 36px 6px 14px', borderRadius: 8, background: 'var(--sf2)', color: 'var(--tx)', border: '1px solid var(--br)', fontSize: 13, height: '40px', outline: 'none', cursor: 'pointer', appearance: 'none', width: '100%', transition: 'all .15s' }}
-                      >
-                        <option value="">Pilih Kebutuhan...</option>
-                        {kebutuhanOptions.map(opt => (
-                          <option key={opt.id} value={opt.label}>{opt.label}</option>
-                        ))}
-                      </select>
-                      <div style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--tx3)', fontSize: 10 }}>
-                        ▼
+                    <div className="form-group">
+                      <label className="form-label">Jumlah / Qty</label>
+                      <input 
+                        type="number" 
+                        className="form-input" 
+                        min="1" 
+                        placeholder="1" 
+                        value={logForm.qty} 
+                        onChange={e => setLogForm({...logForm, qty: e.target.value})} 
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Harga Total</label>
+                      <input 
+                        type="number" 
+                        className="form-input" 
+                        placeholder="Harga total..." 
+                        value={logForm.harga} 
+                        onChange={e => setLogForm({...logForm, harga: e.target.value})} 
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="form-grid-2" style={{ marginTop: 12 }}>
+                    <div className="form-group">
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                        <label className="form-label" style={{ margin: 0 }}>Tipe Kebutuhan</label>
+                        <button
+                          type="button"
+                          title="Kelola opsi kebutuhan"
+                          onClick={() => setKebutuhanModalOpen(true)}
+                          style={{
+                            background: 'var(--sf3)',
+                            border: '1px solid var(--br)',
+                            borderRadius: 6,
+                            color: 'var(--tx3)',
+                            padding: '2px 8px',
+                            fontSize: 11,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            transition: 'all .15s'
+                          }}
+                        >
+                          ⚙️ Kelola
+                        </button>
+                      </div>
+                      <div style={{ position: 'relative', width: '100%' }}>
+                        <select 
+                          className="form-input form-select" 
+                          value={logForm.kebutuhan} 
+                          onChange={e => setLogForm({...logForm, kebutuhan: e.target.value})}
+                          style={{ padding: '6px 36px 6px 14px', borderRadius: 8, background: 'var(--sf2)', color: 'var(--tx)', border: '1px solid var(--br)', fontSize: 13, height: '40px', outline: 'none', cursor: 'pointer', appearance: 'none', width: '100%', transition: 'all .15s' }}
+                        >
+                          <option value="">Pilih Kebutuhan...</option>
+                          {kebutuhanOptions.map(opt => (
+                            <option key={opt.id} value={opt.label}>{opt.label}</option>
+                          ))}
+                        </select>
+                        <div style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--tx3)', fontSize: 10 }}>
+                          ▼
+                        </div>
                       </div>
                     </div>
+                    <div className="form-group">
+                      <label className="form-label">Keterangan Penggunaan</label>
+                      <input 
+                        type="text" 
+                        className="form-input" 
+                        placeholder="Contoh: Digunakan untuk area Blister Line A..." 
+                        value={logForm.kebutuhanDetail} 
+                        onChange={e => setLogForm({...logForm, kebutuhanDetail: e.target.value})} 
+                      />
+                    </div>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Keterangan Penggunaan <span className="req">*</span></label>
-                    <input 
-                      type="text" 
-                      className="form-input" 
-                      required 
-                      placeholder="Contoh: Digunakan untuk area Blister Line A..." 
-                      value={logForm.kebutuhanDetail} 
-                      onChange={e => setLogForm({...logForm, kebutuhanDetail: e.target.value})} 
-                    />
+                  
+                  <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
+                    <button 
+                      type="button" 
+                      className="btn btn-ghost btn-sm" 
+                      onClick={handleAddLogItem}
+                      style={{ border: '1px solid var(--pur)', color: 'var(--pur)', padding: '6px 16px' }}
+                    >
+                      ➕ Tambah ke Daftar
+                    </button>
                   </div>
+                </div>
+
+                {/* List item dalam keranjang */}
+                <div style={{ marginBottom: 12 }}>
+                  <label className="form-label">Daftar Barang Non-Stok ({logItems.length}) <span className="req">*</span></label>
+                  {logItems.length === 0 ? (
+                    <div style={{ padding: 20, textAlign: 'center', background: 'var(--sf2)', borderRadius: 8, color: 'var(--tx3)' }}>
+                      Belum ada barang dalam daftar. Isi form di atas lalu klik "Tambah ke Daftar".
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {logItems.map((item, idx) => (
+                        <div key={idx} className="sp-item" style={{ borderLeft: '4px solid var(--ylw)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--sf2)', border: '1px solid var(--br)', borderRadius: 8 }}>
+                          <div className="sp-info" style={{ flex: 1 }}>
+                            <div className="sp-name" style={{ fontWeight: 600, fontSize: 13, color: 'var(--tx1)' }}>{item.nama}</div>
+                            <div className="sp-sub" style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 2 }}>
+                              Qty: <strong>{item.qty}</strong> · Harga Total: <strong>Rp {item.harga.toLocaleString('id-ID')}</strong>
+                            </div>
+                            <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 4 }}>
+                              🏷️ {item.kebutuhan} · 📝 {item.kebutuhanDetail}
+                            </div>
+                          </div>
+                          <button 
+                            type="button" 
+                            className="sp-del" 
+                            onClick={() => setLogItems(prev => prev.filter((_, i) => i !== idx))}
+                            style={{ background: 'none', border: 'none', color: 'var(--red)', fontSize: 18, cursor: 'pointer', padding: '0 8px' }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </>
             )}

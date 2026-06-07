@@ -41,10 +41,12 @@ export const StockInNewSchema = BaseInSchema.extend({
 
 export const StockInLogSchema = BaseInSchema.extend({
   jenis:  z.literal('log'),
-  nama:   z.string().min(2, 'Nama barang minimal 2 karakter'),
-  harga:  z.number().min(0).default(0),
-  qty:    z.number().int().positive(),
-  keterangan: z.string().optional().default(''),
+  items: z.array(z.object({
+    nama:   z.string().min(2, 'Nama barang minimal 2 karakter'),
+    qty:    z.number().int().positive(),
+    harga:  z.number().min(0).default(0),
+    keterangan: z.string().optional().default(''),
+  })).min(1, 'Tambah minimal 1 barang'),
 });
 
 export const StockInSchema = z.discriminatedUnion('jenis', [
