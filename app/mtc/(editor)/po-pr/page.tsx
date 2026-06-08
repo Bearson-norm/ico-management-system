@@ -62,6 +62,7 @@ export default function ProcurementTrackingPage() {
   const [odooDb, setOdooDb] = useState('foom-production-5808833');
   const [odooUid, setOdooUid] = useState('34');
   const [odooSessionId, setOdooSessionId] = useState('');
+  const [filterSource, setFilterSource] = useState<'sheet' | 'all'>('sheet');
   
   // Modal states
   const [showSettingsModal, setShowSettingsModal] = useState(false);
