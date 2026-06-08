@@ -1179,7 +1179,7 @@ export async function POST(req: NextRequest) {
                 }
 
                 const hasChanges = hasActualChanges(item, updateData);
-                let updatedItem = item;
+                let updatedItem: any = item;
 
                 if (hasChanges) {
                   updatedItem = await tx.procurementTracking.update({
@@ -1314,7 +1314,7 @@ export async function POST(req: NextRequest) {
                     }
 
                     const hasChanges = hasActualChanges(item, updateData);
-                    let updatedItem = item;
+                    let updatedItem: any = item;
 
                     if (hasChanges) {
                       updatedItem = await tx.procurementTracking.update({

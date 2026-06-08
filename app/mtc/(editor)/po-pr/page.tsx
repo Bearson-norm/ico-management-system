@@ -43,6 +43,7 @@ type TrackingItem = {
   tanggalTerima: string | null;
   isStocked: boolean;
   sparepart?: Sparepart | null;
+  sheetId?: string | null;
   odooNotes?: string | null;
   isPengadaanBaru?: boolean;
   createdAt?: string;
