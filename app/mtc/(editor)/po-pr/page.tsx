@@ -783,9 +783,29 @@ export default function ProcurementTrackingPage() {
     }
   }
 
+  // Filter items by data source (active sheet vs all) first
+  const scopedItems = useMemo(() => {
+    let activeSheetId = null;
+    if (sheetUrl && sheetUrl.trim()) {
+      const match = sheetUrl.trim().match(/\/d\/([a-zA-Z0-9-_]+)/);
+      activeSheetId = match ? match[1] : sheetUrl.trim();
+    }
+
+    if (filterSource === 'sheet') {
+      return items.filter(item => {
+        if (activeSheetId) {
+          return item.sheetId === activeSheetId;
+        } else {
+          return !item.sheetId;
+        }
+      });
+    }
+    return items;
+  }, [items, filterSource, sheetUrl]);
+
   // Filter items in memory
   const filteredItems = useMemo(() => {
-    return items.filter(item => {
+    return scopedItems.filter(item => {
       // Tab or Card filter
       const isItemReceived = !!item.tanggalTerima;
       const spStatus = (item.statusPr || 'DRAFT').toUpperCase();
@@ -853,30 +873,30 @@ export default function ProcurementTrackingPage() {
 
       return true;
     });
-  }, [items, searchQuery, urgencyFilter, categoryFilter, vendorFilter, activeTab, monthFilter, yearFilter, cardFilter]);
+  }, [scopedItems, searchQuery, urgencyFilter, categoryFilter, vendorFilter, activeTab, monthFilter, yearFilter, cardFilter]);
 
   // Extract years dynamically
   const yearsList = useMemo(() => {
     const set = new Set<string>();
-    items.forEach(item => {
+    scopedItems.forEach(item => {
       if (item.tanggalList) {
         const year = new Date(item.tanggalList).getFullYear().toString();
         set.add(year);
       }
     });
     return Array.from(set).sort((a, b) => b.localeCompare(a));
-  }, [items]);
+  }, [scopedItems]);
 
   // Extract vendors dynamically
   const uniqueVendors = useMemo(() => {
     const set = new Set<string>();
-    items.forEach(item => {
+    scopedItems.forEach(item => {
       if (item.vendor?.trim()) {
         set.add(item.vendor.trim());
       }
     });
     return Array.from(set).sort();
-  }, [items]);
+  }, [scopedItems]);
 
   const monthsList = [
     { value: '1', label: 'Januari' },
@@ -1058,16 +1078,16 @@ export default function ProcurementTrackingPage() {
   // Categories list for dropdown
   const categoriesList = useMemo(() => {
     const set = new Set<string>();
-    items.forEach(item => {
+    scopedItems.forEach(item => {
       if (item.productCategory) set.add(item.productCategory);
     });
     return Array.from(set).sort();
-  }, [items]);
+  }, [scopedItems]);
 
   // Lead time stats & overdue counts
   const stats = useMemo(() => {
-    const active = items.filter(i => !i.tanggalTerima);
-    const received = items.filter(i => !!i.tanggalTerima && i.tanggalList);
+    const active = scopedItems.filter(i => !i.tanggalTerima);
+    const received = scopedItems.filter(i => !!i.tanggalTerima && i.tanggalList);
     
     let totalDays = 0;
     received.forEach(item => {
@@ -1090,7 +1110,7 @@ export default function ProcurementTrackingPage() {
     const prPendingCount = active.filter(i => i.nomorPr && !i.nomorPo).length;
 
     // 3. PO Sudah Di-GR (Selesai)
-    const poReceivedCount = items.filter(i => i.nomorPo && i.tanggalTerima).length;
+    const poReceivedCount = scopedItems.filter(i => i.nomorPo && i.tanggalTerima).length;
 
     // 4. PO Belum Di-GR (Belum Selesai)
     const poPendingGrCount = active.filter(i => i.nomorPo).length;
@@ -1104,7 +1124,7 @@ export default function ProcurementTrackingPage() {
       poReceivedCount,
       poPendingGrCount
     };
-  }, [items]);
+  }, [scopedItems]);
 
   // Format currency helper
   function fmtRupiah(value: number | null): string {
@@ -1818,7 +1838,7 @@ export default function ProcurementTrackingPage() {
         </div>
 
         {(() => {
-          const recentUpdates = items
+          const recentUpdates = scopedItems
             .filter(item => {
               const upd = item.updatedAt;
               if (!upd) return false;
@@ -2015,14 +2035,14 @@ export default function ProcurementTrackingPage() {
             {/* Custom Premium Odoo-style Tab Switcher */}
             <div style={{ gridColumn: 'span 6', display: 'flex', background: 'var(--sf2)', padding: 3, borderRadius: 8, height: '36px', border: '1px solid var(--br)', overflowX: 'auto', gap: 4 }}>
               {[
-                { id: 'ACTIVE', label: '⏳ Semua Aktif', count: items.filter(i => !i.tanggalTerima && checkMonthYear(i, false)).length },
-                { id: 'DRAFT_PR', label: '⚙️ Draft PR', count: items.filter(i => !i.tanggalTerima && checkMonthYear(i, false) && (!i.statusPr || i.statusPr === 'DRAFT' || i.statusPr === 'WAITING_PRICE' || i.statusPr === 'CONTINUE') && (!i.nomorPr || i.nomorPr.trim() === '')).length },
-                { id: 'READY_ODOO', label: '🚀 Siap Odoo', count: items.filter(i => !i.tanggalTerima && checkMonthYear(i, false) && i.statusPr === 'READY_ODOO').length },
-                { id: 'TO_APPROVE', label: '⏳ Tunggu Approve', count: items.filter(i => !i.tanggalTerima && checkMonthYear(i, false) && i.statusPr === 'TO_APPROVE').length },
-                { id: 'APPROVED', label: '✓ Disetujui', count: items.filter(i => !i.tanggalTerima && checkMonthYear(i, false) && i.statusPr === 'APPROVED').length },
-                { id: 'PO_RFQ', label: '🚢 Dalam Proses PO', count: items.filter(i => !i.tanggalTerima && checkMonthYear(i, false) && (i.statusPr === 'PO' || i.statusPr === 'RFQ' || i.statusPo === 'PO' || i.statusPo === 'RFQ' || (i.nomorPo && i.nomorPo.trim() !== ''))).length },
-                { id: 'RECEIVED', label: '📦 Diterima', count: items.filter(i => !!i.tanggalTerima && checkMonthYear(i, true)).length },
-                { id: 'ALL', label: '🌐 Semua Dokumen', count: items.filter(i => !!i.tanggalTerima ? checkMonthYear(i, true) : checkMonthYear(i, false)).length }
+                { id: 'ACTIVE', label: '⏳ Semua Aktif', count: scopedItems.filter(i => !i.tanggalTerima && checkMonthYear(i, false)).length },
+                { id: 'DRAFT_PR', label: '⚙️ Draft PR', count: scopedItems.filter(i => !i.tanggalTerima && checkMonthYear(i, false) && (!i.statusPr || i.statusPr === 'DRAFT' || i.statusPr === 'WAITING_PRICE' || i.statusPr === 'CONTINUE') && (!i.nomorPr || i.nomorPr.trim() === '')).length },
+                { id: 'READY_ODOO', label: '🚀 Siap Odoo', count: scopedItems.filter(i => !i.tanggalTerima && checkMonthYear(i, false) && i.statusPr === 'READY_ODOO').length },
+                { id: 'TO_APPROVE', label: '⏳ Tunggu Approve', count: scopedItems.filter(i => !i.tanggalTerima && checkMonthYear(i, false) && i.statusPr === 'TO_APPROVE').length },
+                { id: 'APPROVED', label: '✓ Disetujui', count: scopedItems.filter(i => !i.tanggalTerima && checkMonthYear(i, false) && i.statusPr === 'APPROVED').length },
+                { id: 'PO_RFQ', label: '🚢 Dalam Proses PO', count: scopedItems.filter(i => !i.tanggalTerima && checkMonthYear(i, false) && (i.statusPr === 'PO' || i.statusPr === 'RFQ' || i.statusPo === 'PO' || i.statusPo === 'RFQ' || (i.nomorPo && i.nomorPo.trim() !== ''))).length },
+                { id: 'RECEIVED', label: '📦 Diterima', count: scopedItems.filter(i => !!i.tanggalTerima && checkMonthYear(i, true)).length },
+                { id: 'ALL', label: '🌐 Semua Dokumen', count: scopedItems.filter(i => !!i.tanggalTerima ? checkMonthYear(i, true) : checkMonthYear(i, false)).length }
               ].map(tab => (
                 <button
                   key={tab.id}

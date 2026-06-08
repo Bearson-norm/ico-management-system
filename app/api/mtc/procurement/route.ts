@@ -85,12 +85,18 @@ export async function POST(req: NextRequest) {
     alasan,
     harga,
     vendor,
+    sheetUrl,
   } = body;
 
   if (!originalName?.trim()) return err('Nama barang asli wajib diisi', 400);
   if (!qty || Number(qty) < 1) return err('Kuantitas wajib diisi dan minimal 1', 400);
 
   try {
+    let finalSheetId = null;
+    if (sheetUrl && sheetUrl.trim()) {
+      const match = sheetUrl.trim().match(/\/d\/([a-zA-Z0-9-_]+)/);
+      finalSheetId = match ? match[1] : sheetUrl.trim();
+    }
     let finalSparepartId = sparepartId || null;
     let spName = '';
     let targetStatusPr = 'CONTINUE'; // Default status PR
@@ -177,6 +183,7 @@ export async function POST(req: NextRequest) {
         isStocked: isStocked !== undefined ? Boolean(isStocked) : false,
         harga: finalHarga,
         vendor: finalVendor,
+        sheetId: finalSheetId,
       },
     });
 
@@ -274,6 +281,7 @@ export async function PATCH(req: NextRequest) {
     statusPr,
     odooNotes,
     sparepartId,
+    isStocked,
   } = body;
 
   if (!id) return err('ID record wajib diisi', 400);
@@ -334,8 +342,45 @@ export async function PATCH(req: NextRequest) {
         statusPr: finalStatusPr,
         odooNotes: odooNotes !== undefined ? (odooNotes || null) : undefined,
         sparepartId: sparepartId !== undefined ? (sparepartId || null) : undefined,
+        isStocked: isStocked !== undefined ? Boolean(isStocked) : undefined,
       },
     });
+
+    // Sync StockMovement if changed after receipt
+    if (existing.tanggalTerima && isStocked !== undefined && Boolean(isStocked) !== existing.isStocked) {
+      const targetTipe = Boolean(isStocked) ? 'IN' : 'LOG';
+      const sourceTipe = existing.isStocked ? 'IN' : 'LOG';
+      
+      const movement = await prisma.stockMovement.findFirst({
+        where: {
+          tipe: sourceTipe,
+          sparepartId: existing.sparepartId || null,
+          tanggal: existing.tanggalTerima,
+          keterangan: {
+            contains: existing.nomorPo ? `PO: ${existing.nomorPo}` : 'Penerimaan',
+          },
+        },
+      });
+
+      if (movement) {
+        let lokasiVal = null;
+        if (targetTipe === 'IN' && existing.sparepartId) {
+          const sp = await prisma.sparepart.findUnique({
+            where: { id: existing.sparepartId },
+            select: { lokasi: true },
+          });
+          lokasiVal = sp?.lokasi || null;
+        }
+
+        await prisma.stockMovement.update({
+          where: { id: movement.id },
+          data: {
+            tipe: targetTipe,
+            lokasi: lokasiVal,
+          },
+        });
+      }
+    }
 
     // MTC PRO: Propagate status, nomor PR/PO, price, and chatter notes to Sparepart master database table
     if (updated.sparepartId) {

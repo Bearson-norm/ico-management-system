@@ -447,6 +447,7 @@ export async function POST(req: NextRequest) {
       if (match) {
         sheetId = match[1];
       }
+      const finalSheetId = sheetId;
       const fetchUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
       const res = await fetch(fetchUrl);
       if (!res.ok) {
@@ -502,15 +503,28 @@ export async function POST(req: NextRequest) {
               }
             }
 
-            // Find matching item in db
+            // Find matching item in db with sheetId scope
             let trackingItem = null;
             if (fbIndex != null) {
               trackingItem = await tx.procurementTracking.findFirst({
-                where: { fbIndex },
+                where: { 
+                  fbIndex,
+                  OR: [
+                    { sheetId: finalSheetId },
+                    { sheetId: null }
+                  ]
+                },
               });
             } else {
               trackingItem = await tx.procurementTracking.findFirst({
-                where: { originalName, qty },
+                where: { 
+                  originalName, 
+                  qty,
+                  OR: [
+                    { sheetId: finalSheetId },
+                    { sheetId: null }
+                  ]
+                },
               });
             }
 
@@ -563,70 +577,72 @@ export async function POST(req: NextRequest) {
                 });
               }
 
-              // Update the tracking item
-              await tx.procurementTracking.update({
-                where: { id: trackingItem.id },
-                data: {
-                  fbIndex,
-                  originalName,
-                  sparepartId: sparepartId || trackingItem.sparepartId,
-                  keterangan: keterangan || trackingItem.keterangan,
-                  penggunaanBulan: penggunaanBulan || trackingItem.penggunaanBulan,
-                  kontrak3Bulan: kontrak3Bulan || trackingItem.kontrak3Bulan,
-                  isStocked: kontrak3Bulan || trackingItem.isStocked,
-                  tanggalList: (trackingItem.nomorPr || trackingItem.nomorPo) ? trackingItem.tanggalList : (tanggalList || trackingItem.tanggalList),
-                  qty: (trackingItem.nomorPr || trackingItem.nomorPo) ? trackingItem.qty : (qty || trackingItem.qty),
-                  productCategory: productCategory || trackingItem.productCategory,
-                  reason: reason || trackingItem.reason,
-                  urgency: urgency || trackingItem.urgency,
-                  linkReferences: linkReferences || trackingItem.linkReferences,
-                  harga: finalHarga,
-                  statusPr: finalStatusPr,
-                  nomorPr: finalNomorPr,
-                  nomorPo: finalNomorPo,
-                  statusPo: finalStatusPo,
-                  vendor: finalVendor,
-                  etaFoom: finalEtaFoom,
-                  linkGr: linkGr || trackingItem.linkGr,
-                  tanggalTerima: tanggalTerima || trackingItem.tanggalTerima,
-                }
-              });
-              updatedCount++;
-            } else {
-              // CREATE new record since it is in Google Sheets but not in local DB
-              const isDraftStatus = (s: string | null | undefined) => !s || s === 'DRAFT' || s === 'WAITING_PRICE' || s === 'CONTINUE';
-              let finalStatusPr = statusPr;
-              if (harga > 0 && isDraftStatus(finalStatusPr)) {
-                finalStatusPr = 'READY_ODOO';
-              }
-
-              await tx.procurementTracking.create({
-                data: {
-                  fbIndex,
-                  originalName,
-                  sparepartId,
-                  keterangan,
-                  penggunaanBulan,
-                  kontrak3Bulan,
-                  isStocked: kontrak3Bulan,
-                  tanggalList,
-                  qty,
-                  productCategory,
-                  reason,
-                  urgency,
-                  linkReferences,
-                  vendor,
-                  harga,
-                  nomorPr,
-                  statusPr: finalStatusPr,
-                  statusPa,
-                  statusPo,
-                  nomorPo,
-                  etaFoom,
-                  linkGr,
-                  tanggalTerima,
-                }
-              });
+               // Update the tracking item
+               await tx.procurementTracking.update({
+                 where: { id: trackingItem.id },
+                 data: {
+                   fbIndex,
+                   originalName,
+                   sparepartId: sparepartId || trackingItem.sparepartId,
+                   keterangan: keterangan || trackingItem.keterangan,
+                   penggunaanBulan: penggunaanBulan || trackingItem.penggunaanBulan,
+                   kontrak3Bulan: kontrak3Bulan || trackingItem.kontrak3Bulan,
+                   isStocked: kontrak3Bulan || trackingItem.isStocked,
+                   tanggalList: (trackingItem.nomorPr || trackingItem.nomorPo) ? trackingItem.tanggalList : (tanggalList || trackingItem.tanggalList),
+                   qty: (trackingItem.nomorPr || trackingItem.nomorPo) ? trackingItem.qty : (qty || trackingItem.qty),
+                   productCategory: productCategory || trackingItem.productCategory,
+                   reason: reason || trackingItem.reason,
+                   urgency: urgency || trackingItem.urgency,
+                   linkReferences: linkReferences || trackingItem.linkReferences,
+                   harga: finalHarga,
+                   statusPr: finalStatusPr,
+                   nomorPr: finalNomorPr,
+                   nomorPo: finalNomorPo,
+                   statusPo: finalStatusPo,
+                   vendor: finalVendor,
+                   etaFoom: finalEtaFoom,
+                   linkGr: linkGr || trackingItem.linkGr,
+                   tanggalTerima: tanggalTerima || trackingItem.tanggalTerima,
+                   sheetId: finalSheetId,
+                 }
+               });
+               updatedCount++;
+             } else {
+               // CREATE new record since it is in Google Sheets but not in local DB
+               const isDraftStatus = (s: string | null | undefined) => !s || s === 'DRAFT' || s === 'WAITING_PRICE' || s === 'CONTINUE';
+               let finalStatusPr = statusPr;
+               if (harga > 0 && isDraftStatus(finalStatusPr)) {
+                 finalStatusPr = 'READY_ODOO';
+               }
+ 
+               await tx.procurementTracking.create({
+                 data: {
+                   fbIndex,
+                   originalName,
+                   sparepartId,
+                   keterangan,
+                   penggunaanBulan,
+                   kontrak3Bulan,
+                   isStocked: kontrak3Bulan,
+                   tanggalList,
+                   qty,
+                   productCategory,
+                   reason,
+                   urgency,
+                   linkReferences,
+                   vendor,
+                   harga,
+                   nomorPr,
+                   statusPr: finalStatusPr,
+                   statusPa,
+                   statusPo,
+                   nomorPo,
+                   etaFoom,
+                   linkGr,
+                   tanggalTerima,
+                   sheetId: finalSheetId,
+                 }
+               });
 
               // If Sparepart is matched, update its price and status in the master spareparts DB too
               if (sparepartId) {

@@ -15,13 +15,18 @@ export async function POST(req: NextRequest) {
     return err('Format JSON tidak valid', 400);
   }
 
-  const { items, nomorPr, scriptUrl } = body;
+  const { items, nomorPr, scriptUrl, sheetUrl } = body;
 
   if (!items || !Array.isArray(items) || items.length === 0) {
     return err('Daftar item keranjang wajib dikirim dan tidak boleh kosong', 400);
   }
 
   try {
+    let finalSheetId = null;
+    if (sheetUrl && sheetUrl.trim()) {
+      const match = sheetUrl.trim().match(/\/d\/([a-zA-Z0-9-_]+)/);
+      finalSheetId = match ? match[1] : sheetUrl.trim();
+    }
     const tDate = new Date();
     const createdRecords: any[] = [];
     const sheetSyncErrors: string[] = [];
@@ -120,6 +125,7 @@ export async function POST(req: NextRequest) {
             nomorPr: nomorPr?.trim() || null,
             statusPr: targetStatusPr,
             isStocked: item.isStocked !== undefined ? Boolean(item.isStocked) : false,
+            sheetId: finalSheetId,
           },
         });
         createdRecords.push(created);

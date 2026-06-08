@@ -47,6 +47,7 @@ export async function POST(req: NextRequest) {
 
   const { csvText, sheetUrl } = body;
   let finalCsvText = '';
+  let finalSheetId = null;
 
   if (sheetUrl && sheetUrl.trim()) {
     try {
@@ -55,6 +56,7 @@ export async function POST(req: NextRequest) {
       if (match) {
         sheetId = match[1];
       }
+      finalSheetId = sheetId;
       const fetchUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
       const res = await fetch(fetchUrl);
       if (!res.ok) {
@@ -125,11 +127,17 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        // Cari record yang ada berdasarkan fbIndex atau kombinasi (originalName, tanggalList, qty)
+        // Cari record yang ada berdasarkan fbIndex atau kombinasi (originalName, tanggalList, qty) dan sheetId
         let trackingItem = null;
         if (fbIndex != null) {
           trackingItem = await tx.procurementTracking.findFirst({
-            where: { fbIndex },
+            where: { 
+              fbIndex,
+              OR: [
+                { sheetId: finalSheetId },
+                { sheetId: null }
+              ]
+            },
           });
         } else {
           trackingItem = await tx.procurementTracking.findFirst({
@@ -137,6 +145,10 @@ export async function POST(req: NextRequest) {
               originalName,
               tanggalList,
               qty,
+              OR: [
+                { sheetId: finalSheetId },
+                { sheetId: null }
+              ]
             },
           });
         }
@@ -216,6 +228,7 @@ export async function POST(req: NextRequest) {
           etaFoom: finalEtaFoom,
           linkGr,
           tanggalTerima,
+          sheetId: finalSheetId,
         };
 
         if (trackingItem) {
