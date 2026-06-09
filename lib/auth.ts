@@ -20,17 +20,37 @@ export const authOptions: NextAuthOptions = {
         tenant: { label: 'Tenant', type: 'text' },
       },
       async authorize(credentials) {
-        if (!credentials?.username || !credentials?.password) return null;
-        const tenant = (credentials.tenant === 'ga' ? 'ga' : 'mtc') as 'mtc' | 'ga';
+        try {
+          if (!credentials?.username || !credentials?.password) return null;
+          const tenant = (credentials.tenant === 'ga' ? 'ga' : 'mtc') as 'mtc' | 'ga';
 
-        if (tenant === 'mtc') {
-          const user = await prisma.user.findUnique({
+          if (tenant === 'mtc') {
+            const user = await prisma.user.findUnique({
+              where: { username: credentials.username },
+            });
+            if (!user || !user.aktif) return null;
+            const valid = await bcrypt.compare(credentials.password, user.passwordHash);
+            if (!valid) return null;
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { lastLogin: new Date() },
+            });
+            return {
+              id: String(user.id),
+              name: user.namaLengkap,
+              email: user.username,
+              role: user.role,
+              tenant: 'mtc' as const,
+            };
+          }
+
+          const user = await prismaGa.user.findUnique({
             where: { username: credentials.username },
           });
           if (!user || !user.aktif) return null;
           const valid = await bcrypt.compare(credentials.password, user.passwordHash);
           if (!valid) return null;
-          await prisma.user.update({
+          await prismaGa.user.update({
             where: { id: user.id },
             data: { lastLogin: new Date() },
           });
@@ -39,27 +59,12 @@ export const authOptions: NextAuthOptions = {
             name: user.namaLengkap,
             email: user.username,
             role: user.role,
-            tenant: 'mtc' as const,
+            tenant: 'ga' as const,
           };
+        } catch (error) {
+          console.error("Authorize error callback details:", error);
+          throw error;
         }
-
-        const user = await prismaGa.user.findUnique({
-          where: { username: credentials.username },
-        });
-        if (!user || !user.aktif) return null;
-        const valid = await bcrypt.compare(credentials.password, user.passwordHash);
-        if (!valid) return null;
-        await prismaGa.user.update({
-          where: { id: user.id },
-          data: { lastLogin: new Date() },
-        });
-        return {
-          id: String(user.id),
-          name: user.namaLengkap,
-          email: user.username,
-          role: user.role,
-          tenant: 'ga' as const,
-        };
       },
     }),
   ],
