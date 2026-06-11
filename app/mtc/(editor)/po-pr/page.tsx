@@ -160,6 +160,16 @@ export default function ProcurementTrackingPage() {
   const [linkSuggestions, setLinkSuggestions] = useState<any[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
 
+  // MTC PRO: Add and link new sparepart states
+  const [dbCategories, setDbCategories] = useState<{ id: number; nama: string; tipe: string }[]>([]);
+  const [isCreatingNewSp, setIsCreatingNewSp] = useState(false);
+  const [newSpNama, setNewSpNama] = useState('');
+  const [newSpAlias, setNewSpAlias] = useState('');
+  const [newSpKategoriId, setNewSpKategoriId] = useState('');
+  const [newSpLokasi, setNewSpLokasi] = useState('');
+  const [newSpUom, setNewSpUom] = useState('Pcs');
+  const [newSpIsStocked, setNewSpIsStocked] = useState(true);
+
   function generateAutoAlias(fullName: string) {
     const clean = fullName
       .replace(/[^a-zA-Z0-9\s]/g, '')
@@ -246,6 +256,7 @@ export default function ProcurementTrackingPage() {
   useEffect(() => {
     fetchData();
     fetchSpareparts();
+    fetchDbCategories();
     
     if (typeof window !== 'undefined') {
       const savedScriptUrl = localStorage.getItem('mtc_procurement_script_url');
@@ -387,6 +398,18 @@ export default function ProcurementTrackingPage() {
       }
     } catch (e) {
       console.error('Gagal mengambil master sparepart', e);
+    }
+  }
+
+  async function fetchDbCategories() {
+    try {
+      const res = await fetch('/api/mtc/master/kategori');
+      const json = await res.json();
+      if (json.success) {
+        setDbCategories(json.data || []);
+      }
+    } catch (e) {
+      console.error('Gagal mengambil master kategori', e);
     }
   }
 
@@ -711,6 +734,71 @@ export default function ProcurementTrackingPage() {
     }
   }
 
+  // Handle create new sparepart & link directly
+  async function handleCreateAndLinkSparepart(e: React.FormEvent) {
+    e.preventDefault();
+    if (!linkingItem) return;
+    if (!newSpNama.trim()) {
+      alert('Nama sparepart resmi wajib diisi!');
+      return;
+    }
+
+    setActionLoading(`link-${linkingItem.id}`);
+    try {
+      // 1. Create the new spare part in master DB
+      const resSp = await fetch('/api/mtc/master/sparepart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nama: newSpNama.trim(),
+          namaAlias: newSpAlias.trim() || null,
+          kategoriId: newSpKategoriId ? Number(newSpKategoriId) : null,
+          uom: newSpUom || 'Pcs',
+          lokasi: newSpLokasi.trim() || null,
+          harga: Number(linkingItem.harga) || 0,
+          purchasingStatus: linkingItem.statusPr || 'DRAFT',
+          purchasingQty: Number(linkingItem.qty) || 0,
+          linkReference: linkingItem.linkReferences || null,
+          alasan: linkingItem.reason || null,
+        }),
+      });
+      const jsonSp = await resSp.json();
+      if (!jsonSp.success) {
+        alert(`Gagal membuat sparepart master: ${jsonSp.error}`);
+        setActionLoading(null);
+        return;
+      }
+
+      const newSpId = jsonSp.data.id;
+
+      // 2. Link the procurement item to this new spare part ID & set isStocked
+      const resProc = await fetch('/api/mtc/procurement', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: linkingItem.id,
+          sparepartId: newSpId,
+          isStocked: newSpIsStocked,
+        }),
+      });
+      const jsonProc = await resProc.json();
+      if (jsonProc.success) {
+        setShowLinkModal(false);
+        setLinkingItem(null);
+        setLinkSearch('');
+        await fetchData();
+        await fetchSpareparts();
+        alert('Suku cadang baru berhasil dibuat dan dihubungkan!');
+      } else {
+        alert(`Gagal menghubungkan: ${jsonProc.error}`);
+      }
+    } catch (e) {
+      alert('Terjadi kesalahan jaringan.');
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
   // Open modals
   function openReceiveModal(item: TrackingItem) {
     setReceivingItem(item);
@@ -724,6 +812,13 @@ export default function ProcurementTrackingPage() {
   function openLinkModal(item: TrackingItem) {
     setLinkingItem(item);
     setLinkSearch('');
+    setIsCreatingNewSp(false);
+    setNewSpNama(item.originalName);
+    setNewSpAlias(generateAutoAlias(item.originalName));
+    setNewSpKategoriId('');
+    setNewSpLokasi('');
+    setNewSpUom('Pcs');
+    setNewSpIsStocked(true);
     setShowLinkModal(true);
   }
 
@@ -3148,54 +3243,201 @@ export default function ProcurementTrackingPage() {
                 <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 2 }}>Qty: {linkingItem.qty} Unit · Urgensi: {linkingItem.urgency}</div>
               </div>
 
-              <div className="form-group">
-                <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Cari Suku Cadang Resmi di Master DB</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="Ketik Nama, ID Suku Cadang, atau Lokasi SLOC..."
-                  value={linkSearch}
-                  onChange={(e) => setLinkSearch(e.target.value)}
-                  autoFocus
-                />
+              {/* Tab Selector */}
+              <div style={{ display: 'flex', borderBottom: '1px solid var(--br)', marginBottom: 16, background: 'rgba(0,0,0,0.15)', borderRadius: '6px 6px 0 0', padding: 2 }}>
+                <button
+                  type="button"
+                  onClick={() => setIsCreatingNewSp(false)}
+                  style={{
+                    flex: 1,
+                    padding: '8px 0',
+                    border: 'none',
+                    background: !isCreatingNewSp ? 'var(--sf3)' : 'transparent',
+                    color: !isCreatingNewSp ? 'var(--pur)' : 'var(--tx3)',
+                    borderRadius: 4,
+                    fontSize: 11,
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  🔍 Cari Suku Cadang Resmi
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsCreatingNewSp(true)}
+                  style={{
+                    flex: 1,
+                    padding: '8px 0',
+                    border: 'none',
+                    background: isCreatingNewSp ? 'var(--sf3)' : 'transparent',
+                    color: isCreatingNewSp ? 'var(--pur)' : 'var(--tx3)',
+                    borderRadius: 4,
+                    fontSize: 11,
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  ➕ Tambah Baru & Hubungkan
+                </button>
               </div>
 
-              <div style={{ maxHeight: 200, overflowY: 'auto', border: '1px solid var(--br)', borderRadius: 8, background: 'var(--sf2)' }}>
-                {loadingSuggestions ? (
-                  <div style={{ padding: 14, textAlign: 'center', fontSize: 11, color: 'var(--tx3)' }}>
-                    <span className="spinner" style={{ display: 'inline-block', width: 12, height: 12, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'var(--pur)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginRight: 6 }} />
-                    Mencari...
+              {!isCreatingNewSp ? (
+                <>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Cari Suku Cadang Resmi di Master DB</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Ketik Nama, ID Suku Cadang, atau Lokasi SLOC..."
+                      value={linkSearch}
+                      onChange={(e) => setLinkSearch(e.target.value)}
+                      autoFocus
+                    />
                   </div>
-                ) : linkSuggestions.length === 0 ? (
-                  <div style={{ padding: 14, textAlign: 'center', fontSize: 11, color: 'var(--tx3)' }}>
-                    Tidak ada suku cadang resmi yang cocok.
-                  </div>
-                ) : (
-                  linkSuggestions.slice(0, 15).map(sp => (
-                    <div
-                      key={sp.id}
-                      onClick={() => handleLinkSparepart(sp.id)}
-                      className="suggestion-item"
-                      style={{
-                        padding: '10px 14px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        borderBottom: '1px solid var(--br)'
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--sf3)')}
-                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                    >
-                      <div>
-                        <div style={{ fontSize: 12, fontWeight: 700 }}>{sp.nama}</div>
-                        <div style={{ fontSize: 10, color: 'var(--tx3)' }}>{sp.id} · SLOC: {sp.lokasi || '—'}</div>
+
+                  <div style={{ maxHeight: 200, overflowY: 'auto', border: '1px solid var(--br)', borderRadius: 8, background: 'var(--sf2)' }}>
+                    {loadingSuggestions ? (
+                      <div style={{ padding: 14, textAlign: 'center', fontSize: 11, color: 'var(--tx3)' }}>
+                        <span className="spinner" style={{ display: 'inline-block', width: 12, height: 12, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'var(--pur)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginRight: 6 }} />
+                        Mencari...
                       </div>
-                      <span className="badge badge-pur" style={{ fontSize: 9 }}>Hubungkan</span>
+                    ) : linkSuggestions.length === 0 ? (
+                      <div style={{ padding: 14, textAlign: 'center', fontSize: 11, color: 'var(--tx3)' }}>
+                        Tidak ada suku cadang resmi yang cocok.
+                      </div>
+                    ) : (
+                      linkSuggestions.slice(0, 15).map(sp => (
+                        <div
+                          key={sp.id}
+                          onClick={() => handleLinkSparepart(sp.id)}
+                          className="suggestion-item"
+                          style={{
+                            padding: '10px 14px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            borderBottom: '1px solid var(--br)'
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--sf3)')}
+                          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                        >
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 700 }}>{sp.nama}</div>
+                            <div style={{ fontSize: 10, color: 'var(--tx3)' }}>{sp.id} · SLOC: {sp.lokasi || '—'}</div>
+                          </div>
+                          <span className="badge badge-pur" style={{ fontSize: 9 }}>Hubungkan</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </>
+              ) : (
+                <form onSubmit={handleCreateAndLinkSparepart} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Nama Suku Cadang Resmi <span style={{ color: 'var(--red)' }}>*</span></label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      required
+                      value={newSpNama}
+                      onChange={(e) => setNewSpNama(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Nama Alias Pendek (Title Case)</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={newSpAlias}
+                      onChange={(e) => setNewSpAlias(e.target.value)}
+                    />
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Kategori Master</label>
+                      <select
+                        className="form-input form-select"
+                        value={newSpKategoriId}
+                        onChange={(e) => setNewSpKategoriId(e.target.value)}
+                        style={{ height: '38px' }}
+                      >
+                        <option value="">— Pilih Kategori —</option>
+                        {dbCategories.filter(cat => cat.tipe === 'sparepart').map(cat => (
+                          <option key={cat.id} value={cat.id}>{cat.nama}</option>
+                        ))}
+                      </select>
                     </div>
-                  ))
-                )}
-              </div>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Lokasi SLOC (Rak/Bin)</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="Contoh: 2-B-1-16"
+                        value={newSpLokasi}
+                        onChange={(e) => setNewSpLokasi(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: 12, marginBottom: 4 }}>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Satuan (UoM)</label>
+                      <select
+                        className="form-input form-select"
+                        value={newSpUom}
+                        onChange={(e) => setNewSpUom(e.target.value)}
+                        style={{ height: '38px' }}
+                      >
+                        <option value="Pcs">Pcs</option>
+                        <option value="Unit">Unit</option>
+                        <option value="Set">Set</option>
+                        <option value="Roll">Roll</option>
+                        <option value="Meter">Meter</option>
+                        <option value="Box">Box</option>
+                        <option value="Kg">Kg</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Rencana Penyimpanan</label>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button
+                          type="button"
+                          className={`btn btn-sm ${newSpIsStocked ? 'btn-grn' : 'btn-ghost'}`}
+                          onClick={() => setNewSpIsStocked(true)}
+                          style={{ flex: 1, fontSize: 10, fontWeight: 700, height: 38, border: newSpIsStocked ? 'none' : '1px solid var(--br)', cursor: 'pointer' }}
+                        >
+                          📦 Stok
+                        </button>
+                        <button
+                          type="button"
+                          className={`btn btn-sm ${!newSpIsStocked ? 'btn-pur' : 'btn-ghost'}`}
+                          onClick={() => setNewSpIsStocked(false)}
+                          style={{ flex: 1, fontSize: 10, fontWeight: 700, height: 38, border: !newSpIsStocked ? 'none' : '1px solid var(--br)', cursor: 'pointer' }}
+                        >
+                          ⚡ Langsung
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', borderTop: '1px solid var(--br)', paddingTop: 14, marginTop: 4 }}>
+                    <button type="button" className="btn btn-ghost" onClick={() => setShowLinkModal(false)}>Batal</button>
+                    <button
+                      type="submit"
+                      className="btn btn-pur"
+                      disabled={actionLoading !== null}
+                      style={{ fontWeight: 700, padding: '0 20px', height: 38 }}
+                    >
+                      {actionLoading !== null ? 'Memproses...' : '💾 Simpan & Hubungkan'}
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           </div>
         </div>
