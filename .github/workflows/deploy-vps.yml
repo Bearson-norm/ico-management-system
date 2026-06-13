@@ -75,7 +75,7 @@ jobs:
             echo ">>> Deploying branch: $TARGET_BRANCH"
             git checkout "$TARGET_BRANCH"
             git reset --hard "origin/$TARGET_BRANCH"
-            npm ci --no-audit --no-fund --preferred-offline
+            npm ci --no-audit --no-fund --prefer-offline
             echo ">>> DATABASE_URL_* dari file .env di VPS (password disamarkan). Prisma migrate memakai file ini — bukan .env.example."
             grep -E '^[[:space:]]*DATABASE_URL_(MTC|GA)=' .env | sed -E 's|(postgresql://[^:]+:)[^@]+(@)|\1***\2|' || true
             npm run prisma:generate
