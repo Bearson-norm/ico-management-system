@@ -1114,8 +1114,12 @@ export default function ProcurementTrackingPage() {
         }
         if (item.nomorPo) {
           poItemsCount++;
-          // Belum GR = punya PO tapi belum ada tanggalTerima (belum fisik diterima di sistem)
-          if (!isReceived) {
+          // Belum GR = punya PO tapi:
+          // (1) belum dicatat terima fisik (tanggalTerima null), atau
+          // (2) sudah diterima fisik tapi GR Odoo belum divalidate (statusPo !== DONE)
+          const isPhysicallyReceived = !!item.tanggalTerima;
+          const isOdooValidated = item.statusPo === 'DONE';
+          if (!isPhysicallyReceived || !isOdooValidated) {
             belumGrCount++;
           }
         }
@@ -2684,6 +2688,7 @@ export default function ProcurementTrackingPage() {
                                               {isOdooGrDone ? `✓ PO Odoo: ${item.nomorPo}` : `⚠️ PO Odoo: ${item.nomorPo}`}
                                             </span>
                                           )}
+                                          {/* Kasus 1: Punya PO, belum terima fisik */}
                                           {item.nomorPo && !isItemReceived && (
                                             <span
                                               className="badge"
@@ -2699,6 +2704,24 @@ export default function ProcurementTrackingPage() {
                                               title="Belum dicatat Terima Barang di sistem MTC (klik 'Terima Barang')"
                                             >
                                               📥 Belum Terima Fisik
+                                            </span>
+                                          )}
+                                          {/* Kasus 2: Sudah terima fisik tapi GR Odoo belum divalidate */}
+                                          {item.nomorPo && isItemReceived && !isOdooGrDone && (
+                                            <span
+                                              className="badge"
+                                              style={{
+                                                fontSize: 8,
+                                                padding: '2px 6px',
+                                                fontWeight: 800,
+                                                background: 'rgba(250, 204, 21, 0.15)',
+                                                color: '#facc15',
+                                                border: '1px solid rgba(250, 204, 21, 0.3)',
+                                                marginLeft: 4
+                                              }}
+                                              title="Sudah diterima fisik tapi GR di Odoo belum divalidate"
+                                            >
+                                              ⚠️ Belum GR Odoo
                                             </span>
                                           )}
                                         </div>
@@ -2792,6 +2815,23 @@ export default function ProcurementTrackingPage() {
                                                 title="Belum dicatat Terima Barang di sistem MTC"
                                               >
                                                 📥 Belum Terima Fisik
+                                              </span>
+                                            )}
+                                            {/* Kasus 2: Sudah terima fisik tapi GR Odoo belum divalidate */}
+                                            {isItemReceived && !isOdooGrDone && (
+                                              <span
+                                                className="badge"
+                                                style={{
+                                                  fontSize: 8,
+                                                  padding: '2px 6px',
+                                                  fontWeight: 800,
+                                                  background: 'rgba(250, 204, 21, 0.15)',
+                                                  color: '#facc15',
+                                                  border: '1px solid rgba(250, 204, 21, 0.3)'
+                                                }}
+                                                title="Sudah diterima fisik tapi GR di Odoo belum divalidate"
+                                              >
+                                                ⚠️ Belum GR Odoo
                                               </span>
                                             )}
                                           </div>
