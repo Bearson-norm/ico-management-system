@@ -70,10 +70,11 @@ jobs:
             export NODE_ENV=production
             export NODE_OPTIONS="--max-old-space-size=1024"
             git fetch origin
-            echo ">>> Menyelaraskan repo dengan remote (perubahan lokal pada file ter-track akan dibuang; .env tidak ikut karena di-ignore Git)."
+            echo ">>> Current Git status on VPS:"
+            git status || true
             TARGET_BRANCH="${{ github.ref_name }}"
             echo ">>> Deploying branch: $TARGET_BRANCH"
-            git checkout "$TARGET_BRANCH"
+            git checkout -f "$TARGET_BRANCH"
             git reset --hard "origin/$TARGET_BRANCH"
             npm ci --no-audit --no-fund --prefer-offline
             echo ">>> DATABASE_URL_* dari file .env di VPS (password disamarkan). Prisma migrate memakai file ini — bukan .env.example."
