@@ -1088,6 +1088,8 @@ export default function ProcurementTrackingPage() {
       let allDone = true;
       let someDone = false;
       let hasPoActive = false;
+      let poItemsCount = 0;
+      let belumGrCount = 0;
       
       let oldestDate: Date | null = null;
       let latestReceiveDate: Date | null = null;
@@ -1109,6 +1111,12 @@ export default function ProcurementTrackingPage() {
 
         if (item.nomorPo && !item.tanggalTerima) {
           hasPoActive = true;
+        }
+        if (item.nomorPo) {
+          poItemsCount++;
+          if (!item.tanggalTerima) {
+            belumGrCount++;
+          }
         }
 
         const dateL = new Date(item.tanggalList);
@@ -1173,6 +1181,8 @@ export default function ProcurementTrackingPage() {
         daysRunningStr,
         oldestDate,
         oldestDateStr: oldestDate ? oldestDate.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—',
+        poItemsCount,
+        belumGrCount,
       };
     });
 
@@ -2466,8 +2476,22 @@ export default function ProcurementTrackingPage() {
                       <div style={{ fontSize: 14, fontWeight: 900, color: 'var(--tx)' }}>
                         {fmtRupiah(group.totalCost)}
                       </div>
-                      <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 2 }}>
-                        {group.items.length} Item ({group.totalQty} Pcs)
+                      <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <span>{group.items.length} Item ({group.totalQty} Pcs)</span>
+                        {group.poItemsCount > 0 && (
+                          <>
+                            ·
+                            {group.belumGrCount > 0 ? (
+                              <span className="badge" style={{ fontSize: 9, padding: '2px 6px', fontWeight: 800, background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+                                ⚠️ {group.belumGrCount} Belum GR
+                              </span>
+                            ) : (
+                              <span className="badge" style={{ fontSize: 9, padding: '2px 6px', fontWeight: 800, background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80', border: '1px solid rgba(34, 197, 94, 0.3)' }}>
+                                ✓ Semua GR
+                              </span>
+                            )}
+                          </>
+                        )}
                       </div>
                     </div>
                     
@@ -2647,14 +2671,14 @@ export default function ProcurementTrackingPage() {
                                                 fontSize: 8, 
                                                 padding: '2px 6px', 
                                                 fontWeight: 800,
-                                                background: isItemReceived ? 'rgba(34, 197, 94, 0.15)' : 'rgba(59, 130, 246, 0.15)',
-                                                color: isItemReceived ? '#22c55e' : '#3b82f6',
-                                                border: isItemReceived ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(59, 130, 246, 0.3)',
+                                                background: isItemReceived ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                                color: isItemReceived ? '#22c55e' : '#f87171',
+                                                border: isItemReceived ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)',
                                                 marginLeft: 4
                                               }}
                                               title={isItemReceived ? "PO Selesai / Sudah di-GR" : "PO Aktif / Belum di-GR"}
                                             >
-                                              {isItemReceived ? `✓ PO: ${item.nomorPo} (GR)` : `🚢 PO: ${item.nomorPo}`}
+                                              {isItemReceived ? `✓ PO: ${item.nomorPo} (Sudah GR)` : `⚠️ PO: ${item.nomorPo} (Belum GR)`}
                                             </span>
                                           )}
                                         </div>
@@ -2726,13 +2750,13 @@ export default function ProcurementTrackingPage() {
                                                 fontSize: 8, 
                                                 padding: '2px 6px', 
                                                 fontWeight: 800,
-                                                background: isItemReceived ? 'rgba(34, 197, 94, 0.15)' : 'rgba(59, 130, 246, 0.15)',
-                                                color: isItemReceived ? '#22c55e' : '#3b82f6',
-                                                border: isItemReceived ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(59, 130, 246, 0.3)'
+                                                background: isItemReceived ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                                color: isItemReceived ? '#22c55e' : '#f87171',
+                                                border: isItemReceived ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)'
                                               }}
                                               title={isItemReceived ? "PO Selesai / Sudah di-GR" : "PO Aktif / Belum di-GR"}
                                             >
-                                              {isItemReceived ? `✓ PO: ${item.nomorPo} (GR)` : `🚢 PO: ${item.nomorPo}`}
+                                              {isItemReceived ? `✓ PO: ${item.nomorPo} (Sudah GR)` : `⚠️ PO: ${item.nomorPo} (Belum GR)`}
                                             </span>
                                           </div>
                                         )}
