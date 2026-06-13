@@ -1109,12 +1109,12 @@ export default function ProcurementTrackingPage() {
           allDone = false;
         }
 
-        if (item.nomorPo && !item.tanggalTerima) {
+        if (item.nomorPo && item.statusPo !== 'DONE') {
           hasPoActive = true;
         }
         if (item.nomorPo) {
           poItemsCount++;
-          if (!item.tanggalTerima) {
+          if (item.statusPo !== 'DONE') {
             belumGrCount++;
           }
         }
@@ -2520,6 +2520,7 @@ export default function ProcurementTrackingPage() {
                           {group.items.map((item) => {
                             const isItemUrgent = item.urgency === 'Urgent';
                             const isItemReceived = !!item.tanggalTerima;
+                            const isOdooGrDone = item.statusPo === 'DONE';
                             const hasEtaPassed = item.etaFoom && !isItemReceived && new Date(item.etaFoom).getTime() < new Date().getTime();
 
                             return (
@@ -2671,14 +2672,14 @@ export default function ProcurementTrackingPage() {
                                                 fontSize: 8, 
                                                 padding: '2px 6px', 
                                                 fontWeight: 800,
-                                                background: isItemReceived ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                                                color: isItemReceived ? '#22c55e' : '#f87171',
-                                                border: isItemReceived ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)',
+                                                background: isOdooGrDone ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                                color: isOdooGrDone ? '#22c55e' : '#f87171',
+                                                border: isOdooGrDone ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)',
                                                 marginLeft: 4
                                               }}
-                                              title={isItemReceived ? "PO Selesai / Sudah di-GR" : "PO Aktif / Belum di-GR"}
+                                              title={isOdooGrDone ? "Odoo GR Selesai / Sudah di-GR" : "Odoo GR Aktif / Belum di-GR"}
                                             >
-                                              {isItemReceived ? `✓ PO: ${item.nomorPo} (Sudah GR)` : `⚠️ PO: ${item.nomorPo} (Belum GR)`}
+                                              {isOdooGrDone ? `✓ PO: ${item.nomorPo} (Sudah GR)` : `⚠️ PO: ${item.nomorPo} (Belum GR)`}
                                             </span>
                                           )}
                                         </div>
@@ -2750,13 +2751,13 @@ export default function ProcurementTrackingPage() {
                                                 fontSize: 8, 
                                                 padding: '2px 6px', 
                                                 fontWeight: 800,
-                                                background: isItemReceived ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                                                color: isItemReceived ? '#22c55e' : '#f87171',
-                                                border: isItemReceived ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)'
+                                                background: isOdooGrDone ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                                color: isOdooGrDone ? '#22c55e' : '#f87171',
+                                                border: isOdooGrDone ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)'
                                               }}
-                                              title={isItemReceived ? "PO Selesai / Sudah di-GR" : "PO Aktif / Belum di-GR"}
+                                              title={isOdooGrDone ? "Odoo GR Selesai / Sudah di-GR" : "Odoo GR Aktif / Belum di-GR"}
                                             >
-                                              {isItemReceived ? `✓ PO: ${item.nomorPo} (Sudah GR)` : `⚠️ PO: ${item.nomorPo} (Belum GR)`}
+                                              {isOdooGrDone ? `✓ PO: ${item.nomorPo} (Sudah GR)` : `⚠️ PO: ${item.nomorPo} (Belum GR)`}
                                             </span>
                                           </div>
                                         )}
