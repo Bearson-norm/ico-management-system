@@ -880,6 +880,34 @@ export default function ProcurementTrackingPage() {
     }
   }
 
+  async function handleUnlinkItem(item: TrackingItem) {
+    if (!confirm(`Apakah Anda yakin ingin memutus hubungan dengan suku cadang "${item.sparepart?.nama}"?\nItem pengadaan akan kembali menjadi Unlinked.`)) {
+      return;
+    }
+    setActionLoading(`unlink-${item.id}`);
+    try {
+      const res = await fetch('/api/mtc/procurement', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: item.id,
+          sparepartId: null,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        alert('✓ Hubungan suku cadang berhasil diputus!');
+        await fetchData();
+      } else {
+        alert(`⚠️ Gagal memutus hubungan: ${json.error}`);
+      }
+    } catch (err) {
+      alert('⚠️ Terjadi kesalahan jaringan.');
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
   // Filter items by data source (active sheet vs all) first
   const scopedItems = useMemo(() => {
     let activeSheetId = null;
@@ -2637,6 +2665,44 @@ export default function ProcurementTrackingPage() {
                                           <span className="badge badge-blu" style={{ fontSize: 8, padding: '1px 4px' }}>{item.sparepart.lokasi || '—'}</span>
                                           ·
                                           <span className="badge badge-grn" style={{ fontSize: 8, padding: '1px 4px', background: 'rgba(34, 197, 94, 0.1)', color: '#4ade80' }}>✓ Terhubung</span>
+                                          ·
+                                          <button
+                                            type="button"
+                                            className="btn btn-ghost"
+                                            onClick={() => openLinkModal(item)}
+                                            style={{
+                                              fontSize: 9,
+                                              padding: '1px 4px',
+                                              color: 'var(--pur)',
+                                              height: 'auto',
+                                              border: '1px solid rgba(168, 85, 247, 0.3)',
+                                              borderRadius: 4,
+                                              background: 'rgba(168, 85, 247, 0.05)',
+                                              lineHeight: 1
+                                            }}
+                                            title="Ubah hubungan suku cadang"
+                                          >
+                                            ✏️ Ubah
+                                          </button>
+                                          ·
+                                          <button
+                                            type="button"
+                                            className="btn btn-ghost"
+                                            onClick={() => handleUnlinkItem(item)}
+                                            style={{
+                                              fontSize: 9,
+                                              padding: '1px 4px',
+                                              color: 'var(--red)',
+                                              height: 'auto',
+                                              border: '1px solid rgba(239, 68, 68, 0.3)',
+                                              borderRadius: 4,
+                                              background: 'rgba(239, 68, 68, 0.05)',
+                                              lineHeight: 1
+                                            }}
+                                            title="Putus hubungan suku cadang"
+                                          >
+                                            ❌ Putus
+                                          </button>
                                         </div>
                                       </div>
                                     ) : (
