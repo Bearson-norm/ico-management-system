@@ -3478,10 +3478,16 @@ export default function ProcurementTrackingPage() {
                       type="number"
                       required
                       min="0"
+                      step="any"
                       className="form-input"
                       value={receivePrice}
                       onChange={(e) => setReceivePrice(Math.max(0, parseFloat(e.target.value) || 0))}
                     />
+                    {receivePrice > 0 && (
+                      <div style={{ fontSize: 11, color: 'var(--pur)', marginTop: 4, fontWeight: 600 }}>
+                        Format: Rp {receivePrice.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 4 })}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -3651,6 +3657,7 @@ export default function ProcurementTrackingPage() {
                     <input
                       type="number"
                       min="0"
+                      step="any"
                       className="form-input"
                       value={editPrice}
                       onChange={(e) => {
@@ -3661,6 +3668,11 @@ export default function ProcurementTrackingPage() {
                         }
                       }}
                     />
+                    {editPrice > 0 && (
+                      <div style={{ fontSize: 11, color: 'var(--pur)', marginTop: 4, fontWeight: 600 }}>
+                        Format: Rp {editPrice.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 4 })}
+                      </div>
+                    )}
                   </div>
                 </div>
 

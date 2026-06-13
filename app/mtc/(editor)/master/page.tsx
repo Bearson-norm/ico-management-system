@@ -698,7 +698,12 @@ export default function MasterPage() {
                     <div className="form-grid-2">
                       <div className="form-group">
                         <label className="form-label">Harga Satuan (Rp)</label>
-                        <input type="number" className="form-input" required value={form.harga} onChange={e => setForm({...form, harga: e.target.value})} />
+                        <input type="number" step="any" className="form-input" required value={form.harga} onChange={e => setForm({...form, harga: e.target.value})} />
+                        {Number(form.harga) > 0 && (
+                          <div style={{ fontSize: 11, color: 'var(--pur)', marginTop: 4, fontWeight: 600 }}>
+                            Format: Rp {Number(form.harga).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 4 })}
+                          </div>
+                        )}
                       </div>
                       <div className="form-group">
                         <label className="form-label">Manual Min Qty (Backup Alert)</label>

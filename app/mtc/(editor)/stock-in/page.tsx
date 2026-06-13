@@ -319,7 +319,12 @@ export default function StockInPage() {
                         </div>
                         <div className="form-group" style={{ width: 120, marginRight: 10 }}>
                           <label className="form-label" style={{ fontSize: 9 }}>Harga Satuan</label>
-                          <input type="number" className="form-input" value={sp.harga} onChange={e => setExistingItems(p => p.map(x => x.sparepartId===sp.sparepartId ? {...x, harga: Number(e.target.value)} : x))} />
+                          <input type="number" step="any" className="form-input" value={sp.harga} onChange={e => setExistingItems(p => p.map(x => x.sparepartId===sp.sparepartId ? {...x, harga: Number(e.target.value)} : x))} />
+                          {sp.harga > 0 && (
+                            <div style={{ fontSize: 9, color: 'var(--pur)', marginTop: 2, whiteSpace: 'nowrap' }}>
+                              Rp {sp.harga.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 4 })}
+                            </div>
+                          )}
                         </div>
                         <div className="form-group" style={{ width: 80, marginRight: 10 }}>
                           <label className="form-label" style={{ fontSize: 9 }}>Masuk</label>
@@ -357,7 +362,12 @@ export default function StockInPage() {
                   </div>
                   <div className="form-group">
                     <label className="form-label">Harga Satuan</label>
-                    <input type="number" className="form-input" value={newForm.harga} onChange={e => setNewForm({...newForm, harga: e.target.value})} />
+                    <input type="number" step="any" className="form-input" value={newForm.harga} onChange={e => setNewForm({...newForm, harga: e.target.value})} />
+                    {Number(newForm.harga) > 0 && (
+                      <div style={{ fontSize: 11, color: 'var(--pur)', marginTop: 4, fontWeight: 600 }}>
+                        Format: Rp {Number(newForm.harga).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 4 })}
+                      </div>
+                    )}
                   </div>
                   <div className="form-group">
                     <label className="form-label">Min Qty (Peringatan)</label>
@@ -424,11 +434,17 @@ export default function StockInPage() {
                       <label className="form-label">Harga Total</label>
                       <input 
                         type="number" 
+                        step="any"
                         className="form-input" 
                         placeholder="Harga total..." 
                         value={logForm.harga} 
                         onChange={e => setLogForm({...logForm, harga: e.target.value})} 
                       />
+                      {Number(logForm.harga) > 0 && (
+                        <div style={{ fontSize: 11, color: 'var(--pur)', marginTop: 4, fontWeight: 600 }}>
+                          Format: Rp {Number(logForm.harga).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 4 })}
+                        </div>
+                      )}
                     </div>
                   </div>
                   
