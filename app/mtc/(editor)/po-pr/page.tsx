@@ -1109,12 +1109,13 @@ export default function ProcurementTrackingPage() {
           allDone = false;
         }
 
-        if (item.nomorPo && item.statusPo !== 'DONE') {
+        if (item.nomorPo && !isReceived) {
           hasPoActive = true;
         }
         if (item.nomorPo) {
           poItemsCount++;
-          if (item.statusPo !== 'DONE') {
+          // Belum GR = punya PO tapi belum ada tanggalTerima (belum fisik diterima di sistem)
+          if (!isReceived) {
             belumGrCount++;
           }
         }
@@ -2520,6 +2521,7 @@ export default function ProcurementTrackingPage() {
                           {group.items.map((item) => {
                             const isItemUrgent = item.urgency === 'Urgent';
                             const isItemReceived = !!item.tanggalTerima;
+                            // isOdooGrDone: status GR di Odoo (statusPo === DONE = receipt divalidate di Odoo)
                             const isOdooGrDone = item.statusPo === 'DONE';
                             const hasEtaPassed = item.etaFoom && !isItemReceived && new Date(item.etaFoom).getTime() < new Date().getTime();
 
@@ -2666,20 +2668,37 @@ export default function ProcurementTrackingPage() {
                                             </span>
                                           )}
                                           {item.nomorPo && (
-                                            <span 
-                                              className="badge" 
-                                              style={{ 
-                                                fontSize: 8, 
-                                                padding: '2px 6px', 
+                                            <span
+                                              className="badge"
+                                              style={{
+                                                fontSize: 8,
+                                                padding: '2px 6px',
                                                 fontWeight: 800,
                                                 background: isOdooGrDone ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
                                                 color: isOdooGrDone ? '#22c55e' : '#f87171',
                                                 border: isOdooGrDone ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)',
                                                 marginLeft: 4
                                               }}
-                                              title={isOdooGrDone ? "Odoo GR Selesai / Sudah di-GR" : "Odoo GR Aktif / Belum di-GR"}
+                                              title={isOdooGrDone ? "Status Odoo: Receipt sudah divalidate" : "Status Odoo: Receipt belum divalidate"}
                                             >
-                                              {isOdooGrDone ? `✓ PO: ${item.nomorPo} (Sudah GR)` : `⚠️ PO: ${item.nomorPo} (Belum GR)`}
+                                              {isOdooGrDone ? `✓ PO Odoo: ${item.nomorPo}` : `⚠️ PO Odoo: ${item.nomorPo}`}
+                                            </span>
+                                          )}
+                                          {item.nomorPo && !isItemReceived && (
+                                            <span
+                                              className="badge"
+                                              style={{
+                                                fontSize: 8,
+                                                padding: '2px 6px',
+                                                fontWeight: 800,
+                                                background: 'rgba(251, 146, 60, 0.15)',
+                                                color: '#fb923c',
+                                                border: '1px solid rgba(251, 146, 60, 0.3)',
+                                                marginLeft: 4
+                                              }}
+                                              title="Belum dicatat Terima Barang di sistem MTC (klik 'Terima Barang')"
+                                            >
+                                              📥 Belum Terima Fisik
                                             </span>
                                           )}
                                         </div>
@@ -2744,7 +2763,7 @@ export default function ProcurementTrackingPage() {
                                           </button>
                                         </div>
                                         {item.nomorPo && (
-                                          <div style={{ marginTop: 2 }}>
+                                          <div style={{ marginTop: 2, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                                             <span 
                                               className="badge" 
                                               style={{ 
@@ -2755,10 +2774,26 @@ export default function ProcurementTrackingPage() {
                                                 color: isOdooGrDone ? '#22c55e' : '#f87171',
                                                 border: isOdooGrDone ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)'
                                               }}
-                                              title={isOdooGrDone ? "Odoo GR Selesai / Sudah di-GR" : "Odoo GR Aktif / Belum di-GR"}
+                                              title={isOdooGrDone ? "Status Odoo: Receipt sudah divalidate" : "Status Odoo: Receipt belum divalidate"}
                                             >
-                                              {isOdooGrDone ? `✓ PO: ${item.nomorPo} (Sudah GR)` : `⚠️ PO: ${item.nomorPo} (Belum GR)`}
+                                              {isOdooGrDone ? `✓ PO Odoo: ${item.nomorPo}` : `⚠️ PO Odoo: ${item.nomorPo}`}
                                             </span>
+                                            {!isItemReceived && (
+                                              <span
+                                                className="badge"
+                                                style={{
+                                                  fontSize: 8,
+                                                  padding: '2px 6px',
+                                                  fontWeight: 800,
+                                                  background: 'rgba(251, 146, 60, 0.15)',
+                                                  color: '#fb923c',
+                                                  border: '1px solid rgba(251, 146, 60, 0.3)'
+                                                }}
+                                                title="Belum dicatat Terima Barang di sistem MTC"
+                                              >
+                                                📥 Belum Terima Fisik
+                                              </span>
+                                            )}
                                           </div>
                                         )}
                                       </div>
