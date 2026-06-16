@@ -481,17 +481,26 @@ export async function POST(req: NextRequest) {
       // targetAdj = Spreadsheet Qty - IN + OUT
       const targetAdj = item.qtyAwal - totalIn + totalOut;
 
-      const existingAdj = existingMovements.find(
-        (m) => m.itemId === item.itemId && m.tipe === 'ADJ' && (m.keterangan?.includes(`[Import DB Barang]`) || m.keterangan?.includes(`[Import LH Barang]`))
+      // Find ALL existing ADJ movements for this item (any keterangan)
+      const allExistingAdj = existingMovements.filter(
+        (m) => m.itemId === item.itemId && m.tipe === 'ADJ'
       );
 
-      if (existingAdj) {
-        if (existingAdj.qty !== targetAdj) {
+      if (allExistingAdj.length > 0) {
+        // Keep the first ADJ, delete any extras to prevent stock doubling
+        const [keepAdj, ...extraAdjs] = allExistingAdj;
+        if (keepAdj.qty !== targetAdj) {
           adjUpdates.push(
             prismaGa.gaStockMovement.update({
-              where: { id: existingAdj.id },
+              where: { id: keepAdj.id },
               data: { qty: targetAdj },
             })
+          );
+        }
+        // Delete duplicate ADJ movements
+        for (const extra of extraAdjs) {
+          adjUpdates.push(
+            prismaGa.gaStockMovement.delete({ where: { id: extra.id } })
           );
         }
       } else {
