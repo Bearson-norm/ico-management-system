@@ -15,7 +15,7 @@ export function computeStockFromMovements(movements: GaMovementQty[]): number {
     else if (m.tipe === 'OUT') stock -= m.qty;
     else if (m.tipe === 'ADJ') stock += m.qty;
   }
-  return stock;
+  return stock < 0 ? 0 : stock;
 }
 
 /** Stok saat ini dari agregasi gerakan */
