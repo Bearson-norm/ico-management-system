@@ -168,6 +168,7 @@ export async function POST(req: NextRequest) {
       prismaGa.gaItem.findMany(),
       prismaGa.gaStockMovement.findMany({
         select: {
+          id: true,
           tipe: true,
           itemId: true,
           namaBarang: true,
@@ -338,27 +339,7 @@ export async function POST(req: NextRequest) {
         stats.master.upserted++;
       }
 
-      // Handle historical initial stock
-      if (item.qtyAwal !== 0) {
-        const adjKey = getMovementKey('ADJ', item.itemId, item.namaRaw, item.qtyAwal, new Date('2025-01-01T00:00:00Z'));
-        const existingAdj = existingMovements.find(
-          (m) => m.itemId === item.itemId && m.tipe === 'ADJ' && m.keterangan?.includes(`[Import ${item.label}]`)
-        );
-
-        if (!existingAdj && !movementSet.has(adjKey)) {
-          newMovements.push({
-            tipe: 'ADJ',
-            itemId: item.itemId,
-            namaBarang: item.namaRaw,
-            qty: item.qtyAwal,
-            tanggal: new Date('2025-01-01T00:00:00Z'),
-            keterangan: `[Import ${item.label}] Stok awal saat migrasi data`,
-            harga: new Prisma.Decimal(0),
-          });
-          movementSet.add(adjKey);
-          stats.master.stockAdded++;
-        }
-      }
+      // Qty Awal / Stock Awal is handled after Inbound/Outbound processing to compute target ADJ
     }
 
     // Run item database updates/inserts in parallel
@@ -480,6 +461,55 @@ export async function POST(req: NextRequest) {
         movementSet.add(mKey);
         stats.outbound.imported++;
       }
+    }
+
+    // ==========================================
+    // RECALCULATE ADJ MOVEMENTS TO BALANCE STOCKS
+    // ==========================================
+    const adjUpdates: Promise<any>[] = [];
+
+    for (const item of masterItemsMap.values()) {
+      const existingIn = existingMovements.filter((m) => m.itemId === item.itemId && m.tipe === 'IN');
+      const existingOut = existingMovements.filter((m) => m.itemId === item.itemId && m.tipe === 'OUT');
+      
+      const newIn = newMovements.filter((m) => m.itemId === item.itemId && m.tipe === 'IN');
+      const newOut = newMovements.filter((m) => m.itemId === item.itemId && m.tipe === 'OUT');
+
+      const totalIn = existingIn.reduce((sum, m) => sum + m.qty, 0) + newIn.reduce((sum, m) => sum + m.qty, 0);
+      const totalOut = existingOut.reduce((sum, m) => sum + m.qty, 0) + newOut.reduce((sum, m) => sum + m.qty, 0);
+
+      // targetAdj = Spreadsheet Qty - IN + OUT
+      const targetAdj = item.qtyAwal - totalIn + totalOut;
+
+      const existingAdj = existingMovements.find(
+        (m) => m.itemId === item.itemId && m.tipe === 'ADJ' && (m.keterangan?.includes(`[Import DB Barang]`) || m.keterangan?.includes(`[Import LH Barang]`))
+      );
+
+      if (existingAdj) {
+        if (existingAdj.qty !== targetAdj) {
+          adjUpdates.push(
+            prismaGa.gaStockMovement.update({
+              where: { id: existingAdj.id },
+              data: { qty: targetAdj },
+            })
+          );
+        }
+      } else {
+        newMovements.push({
+          tipe: 'ADJ',
+          itemId: item.itemId,
+          namaBarang: item.namaRaw,
+          qty: targetAdj,
+          tanggal: new Date('2025-01-01T00:00:00Z'),
+          keterangan: `[Import ${item.label}] Stok awal saat migrasi data`,
+          harga: new Prisma.Decimal(0),
+        });
+        stats.master.stockAdded++;
+      }
+    }
+
+    if (adjUpdates.length > 0) {
+      await Promise.all(adjUpdates);
     }
 
     // 4. Bulk insert all new movements in a single transaction (High Performance batching)

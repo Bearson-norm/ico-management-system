@@ -89,27 +89,44 @@ async function importMasterBarang(
       });
       upserted++;
 
-      if (qtyAwal !== 0) {
-        const existingAdj = await prismaGa.gaStockMovement.findFirst({
-          where: {
+      // Calculate total IN and OUT for this item to balance the stock to qtyAwal (Spreadsheet current stock)
+      const movements = await prismaGa.gaStockMovement.findMany({
+        where: { itemId, tipe: { in: ['IN', 'OUT'] } },
+        select: { tipe: true, qty: true }
+      });
+      const totalIn = movements.filter(m => m.tipe === 'IN').reduce((sum, m) => sum + m.qty, 0);
+      const totalOut = movements.filter(m => m.tipe === 'OUT').reduce((sum, m) => sum + m.qty, 0);
+
+      // targetAdj = Spreadsheet Qty - IN + OUT
+      const targetAdj = qtyAwal - totalIn + totalOut;
+
+      const existingAdj = await prismaGa.gaStockMovement.findFirst({
+        where: {
+          itemId,
+          tipe: 'ADJ',
+          keterangan: { contains: `[Import ${sheetLabel}]` },
+        },
+      });
+
+      if (existingAdj) {
+        if (existingAdj.qty !== targetAdj) {
+          await prismaGa.gaStockMovement.update({
+            where: { id: existingAdj.id },
+            data: { qty: targetAdj },
+          });
+        }
+      } else {
+        await prismaGa.gaStockMovement.create({
+          data: {
+            tipe: 'ADJ',
             itemId,
-            keterangan: { contains: `[Import ${sheetLabel}]` },
+            namaBarang: namaRaw,
+            qty: targetAdj,
+            tanggal: new Date('2025-01-01T00:00:00Z'),
+            keterangan: `[Import ${sheetLabel}] Stok awal saat migrasi data`,
           },
         });
-
-        if (!existingAdj) {
-          await prismaGa.gaStockMovement.create({
-            data: {
-              tipe: 'ADJ',
-              itemId,
-              namaBarang: namaRaw,
-              qty: qtyAwal,
-              tanggal: new Date('2025-01-01T00:00:00Z'),
-              keterangan: `[Import ${sheetLabel}] Stok awal saat migrasi data`,
-            },
-          });
-          stockAdded++;
-        }
+        stockAdded++;
       }
     } catch (e: any) {
       console.warn(`[Webhook Sync] Gagal upsert barang "${namaRaw}" (${itemId}): ${e.message}`);
