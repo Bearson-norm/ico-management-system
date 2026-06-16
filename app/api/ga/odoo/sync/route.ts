@@ -66,6 +66,7 @@ export async function POST(req: NextRequest) {
 
   const parsedUid = Number(odooUid) || 34;
 
+  try {
     // -----------------------------------------------------------------
     // LANGKAH 1: PERBARUI INFO VENDOR DARI ODOO UNTUK PESANAN AKTIF
     // Sync tidak pernah otomatis menerima barang — admin yang selalu klik Terima.
