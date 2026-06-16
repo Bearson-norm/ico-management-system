@@ -92,6 +92,7 @@ export default function GaDatabasePage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<EditForm>(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   async function fetchItems() {
     setLoading(true);
@@ -101,6 +102,30 @@ export default function GaDatabasePage() {
       if (json.success) setItems(json.data);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleSyncSpreadsheet() {
+    setSyncing(true);
+    try {
+      const res = await fetch('/api/ga/import/spreadsheet', { method: 'POST' });
+      const json = await res.json();
+      if (json.success) {
+        const d = json.data;
+        alert(
+          `Sinkronisasi Berhasil!\n\n` +
+          `• Master Barang diproses: ${d.master.upserted} (Dilewati: ${d.master.skipped}, Stok Awal dibuat: ${d.master.stockAdded})\n` +
+          `• Inbound (IN) diimport: ${d.inbound.imported} (Dilewati/Duplikat: ${d.inbound.skipped})\n` +
+          `• Outbound (OUT) diimport: ${d.outbound.imported} (Dilewati/Duplikat: ${d.outbound.skipped})`
+        );
+        fetchItems();
+      } else {
+        alert('Gagal sinkronisasi: ' + json.error);
+      }
+    } catch (e: unknown) {
+      alert('Terjadi kesalahan: ' + (e instanceof Error ? e.message : 'Unknown'));
+    } finally {
+      setSyncing(false);
     }
   }
 
@@ -242,7 +267,10 @@ export default function GaDatabasePage() {
             <div className="page-title">Database Barang GA</div>
             <div className="page-sub">Kelola master barang — import massal atau edit per item</div>
           </div>
-          <div className="ga-page-actions">
+          <div className="ga-page-actions" style={{ display: 'flex', gap: '8px' }}>
+            <button type="button" className="btn btn-primary" onClick={handleSyncSpreadsheet} disabled={syncing}>
+              {syncing ? 'Mensinkronkan...' : '🔄 Sinkron Spreadsheet'}
+            </button>
             <button type="button" className="btn btn-ghost" onClick={() => setImportOpen(true)}>
               Import Excel
             </button>
