@@ -22,14 +22,14 @@ function toDecimal(v: unknown): Prisma.Decimal {
   return new Prisma.Decimal(isNaN(n) ? 0 : n);
 }
 
-function toDate(v: unknown): Date | null {
-  if (!v) return null;
+function toDate(v: unknown): Date {
+  if (!v) return new Date();
   // Excel serial date number
   if (typeof v === 'number') {
     return XLSX.SSF?.parse_date_code ? new Date((v - 25569) * 86400 * 1000) : new Date();
   }
   const d = new Date(String(v));
-  return isNaN(d.getTime()) ? null : d;
+  return isNaN(d.getTime()) ? new Date() : d;
 }
 
 function sheetToRows(ws: XLSX.WorkSheet): Record<string, unknown>[] {
@@ -48,255 +48,10 @@ function detectSheetName(wb: XLSX.WorkBook, candidates: string[]): string | null
   return null;
 }
 
-// Data processing logic matching scripts/import-ga-excel.ts
-
-async function importMasterBarang(
-  rows: Record<string, unknown>[],
-  sheetLabel: string
-): Promise<{ upserted: number; skipped: number; stockAdded: number }> {
-  let upserted = 0;
-  let skipped = 0;
-  let stockAdded = 0;
-
-  for (const row of rows) {
-    const keys = Object.keys(row);
-    const get = (candidates: string[]): unknown => {
-      for (const c of candidates) {
-        const k = keys.find((k) => k.toLowerCase().replace(/\s+/g, ' ').trim() === c.toLowerCase());
-        if (k !== undefined) return row[k];
-      }
-      return '';
-    };
-
-    const namaRaw = toStr(get(['nama barang', 'nama', 'name', 'item name']));
-    const kode = toStr(get(['kode barang', 'kode', 'item code', 'code']));
-    const qtyAwal = toInt(get(['qty', 'quantity', 'stok', 'stock', 'jumlah']));
-    const lokasi = toStr(get(['lokasi', 'location', 'lokasi barang'])) || null;
-    const uom = toStr(get(['satuan', 'uom', 'unit', 'unit of measure'])) || 'Pcs';
-    const harga = toDecimal(get(['harga', 'price', 'harga satuan']));
-    const minQty = toInt(get(['min qty', 'min', 'minimum qty', 'reorder']));
-    const maxQty = toInt(get(['max qty', 'max', 'maximum qty'])) || null;
-
-    if (!namaRaw) {
-      skipped++;
-      continue;
-    }
-
-    const itemId = kode
-      ? kode.toUpperCase()
-      : `GA-${namaRaw.toUpperCase().replace(/[^A-Z0-9]/g, '-').replace(/-+/g, '-').substring(0, 20)}`;
-
-    try {
-      await prismaGa.gaItem.upsert({
-        where: { id: itemId },
-        create: {
-          id: itemId,
-          nama: namaRaw,
-          kodeBarang: kode || null,
-          uom,
-          lokasi,
-          harga,
-          minQty,
-          maxQty,
-          aktif: true,
-        },
-        update: {
-          kodeBarang: kode || undefined,
-          lokasi: lokasi || undefined,
-          uom: uom !== 'Pcs' ? uom : undefined,
-          harga: harga.gt(0) ? harga : undefined,
-          minQty: minQty > 0 ? minQty : undefined,
-          maxQty: maxQty ? maxQty : undefined,
-        },
-      });
-      upserted++;
-
-      if (qtyAwal !== 0) {
-        const existingAdj = await prismaGa.gaStockMovement.findFirst({
-          where: {
-            itemId,
-            keterangan: { contains: `[Import ${sheetLabel}]` },
-          },
-        });
-
-        if (!existingAdj) {
-          await prismaGa.gaStockMovement.create({
-            data: {
-              tipe: 'ADJ',
-              itemId,
-              namaBarang: namaRaw,
-              qty: qtyAwal,
-              tanggal: new Date('2025-01-01T00:00:00Z'),
-              keterangan: `[Import ${sheetLabel}] Stok awal saat migrasi data`,
-            },
-          });
-          stockAdded++;
-        }
-      }
-    } catch (e: any) {
-      console.warn(`[Spreadsheet Sync] Gagal upsert barang "${namaRaw}" (${itemId}): ${e.message}`);
-    }
-  }
-
-  return { upserted, skipped, stockAdded };
-}
-
-async function importInbound(rows: Record<string, unknown>[]): Promise<{ imported: number; skipped: number }> {
-  let imported = 0;
-  let skipped = 0;
-
-  for (const row of rows) {
-    const keys = Object.keys(row);
-    const get = (candidates: string[]): unknown => {
-      for (const c of candidates) {
-        const k = keys.find((k) => k.toLowerCase().replace(/\s+/g, ' ').trim() === c.toLowerCase());
-        if (k !== undefined) return row[k];
-      }
-      return '';
-    };
-
-    const namaRaw = toStr(get(['nama barang', 'nama', 'name', 'item name', 'barang']));
-    const kode = toStr(get(['kode barang', 'kode', 'item code', 'code']));
-    const qty = toInt(get(['qty', 'quantity', 'jumlah', 'qty terima', 'qty diterima']));
-    const tanggalRaw = get(['tanggal', 'date', 'tanggal terima', 'tgl terima', 'tgl masuk']);
-    const tanggal = toDate(tanggalRaw) || new Date();
-    const vendor = toStr(get(['vendor', 'supplier', 'pemasok']));
-    const harga = toDecimal(get(['harga', 'price', 'harga satuan']));
-    const ket = toStr(get(['keterangan', 'notes', 'note', 'catatan']));
-    const pic = toStr(get(['pic', 'penerima', 'nama pic']));
-    const noPo = toStr(get(['no po', 'nomor po', 'po', 'po number']));
-
-    if (!namaRaw && !kode) { skipped++; continue; }
-    if (qty <= 0) { skipped++; continue; }
-
-    let itemId: string | null = null;
-    if (kode) {
-      const item = await prismaGa.gaItem.findFirst({ where: { kodeBarang: kode } });
-      if (item) itemId = item.id;
-    }
-    if (!itemId && namaRaw) {
-      const item = await prismaGa.gaItem.findFirst({
-        where: { nama: { equals: namaRaw, mode: 'insensitive' } },
-      });
-      if (item) itemId = item.id;
-    }
-
-    const keterangan = [
-      '[Import Inbound]',
-      noPo ? `PO: ${noPo}` : null,
-      ket || null,
-    ].filter(Boolean).join(' | ');
-
-    const existing = await prismaGa.gaStockMovement.findFirst({
-      where: {
-        tipe: 'IN',
-        itemId: itemId || undefined,
-        namaBarang: namaRaw || undefined,
-        qty,
-        tanggal,
-      },
-    });
-
-    if (existing) { skipped++; continue; }
-
-    try {
-      await prismaGa.gaStockMovement.create({
-        data: {
-          tipe: 'IN',
-          itemId,
-          namaBarang: namaRaw || (itemId ? null : 'Barang GA'),
-          qty,
-          qtyDiterima: qty,
-          tanggalTerima: tanggal,
-          tanggal,
-          harga,
-          vendor: vendor || null,
-          picNama: pic || null,
-          purchaseType: noPo ? 'PO' : null,
-          keterangan,
-        },
-      });
-      imported++;
-    } catch (e: any) {
-      console.warn(`[Spreadsheet Sync] Gagal import Inbound "${namaRaw}": ${e.message}`);
-    }
-  }
-
-  return { imported, skipped };
-}
-
-async function importOutbound(rows: Record<string, unknown>[]): Promise<{ imported: number; skipped: number }> {
-  let imported = 0;
-  let skipped = 0;
-
-  for (const row of rows) {
-    const keys = Object.keys(row);
-    const get = (candidates: string[]): unknown => {
-      for (const c of candidates) {
-        const k = keys.find((k) => k.toLowerCase().replace(/\s+/g, ' ').trim() === c.toLowerCase());
-        if (k !== undefined) return row[k];
-      }
-      return '';
-    };
-
-    const namaRaw = toStr(get(['nama barang', 'nama', 'name', 'item name', 'barang']));
-    const kode = toStr(get(['kode barang', 'kode', 'item code', 'code']));
-    const qty = toInt(get(['qty', 'quantity', 'jumlah', 'qty keluar', 'qty pakai']));
-    const tanggalRaw = get(['tanggal', 'date', 'tanggal pakai', 'tgl pakai', 'tgl keluar']);
-    const tanggal = toDate(tanggalRaw) || new Date();
-    const pic = toStr(get(['pic', 'penerima', 'peminta', 'dikeluarkan untuk', 'user', 'nama pic']));
-    const ket = toStr(get(['keterangan', 'notes', 'note', 'catatan', 'keperluan']));
-
-    if (!namaRaw && !kode) { skipped++; continue; }
-    if (qty <= 0) { skipped++; continue; }
-
-    let itemId: string | null = null;
-    if (kode) {
-      const item = await prismaGa.gaItem.findFirst({ where: { kodeBarang: kode } });
-      if (item) itemId = item.id;
-    }
-    if (!itemId && namaRaw) {
-      const item = await prismaGa.gaItem.findFirst({
-        where: { nama: { equals: namaRaw, mode: 'insensitive' } },
-      });
-      if (item) itemId = item.id;
-    }
-
-    const existing = await prismaGa.gaStockMovement.findFirst({
-      where: {
-        tipe: 'OUT',
-        itemId: itemId || undefined,
-        namaBarang: namaRaw || undefined,
-        qty,
-        tanggal,
-      },
-    });
-
-    if (existing) { skipped++; continue; }
-
-    const keterangan = ['[Import Outbound]', ket || null].filter(Boolean).join(' | ');
-
-    try {
-      await prismaGa.gaStockMovement.create({
-        data: {
-          tipe: 'OUT',
-          itemId,
-          namaBarang: namaRaw || null,
-          qty,
-          tanggal,
-          tanggalPakai: tanggal,
-          picNama: pic || null,
-          keterangan,
-          harga: new Prisma.Decimal(0),
-        },
-      });
-      imported++;
-    } catch (e: any) {
-      console.warn(`[Spreadsheet Sync] Gagal import Outbound "${namaRaw}": ${e.message}`);
-    }
-  }
-
-  return { imported, skipped };
+// Generate unique key to identify movements in memory to avoid redundant queries
+function getMovementKey(tipe: string, itemId: string | null, namaBarang: string | null, qty: number, tanggal: Date) {
+  const t = new Date(tanggal).getTime();
+  return `${tipe}_${itemId || ''}_${namaBarang || ''}_${qty}_${t}`;
 }
 
 export async function POST(req: NextRequest) {
@@ -335,50 +90,292 @@ export async function POST(req: NextRequest) {
     // 2. Parse workbook in memory
     const wb = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array', cellDates: false, raw: true });
 
-    let masterResult = { upserted: 0, skipped: 0, stockAdded: 0 };
-    let inboundResult = { imported: 0, skipped: 0 };
-    let outboundResult = { imported: 0, skipped: 0 };
+    // 3. Load ALL existing items and movements from database into memory (Pre-caching)
+    const [existingItems, existingMovements] = await Promise.all([
+      prismaGa.gaItem.findMany(),
+      prismaGa.gaStockMovement.findMany({
+        select: {
+          tipe: true,
+          itemId: true,
+          namaBarang: true,
+          qty: true,
+          tanggal: true,
+          keterangan: true,
+        }
+      })
+    ]);
 
-    // -- Sheet 1: DB Barang (Master)
+    const itemMap = new Map(existingItems.map((it) => [it.id, it]));
+    
+    // Create a Set of unique keys for fast duplicate lookup
+    const movementSet = new Set(
+      existingMovements.map((m) => getMovementKey(m.tipe, m.itemId, m.namaBarang, m.qty, m.tanggal))
+    );
+
+    // Track statistics
+    const stats = {
+      master: { upserted: 0, skipped: 0, stockAdded: 0 },
+      inbound: { imported: 0, skipped: 0 },
+      outbound: { imported: 0, skipped: 0 },
+    };
+
+    // Arrays to hold database write operations
+    const itemUpserts: Promise<any>[] = [];
+    const newMovements: Prisma.GaStockMovementCreateManyInput[] = [];
+
+    // Helper: Normalize header row keys
+    const getRowValue = (row: Record<string, unknown>, candidates: string[]): unknown => {
+      const keys = Object.keys(row);
+      for (const c of candidates) {
+        const k = keys.find((key) => key.toLowerCase().replace(/\s+/g, ' ').trim() === c.toLowerCase());
+        if (k !== undefined) return row[k];
+      }
+      return '';
+    };
+
+    // ==========================================
+    // PROCESS SHEETS 1 & 2: Master Barang (DB & LH)
+    // ==========================================
+    const processMasterSheet = async (sheetName: string, label: string) => {
+      const ws = wb.Sheets[sheetName];
+      if (!ws) return;
+
+      const rows = sheetToRows(ws).filter((r) => Object.values(r).some((v) => toStr(v) !== ''));
+
+      for (const row of rows) {
+        const namaRaw = toStr(getRowValue(row, ['nama barang', 'nama', 'name', 'item name']));
+        const kode = toStr(getRowValue(row, ['kode barang', 'kode', 'item code', 'code']));
+        const qtyAwal = toInt(getRowValue(row, ['qty', 'quantity', 'stok', 'stock', 'jumlah']));
+        const lokasi = toStr(getRowValue(row, ['lokasi', 'location', 'lokasi barang'])) || null;
+        const uom = toStr(getRowValue(row, ['satuan', 'uom', 'unit', 'unit of measure'])) || 'Pcs';
+        const harga = toDecimal(getRowValue(row, ['harga', 'price', 'harga satuan']));
+        const minQty = toInt(getRowValue(row, ['min qty', 'min', 'minimum qty', 'reorder']));
+        const maxQty = toInt(getRowValue(row, ['max qty', 'max', 'maximum qty'])) || null;
+
+        if (!namaRaw) {
+          stats.master.skipped++;
+          continue;
+        }
+
+        const itemId = kode
+          ? kode.toUpperCase()
+          : `GA-${namaRaw.toUpperCase().replace(/[^A-Z0-9]/g, '-').replace(/-+/g, '-').substring(0, 20)}`;
+
+        const existing = itemMap.get(itemId);
+
+        if (existing) {
+          // Compare fields to see if updates are actually needed
+          const isSame =
+            existing.nama === namaRaw &&
+            existing.kodeBarang === (kode || null) &&
+            existing.uom === uom &&
+            existing.lokasi === lokasi &&
+            Number(existing.harga) === Number(harga) &&
+            existing.minQty === minQty &&
+            existing.maxQty === maxQty;
+
+          if (isSame) {
+            stats.master.skipped++;
+          } else {
+            // Add update promise
+            itemUpserts.push(
+              prismaGa.gaItem.update({
+                where: { id: itemId },
+                data: {
+                  kodeBarang: kode || undefined,
+                  lokasi: lokasi || undefined,
+                  uom: uom !== 'Pcs' ? uom : undefined,
+                  harga: harga.gt(0) ? harga : undefined,
+                  minQty: minQty > 0 ? minQty : undefined,
+                  maxQty: maxQty ? maxQty : undefined,
+                },
+              })
+            );
+            stats.master.upserted++;
+          }
+        } else {
+          // Add create promise
+          itemUpserts.push(
+            prismaGa.gaItem.create({
+              data: {
+                id: itemId,
+                nama: namaRaw,
+                kodeBarang: kode || null,
+                uom,
+                lokasi,
+                harga,
+                minQty,
+                maxQty,
+                aktif: true,
+              },
+            })
+          );
+          stats.master.upserted++;
+        }
+
+        // Handle historical initial stock
+        if (qtyAwal !== 0) {
+          const adjKey = getMovementKey('ADJ', itemId, namaRaw, qtyAwal, new Date('2025-01-01T00:00:00Z'));
+          const existingAdj = existingMovements.find(
+            (m) => m.itemId === itemId && m.tipe === 'ADJ' && m.keterangan?.includes(`[Import ${label}]`)
+          );
+
+          if (!existingAdj && !movementSet.has(adjKey)) {
+            newMovements.push({
+              tipe: 'ADJ',
+              itemId,
+              namaBarang: namaRaw,
+              qty: qtyAwal,
+              tanggal: new Date('2025-01-01T00:00:00Z'),
+              keterangan: `[Import ${label}] Stok awal saat migrasi data`,
+              harga: new Prisma.Decimal(0),
+            });
+            movementSet.add(adjKey);
+            stats.master.stockAdded++;
+          }
+        }
+      }
+    };
+
     const sheet1Name = detectSheetName(wb, ['db barang', 'db', 'database', 'master', 'sheet1']) || wb.SheetNames[0];
     if (sheet1Name) {
-      const rows = sheetToRows(wb.Sheets[sheet1Name]);
-      const validRows = rows.filter((r) => Object.values(r).some((v) => toStr(v) !== ''));
-      masterResult = await importMasterBarang(validRows, 'DB Barang');
+      await processMasterSheet(sheet1Name, 'DB Barang');
     }
 
-    // -- Sheet 2: LH Barang (Master updates)
     const sheet2Name = detectSheetName(wb, ['lh barang', 'lh', 'laporan harian', 'live', 'sheet2']) || wb.SheetNames[1];
     if (sheet2Name && sheet2Name !== sheet1Name) {
-      const rows = sheetToRows(wb.Sheets[sheet2Name]);
-      const validRows = rows.filter((r) => Object.values(r).some((v) => toStr(v) !== ''));
-      const result2 = await importMasterBarang(validRows, 'LH Barang');
-      masterResult.upserted += result2.upserted;
-      masterResult.skipped += result2.skipped;
-      masterResult.stockAdded += result2.stockAdded;
+      await processMasterSheet(sheet2Name, 'LH Barang');
     }
 
-    // -- Sheet 3: Inbound (IN movements)
+    // Run item database updates/inserts in parallel
+    if (itemUpserts.length > 0) {
+      await Promise.all(itemUpserts);
+    }
+
+    // ==========================================
+    // PROCESS SHEET 3: Inbound (Stock IN)
+    // ==========================================
     const sheet3Name = detectSheetName(wb, ['inbound', 'in', 'masuk', 'penerimaan', 'stock in', 'sheet3']) || wb.SheetNames[2];
     if (sheet3Name) {
-      const rows = sheetToRows(wb.Sheets[sheet3Name]);
-      const validRows = rows.filter((r) => Object.values(r).some((v) => toStr(v) !== ''));
-      inboundResult = await importInbound(validRows);
+      const rows = sheetToRows(wb.Sheets[sheet3Name]).filter((r) => Object.values(r).some((v) => toStr(v) !== ''));
+
+      for (const row of rows) {
+        const namaRaw = toStr(getRowValue(row, ['nama barang', 'nama', 'name', 'item name', 'barang']));
+        const kode = toStr(getRowValue(row, ['kode barang', 'kode', 'item code', 'code']));
+        const qty = toInt(getRowValue(row, ['qty', 'quantity', 'jumlah', 'qty terima', 'qty diterima']));
+        const tanggalRaw = getRowValue(row, ['tanggal', 'date', 'tanggal terima', 'tgl terima', 'tgl masuk']);
+        const tanggal = toDate(tanggalRaw);
+        const vendor = toStr(getRowValue(row, ['vendor', 'supplier', 'pemasok']));
+        const harga = toDecimal(getRowValue(row, ['harga', 'price', 'harga satuan']));
+        const ket = toStr(getRowValue(row, ['keterangan', 'notes', 'note', 'catatan']));
+        const pic = toStr(getRowValue(row, ['pic', 'penerima', 'nama pic']));
+        const noPo = toStr(getRowValue(row, ['no po', 'nomor po', 'po', 'po number']));
+
+        if (!namaRaw && !kode) { stats.inbound.skipped++; continue; }
+        if (qty <= 0) { stats.inbound.skipped++; continue; }
+
+        let itemId: string | null = null;
+        if (kode) {
+          const item = existingItems.find((it) => it.kodeBarang === kode);
+          if (item) itemId = item.id;
+        }
+        if (!itemId && namaRaw) {
+          const item = existingItems.find((it) => it.nama.toLowerCase() === namaRaw.toLowerCase());
+          if (item) itemId = item.id;
+        }
+
+        const mKey = getMovementKey('IN', itemId, namaRaw, qty, tanggal);
+        if (movementSet.has(mKey)) {
+          stats.inbound.skipped++;
+          continue;
+        }
+
+        const keterangan = [
+          '[Import Inbound]',
+          noPo ? `PO: ${noPo}` : null,
+          ket || null,
+        ].filter(Boolean).join(' | ');
+
+        newMovements.push({
+          tipe: 'IN',
+          itemId,
+          namaBarang: namaRaw || (itemId ? null : 'Barang GA'),
+          qty,
+          qtyDiterima: qty,
+          tanggalTerima: tanggal,
+          tanggal,
+          harga,
+          vendor: vendor || null,
+          picNama: pic || null,
+          purchaseType: noPo ? 'PO' : null,
+          keterangan,
+        });
+        movementSet.add(mKey);
+        stats.inbound.imported++;
+      }
     }
 
-    // -- Sheet 4: Outbound (OUT movements)
+    // ==========================================
+    // PROCESS SHEET 4: Outbound (Stock OUT)
+    // ==========================================
     const sheet4Name = detectSheetName(wb, ['outbound', 'out', 'keluar', 'pemakaian', 'stock out', 'sheet4']) || wb.SheetNames[3];
     if (sheet4Name) {
-      const rows = sheetToRows(wb.Sheets[sheet4Name]);
-      const validRows = rows.filter((r) => Object.values(r).some((v) => toStr(v) !== ''));
-      outboundResult = await importOutbound(validRows);
+      const rows = sheetToRows(wb.Sheets[sheet4Name]).filter((r) => Object.values(r).some((v) => toStr(v) !== ''));
+
+      for (const row of rows) {
+        const namaRaw = toStr(getRowValue(row, ['nama barang', 'nama', 'name', 'item name', 'barang']));
+        const kode = toStr(getRowValue(row, ['kode barang', 'kode', 'item code', 'code']));
+        const qty = toInt(getRowValue(row, ['qty', 'quantity', 'jumlah', 'qty keluar', 'qty pakai']));
+        const tanggalRaw = getRowValue(row, ['tanggal', 'date', 'tanggal pakai', 'tgl pakai', 'tgl keluar']);
+        const tanggal = toDate(tanggalRaw);
+        const pic = toStr(getRowValue(row, ['pic', 'penerima', 'peminta', 'dikeluarkan untuk', 'user', 'nama pic']));
+        const ket = toStr(getRowValue(row, ['keterangan', 'notes', 'note', 'catatan', 'keperluan']));
+
+        if (!namaRaw && !kode) { stats.outbound.skipped++; continue; }
+        if (qty <= 0) { stats.outbound.skipped++; continue; }
+
+        let itemId: string | null = null;
+        if (kode) {
+          const item = existingItems.find((it) => it.kodeBarang === kode);
+          if (item) itemId = item.id;
+        }
+        if (!itemId && namaRaw) {
+          const item = existingItems.find((it) => it.nama.toLowerCase() === namaRaw.toLowerCase());
+          if (item) itemId = item.id;
+        }
+
+        const mKey = getMovementKey('OUT', itemId, namaRaw, qty, tanggal);
+        if (movementSet.has(mKey)) {
+          stats.outbound.skipped++;
+          continue;
+        }
+
+        const keterangan = ['[Import Outbound]', ket || null].filter(Boolean).join(' | ');
+
+        newMovements.push({
+          tipe: 'OUT',
+          itemId,
+          namaBarang: namaRaw || null,
+          qty,
+          tanggal,
+          tanggalPakai: tanggal,
+          picNama: pic || null,
+          keterangan,
+          harga: new Prisma.Decimal(0),
+        });
+        movementSet.add(mKey);
+        stats.outbound.imported++;
+      }
     }
 
-    return ok({
-      master: masterResult,
-      inbound: inboundResult,
-      outbound: outboundResult,
-    });
+    // 4. Bulk insert all new movements in a single transaction (High Performance batching)
+    if (newMovements.length > 0) {
+      await prismaGa.gaStockMovement.createMany({
+        data: newMovements,
+      });
+    }
+
+    return ok(stats);
   } catch (e: any) {
     return err(`Gagal memproses sinkronisasi: ${e.message}`, 500);
   }
