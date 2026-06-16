@@ -260,11 +260,15 @@ export async function POST(req: NextRequest) {
               ? kode.toUpperCase()
               : `GA-${namaRaw.toUpperCase().replace(/[^A-Z0-9]/g, '-').replace(/-+/g, '-').substring(0, 20)}`);
 
+        // If item already collected from a previous sheet and new sheet has no Qty column (qtyAwal=0), preserve existing qtyAwal
+        const existingMaster = masterItemsMap.get(itemId);
+        const finalQtyAwal = (qtyAwal === 0 && existingMaster) ? existingMaster.qtyAwal : qtyAwal;
+
         masterItemsMap.set(itemId, {
           itemId,
           namaRaw,
           kode,
-          qtyAwal,
+          qtyAwal: finalQtyAwal,
           lokasi,
           uom,
           harga,
