@@ -303,16 +303,32 @@ export async function POST(req: NextRequest) {
   const session = await requireGaEditor();
   if (!session) return err('Akses ditolak', 403);
 
-  const url = process.env.GA_SPREADSHEET_URL;
+  // Parse spreadsheet URL from body if provided, otherwise fallback to env
+  let spreadsheetUrl = '';
+  try {
+    const body = await req.json();
+    spreadsheetUrl = body?.spreadsheetUrl || '';
+  } catch {
+    // no body or invalid JSON is fine, fallback to env
+  }
+
+  let url = spreadsheetUrl || process.env.GA_SPREADSHEET_URL;
   if (!url) {
-    return err('Variabel lingkungan GA_SPREADSHEET_URL belum dikonfigurasi di file .env', 400);
+    return err('Silakan masukkan URL Google Sheets terlebih dahulu atau atur GA_SPREADSHEET_URL di file .env', 400);
+  }
+
+  // Auto-rewrite spreadsheet /edit or /view URLs to direct export XLSX format
+  const sheetIdMatch = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+  if (sheetIdMatch) {
+    const sheetId = sheetIdMatch[1];
+    url = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=xlsx`;
   }
 
   try {
     // 1. Fetch the published Google Sheet XLSX buffer
     const res = await fetch(url);
     if (!res.ok) {
-      return err(`Gagal mengunduh spreadsheet: HTTP ${res.status}`, 400);
+      return err(`Gagal mengunduh spreadsheet: HTTP ${res.status}. Pastikan hak akses Google Sheets diatur ke "Siapa saja yang memiliki link dapat melihat" (Anyone with the link can view)`, 400);
     }
     const arrayBuffer = await res.arrayBuffer();
 

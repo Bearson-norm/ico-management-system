@@ -93,6 +93,8 @@ export default function GaDatabasePage() {
   const [form, setForm] = useState<EditForm>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [syncOpen, setSyncOpen] = useState(false);
+  const [spreadsheetUrl, setSpreadsheetUrl] = useState('');
 
   async function fetchItems() {
     setLoading(true);
@@ -105,10 +107,20 @@ export default function GaDatabasePage() {
     }
   }
 
-  async function handleSyncSpreadsheet() {
+  async function handleSyncSpreadsheet(e: FormEvent) {
+    e.preventDefault();
+    if (!spreadsheetUrl.trim()) {
+      alert('Tautan Google Sheets wajib diisi');
+      return;
+    }
+    localStorage.setItem('ga_spreadsheet_url', spreadsheetUrl.trim());
     setSyncing(true);
     try {
-      const res = await fetch('/api/ga/import/spreadsheet', { method: 'POST' });
+      const res = await fetch('/api/ga/import/spreadsheet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ spreadsheetUrl: spreadsheetUrl.trim() }),
+      });
       const json = await res.json();
       if (json.success) {
         const d = json.data;
@@ -118,6 +130,7 @@ export default function GaDatabasePage() {
           `• Inbound (IN) diimport: ${d.inbound.imported} (Dilewati/Duplikat: ${d.inbound.skipped})\n` +
           `• Outbound (OUT) diimport: ${d.outbound.imported} (Dilewati/Duplikat: ${d.outbound.skipped})`
         );
+        setSyncOpen(false);
         fetchItems();
       } else {
         alert('Gagal sinkronisasi: ' + json.error);
@@ -132,6 +145,11 @@ export default function GaDatabasePage() {
   useEffect(() => {
     fetchItems();
   }, [filters]);
+
+  useEffect(() => {
+    const savedUrl = localStorage.getItem('ga_spreadsheet_url') || '';
+    setSpreadsheetUrl(savedUrl);
+  }, []);
 
   useEffect(() => {
     Promise.all([
@@ -268,8 +286,8 @@ export default function GaDatabasePage() {
             <div className="page-sub">Kelola master barang — import massal atau edit per item</div>
           </div>
           <div className="ga-page-actions" style={{ display: 'flex', gap: '8px' }}>
-            <button type="button" className="btn btn-primary" onClick={handleSyncSpreadsheet} disabled={syncing}>
-              {syncing ? 'Mensinkronkan...' : '🔄 Sinkron Spreadsheet'}
+            <button type="button" className="btn btn-primary" onClick={() => setSyncOpen(true)}>
+              🔄 Sinkron Spreadsheet
             </button>
             <button type="button" className="btn btn-ghost" onClick={() => setImportOpen(true)}>
               Import Excel
@@ -562,6 +580,53 @@ export default function GaDatabasePage() {
                 {importing ? 'Memproses...' : 'Mulai Import'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {syncOpen && (
+        <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && setSyncOpen(false)}>
+          <div className="modal-box" style={{ maxWidth: 540 }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title">Sinkronisasi Google Sheets</div>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setSyncOpen(false)} aria-label="Tutup">
+                ✕
+              </button>
+            </div>
+            <form onSubmit={handleSyncSpreadsheet}>
+              <div className="modal-body">
+                <p style={{ fontSize: 13, color: 'var(--ga-tx2)', marginBottom: 16 }}>
+                  Sinkronisasikan data master barang dan riwayat gerakan (inbound/outbound) langsung dari Google Sheets.
+                </p>
+                <div className="alert alert-blu" style={{ marginBottom: 16 }}>
+                  <div style={{ flex: 1, fontSize: 12 }}>
+                    <strong>PENTING:</strong> Pastikan setelan berbagi spreadsheet Anda diatur ke: <strong style={{ color: 'var(--ga-accent)' }}>Siapa saja yang memiliki link dapat melihat</strong> (Anyone with the link can view).
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Link Google Sheets</label>
+                  <input
+                    type="url"
+                    className="form-input"
+                    placeholder="https://docs.google.com/spreadsheets/d/.../edit?usp=sharing"
+                    value={spreadsheetUrl}
+                    onChange={(e) => setSpreadsheetUrl(e.target.value)}
+                    required
+                  />
+                  <span className="text-tiny text-muted" style={{ marginTop: 4, display: 'block' }}>
+                    Tautan akan disimpan di browser untuk sinkronisasi berikutnya.
+                  </span>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-ghost" onClick={() => setSyncOpen(false)} disabled={syncing}>
+                  Batal
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={syncing}>
+                  {syncing ? 'Menyinkronkan...' : 'Mulai Sinkronisasi'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
