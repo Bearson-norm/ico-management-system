@@ -46,9 +46,10 @@ export async function GET(req: NextRequest) {
     const totalIn = it.movements.filter((m) => m.tipe === 'IN').reduce((s, m) => s + m.qty, 0);
     const totalOut = it.movements.filter((m) => m.tipe === 'OUT').reduce((s, m) => s + m.qty, 0);
     const currentStock = computeStockFromMovements(it.movements);
-    let stockStatus: 'safe' | 'low' | 'habis';
+    let stockStatus: 'safe' | 'low' | 'habis' | 'overstock';
     if (currentStock <= 0) stockStatus = 'habis';
     else if (currentStock < it.minQty) stockStatus = 'low';
+    else if (it.maxQty !== null && currentStock > it.maxQty) stockStatus = 'overstock';
     else stockStatus = 'safe';
     return {
       id: it.id,
@@ -69,6 +70,7 @@ export async function GET(req: NextRequest) {
     };
   }).filter((it) => {
     if (!status) return true;
+    if (status === 'kritis') return it.status === 'low' || it.status === 'habis';
     return it.status === status;
   });
 

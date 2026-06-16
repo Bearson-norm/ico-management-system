@@ -1,32 +1,35 @@
-/* GA module — tema terang, terisolasi dari palet gelap MTC */
+/* GA module — tema gelap cobalt/navy, terisolasi dari tema gelap MTC */
 .ga-root {
-  --ga-bg: #f4f6fa;
-  --ga-sf: #ffffff;
-  --ga-sf2: #eef1f6;
-  --ga-sf3: #e4e9f2;
-  --ga-br: #d8dee9;
-  --ga-br-h: #c5cdd9;
-  --ga-tx: #1a1d26;
-  --ga-tx2: #5c6370;
-  --ga-tx3: #8b929e;
-  --ga-accent: #2563eb;
-  --ga-accent-hover: #1d4ed8;
-  --ga-accent-d: rgba(37, 99, 235, 0.12);
-  --ga-accent-b: rgba(37, 99, 235, 0.35);
-  --ga-grn: #059669;
-  --ga-grn-d: rgba(5, 150, 105, 0.12);
-  --ga-grn-b: rgba(5, 150, 105, 0.3);
-  --ga-red: #dc2626;
-  --ga-red-d: rgba(220, 38, 38, 0.1);
-  --ga-red-b: rgba(220, 38, 38, 0.28);
-  --ga-ylw: #d97706;
-  --ga-ylw-d: rgba(217, 119, 6, 0.12);
-  --ga-ylw-b: rgba(217, 119, 6, 0.28);
-  --ga-shadow: 0 8px 24px rgba(26, 29, 38, 0.08);
-  --ga-r: 10px;
+  --ga-bg: #08090f;
+  --ga-sf: #0d0f1b;
+  --ga-sf2: #131627;
+  --ga-sf3: #1d2139;
+  --ga-br: rgba(59, 130, 246, 0.08);
+  --ga-br-h: rgba(59, 130, 246, 0.16);
+  --ga-tx: #eeeef4;
+  --ga-tx2: #a0a0c0;
+  --ga-tx3: #606080;
+  --ga-accent: #3b82f6;
+  --ga-accent-hover: #2563eb;
+  --ga-accent-d: rgba(59, 130, 246, 0.15);
+  --ga-accent-b: rgba(59, 130, 246, 0.3);
+  --ga-grn: #3eb574;
+  --ga-grn-d: rgba(62, 181, 116, 0.15);
+  --ga-grn-b: rgba(62, 181, 116, 0.3);
+  --ga-red: #e05555;
+  --ga-red-d: rgba(224, 85, 85, 0.15);
+  --ga-red-b: rgba(224, 85, 85, 0.3);
+  --ga-ylw: #d4a017;
+  --ga-ylw-d: rgba(212, 160, 23, 0.15);
+  --ga-ylw-b: rgba(212, 160, 23, 0.3);
+  --ga-pur: #8b5cf6;
+  --ga-pur-d: rgba(139, 92, 246, 0.15);
+  --ga-pur-b: rgba(139, 92, 246, 0.3);
+  --ga-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --ga-r: 12px;
   --ga-rs: 8px;
 
-  color-scheme: light;
+  color-scheme: dark;
   min-height: 100vh;
   width: 100%;
   display: flex;
@@ -36,7 +39,7 @@
   --sf: var(--ga-sf);
   --sf2: var(--ga-sf2);
   --sf3: var(--ga-sf3);
-  --sf4: #d8dee9;
+  --sf4: #252a48;
   --br: var(--ga-br);
   --brh: var(--ga-br-h);
   --tx: var(--ga-tx);
@@ -54,9 +57,9 @@
   --blu: var(--ga-accent);
   --blu-d: var(--ga-accent-d);
   --blu-b: var(--ga-accent-b);
-  --pur: var(--ga-accent);
-  --pur-d: var(--ga-accent-d);
-  --pur-b: var(--ga-accent-b);
+  --pur: var(--ga-pur);
+  --pur-d: var(--ga-pur-d);
+  --pur-b: var(--ga-pur-b);
   --shadow: var(--ga-shadow);
   --r: var(--ga-r);
 
@@ -66,8 +69,10 @@
 
 html:has(.ga-root),
 body:has(.ga-root) {
-  background: var(--ga-bg, #f4f6fa);
-  color: var(--ga-tx, #1a1d26);
+  --ga-bg: #08090f;
+  --ga-tx: #eeeef4;
+  background: var(--ga-bg);
+  color: var(--ga-tx);
 }
 
 .ga-root ::-webkit-scrollbar-thumb {
@@ -408,7 +413,7 @@ body:has(.ga-root) {
 
 .ga-root .form-input,
 .ga-root .form-select {
-  background-color: #fff;
+  background-color: var(--ga-sf2);
   border-color: var(--ga-br);
   color: var(--ga-tx);
 }
@@ -447,7 +452,7 @@ body:has(.ga-root) {
 }
 
 .ga-root .search-bar {
-  background: #fff;
+  background: var(--ga-sf2);
   border-color: var(--ga-br);
 }
 
@@ -542,7 +547,8 @@ body:has(.ga-root) {
 
 /* Modal */
 .ga-root .modal-backdrop {
-  background: rgba(26, 29, 38, 0.4);
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
 }
 
 .ga-root .modal-box {
@@ -768,7 +774,7 @@ body:has(.ga-root) {
   padding: 6px 8px;
   border: 1px solid var(--ga-br);
   border-radius: 6px;
-  background: #fff;
+  background: var(--ga-sf3);
   color: var(--ga-tx);
   font-size: 13px;
 }
@@ -866,7 +872,7 @@ body:has(.ga-root) {
   padding: 7px 10px;
   border: 1px solid var(--ga-br);
   border-radius: 6px;
-  background: #fff;
+  background: var(--ga-sf2);
   color: var(--ga-tx);
   font-size: 13px;
 }
@@ -959,4 +965,50 @@ body:has(.ga-root) {
     flex: 1;
     justify-content: center;
   }
+}
+
+/* GA Dashboard interactive links & hover effects */
+.ga-root .ga-stat-item-link {
+  display: block;
+  min-width: 80px;
+  text-decoration: none;
+  color: inherit;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.ga-root .ga-stat-item-link:hover {
+  opacity: 0.85;
+  transform: translateY(-2px);
+}
+
+.ga-root .ga-critical-item-row {
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.ga-root .ga-critical-item-row:hover {
+  border-color: var(--ga-red-b) !important;
+  background-color: var(--ga-sf3) !important;
+}
+
+.ga-root .ga-valuation-text-link {
+  transition: opacity 0.15s ease;
+}
+
+.ga-root .ga-valuation-text-link:hover {
+  opacity: 0.85;
+}
+
+.ga-root .ga-table-item-link {
+  transition: color 0.15s ease;
+}
+
+.ga-root .ga-table-item-link:hover {
+  color: var(--ga-accent) !important;
+  text-decoration: underline !important;
+}
+
+/* Ensure tables scroll horizontally on mobile screens within GA module */
+.ga-root .table-wrap {
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
 }

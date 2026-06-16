@@ -1359,6 +1359,10 @@ export async function POST(req: NextRequest) {
   // -------------------------------------------------------------
   // STEP 3: RE-CALIBRATE HISTORICAL DATES FROM CACHED CHATTER LOGS
   // -------------------------------------------------------------
+  // Special handling: if a PR was cancelled then re-submitted, use the date
+  // AFTER the last cancellation event as tanggalList, not the very oldest log.
+  // This prevents lead time from being inflated by the pre-cancellation history.
+  // -------------------------------------------------------------
   try {
     const allItemsWithNotes = await prisma.procurementTracking.findMany({
       where: {
@@ -1371,25 +1375,69 @@ export async function POST(req: NextRequest) {
       }
     });
 
+    // Keywords that indicate a cancellation event in chatter body/subtype
+    const CANCEL_KEYWORDS = ['cancel', 'dibatalkan', 'batal', 'refused', 'ditolak', 'rejected'];
+
+    function isCancelLog(log: any): boolean {
+      const body = (log.body || '').toLowerCase();
+      const subtype = (log.subtype || '').toLowerCase();
+      return CANCEL_KEYWORDS.some(k => body.includes(k) || subtype.includes(k));
+    }
+
     let fixedCount = 0;
     await prisma.$transaction(async (tx) => {
       for (const item of allItemsWithNotes) {
         if (!item.odooNotes) continue;
         try {
           const logs = JSON.parse(item.odooNotes);
-          if (Array.isArray(logs) && logs.length > 0) {
-            // Logs are sorted descending (newest first), so the last is the oldest
+          if (!Array.isArray(logs) || logs.length === 0) continue;
+
+          // Logs are sorted descending (newest first).
+          // Find the most recent cancellation event (if any).
+          let lastCancelIdx = -1;
+          for (let i = 0; i < logs.length; i++) {
+            if (isCancelLog(logs[i])) {
+              lastCancelIdx = i;
+              break; // found most recent cancel (logs are newest-first)
+            }
+          }
+
+          let targetDate: Date | null = null;
+
+          if (lastCancelIdx > 0) {
+            // There was a cancellation AND there are newer logs after it (index < lastCancelIdx).
+            // Use the oldest log that is NEWER than the last cancellation event.
+            // That is: logs[lastCancelIdx - 1] is the first log after the last cancel.
+            // But we want the OLDEST post-cancel log → that's logs[0] if lastCancelIdx > 0,
+            // actually we want the newest log that is still older than the cancel.
+            // Strategy: take the log at index (lastCancelIdx - 1) going towards 0;
+            // the oldest among those is at index 0 (newest log overall, already past cancel).
+            // More accurately: post-cancel logs are indices 0..(lastCancelIdx-1), oldest of these
+            // is at index (lastCancelIdx - 1).
+            const postCancelOldestLog = logs[lastCancelIdx - 1];
+            const d = new Date(postCancelOldestLog.date);
+            if (!isNaN(d.getTime())) {
+              targetDate = d;
+            }
+          }
+
+          // Fallback: no cancellation found → use the absolute oldest log
+          if (!targetDate) {
             const oldestLog = logs[logs.length - 1];
-            const oldestLogDate = new Date(oldestLog.date);
-            if (oldestLogDate && !isNaN(oldestLogDate.getTime())) {
-              const diffMs = Math.abs(new Date(item.tanggalList).getTime() - oldestLogDate.getTime());
-              if (diffMs > 12 * 60 * 60 * 1000) { // difference > 12 hours
-                await tx.procurementTracking.update({
-                  where: { id: item.id },
-                  data: { tanggalList: oldestLogDate }
-                });
-                fixedCount++;
-              }
+            const d = new Date(oldestLog.date);
+            if (!isNaN(d.getTime())) {
+              targetDate = d;
+            }
+          }
+
+          if (targetDate) {
+            const diffMs = Math.abs(new Date(item.tanggalList).getTime() - targetDate.getTime());
+            if (diffMs > 12 * 60 * 60 * 1000) { // difference > 12 hours
+              await tx.procurementTracking.update({
+                where: { id: item.id },
+                data: { tanggalList: targetDate }
+              });
+              fixedCount++;
             }
           }
         } catch (e) {
@@ -1397,7 +1445,7 @@ export async function POST(req: NextRequest) {
         }
       }
     });
-    console.log(`[Sync Route] Re-calibrated ${fixedCount} historical dates from cached chatter logs.`);
+    console.log(`[Sync Route] Re-calibrated ${fixedCount} historical dates from cached chatter logs (cancel-aware).`);
   } catch (errCalibrate) {
     console.error('[Sync Route] Failed to re-calibrate historical dates:', errCalibrate);
   }

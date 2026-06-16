@@ -49,6 +49,7 @@ model GaItem {
   kategori Kategori?         @relation(fields: [kategoriId], references: [id])
   movements GaStockMovement[]
   opnameLines GaOpnameLine[]
+  procurements GaProcurementTracking[]
 
   @@map("ga_item")
 }
@@ -107,4 +108,27 @@ model GaOpnameLine {
 
   @@unique([sessionId, itemId])
   @@map("ga_opname_line")
+}
+
+model GaProcurementTracking {
+  id            Int       @id @default(autoincrement())
+  originalName  String    @map("original_name")
+  itemId        String?   @map("item_id")
+  qty           Int
+  harga         Decimal?  @db.Decimal(14, 2)
+  vendor        String?
+  nomorPr       String?   @map("nomor_pr")
+  nomorPo       String?   @map("nomor_po")
+  status        String    @default("ORDERED") @map("status") // ORDERED | RECEIVED
+  tanggalPesan  DateTime  @default(now()) @map("tanggal_pesan")
+  tanggalTerima DateTime? @map("tanggal_terima")
+  isStocked     Boolean   @default(true) @map("is_stocked")
+  grDone        Boolean   @default(false) @map("gr_done") // false = belum di-GR di Odoo, true = sudah dikonfirmasi GR
+  keterangan    String?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  item          GaItem?    @relation(fields: [itemId], references: [id])
+
+  @@map("ga_procurement_tracking")
 }

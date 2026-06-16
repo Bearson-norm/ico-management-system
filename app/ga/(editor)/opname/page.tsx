@@ -38,6 +38,24 @@ export default function GaOpnameListPage() {
     }
   }
 
+  async function handleDelete(id: number, name: string) {
+    if (!confirm(`Apakah Anda yakin ingin menghapus sesi opname "${name}"? Semua data hitungan fisik dalam sesi ini akan dihapus permanen.`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/ga/opname/${id}`, { method: 'DELETE' });
+      const j = await res.json();
+      if (j.success) {
+        setMsg('Sesi opname berhasil dihapus');
+        load();
+      } else {
+        alert(j.error || 'Gagal menghapus sesi');
+      }
+    } catch (e: any) {
+      alert(e.message || 'Terjadi kesalahan');
+    }
+  }
+
   useEffect(() => {
     load();
   }, []);
@@ -150,9 +168,21 @@ export default function GaOpnameListPage() {
                       </td>
                       <td>{statusBadge(s)}</td>
                       <td>
-                        <Link href={`/ga/opname/${s.id}`} className="btn btn-ghost btn-sm">
-                          {s.status === 'posted' ? 'Lihat' : 'Lanjutkan'}
-                        </Link>
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                          <Link href={`/ga/opname/${s.id}`} className="btn btn-ghost btn-sm">
+                            {s.status === 'posted' ? 'Lihat' : 'Lanjutkan'}
+                          </Link>
+                          {s.status === 'draft' && (
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(s.id, s.periodeNama)}
+                              className="btn btn-ghost btn-sm"
+                              style={{ color: 'var(--ga-red)', borderColor: 'rgba(224, 85, 85, 0.2)' }}
+                            >
+                              Hapus
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))

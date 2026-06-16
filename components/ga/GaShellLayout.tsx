@@ -16,16 +16,118 @@ export default function GaShellLayout({ children }: { children: React.ReactNode 
   const menu = [
     ...(isEditor
       ? [
-          { href: '/ga/dashboard', label: 'Dashboard', section: 'Overview' },
-          { href: '/ga/database', label: 'Database Barang', section: 'Master' },
-          { href: '/ga/stock-in', label: 'Stock In', section: 'Inventory' },
-          { href: '/ga/stock-out', label: 'Stock Out', section: 'Inventory' },
-          { href: '/ga/opname', label: 'Stock Opname', section: 'Inventory' },
-          { href: '/ga/history', label: 'Riwayat', section: 'Audit' },
-          { href: '/ga/reports', label: 'Export CSV', section: 'Laporan' },
+          {
+            href: '/ga/dashboard',
+            icon: (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="7" height="9" />
+                <rect x="14" y="3" width="7" height="5" />
+                <rect x="14" y="12" width="7" height="9" />
+                <rect x="3" y="16" width="7" height="5" />
+              </svg>
+            ),
+            label: 'Dashboard',
+            section: 'Overview'
+          },
+          {
+            href: '/ga/po-pr',
+            icon: (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="21 8 21 21 3 21 3 8" />
+                <rect x="1" y="3" width="22" height="5" />
+                <line x1="10" y1="12" x2="14" y2="12" />
+              </svg>
+            ),
+            label: 'Pelacakan Pesanan',
+            section: 'Overview'
+          },
+          {
+            href: '/ga/database',
+            icon: (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+              </svg>
+            ),
+            label: 'Database Barang',
+            section: 'Master'
+          },
+          {
+            href: '/ga/stock-in',
+            icon: (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="17 10 12 15 7 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+                <path d="M20 17v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2" />
+              </svg>
+            ),
+            label: 'Stock In',
+            section: 'Inventory'
+          },
+          {
+            href: '/ga/stock-out',
+            icon: (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+                <path d="M20 17v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2" />
+              </svg>
+            ),
+            label: 'Stock Out',
+            section: 'Inventory'
+          },
+          {
+            href: '/ga/opname',
+            icon: (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+                <line x1="9" y1="9" x2="15" y2="9" />
+                <line x1="9" y1="13" x2="15" y2="13" />
+                <line x1="9" y1="17" x2="13" y2="17" />
+              </svg>
+            ),
+            label: 'Stock Opname',
+            section: 'Inventory'
+          },
+          {
+            href: '/ga/history',
+            icon: (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+            ),
+            label: 'Riwayat',
+            section: 'Audit'
+          },
+          {
+            href: '/ga/reports',
+            icon: (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="16" y1="13" x2="8" y2="13" />
+                <line x1="16" y1="17" x2="8" y2="17" />
+              </svg>
+            ),
+            label: 'Export CSV',
+            section: 'Laporan'
+          },
         ]
       : []),
-    { href: '/ga/stock', label: 'Stok & Lokasi', section: 'Inventory' },
+    {
+      href: '/ga/stock',
+      icon: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="16.5" y1="9.4" x2="7.5" y2="4.21" />
+          <polygon points="12 22.08 12 12 3 6.92 3 17 12 22.08" />
+          <polygon points="12 22.08 21 17 21 6.92 12 12 12 22.08" />
+          <polygon points="12 12 21 6.92 12 1.84 3 6.92 12 12" />
+        </svg>
+      ),
+      label: 'Stok & Lokasi',
+      section: 'Inventory'
+    },
   ];
 
   let currentSection = '';
@@ -94,7 +196,7 @@ export default function GaShellLayout({ children }: { children: React.ReactNode 
                 {BRAND_NAME}
               </div>
               <div className="sidebar-logo-sub">Modul General Affairs</div>
-              <span className="ga-module-tag">GA</span>
+              <span className="ga-module-tag" style={{ background: 'var(--ga-accent)', color: '#fff', padding: '2px 6px', fontWeight: '800', borderRadius: '4px' }}>GA</span>
             </div>
             <span className="badge badge-blu hide-on-mobile-badge" style={{ fontSize: 10, textTransform: 'uppercase' }}>
               {role}
@@ -110,6 +212,9 @@ export default function GaShellLayout({ children }: { children: React.ReactNode 
               <div key={m.href}>
                 {isNew && <div className="sidebar-section">{m.section}</div>}
                 <Link href={m.href} className={`nav-item ${active ? 'active' : ''}`} onClick={closeNav}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} aria-hidden>
+                    {m.icon}
+                  </span>
                   {m.label}
                 </Link>
               </div>
