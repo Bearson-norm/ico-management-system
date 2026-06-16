@@ -54,6 +54,76 @@ function getMovementKey(tipe: string, itemId: string | null, namaBarang: string 
   return `${tipe}_${itemId || ''}_${namaBarang || ''}_${qty}_${t}`;
 }
 
+// Auto cleanup database duplicates (e.g. GA-SP-042 and A0042) to prevent duplicates and unique constraint violations
+async function autoCleanupDuplicates() {
+  const items = await prismaGa.gaItem.findMany();
+  
+  // Group items by kodeBarang (case-insensitive)
+  const codeMap: { [code: string]: typeof items } = {};
+  items.forEach(it => {
+    if (it.kodeBarang) {
+      const code = it.kodeBarang.toUpperCase().trim();
+      if (!codeMap[code]) codeMap[code] = [];
+      codeMap[code].push(it);
+    }
+  });
+
+  for (const [code, list] of Object.entries(codeMap)) {
+    if (list.length > 1) {
+      let original = list.find(it => it.id.startsWith('GA-SP-') || it.id.startsWith('GA-ITEM-'));
+      let duplicate = list.find(it => !it.id.startsWith('GA-SP-') && !it.id.startsWith('GA-ITEM-'));
+      
+      if (!original) {
+        original = list[0];
+        duplicate = list[1];
+      } else if (!duplicate) {
+        const origId = original.id;
+        duplicate = list.find(it => it.id !== origId);
+      }
+      
+      if (!original || !duplicate) continue;
+      
+      // 1. Move Stock Movements
+      await prismaGa.gaStockMovement.updateMany({
+        where: { itemId: duplicate.id },
+        data: { itemId: original.id }
+      });
+      
+      // 2. Move Procurements
+      await prismaGa.gaProcurementTracking.updateMany({
+        where: { itemId: duplicate.id },
+        data: { itemId: original.id }
+      });
+      
+      // 3. Move Opname Lines (handling unique constraint per session)
+      const opnameLines = await prismaGa.gaOpnameLine.findMany({
+        where: { itemId: duplicate.id }
+      });
+      for (const line of opnameLines) {
+        const existingOriginalLine = await prismaGa.gaOpnameLine.findFirst({
+          where: { sessionId: line.sessionId, itemId: original.id }
+        });
+        
+        if (existingOriginalLine) {
+          await prismaGa.gaOpnameLine.delete({
+            where: { id: line.id }
+          });
+        } else {
+          await prismaGa.gaOpnameLine.update({
+            where: { id: line.id },
+            data: { itemId: original.id }
+          });
+        }
+      }
+      
+      // 4. Delete duplicate item
+      await prismaGa.gaItem.delete({
+        where: { id: duplicate.id }
+      });
+    }
+  }
+}
+
 export async function POST(req: NextRequest) {
   const session = await requireGaEditor();
   if (!session) return err('Akses ditolak', 403);
@@ -80,6 +150,9 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    // Run self-healing database duplicates cleanup first
+    await autoCleanupDuplicates();
+
     // 1. Fetch the published Google Sheet XLSX buffer
     const res = await fetch(url);
     if (!res.ok) {
@@ -172,9 +245,19 @@ export async function POST(req: NextRequest) {
           continue;
         }
 
-        const itemId = kode
-          ? kode.toUpperCase()
-          : `GA-${namaRaw.toUpperCase().replace(/[^A-Z0-9]/g, '-').replace(/-+/g, '-').substring(0, 20)}`;
+        let existing = null;
+        if (kode) {
+          existing = existingItems.find((it) => it.kodeBarang?.toUpperCase() === kode.toUpperCase());
+        }
+        if (!existing && namaRaw) {
+          existing = existingItems.find((it) => it.nama.toLowerCase() === namaRaw.toLowerCase());
+        }
+
+        const itemId = existing
+          ? existing.id
+          : (kode
+              ? kode.toUpperCase()
+              : `GA-${namaRaw.toUpperCase().replace(/[^A-Z0-9]/g, '-').replace(/-+/g, '-').substring(0, 20)}`);
 
         masterItemsMap.set(itemId, {
           itemId,
