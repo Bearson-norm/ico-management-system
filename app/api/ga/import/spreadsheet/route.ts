@@ -136,7 +136,22 @@ export async function POST(req: NextRequest) {
     // ==========================================
     // PROCESS SHEETS 1 & 2: Master Barang (DB & LH)
     // ==========================================
-    const processMasterSheet = async (sheetName: string, label: string) => {
+    interface NormalizedItem {
+      itemId: string;
+      namaRaw: string;
+      kode: string;
+      qtyAwal: number;
+      lokasi: string | null;
+      uom: string;
+      harga: Prisma.Decimal;
+      minQty: number;
+      maxQty: number | null;
+      label: string;
+    }
+
+    const masterItemsMap = new Map<string, NormalizedItem>();
+
+    const collectMasterItems = (sheetName: string, label: string) => {
       const ws = wb.Sheets[sheetName];
       if (!ws) return;
 
@@ -161,90 +176,106 @@ export async function POST(req: NextRequest) {
           ? kode.toUpperCase()
           : `GA-${namaRaw.toUpperCase().replace(/[^A-Z0-9]/g, '-').replace(/-+/g, '-').substring(0, 20)}`;
 
-        const existing = itemMap.get(itemId);
-
-        if (existing) {
-          // Compare fields to see if updates are actually needed
-          const isSame =
-            existing.nama === namaRaw &&
-            existing.kodeBarang === (kode || null) &&
-            existing.uom === uom &&
-            existing.lokasi === lokasi &&
-            Number(existing.harga) === Number(harga) &&
-            existing.minQty === minQty &&
-            existing.maxQty === maxQty;
-
-          if (isSame) {
-            stats.master.skipped++;
-          } else {
-            // Add update promise
-            itemUpserts.push(
-              prismaGa.gaItem.update({
-                where: { id: itemId },
-                data: {
-                  kodeBarang: kode || undefined,
-                  lokasi: lokasi || undefined,
-                  uom: uom !== 'Pcs' ? uom : undefined,
-                  harga: harga.gt(0) ? harga : undefined,
-                  minQty: minQty > 0 ? minQty : undefined,
-                  maxQty: maxQty ? maxQty : undefined,
-                },
-              })
-            );
-            stats.master.upserted++;
-          }
-        } else {
-          // Add create promise
-          itemUpserts.push(
-            prismaGa.gaItem.create({
-              data: {
-                id: itemId,
-                nama: namaRaw,
-                kodeBarang: kode || null,
-                uom,
-                lokasi,
-                harga,
-                minQty,
-                maxQty,
-                aktif: true,
-              },
-            })
-          );
-          stats.master.upserted++;
-        }
-
-        // Handle historical initial stock
-        if (qtyAwal !== 0) {
-          const adjKey = getMovementKey('ADJ', itemId, namaRaw, qtyAwal, new Date('2025-01-01T00:00:00Z'));
-          const existingAdj = existingMovements.find(
-            (m) => m.itemId === itemId && m.tipe === 'ADJ' && m.keterangan?.includes(`[Import ${label}]`)
-          );
-
-          if (!existingAdj && !movementSet.has(adjKey)) {
-            newMovements.push({
-              tipe: 'ADJ',
-              itemId,
-              namaBarang: namaRaw,
-              qty: qtyAwal,
-              tanggal: new Date('2025-01-01T00:00:00Z'),
-              keterangan: `[Import ${label}] Stok awal saat migrasi data`,
-              harga: new Prisma.Decimal(0),
-            });
-            movementSet.add(adjKey);
-            stats.master.stockAdded++;
-          }
-        }
+        masterItemsMap.set(itemId, {
+          itemId,
+          namaRaw,
+          kode,
+          qtyAwal,
+          lokasi,
+          uom,
+          harga,
+          minQty,
+          maxQty,
+          label,
+        });
       }
     };
 
     const sheet1Name = detectSheetName(wb, ['db barang', 'db', 'database', 'master', 'sheet1']) || wb.SheetNames[0];
     if (sheet1Name) {
-      await processMasterSheet(sheet1Name, 'DB Barang');
+      collectMasterItems(sheet1Name, 'DB Barang');
     }
 
     const sheet2Name = detectSheetName(wb, ['lh barang', 'lh', 'laporan harian', 'live', 'sheet2']) || wb.SheetNames[1];
     if (sheet2Name && sheet2Name !== sheet1Name) {
-      await processMasterSheet(sheet2Name, 'LH Barang');
+      collectMasterItems(sheet2Name, 'LH Barang');
+    }
+
+    // Now process the unique gathered items
+    for (const item of masterItemsMap.values()) {
+      const existing = itemMap.get(item.itemId);
+
+      if (existing) {
+        // Compare fields to see if updates are actually needed
+        const isSame =
+          existing.nama === item.namaRaw &&
+          existing.kodeBarang === (item.kode || null) &&
+          existing.uom === item.uom &&
+          existing.lokasi === item.lokasi &&
+          Number(existing.harga) === Number(item.harga) &&
+          existing.minQty === item.minQty &&
+          existing.maxQty === item.maxQty;
+
+        if (isSame) {
+          stats.master.skipped++;
+        } else {
+          // Add update promise
+          itemUpserts.push(
+            prismaGa.gaItem.update({
+              where: { id: item.itemId },
+              data: {
+                kodeBarang: item.kode || undefined,
+                lokasi: item.lokasi || undefined,
+                uom: item.uom !== 'Pcs' ? item.uom : undefined,
+                harga: item.harga.gt(0) ? item.harga : undefined,
+                minQty: item.minQty > 0 ? item.minQty : undefined,
+                maxQty: item.maxQty ? item.maxQty : undefined,
+              },
+            })
+          );
+          stats.master.upserted++;
+        }
+      } else {
+        // Add create promise
+        itemUpserts.push(
+          prismaGa.gaItem.create({
+            data: {
+              id: item.itemId,
+              nama: item.namaRaw,
+              kodeBarang: item.kode || null,
+              uom: item.uom,
+              lokasi: item.lokasi,
+              harga: item.harga,
+              minQty: item.minQty,
+              maxQty: item.maxQty,
+              aktif: true,
+            },
+          })
+        );
+        stats.master.upserted++;
+      }
+
+      // Handle historical initial stock
+      if (item.qtyAwal !== 0) {
+        const adjKey = getMovementKey('ADJ', item.itemId, item.namaRaw, item.qtyAwal, new Date('2025-01-01T00:00:00Z'));
+        const existingAdj = existingMovements.find(
+          (m) => m.itemId === item.itemId && m.tipe === 'ADJ' && m.keterangan?.includes(`[Import ${item.label}]`)
+        );
+
+        if (!existingAdj && !movementSet.has(adjKey)) {
+          newMovements.push({
+            tipe: 'ADJ',
+            itemId: item.itemId,
+            namaBarang: item.namaRaw,
+            qty: item.qtyAwal,
+            tanggal: new Date('2025-01-01T00:00:00Z'),
+            keterangan: `[Import ${item.label}] Stok awal saat migrasi data`,
+            harga: new Prisma.Decimal(0),
+          });
+          movementSet.add(adjKey);
+          stats.master.stockAdded++;
+        }
+      }
     }
 
     // Run item database updates/inserts in parallel
