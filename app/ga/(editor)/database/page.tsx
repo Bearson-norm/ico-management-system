@@ -107,19 +107,13 @@ export default function GaDatabasePage() {
     }
   }
 
-  async function handleSyncSpreadsheet(e: FormEvent) {
-    e.preventDefault();
-    if (!spreadsheetUrl.trim()) {
-      alert('Tautan Google Sheets wajib diisi');
-      return;
-    }
-    localStorage.setItem('ga_spreadsheet_url', spreadsheetUrl.trim());
+  async function triggerSync(url: string) {
     setSyncing(true);
     try {
       const res = await fetch('/api/ga/import/spreadsheet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ spreadsheetUrl: spreadsheetUrl.trim() }),
+        body: JSON.stringify({ spreadsheetUrl: url.trim() }),
       });
       const json = await res.json();
       if (json.success) {
@@ -140,6 +134,25 @@ export default function GaDatabasePage() {
     } finally {
       setSyncing(false);
     }
+  }
+
+  async function handleDirectSync() {
+    const savedUrl = localStorage.getItem('ga_spreadsheet_url') || '';
+    if (!savedUrl.trim()) {
+      setSyncOpen(true);
+      return;
+    }
+    await triggerSync(savedUrl);
+  }
+
+  async function handleSyncSpreadsheet(e: FormEvent) {
+    e.preventDefault();
+    if (!spreadsheetUrl.trim()) {
+      alert('Tautan Google Sheets wajib diisi');
+      return;
+    }
+    localStorage.setItem('ga_spreadsheet_url', spreadsheetUrl.trim());
+    await triggerSync(spreadsheetUrl);
   }
 
   useEffect(() => {
@@ -285,9 +298,26 @@ export default function GaDatabasePage() {
             <div className="page-title">Database Barang GA</div>
             <div className="page-sub">Kelola master barang — import massal atau edit per item</div>
           </div>
-          <div className="ga-page-actions" style={{ display: 'flex', gap: '8px' }}>
-            <button type="button" className="btn btn-primary" onClick={() => setSyncOpen(true)}>
-              🔄 Sinkron Spreadsheet
+          <div className="ga-page-actions" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <button type="button" className="btn btn-primary" onClick={handleDirectSync} disabled={syncing}>
+              {syncing ? '🔄 Menyinkronkan...' : '🔄 Sinkron Spreadsheet'}
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => setSyncOpen(true)}
+              title="Atur Link Spreadsheet"
+              style={{
+                width: '38px',
+                height: '38px',
+                padding: 0,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '16px',
+              }}
+            >
+              ⚙️
             </button>
             <button type="button" className="btn btn-ghost" onClick={() => setImportOpen(true)}>
               Import Excel
