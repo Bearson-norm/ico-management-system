@@ -207,7 +207,7 @@ async function importInbound(rows: Record<string, unknown>[]): Promise<{ importe
     const vendor = toStr(get(['vendor', 'supplier', 'pemasok']));
     const harga = toDecimal(get(['harga', 'price', 'harga satuan']));
     const ket = toStr(get(['keterangan', 'notes', 'note', 'catatan']));
-    const pic = toStr(get(['pic', 'penerima', 'nama pic']));
+    const pic = toStr(get(['pic', 'penerima', 'nama pic', 'nama', 'NAMA', 'picNama']));
     const noPo = toStr(get(['no po', 'nomor po', 'po', 'po number']));
 
     if (!namaRaw && !kode) { skipped++; continue; }
@@ -294,7 +294,7 @@ async function importOutbound(rows: Record<string, unknown>[]): Promise<{ import
     const qty = toInt(get(['qty', 'quantity', 'jumlah', 'qty keluar', 'qty pakai']));
     const tanggalRaw = get(['tanggal', 'date', 'tanggal pakai', 'tgl pakai', 'tgl keluar']);
     const tanggal = toDate(tanggalRaw) || new Date();
-    const pic = toStr(get(['pic', 'penerima', 'peminta', 'dikeluarkan untuk', 'user', 'nama pic']));
+    const pic = toStr(get(['pic', 'penerima', 'peminta', 'dikeluarkan untuk', 'user', 'nama pic', 'nama', 'NAMA', 'picNama']));
     const ket = toStr(get(['keterangan', 'notes', 'note', 'catatan', 'keperluan']));
 
     if (!namaRaw && !kode) { skipped++; continue; }

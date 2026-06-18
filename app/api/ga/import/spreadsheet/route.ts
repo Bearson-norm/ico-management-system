@@ -367,7 +367,7 @@ export async function POST(req: NextRequest) {
         const vendor = toStr(getRowValue(row, ['vendor', 'supplier', 'pemasok']));
         const harga = toDecimal(getRowValue(row, ['harga', 'price', 'harga satuan']));
         const ket = toStr(getRowValue(row, ['keterangan', 'notes', 'note', 'catatan']));
-        const pic = toStr(getRowValue(row, ['pic', 'penerima', 'nama pic']));
+        const pic = toStr(getRowValue(row, ['pic', 'penerima', 'nama pic', 'nama', 'NAMA', 'picNama']));
         const noPo = toStr(getRowValue(row, ['no po', 'nomor po', 'po', 'po number']));
 
         if (!namaRaw && !kode) { stats.inbound.skipped++; continue; }
@@ -427,7 +427,7 @@ export async function POST(req: NextRequest) {
         const qty = toInt(getRowValue(row, ['qty', 'quantity', 'jumlah', 'qty keluar', 'qty pakai']));
         const tanggalRaw = getRowValue(row, ['tanggal', 'date', 'tanggal pakai', 'tgl pakai', 'tgl keluar']);
         const tanggal = toDate(tanggalRaw);
-        const pic = toStr(getRowValue(row, ['pic', 'penerima', 'peminta', 'dikeluarkan untuk', 'user', 'nama pic']));
+        const pic = toStr(getRowValue(row, ['pic', 'penerima', 'peminta', 'dikeluarkan untuk', 'user', 'nama pic', 'nama', 'NAMA', 'picNama']));
         const ket = toStr(getRowValue(row, ['keterangan', 'notes', 'note', 'catatan', 'keperluan']));
 
         if (!namaRaw && !kode) { stats.outbound.skipped++; continue; }
