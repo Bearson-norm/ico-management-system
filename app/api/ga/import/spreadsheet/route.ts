@@ -134,10 +134,24 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     spreadsheetUrl = body?.spreadsheetUrl || '';
   } catch {
-    // no body or invalid JSON is fine, fallback to env
+    // no body or invalid JSON is fine
+  }
+
+  if (!spreadsheetUrl) {
+    try {
+      const setting = await prismaGa.gaSetting.findUnique({
+        where: { key: 'ga_spreadsheet_url' }
+      });
+      if (setting && setting.value) {
+        spreadsheetUrl = setting.value;
+      }
+    } catch (dbErr) {
+      console.error('Failed to load ga_spreadsheet_url from database:', dbErr);
+    }
   }
 
   let url = spreadsheetUrl || process.env.GA_SPREADSHEET_URL;
+
   if (!url) {
     return err('Silakan masukkan URL Google Sheets terlebih dahulu atau atur GA_SPREADSHEET_URL di file .env', 400);
   }

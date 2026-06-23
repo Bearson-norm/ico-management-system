@@ -57,12 +57,25 @@ export async function POST(req: NextRequest) {
     // Graceful if empty
   }
 
-  const odooSessionId = body.odooSessionId || process.env.ODOO_SESSION_ID || '';
-  const odooUid = body.odooUid || 34;
+  // Fetch settings from database as fallback
+  let dbSettings: Record<string, string> = {};
+  try {
+    const settingsList = await prismaGa.gaSetting.findMany();
+    dbSettings = settingsList.reduce((acc, curr) => {
+      acc[curr.key] = curr.value;
+      return acc;
+    }, {} as Record<string, string>);
+  } catch (dbErr) {
+    console.error('Failed to load GA settings from database:', dbErr);
+  }
+
+  const odooSessionId = body.odooSessionId || dbSettings['ga_odoo_session_id'] || process.env.ODOO_SESSION_ID || '';
+  const odooUid = body.odooUid || (dbSettings['ga_odoo_uid'] ? parseInt(dbSettings['ga_odoo_uid']) : null) || process.env.ODOO_UID || 34;
 
   if (!odooSessionId) {
     return err('Cookie session_id Odoo diperlukan untuk melakukan sinkronisasi.', 400);
   }
+
 
   const parsedUid = Number(odooUid) || 34;
 

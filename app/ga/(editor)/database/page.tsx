@@ -137,12 +137,20 @@ export default function GaDatabasePage() {
   }
 
   async function handleDirectSync() {
-    const savedUrl = localStorage.getItem('ga_spreadsheet_url') || '';
-    if (!savedUrl.trim()) {
+    let currentUrl = spreadsheetUrl;
+    if (!currentUrl.trim()) {
+      if (typeof window !== 'undefined') {
+        const savedUrl = localStorage.getItem('ga_spreadsheet_url') || '';
+        if (savedUrl.trim()) {
+          currentUrl = savedUrl;
+        }
+      }
+    }
+    if (!currentUrl.trim()) {
       setSyncOpen(true);
       return;
     }
-    await triggerSync(savedUrl);
+    await triggerSync(currentUrl);
   }
 
   async function handleSyncSpreadsheet(e: FormEvent) {
@@ -151,7 +159,20 @@ export default function GaDatabasePage() {
       alert('Tautan Google Sheets wajib diisi');
       return;
     }
-    localStorage.setItem('ga_spreadsheet_url', spreadsheetUrl.trim());
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('ga_spreadsheet_url', spreadsheetUrl.trim());
+    }
+    try {
+      await fetch('/api/ga/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ga_spreadsheet_url: spreadsheetUrl.trim()
+        })
+      });
+    } catch (err) {
+      console.error('Failed to save GA spreadsheet URL to DB:', err);
+    }
     await triggerSync(spreadsheetUrl);
   }
 
@@ -160,9 +181,40 @@ export default function GaDatabasePage() {
   }, [filters]);
 
   useEffect(() => {
-    const savedUrl = localStorage.getItem('ga_spreadsheet_url') || '';
-    setSpreadsheetUrl(savedUrl);
+    async function loadGaSettings() {
+      let currentUrl = '';
+      try {
+        const res = await fetch('/api/ga/settings');
+        const json = await res.json();
+        if (json.success && json.data) {
+          currentUrl = json.data.ga_spreadsheet_url || '';
+        }
+      } catch (err) {
+        console.error('Failed to load GA settings from DB:', err);
+      }
+
+      if (!currentUrl && typeof window !== 'undefined') {
+        const savedUrl = localStorage.getItem('ga_spreadsheet_url') || '';
+        if (savedUrl.trim()) {
+          currentUrl = savedUrl;
+          try {
+            await fetch('/api/ga/settings', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                ga_spreadsheet_url: savedUrl.trim()
+              })
+            });
+          } catch (migrateErr) {
+            console.error('Failed to migrate GA spreadsheet URL to DB:', migrateErr);
+          }
+        }
+      }
+      setSpreadsheetUrl(currentUrl);
+    }
+    loadGaSettings();
   }, []);
+
 
   useEffect(() => {
     Promise.all([

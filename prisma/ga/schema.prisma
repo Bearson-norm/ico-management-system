@@ -132,3 +132,11 @@ model GaProcurementTracking {
 
   @@map("ga_procurement_tracking")
 }
+
+model GaSetting {
+  key   String @id
+  value String
+
+  @@map("ga_settings")
+}
+

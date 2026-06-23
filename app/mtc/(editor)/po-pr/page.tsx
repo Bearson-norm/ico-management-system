@@ -252,42 +252,121 @@ export default function ProcurementTrackingPage() {
   const [editKeterangan, setEditKeterangan] = useState('');
   const [editUrgency, setEditUrgency] = useState('Normal');
 
-  // Load configuration from localStorage on mount
+  // Load configuration from database / localStorage on mount
   useEffect(() => {
     fetchData();
     fetchSpareparts();
     fetchDbCategories();
     
-    if (typeof window !== 'undefined') {
-      const savedScriptUrl = localStorage.getItem('mtc_procurement_script_url');
-      if (savedScriptUrl) {
-        setScriptUrl(savedScriptUrl);
-        setTempScriptUrl(savedScriptUrl);
-      }
-      const savedSheetUrl = localStorage.getItem('mtc_procurement_sheet_url');
-      if (savedSheetUrl) {
-        setSheetUrl(savedSheetUrl);
-        setTempSheetUrl(savedSheetUrl);
-      }
-      const savedOdooPassword = localStorage.getItem('mtc_odoo_password') || '';
-      if (savedOdooPassword) {
-        setOdooPassword(savedOdooPassword);
-        setTempOdooPassword(savedOdooPassword);
-      }
-      const savedOdooDb = localStorage.getItem('mtc_odoo_db') || 'foom-production-5808833';
-      setOdooDb(savedOdooDb);
-      setTempOdooDb(savedOdooDb);
-      
-      const savedOdooUid = localStorage.getItem('mtc_odoo_uid') || '34';
-      setOdooUid(savedOdooUid);
-      setTempOdooUid(savedOdooUid);
-      
-      const savedOdooSessionId = localStorage.getItem('mtc_odoo_session_id') || '';
-      if (savedOdooSessionId) {
-        setOdooSessionId(savedOdooSessionId);
-        setTempOdooSessionId(savedOdooSessionId);
+    async function loadSettings() {
+      let currentScriptUrl = '';
+      let currentSheetUrl = '';
+      let currentOdooPassword = '';
+      let currentOdooDb = 'foom-production-5808833';
+      let currentOdooUid = '34';
+      let currentOdooSessionId = '';
+
+      // 1. Try to load from database
+      try {
+        const res = await fetch('/api/mtc/settings');
+        const json = await res.json();
+        if (json.success && json.data) {
+          const dbData = json.data;
+          currentScriptUrl = dbData.mtc_procurement_script_url || '';
+          currentSheetUrl = dbData.mtc_procurement_sheet_url || '';
+          currentOdooPassword = dbData.mtc_odoo_password || '';
+          currentOdooDb = dbData.mtc_odoo_db || 'foom-production-5808833';
+          currentOdooUid = dbData.mtc_odoo_uid || '34';
+          currentOdooSessionId = dbData.mtc_odoo_session_id || '';
+        }
+      } catch (err) {
+        console.error('Failed to load settings from DB:', err);
       }
 
+      // 2. Check if database has no values and fallback to localStorage for auto-migration
+      if (typeof window !== 'undefined') {
+        const savedScriptUrl = localStorage.getItem('mtc_procurement_script_url') || '';
+        const savedSheetUrl = localStorage.getItem('mtc_procurement_sheet_url') || '';
+        const savedOdooPassword = localStorage.getItem('mtc_odoo_password') || '';
+        const savedOdooDb = localStorage.getItem('mtc_odoo_db') || 'foom-production-5808833';
+        const savedOdooUid = localStorage.getItem('mtc_odoo_uid') || '34';
+        const savedOdooSessionId = localStorage.getItem('mtc_odoo_session_id') || '';
+
+        const hasLocal = savedScriptUrl || savedSheetUrl || savedOdooPassword || savedOdooSessionId;
+        const hasDb = currentScriptUrl || currentSheetUrl || currentOdooPassword || currentOdooSessionId;
+
+        if (hasLocal && !hasDb) {
+          // Perform auto-migration to DB
+          currentScriptUrl = savedScriptUrl;
+          currentSheetUrl = savedSheetUrl;
+          currentOdooPassword = savedOdooPassword;
+          currentOdooDb = savedOdooDb;
+          currentOdooUid = savedOdooUid;
+          currentOdooSessionId = savedOdooSessionId;
+
+          try {
+            await fetch('/api/mtc/settings', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                mtc_procurement_script_url: currentScriptUrl,
+                mtc_procurement_sheet_url: currentSheetUrl,
+                mtc_odoo_password: currentOdooPassword,
+                mtc_odoo_db: currentOdooDb,
+                mtc_odoo_uid: currentOdooUid,
+                mtc_odoo_session_id: currentOdooSessionId,
+              })
+            });
+            console.log('Successfully migrated settings from localStorage to database.');
+          } catch (migrateErr) {
+            console.error('Failed to auto-migrate settings to database:', migrateErr);
+          }
+        }
+      }
+
+      // 3. Update React state
+      setScriptUrl(currentScriptUrl);
+      setTempScriptUrl(currentScriptUrl);
+      setSheetUrl(currentSheetUrl);
+      setTempSheetUrl(currentSheetUrl);
+      setOdooPassword(currentOdooPassword);
+      setTempOdooPassword(currentOdooPassword);
+      setOdooDb(currentOdooDb);
+      setTempOdooDb(currentOdooDb);
+      setOdooUid(currentOdooUid);
+      setTempOdooUid(currentOdooUid);
+      setOdooSessionId(currentOdooSessionId);
+      setTempOdooSessionId(currentOdooSessionId);
+
+      // Trigger background sync with the resolved config
+      if (currentSheetUrl && (currentOdooPassword || currentOdooSessionId)) {
+        fetch('/api/mtc/odoo/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sheetUrl: currentSheetUrl.trim(),
+            odooPassword: currentOdooPassword,
+            odooDb: currentOdooDb,
+            odooUid: parseInt(currentOdooUid) || 34,
+            odooSessionId: currentOdooSessionId
+          })
+        }).then(res => res.json())
+          .then(json => {
+            if (json.success) {
+              const odooError = json.data?.odoo?.error;
+              if (!odooError && json.data?.odoo?.success) {
+                // Silently refresh to pull real-time data
+                fetchData();
+                fetchSpareparts();
+              }
+            }
+          }).catch(err => console.error('Background sync failed:', err));
+      }
+    }
+
+    loadSettings();
+
+    if (typeof window !== 'undefined') {
       const savedCart = localStorage.getItem('mtc_pr_cart');
       if (savedCart) {
         try {
@@ -295,33 +374,6 @@ export default function ProcurementTrackingPage() {
         } catch (e) {
           console.error('Failed to parse saved cart:', e);
         }
-      }
-
-      // Real-Time Auto Sync on page load (silently in background)
-      if (savedSheetUrl && (savedOdooPassword || savedOdooSessionId)) {
-        fetch('/api/mtc/odoo/sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sheetUrl: savedSheetUrl.trim(),
-            odooPassword: savedOdooPassword,
-            odooDb: savedOdooDb,
-            odooUid: parseInt(savedOdooUid) || 34,
-            odooSessionId: savedOdooSessionId
-          })
-        }).then(res => res.json())
-          .then(json => {
-            if (json.success) {
-              const odooError = json.data?.odoo?.error;
-              if (odooError && (odooError.toLowerCase().includes('session') || odooError.toLowerCase().includes('expired') || odooError.toLowerCase().includes('uid'))) {
-                console.warn('Odoo Session Expired!');
-              } else if (json.data?.odoo?.success) {
-                // Silently refresh to pull real-time data
-                fetchData();
-                fetchSpareparts();
-              }
-            }
-          }).catch(err => console.error('Background sync failed:', err));
       }
     }
   }, []);
@@ -349,7 +401,7 @@ export default function ProcurementTrackingPage() {
   }, [linkSearch, showLinkModal]);
 
   // Sync settings saver
-  function handleSaveSettings(e: React.FormEvent) {
+  async function handleSaveSettings(e: React.FormEvent) {
     e.preventDefault();
     setScriptUrl(tempScriptUrl);
     setSheetUrl(tempSheetUrl);
@@ -366,6 +418,23 @@ export default function ProcurementTrackingPage() {
       localStorage.setItem('mtc_odoo_uid', tempOdooUid);
       localStorage.setItem('mtc_odoo_session_id', tempOdooSessionId);
     }
+
+    try {
+      await fetch('/api/mtc/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mtc_procurement_script_url: tempScriptUrl,
+          mtc_procurement_sheet_url: tempSheetUrl,
+          mtc_odoo_password: tempOdooPassword,
+          mtc_odoo_db: tempOdooDb,
+          mtc_odoo_uid: tempOdooUid,
+          mtc_odoo_session_id: tempOdooSessionId,
+        })
+      });
+    } catch (err) {
+      console.error('Failed to save settings to database:', err);
+    }
     
     setManualSyncStatus({ type: 'success', msg: 'Pengaturan koneksi berhasil disimpan!' });
     setTimeout(() => {
@@ -373,6 +442,7 @@ export default function ProcurementTrackingPage() {
       setManualSyncStatus(null);
     }, 1500);
   }
+
 
   async function fetchData() {
     setLoading(true);

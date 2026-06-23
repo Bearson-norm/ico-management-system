@@ -199,3 +199,11 @@ model ProcurementTracking {
   @@map("procurement_tracking")
 }
 
+model MtcSetting {
+  key   String @id
+  value String
+
+  @@map("mtc_settings")
+}
+
+

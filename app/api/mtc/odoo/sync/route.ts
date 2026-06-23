@@ -418,17 +418,32 @@ export async function POST(req: NextRequest) {
     odooSessionId: bodyOdooSessionId
   } = body || {};
 
-  const sheetUrl = bodySheetUrl?.trim() || process.env.SCM_SHEET_URL?.trim() || '';
-  const odooPassword = bodyOdooPassword || process.env.ODOO_PASSWORD || '';
-  const odooSessionId = bodyOdooSessionId || process.env.ODOO_SESSION_ID || '';
-  const odooDb = bodyOdooDb || process.env.ODOO_DB || 'foom-production-5808833';
+  // Fetch settings from database as fallback
+  let dbSettings: Record<string, string> = {};
+  try {
+    const settingsList = await prisma.mtcSetting.findMany();
+    dbSettings = settingsList.reduce((acc, curr) => {
+      acc[curr.key] = curr.value;
+      return acc;
+    }, {} as Record<string, string>);
+  } catch (dbErr) {
+    console.error('Failed to load MTC settings from database:', dbErr);
+  }
+
+  const sheetUrl = bodySheetUrl?.trim() || dbSettings['mtc_procurement_sheet_url']?.trim() || process.env.SCM_SHEET_URL?.trim() || '';
+  const odooPassword = bodyOdooPassword || dbSettings['mtc_odoo_password'] || process.env.ODOO_PASSWORD || '';
+  const odooSessionId = bodyOdooSessionId || dbSettings['mtc_odoo_session_id'] || process.env.ODOO_SESSION_ID || '';
+  const odooDb = bodyOdooDb || dbSettings['mtc_odoo_db'] || process.env.ODOO_DB || 'foom-production-5808833';
   
   let odooUid = 34;
   if (bodyOdooUid != null) {
     odooUid = Number(bodyOdooUid);
+  } else if (dbSettings['mtc_odoo_uid']) {
+    odooUid = parseInt(dbSettings['mtc_odoo_uid']) || 34;
   } else if (process.env.ODOO_UID) {
     odooUid = parseInt(process.env.ODOO_UID) || 34;
   }
+
 
   let sheetsSynced = false;
   let odooSynced = false;

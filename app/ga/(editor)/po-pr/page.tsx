@@ -72,11 +72,49 @@ export default function GaProcurementPage() {
 
   // Load configuration & data
   useEffect(() => {
-    const savedSessionId = localStorage.getItem('ga_odoo_session_id') || '';
-    const savedUid = localStorage.getItem('ga_odoo_uid') || '34';
-    setOdooSessionId(savedSessionId);
-    setOdooUid(savedUid);
+    async function loadGaSettings() {
+      let currentSessionId = '';
+      let currentUid = '34';
 
+      try {
+        const res = await fetch('/api/ga/settings');
+        const json = await res.json();
+        if (json.success && json.data) {
+          currentSessionId = json.data.ga_odoo_session_id || '';
+          currentUid = json.data.ga_odoo_uid || '34';
+        }
+      } catch (err) {
+        console.error('Failed to load GA Odoo settings from DB:', err);
+      }
+
+      if (!currentSessionId && typeof window !== 'undefined') {
+        const savedSessionId = localStorage.getItem('ga_odoo_session_id') || '';
+        const savedUid = localStorage.getItem('ga_odoo_uid') || '34';
+
+        if (savedSessionId.trim()) {
+          currentSessionId = savedSessionId;
+          currentUid = savedUid;
+
+          try {
+            await fetch('/api/ga/settings', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                ga_odoo_session_id: currentSessionId,
+                ga_odoo_uid: currentUid,
+              })
+            });
+          } catch (migrateErr) {
+            console.error('Failed to migrate GA Odoo settings to DB:', migrateErr);
+          }
+        }
+      }
+
+      setOdooSessionId(currentSessionId);
+      setOdooUid(currentUid);
+    }
+
+    loadGaSettings();
     fetchData();
     fetchMasterItems();
   }, [activeTab]);
@@ -112,12 +150,27 @@ export default function GaProcurementPage() {
   };
 
   // Save Settings
-  const handleSaveSettings = (e: FormEvent) => {
+  const handleSaveSettings = async (e: FormEvent) => {
     e.preventDefault();
-    localStorage.setItem('ga_odoo_session_id', odooSessionId);
-    localStorage.setItem('ga_odoo_uid', odooUid);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('ga_odoo_session_id', odooSessionId);
+      localStorage.setItem('ga_odoo_uid', odooUid);
+    }
+    try {
+      await fetch('/api/ga/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ga_odoo_session_id: odooSessionId,
+          ga_odoo_uid: odooUid,
+        })
+      });
+    } catch (err) {
+      console.error('Failed to save GA Odoo settings to DB:', err);
+    }
     setShowSettingsModal(false);
   };
+
 
   // Sync Odoo
   const handleSyncOdoo = async () => {
