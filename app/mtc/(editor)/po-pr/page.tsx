@@ -170,6 +170,10 @@ export default function ProcurementTrackingPage() {
   const [newSpUom, setNewSpUom] = useState('Pcs');
   const [newSpIsStocked, setNewSpIsStocked] = useState(true);
 
+  // Multi-item / Bundle linking states
+  const [isBundleMode, setIsBundleMode] = useState(false);
+  const [stagedLinkedParts, setStagedLinkedParts] = useState<{ id: string; nama: string; qty: number; harga: number }[]>([]);
+
   function generateAutoAlias(fullName: string) {
     const clean = fullName
       .replace(/[^a-zA-Z0-9\s]/g, '')
@@ -235,6 +239,7 @@ export default function ProcurementTrackingPage() {
   const [receivePrice, setReceivePrice] = useState(0);
   const [receiveVendor, setReceiveVendor] = useState('');
   const [isStocked, setIsStocked] = useState(true); // true = Restock, false = Direct Use
+  const [receiveParts, setReceiveParts] = useState<{ sparepartId: string; nama: string; qty: number; harga: number }[]>([]);
 
   // Edit SCM Modal States
   const [showEditModal, setShowEditModal] = useState(false);
@@ -754,9 +759,10 @@ export default function ProcurementTrackingPage() {
         body: JSON.stringify({
           id: receivingItem.id,
           tanggalTerima: receiveDate,
-          isStocked: isStocked && receivingItem.sparepartId != null,
+          isStocked: isStocked && (receivingItem.sparepartId != null || receiveParts.length > 0),
           harga: receivePrice,
           vendor: receiveVendor,
+          receivedParts: receiveParts.length > 0 ? receiveParts : undefined,
         }),
       });
       const json = await res.json();
@@ -764,6 +770,7 @@ export default function ProcurementTrackingPage() {
         alert(json.data.msg || 'Penerimaan berhasil dicatat!');
         setShowReceiveModal(false);
         setReceivingItem(null);
+        setReceiveParts([]);
         await fetchData();
       } else {
         alert(`Gagal: ${json.error}`);
@@ -778,6 +785,30 @@ export default function ProcurementTrackingPage() {
   // Handle link manual sparepart
   async function handleLinkSparepart(sparepartId: string) {
     if (!linkingItem) return;
+
+    // Find the sparepart details from linkSuggestions
+    const targetSp = linkSuggestions.find(sp => sp.id === sparepartId);
+    const spName = targetSp ? targetSp.nama : 'Suku Cadang';
+    const spPrice = targetSp ? Number(targetSp.harga) || 0 : 0;
+
+    if (isBundleMode) {
+      if (stagedLinkedParts.some(p => p.id === sparepartId)) {
+        alert('Suku cadang ini sudah masuk dalam daftar!');
+        return;
+      }
+      setStagedLinkedParts([
+        ...stagedLinkedParts,
+        {
+          id: sparepartId,
+          nama: spName,
+          qty: linkingItem.qty, // Default to the main request qty
+          harga: spPrice || Number(linkingItem.harga) || 0
+        }
+      ]);
+      setLinkSearch('');
+      return;
+    }
+
     setActionLoading(`link-${linkingItem.id}`);
     try {
       const res = await fetch('/api/mtc/procurement', {
@@ -786,6 +817,7 @@ export default function ProcurementTrackingPage() {
         body: JSON.stringify({
           id: linkingItem.id,
           sparepartId: sparepartId,
+          linkedPartsJson: null, // Clear bundle json
         }),
       });
       const json = await res.json();
@@ -841,6 +873,25 @@ export default function ProcurementTrackingPage() {
 
       const newSpId = jsonSp.data.id;
 
+      if (isBundleMode) {
+        setStagedLinkedParts([
+          ...stagedLinkedParts,
+          {
+            id: newSpId,
+            nama: newSpNama.trim(),
+            qty: linkingItem.qty,
+            harga: Number(linkingItem.harga) || 0
+          }
+        ]);
+        setNewSpNama('');
+        setNewSpAlias('');
+        setNewSpKategoriId('');
+        setNewSpLokasi('');
+        setNewSpUom('Pcs');
+        alert('✓ Suku cadang baru berhasil ditambahkan ke daftar paket!');
+        return;
+      }
+
       // 2. Link the procurement item to this new spare part ID & set isStocked
       const resProc = await fetch('/api/mtc/procurement', {
         method: 'PATCH',
@@ -849,6 +900,7 @@ export default function ProcurementTrackingPage() {
           id: linkingItem.id,
           sparepartId: newSpId,
           isStocked: newSpIsStocked,
+          linkedPartsJson: null, // Clear bundle json
         }),
       });
       const jsonProc = await resProc.json();
@@ -869,6 +921,40 @@ export default function ProcurementTrackingPage() {
     }
   }
 
+  // Save staged linked parts as bundle
+  async function handleSaveBundleLinks() {
+    if (!linkingItem || stagedLinkedParts.length === 0) return;
+    setActionLoading(`link-${linkingItem.id}`);
+    try {
+      const primarySpId = stagedLinkedParts[0].id;
+      const res = await fetch('/api/mtc/procurement', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: linkingItem.id,
+          sparepartId: primarySpId, // set first item as primary
+          linkedPartsJson: JSON.stringify(stagedLinkedParts),
+          isStocked: newSpIsStocked
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setShowLinkModal(false);
+        setLinkingItem(null);
+        setStagedLinkedParts([]);
+        setIsBundleMode(false);
+        await fetchData();
+        alert('Daftar suku cadang paket gabungan berhasil dihubungkan!');
+      } else {
+        alert(`Gagal menyimpan: ${json.error}`);
+      }
+    } catch (err) {
+      alert('Terjadi kesalahan koneksi.');
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
   // Open modals
   function openReceiveModal(item: TrackingItem) {
     setReceivingItem(item);
@@ -876,6 +962,27 @@ export default function ProcurementTrackingPage() {
     setReceiveVendor(item.vendor || '');
     setReceiveDate(new Date().toISOString().split('T')[0]);
     setIsStocked(item.isStocked || item.sparepartId != null);
+
+    if (item.linkedPartsJson) {
+      try {
+        const parsed = JSON.parse(item.linkedPartsJson);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setReceiveParts(parsed.map((part: any) => ({
+            sparepartId: part.id || part.sparepartId,
+            nama: part.nama,
+            qty: Number(part.qty) || Number(item.qty) || 1,
+            harga: Number(part.harga) || 0,
+          })));
+        } else {
+          setReceiveParts([]);
+        }
+      } catch (e) {
+        setReceiveParts([]);
+      }
+    } else {
+      setReceiveParts([]);
+    }
+
     setShowReceiveModal(true);
   }
 
@@ -889,6 +996,26 @@ export default function ProcurementTrackingPage() {
     setNewSpLokasi('');
     setNewSpUom('Pcs');
     setNewSpIsStocked(true);
+
+    if (item.linkedPartsJson) {
+      try {
+        const parsed = JSON.parse(item.linkedPartsJson);
+        if (Array.isArray(parsed)) {
+          setStagedLinkedParts(parsed);
+          setIsBundleMode(true);
+        } else {
+          setStagedLinkedParts([]);
+          setIsBundleMode(false);
+        }
+      } catch (e) {
+        setStagedLinkedParts([]);
+        setIsBundleMode(false);
+      }
+    } else {
+      setStagedLinkedParts([]);
+      setIsBundleMode(false);
+    }
+
     setShowLinkModal(true);
   }
 
@@ -951,7 +1078,7 @@ export default function ProcurementTrackingPage() {
   }
 
   async function handleUnlinkItem(item: TrackingItem) {
-    if (!confirm(`Apakah Anda yakin ingin memutus hubungan dengan suku cadang "${item.sparepart?.nama}"?\nItem pengadaan akan kembali menjadi Unlinked.`)) {
+    if (!confirm(`Apakah Anda yakin ingin memutus hubungan dengan suku cadang "${item.sparepart?.nama || 'suku cadang terpilih'}"?\nItem pengadaan akan kembali menjadi Unlinked.`)) {
       return;
     }
     setActionLoading(`unlink-${item.id}`);
@@ -962,6 +1089,7 @@ export default function ProcurementTrackingPage() {
         body: JSON.stringify({
           id: item.id,
           sparepartId: null,
+          linkedPartsJson: null,
         }),
       });
       const json = await res.json();
@@ -2732,7 +2860,123 @@ export default function ProcurementTrackingPage() {
 
                                   {/* Odoo Connected Item */}
                                   <td>
-                                    {item.sparepart ? (
+                                    {item.linkedPartsJson ? (() => {
+                                      try {
+                                        const parsed = JSON.parse(item.linkedPartsJson);
+                                        if (Array.isArray(parsed) && parsed.length > 0) {
+                                          return (
+                                            <div>
+                                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                                <span className="badge badge-pur" style={{ fontSize: 9, padding: '2px 6px', fontWeight: 800 }}>📦 Gabungan ({parsed.length} Item)</span>
+                                                {item.statusPr && item.statusPr !== 'READY_ODOO' && (
+                                                  <span className="badge" style={{ fontSize: 8, padding: '1px 5px', fontWeight: 800, ...getStatusBadgeStyles(item.statusPr) }}>
+                                                    {item.statusPr}
+                                                  </span>
+                                                )}
+                                                {item.nomorPo && (
+                                                  <span
+                                                    className="badge"
+                                                    style={{
+                                                      fontSize: 8,
+                                                      padding: '2px 6px',
+                                                      fontWeight: 800,
+                                                      background: isOdooGrDone ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                                      color: isOdooGrDone ? '#22c55e' : '#f87171',
+                                                      border: isOdooGrDone ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)',
+                                                      marginLeft: 4
+                                                    }}
+                                                    title={isOdooGrDone ? "Status Odoo: Receipt sudah divalidate" : "Status Odoo: Receipt belum divalidate"}
+                                                  >
+                                                    {isOdooGrDone ? `✓ PO Odoo: ${item.nomorPo}` : `⚠️ PO Odoo: ${item.nomorPo}`}
+                                                  </span>
+                                                )}
+                                                {item.nomorPo && !isItemReceived && (
+                                                  <span
+                                                    className="badge"
+                                                    style={{
+                                                      fontSize: 8,
+                                                      padding: '2px 6px',
+                                                      fontWeight: 800,
+                                                      background: 'rgba(251, 146, 60, 0.15)',
+                                                      color: '#fb923c',
+                                                      border: '1px solid rgba(251, 146, 60, 0.3)',
+                                                      marginLeft: 4
+                                                    }}
+                                                    title="Belum dicatat Terima Barang di sistem MTC (klik 'Terima Barang')"
+                                                  >
+                                                    📥 Belum Terima Fisik
+                                                  </span>
+                                                )}
+                                                {item.nomorPo && isItemReceived && !isOdooGrDone && (
+                                                  <span
+                                                    className="badge"
+                                                    style={{
+                                                      fontSize: 8,
+                                                      padding: '2px 6px',
+                                                      fontWeight: 800,
+                                                      background: 'rgba(250, 204, 21, 0.15)',
+                                                      color: '#facc15',
+                                                      border: '1px solid rgba(250, 204, 21, 0.3)',
+                                                      marginLeft: 4
+                                                    }}
+                                                    title="Sudah diterima fisik tapi GR di Odoo belum divalidate"
+                                                  >
+                                                    ⚠️ Belum GR Odoo
+                                                  </span>
+                                                )}
+                                              </div>
+                                              <div style={{ display: 'flex', flexDirection: 'column', gap: 3, paddingLeft: 4, marginTop: 6, marginBottom: 6 }}>
+                                                {parsed.map((part: any, partIdx: number) => (
+                                                  <div key={partIdx} style={{ fontSize: 11, color: 'var(--tx2)' }}>
+                                                    🔗 <strong>{part.nama || part.namaItem}</strong> <span style={{ color: 'var(--tx3)', fontSize: 9.5 }}>({part.id || part.sparepartId}) - Qty: {part.qty || 1}</span>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                              <div style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 2, display: 'flex', gap: 6, alignItems: 'center' }}>
+                                                <button
+                                                  type="button"
+                                                  className="btn btn-ghost"
+                                                  onClick={() => openLinkModal(item)}
+                                                  style={{
+                                                    fontSize: 9,
+                                                    padding: '1px 4px',
+                                                    color: 'var(--pur)',
+                                                    height: 'auto',
+                                                    border: '1px solid rgba(168, 85, 247, 0.3)',
+                                                    borderRadius: 4,
+                                                    background: 'rgba(168, 85, 247, 0.05)',
+                                                    lineHeight: 1
+                                                  }}
+                                                  title="Ubah hubungan suku cadang"
+                                                >
+                                                  ✏️ Ubah
+                                                </button>
+                                                ·
+                                                <button
+                                                  type="button"
+                                                  className="btn btn-ghost"
+                                                  onClick={() => handleUnlinkItem(item)}
+                                                  style={{
+                                                    fontSize: 9,
+                                                    padding: '1px 4px',
+                                                    color: 'var(--red)',
+                                                    height: 'auto',
+                                                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                                                    borderRadius: 4,
+                                                    background: 'rgba(239, 68, 68, 0.05)',
+                                                    lineHeight: 1
+                                                  }}
+                                                  title="Putus hubungan suku cadang"
+                                                >
+                                                  ❌ Putus
+                                                </button>
+                                              </div>
+                                            </div>
+                                          );
+                                        }
+                                      } catch (err) {}
+                                      return null;
+                                    })() : item.sparepart ? (
                                       <div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                                           <div style={{ fontWeight: 700, color: 'var(--tx2)', fontSize: 12 }}>{item.sparepart.nama}</div>
@@ -3472,12 +3716,71 @@ export default function ProcurementTrackingPage() {
               <h3>🔗 Hubungkan ke Master Suku Cadang MTC</h3>
               <button className="modal-close" onClick={() => setShowLinkModal(false)}>×</button>
             </div>
-            <div className="modal-body" style={{ padding: 20 }}>
+             <div className="modal-body" style={{ padding: 20 }}>
               <div style={{ marginBottom: 16, borderBottom: '1px solid var(--br)', paddingBottom: 10 }}>
                 <label className="form-label" style={{ fontSize: 10, color: 'var(--tx3)' }}>NAMA BARANG DI SHEETS</label>
                 <div style={{ fontSize: 13, fontWeight: 800, marginTop: 2, color: 'var(--tx)' }}>{linkingItem.originalName}</div>
                 <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 2 }}>Qty: {linkingItem.qty} Unit · Urgensi: {linkingItem.urgency}</div>
               </div>
+
+              {/* Bundle Mode Toggle */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, background: 'rgba(255,255,255,0.05)', padding: '10px 14px', borderRadius: 8, border: '1px solid var(--br)' }}>
+                <span style={{ fontSize: 11, fontWeight: 800 }}>📦 Mode Paket Gabungan (Multi-Item)</span>
+                <label style={{ position: 'relative', display: 'inline-block', width: 40, height: 20 }}>
+                  <input
+                    type="checkbox"
+                    checked={isBundleMode}
+                    onChange={(e) => {
+                      setIsBundleMode(e.target.checked);
+                      if (!e.target.checked) setStagedLinkedParts([]);
+                    }}
+                    style={{ opacity: 0, width: 0, height: 0 }}
+                  />
+                  <span style={{ position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: isBundleMode ? 'var(--pur)' : 'var(--sf3)', transition: '0.3s', borderRadius: 20 }} />
+                  <span style={{ position: 'absolute', content: '""', height: 14, width: 14, left: isBundleMode ? 22 : 4, bottom: 3, backgroundColor: 'white', transition: '0.3s', borderRadius: '50%' }} />
+                </label>
+              </div>
+
+              {/* List of Staged Linked Parts */}
+              {isBundleMode && stagedLinkedParts.length > 0 && (
+                <div style={{ marginBottom: 16, border: '1px solid var(--br)', borderRadius: 8, background: 'var(--sf2)', padding: 10 }}>
+                  <div style={{ fontSize: 10, color: 'var(--tx3)', fontWeight: 800, textTransform: 'uppercase', marginBottom: 6 }}>Suku Cadang Terpilih ({stagedLinkedParts.length}):</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {stagedLinkedParts.map((part, idx) => (
+                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg)', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--br)' }}>
+                        <div style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
+                          <div style={{ fontSize: 11.5, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{part.nama}</div>
+                          <div style={{ fontSize: 9.5, color: 'var(--tx3)' }}>{part.id}</div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                            <span style={{ fontSize: 9.5, color: 'var(--tx2)' }}>Qty: {part.qty}</span>
+                            <span style={{ fontSize: 9, color: 'var(--pur)' }}>Rp {part.harga.toLocaleString('id-ID')}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setStagedLinkedParts(stagedLinkedParts.filter((_, i) => i !== idx))}
+                            style={{ background: 'none', border: 'none', color: 'var(--red)', cursor: 'pointer', fontSize: 14, padding: '0 4px' }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Button to Save Bundle */}
+                  <button
+                    type="button"
+                    className="btn btn-pur btn-sm"
+                    onClick={handleSaveBundleLinks}
+                    disabled={actionLoading !== null}
+                    style={{ width: '100%', marginTop: 12, fontWeight: 700, fontSize: 11, height: 34 }}
+                  >
+                    {actionLoading !== null ? 'Memproses...' : '💾 Simpan & Hubungkan Paket Gabungan'}
+                  </button>
+                </div>
+              )}
 
               {/* Tab Selector */}
               <div style={{ display: 'flex', borderBottom: '1px solid var(--br)', marginBottom: 16, background: 'rgba(0,0,0,0.15)', borderRadius: '6px 6px 0 0', padding: 2 }}>
@@ -3709,7 +4012,9 @@ export default function ProcurementTrackingPage() {
                     />
                   </div>
                   <div>
-                    <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Harga Satuan Aktual (Rp) <span style={{ color: 'var(--red)' }}>*</span></label>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>
+                      {receiveParts.length > 0 ? "Total Harga Paket (Kalkulasi) (Rp)" : "Harga Satuan Aktual (Rp) *"}
+                    </label>
                     <input
                       type="number"
                       required
@@ -3717,7 +4022,13 @@ export default function ProcurementTrackingPage() {
                       step="any"
                       className="form-input"
                       value={receivePrice}
-                      onChange={(e) => setReceivePrice(Math.max(0, parseFloat(e.target.value) || 0))}
+                      readOnly={receiveParts.length > 0}
+                      onChange={(e) => {
+                        if (receiveParts.length === 0) {
+                          setReceivePrice(Math.max(0, parseFloat(e.target.value) || 0));
+                        }
+                      }}
+                      style={{ background: receiveParts.length > 0 ? 'var(--sf3)' : 'var(--bg)', opacity: receiveParts.length > 0 ? 0.8 : 1 }}
                     />
                     {receivePrice > 0 && (
                       <div style={{ fontSize: 11, color: 'var(--pur)', marginTop: 4, fontWeight: 600 }}>
@@ -3726,6 +4037,63 @@ export default function ProcurementTrackingPage() {
                     )}
                   </div>
                 </div>
+
+                {/* PARTS BREAKDOWN FOR BUNDLE/GABUNGAN */}
+                {receiveParts.length > 0 && (
+                  <div style={{ marginBottom: 14, border: '1px solid var(--br)', borderRadius: 8, background: 'var(--sf2)', padding: 12 }}>
+                    <div style={{ fontSize: 10, color: 'var(--tx3)', fontWeight: 800, textTransform: 'uppercase', marginBottom: 8 }}>
+                      Rincian Penerimaan Paket Gabungan:
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {receiveParts.map((part, idx) => (
+                        <div key={idx} style={{ paddingBottom: 10, borderBottom: idx < receiveParts.length - 1 ? '1px dashed var(--br)' : 'none' }}>
+                          <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>
+                            🔗 {part.nama} <span style={{ color: 'var(--tx3)', fontSize: 9.5 }}>({part.sparepartId})</span>
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: 10 }}>
+                            <div>
+                              <label style={{ fontSize: 9, color: 'var(--tx3)', fontWeight: 700 }}>Qty Diterima</label>
+                              <input
+                                type="number"
+                                required
+                                min="1"
+                                className="form-input"
+                                value={part.qty}
+                                onChange={(e) => {
+                                  const val = Math.max(1, parseInt(e.target.value) || 1);
+                                  const newParts = receiveParts.map((p, i) => i === idx ? { ...p, qty: val } : p);
+                                  setReceiveParts(newParts);
+                                  const sum = newParts.reduce((acc, curr) => acc + curr.harga * curr.qty, 0);
+                                  setReceivePrice(sum);
+                                }}
+                                style={{ height: 32, fontSize: 11 }}
+                              />
+                            </div>
+                            <div>
+                              <label style={{ fontSize: 9, color: 'var(--tx3)', fontWeight: 700 }}>Harga Aktual (Rp)</label>
+                              <input
+                                type="number"
+                                required
+                                min="0"
+                                step="any"
+                                className="form-input"
+                                value={part.harga}
+                                onChange={(e) => {
+                                  const val = Math.max(0, parseFloat(e.target.value) || 0);
+                                  const newParts = receiveParts.map((p, i) => i === idx ? { ...p, harga: val } : p);
+                                  setReceiveParts(newParts);
+                                  const sum = newParts.reduce((acc, curr) => acc + curr.harga * curr.qty, 0);
+                                  setReceivePrice(sum);
+                                }}
+                                style={{ height: 32, fontSize: 11 }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 14, marginBottom: 14 }}>
                   <div>
@@ -3755,12 +4123,12 @@ export default function ProcurementTrackingPage() {
                         borderRadius: 8,
                         border: isStocked ? '2px solid var(--grn)' : '1px solid var(--br)',
                         background: isStocked ? 'rgba(34, 197, 94, 0.05)' : 'var(--sf2)',
-                        cursor: receivingItem.sparepartId ? 'pointer' : 'not-allowed',
-                        opacity: receivingItem.sparepartId ? 1 : 0.5,
+                        cursor: (receivingItem.sparepartId || receiveParts.length > 0) ? 'pointer' : 'not-allowed',
+                        opacity: (receivingItem.sparepartId || receiveParts.length > 0) ? 1 : 0.5,
                         transition: 'all 0.15s'
                       }}
                       onClick={() => {
-                        if (receivingItem.sparepartId) setIsStocked(true);
+                        if (receivingItem.sparepartId || receiveParts.length > 0) setIsStocked(true);
                       }}
                     >
                       <span style={{ fontSize: 20, marginBottom: 4 }}>📦</span>
@@ -3794,7 +4162,7 @@ export default function ProcurementTrackingPage() {
                     </label>
                   </div>
 
-                  {!receivingItem.sparepartId && (
+                  {!receivingItem.sparepartId && receiveParts.length === 0 && (
                     <div style={{ fontSize: 9, color: 'var(--red)', fontWeight: 700, marginTop: 8 }}>
                       ⚠️ Item ini belum dihubungkan ke Master Suku Cadang. Anda hanya bisa mencatat sebagai **&quot;Langsung Pakai (Non-Stok)&quot;**. Hubungkan terlebih dahulu jika ingin restock kuantitas gudang.
                     </div>

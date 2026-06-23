@@ -191,6 +191,7 @@ model ProcurementTracking {
   isStocked        Boolean   @default(false) @map("is_stocked")
   sheetId          String?   @map("sheet_id")
   odooNotes        String?   @map("odoo_notes")       // Log pesan Chatter dari Odoo
+  linkedPartsJson  String?   @map("linked_parts_json")
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt        DateTime  @updatedAt @map("updated_at")
 

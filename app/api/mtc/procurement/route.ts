@@ -282,6 +282,7 @@ export async function PATCH(req: NextRequest) {
     odooNotes,
     sparepartId,
     isStocked,
+    linkedPartsJson,
   } = body;
 
   if (!id) return err('ID record wajib diisi', 400);
@@ -343,6 +344,7 @@ export async function PATCH(req: NextRequest) {
         odooNotes: odooNotes !== undefined ? (odooNotes || null) : undefined,
         sparepartId: sparepartId !== undefined ? (sparepartId || null) : undefined,
         isStocked: isStocked !== undefined ? Boolean(isStocked) : undefined,
+        linkedPartsJson: linkedPartsJson !== undefined ? (linkedPartsJson || null) : undefined,
       },
     });
 
