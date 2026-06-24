@@ -4,34 +4,92 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { prismaGa } from '@/lib/prisma-ga';
+import { cookies, headers } from 'next/headers';
 
-export const authOptions: NextAuthOptions = {
-  /** Wajib konsisten di VPS; tanpa ini cookie/CSRF di balik HTTPS bisa bermasalah. */
-  secret: process.env.NEXTAUTH_SECRET,
-  session: { strategy: 'jwt', maxAge: 8 * 60 * 60 },
+export function getAuthOptions(): NextAuthOptions {
+  let tenant: 'mtc' | 'ga' = 'mtc'; // default
 
-  providers: [
-    CredentialsProvider({
-      id: 'credentials',
-      name: 'Credentials',
-      credentials: {
-        username: { label: 'Username', type: 'text' },
-        password: { label: 'Password', type: 'password' },
-        tenant: { label: 'Tenant', type: 'text' },
+  try {
+    const cookieStore = cookies();
+    const headerStore = headers();
+    const referer = headerStore.get('referer') || '';
+
+    if (referer.includes('/ga/') || referer.includes('/ga') || referer.includes('/api/ga')) {
+      tenant = 'ga';
+    } else if (referer.includes('/mtc/') || referer.includes('/mtc') || referer.includes('/api/mtc')) {
+      tenant = 'mtc';
+    } else {
+      // Cek cookie mana yang ada
+      const hasGa = cookieStore.has('next-auth.session-token.ga') || cookieStore.has('__Secure-next-auth.session-token.ga');
+      const hasMtc = cookieStore.has('next-auth.session-token.mtc') || cookieStore.has('__Secure-next-auth.session-token.mtc');
+      if (hasGa && !hasMtc) {
+        tenant = 'ga';
+      }
+    }
+  } catch (e) {
+    // Catch error at build time
+  }
+
+  const isSecure = process.env.NEXTAUTH_URL?.startsWith('https://') ?? false;
+  const cookiePrefix = isSecure ? '__Secure-' : '';
+  const sessionCookieName = `${cookiePrefix}next-auth.session-token.${tenant}`;
+
+  return {
+    secret: process.env.NEXTAUTH_SECRET,
+    session: { strategy: 'jwt', maxAge: 8 * 60 * 60 },
+    cookies: {
+      sessionToken: {
+        name: sessionCookieName,
+        options: {
+          httpOnly: true,
+          sameSite: 'lax',
+          path: '/',
+          secure: isSecure,
+        },
       },
-      async authorize(credentials) {
-        try {
-          if (!credentials?.username || !credentials?.password) return null;
-          const tenant = (credentials.tenant === 'ga' ? 'ga' : 'mtc') as 'mtc' | 'ga';
+    },
 
-          if (tenant === 'mtc') {
-            const user = await prisma.user.findUnique({
+    providers: [
+      CredentialsProvider({
+        id: 'credentials',
+        name: 'Credentials',
+        credentials: {
+          username: { label: 'Username', type: 'text' },
+          password: { label: 'Password', type: 'password' },
+          tenant: { label: 'Tenant', type: 'text' },
+        },
+        async authorize(credentials) {
+          try {
+            if (!credentials?.username || !credentials?.password) return null;
+            const targetTenant = (credentials.tenant === 'ga' ? 'ga' : 'mtc') as 'mtc' | 'ga';
+
+            if (targetTenant === 'mtc') {
+              const user = await prisma.user.findUnique({
+                where: { username: credentials.username },
+              });
+              if (!user || !user.aktif) return null;
+              const valid = await bcrypt.compare(credentials.password, user.passwordHash);
+              if (!valid) return null;
+              await prisma.user.update({
+                where: { id: user.id },
+                data: { lastLogin: new Date() },
+              });
+              return {
+                id: String(user.id),
+                name: user.namaLengkap,
+                email: user.username,
+                role: user.role,
+                tenant: 'mtc' as const,
+              };
+            }
+
+            const user = await prismaGa.user.findUnique({
               where: { username: credentials.username },
             });
             if (!user || !user.aktif) return null;
             const valid = await bcrypt.compare(credentials.password, user.passwordHash);
             if (!valid) return null;
-            await prisma.user.update({
+            await prismaGa.user.update({
               where: { id: user.id },
               data: { lastLogin: new Date() },
             });
@@ -40,54 +98,36 @@ export const authOptions: NextAuthOptions = {
               name: user.namaLengkap,
               email: user.username,
               role: user.role,
-              tenant: 'mtc' as const,
+              tenant: 'ga' as const,
             };
+          } catch (error) {
+            console.error("Authorize error callback details:", error);
+            throw error;
           }
+        },
+      }),
+    ],
 
-          const user = await prismaGa.user.findUnique({
-            where: { username: credentials.username },
-          });
-          if (!user || !user.aktif) return null;
-          const valid = await bcrypt.compare(credentials.password, user.passwordHash);
-          if (!valid) return null;
-          await prismaGa.user.update({
-            where: { id: user.id },
-            data: { lastLogin: new Date() },
-          });
-          return {
-            id: String(user.id),
-            name: user.namaLengkap,
-            email: user.username,
-            role: user.role,
-            tenant: 'ga' as const,
-          };
-        } catch (error) {
-          console.error("Authorize error callback details:", error);
-          throw error;
+    callbacks: {
+      async jwt({ token, user }) {
+        if (user) {
+          token.role = (user as { role: string }).role;
+          token.id = user.id;
+          token.tenant = (user as { tenant: 'mtc' | 'ga' }).tenant;
         }
+        return token;
       },
-    }),
-  ],
-
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.role = (user as { role: string }).role;
-        token.id = user.id;
-        token.tenant = (user as { tenant: 'mtc' | 'ga' }).tenant;
-      }
-      return token;
+      async session({ session, token }) {
+        if (session.user) {
+          session.user.role = token.role as string;
+          session.user.id = token.id as string;
+          session.user.tenant = token.tenant as 'mtc' | 'ga';
+        }
+        return session;
+      },
     },
-    async session({ session, token }) {
-      if (session.user) {
-        session.user.role = token.role as string;
-        session.user.id = token.id as string;
-        session.user.tenant = token.tenant as 'mtc' | 'ga';
-      }
-      return session;
-    },
-  },
-};
+  };
+}
 
 export function isMtcTenant(session: { user?: { tenant?: string } } | null) {
   return session?.user?.tenant === 'mtc';
@@ -99,14 +139,14 @@ export function isGaTenant(session: { user?: { tenant?: string } } | null) {
 
 /** MTC atau GA: harus login + tenant cocok */
 export async function requireTenant(tenant: 'mtc' | 'ga') {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession(getAuthOptions());
   if (!session) return null;
   if (session.user.tenant !== tenant) return null;
   return session;
 }
 
 export async function requireEditor() {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession(getAuthOptions());
   if (!session) return null;
   if (session.user.role !== 'editor') return null;
   return session;
@@ -136,7 +176,7 @@ export async function requireGaEditor() {
 }
 
 export async function requireAuth() {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession(getAuthOptions());
   return session ?? null;
 }
 
