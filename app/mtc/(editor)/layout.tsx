@@ -4,7 +4,7 @@ import { getAuthOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 
 export default async function MtcEditorLayout({ children }: { children: React.ReactNode }) {
-  const session = await getServerSession(getAuthOptions());
+  const session = await getServerSession(getAuthOptions('mtc'));
   if (!session || session.user.tenant !== 'mtc') {
     redirect('/mtc/login');
   }

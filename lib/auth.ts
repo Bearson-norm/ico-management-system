@@ -4,32 +4,8 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { prismaGa } from '@/lib/prisma-ga';
-import { cookies, headers } from 'next/headers';
 
-export function getAuthOptions(): NextAuthOptions {
-  let tenant: 'mtc' | 'ga' = 'mtc'; // default
-
-  try {
-    const cookieStore = cookies();
-    const headerStore = headers();
-    const referer = headerStore.get('referer') || '';
-
-    if (referer.includes('/ga/') || referer.includes('/ga') || referer.includes('/api/ga')) {
-      tenant = 'ga';
-    } else if (referer.includes('/mtc/') || referer.includes('/mtc') || referer.includes('/api/mtc')) {
-      tenant = 'mtc';
-    } else {
-      // Cek cookie mana yang ada
-      const hasGa = cookieStore.has('next-auth.session-token.ga') || cookieStore.has('__Secure-next-auth.session-token.ga');
-      const hasMtc = cookieStore.has('next-auth.session-token.mtc') || cookieStore.has('__Secure-next-auth.session-token.mtc');
-      if (hasGa && !hasMtc) {
-        tenant = 'ga';
-      }
-    }
-  } catch (e) {
-    // Catch error at build time
-  }
-
+export function getAuthOptions(tenant: 'mtc' | 'ga'): NextAuthOptions {
   const isSecure = process.env.NEXTAUTH_URL?.startsWith('https://') ?? false;
   const cookiePrefix = isSecure ? '__Secure-' : '';
   const sessionCookieName = `${cookiePrefix}next-auth.session-token.${tenant}`;
@@ -139,14 +115,14 @@ export function isGaTenant(session: { user?: { tenant?: string } } | null) {
 
 /** MTC atau GA: harus login + tenant cocok */
 export async function requireTenant(tenant: 'mtc' | 'ga') {
-  const session = await getServerSession(getAuthOptions());
+  const session = await getServerSession(getAuthOptions(tenant));
   if (!session) return null;
   if (session.user.tenant !== tenant) return null;
   return session;
 }
 
 export async function requireEditor() {
-  const session = await getServerSession(getAuthOptions());
+  const session = await getServerSession(getAuthOptions('mtc'));
   if (!session) return null;
   if (session.user.role !== 'editor') return null;
   return session;
@@ -176,7 +152,7 @@ export async function requireGaEditor() {
 }
 
 export async function requireAuth() {
-  const session = await getServerSession(getAuthOptions());
+  const session = await getServerSession(getAuthOptions('mtc'));
   return session ?? null;
 }
 
