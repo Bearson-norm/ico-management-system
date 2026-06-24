@@ -5,7 +5,6 @@ import { getAuthOptions } from '@/lib/auth';
 export async function GET(req: NextRequest) {
   try {
     const referer = req.headers.get('referer') || '';
-    const cookiesList = req.headers.get('cookie') || '';
     
     console.log('[DEBUG-SESSION] Referer:', referer);
     console.log('[DEBUG-SESSION] NEXTAUTH_URL:', process.env.NEXTAUTH_URL);
