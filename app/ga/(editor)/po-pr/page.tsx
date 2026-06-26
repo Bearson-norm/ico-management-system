@@ -1040,99 +1040,106 @@ export default function GaProcurementPage() {
                           {group.items.map((item) => (
                             <tr key={item.id}>
                               <td style={{ verticalAlign: 'middle' }}>
-                                <div style={{ fontWeight: '600', color: 'var(--ga-tx)' }}>{item.originalName}</div>
                                 {item.itemId ? (
-                                  <div style={{ fontSize: '11px', color: 'var(--ga-grn)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                                      <polyline points="20 6 9 17 4 12" />
-                                    </svg>
-                                    <span>Terhubung: <strong>{item.item?.nama || '—'}</strong> ({item.itemId})</span>
-                                    <span style={{ color: 'var(--ga-tx3)' }}>·</span>
-                                    <button
-                                      type="button"
-                                      onClick={() => openLinkModal(item)}
-                                      style={{
-                                        background: 'none',
-                                        border: 'none',
-                                        padding: 0,
-                                        color: '#c084fc',
-                                        cursor: 'pointer',
-                                        fontSize: '10.5px',
-                                        fontWeight: 'bold',
-                                        textDecoration: 'underline'
-                                      }}
-                                    >
-                                      ✏️ Ubah
-                                    </button>
-                                    <span style={{ color: 'var(--ga-tx3)' }}>·</span>
-                                    <button
-                                      type="button"
-                                      onClick={async () => {
-                                        if (confirm(`Apakah Anda yakin ingin memutus hubungan dengan barang master?\nItem pengadaan ini akan kembali menjadi Unlinked.`)) {
-                                          try {
-                                            const res = await fetch('/api/ga/procurement', {
-                                              method: 'PATCH',
-                                              headers: { 'Content-Type': 'application/json' },
-                                              body: JSON.stringify({
-                                                id: item.id,
-                                                itemId: null,
-                                              }),
-                                            });
-                                            const json = await res.json();
-                                            if (json.success) {
-                                              fetchData();
-                                              fetchMasterItems();
-                                            } else {
-                                              alert('Gagal memutus hubungan: ' + json.error);
+                                  <>
+                                    <div style={{ fontWeight: '600', color: 'var(--ga-tx)' }}>{item.item?.nama || item.originalName}</div>
+                                    <div style={{ fontSize: '11px', color: 'var(--ga-grn)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                        <polyline points="20 6 9 17 4 12" />
+                                      </svg>
+                                      <span>Terhubung Master: <span className="text-mono" style={{ fontWeight: 'bold' }}>{item.itemId}</span></span>
+                                      <span style={{ color: 'var(--ga-tx3)' }}>·</span>
+                                      <span style={{ color: 'var(--ga-tx3)' }} title={`Nama Asli Odoo: ${item.originalName}`}>Odoo: {item.originalName}</span>
+                                      <span style={{ color: 'var(--ga-tx3)' }}>·</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => openLinkModal(item)}
+                                        style={{
+                                          background: 'none',
+                                          border: 'none',
+                                          padding: 0,
+                                          color: '#c084fc',
+                                          cursor: 'pointer',
+                                          fontSize: '10.5px',
+                                          fontWeight: 'bold',
+                                          textDecoration: 'underline'
+                                        }}
+                                      >
+                                        ✏️ Ubah
+                                      </button>
+                                      <span style={{ color: 'var(--ga-tx3)' }}>·</span>
+                                      <button
+                                        type="button"
+                                        onClick={async () => {
+                                          if (confirm(`Apakah Anda yakin ingin memutus hubungan dengan barang master?\nItem pengadaan ini akan kembali menjadi Unlinked.`)) {
+                                            try {
+                                              const res = await fetch('/api/ga/procurement', {
+                                                method: 'PATCH',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({
+                                                  id: item.id,
+                                                  itemId: null,
+                                                }),
+                                              });
+                                              const json = await res.json();
+                                              if (json.success) {
+                                                fetchData();
+                                                fetchMasterItems();
+                                              } else {
+                                                alert('Gagal memutus hubungan: ' + json.error);
+                                              }
+                                            } catch (err) {
+                                              console.error(err);
+                                              alert('Terjadi kesalahan koneksi.');
                                             }
-                                          } catch (err) {
-                                            console.error(err);
-                                            alert('Terjadi kesalahan koneksi.');
                                           }
-                                        }
-                                      }}
-                                      style={{
-                                        background: 'none',
-                                        border: 'none',
-                                        padding: 0,
-                                        color: 'var(--red)',
-                                        cursor: 'pointer',
-                                        fontSize: '10.5px',
-                                        fontWeight: 'bold',
-                                        textDecoration: 'underline'
-                                      }}
-                                    >
-                                      ❌ Putus
-                                    </button>
-                                  </div>
+                                        }}
+                                        style={{
+                                          background: 'none',
+                                          border: 'none',
+                                          padding: 0,
+                                          color: 'var(--red)',
+                                          cursor: 'pointer',
+                                          fontSize: '10.5px',
+                                          fontWeight: 'bold',
+                                          textDecoration: 'underline'
+                                        }}
+                                      >
+                                        ❌ Putus
+                                      </button>
+                                    </div>
+                                  </>
                                 ) : (
-                                  <div style={{ fontSize: '11px', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span className="badge badge-red" style={{ fontSize: 9, padding: '2px 6px', display: 'inline-flex', alignItems: 'center', gap: '3px', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
-                                      ▲ Unlinked / General
-                                    </span>
-                                    <button
-                                      type="button"
-                                      onClick={() => openLinkModal(item)}
-                                      style={{
-                                        background: 'rgba(168, 85, 247, 0.1)',
-                                        border: '1px solid rgba(168, 85, 247, 0.3)',
-                                        color: '#c084fc',
-                                        borderRadius: '4px',
-                                        padding: '2px 8px',
-                                        fontSize: '10px',
-                                        fontWeight: 'bold',
-                                        cursor: 'pointer',
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '3px',
-                                        transition: 'background 0.2s'
-                                      }}
-                                      onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(168, 85, 247, 0.2)')}
-                                      onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(168, 85, 247, 0.1)')}
-                                    >
-                                      🔗 Hubungkan
-                                    </button>
-                                  </div>
+                                  <>
+                                    <div style={{ fontWeight: '600', color: 'var(--ga-tx)' }}>{item.originalName}</div>
+                                    <div style={{ fontSize: '11px', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                      <span className="badge badge-red" style={{ fontSize: 9, padding: '2px 6px', display: 'inline-flex', alignItems: 'center', gap: '3px', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+                                        ▲ Unlinked / General
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => openLinkModal(item)}
+                                        style={{
+                                          background: 'rgba(168, 85, 247, 0.1)',
+                                          border: '1px solid rgba(168, 85, 247, 0.3)',
+                                          color: '#c084fc',
+                                          borderRadius: '4px',
+                                          padding: '2px 8px',
+                                          fontSize: '10px',
+                                          fontWeight: 'bold',
+                                          cursor: 'pointer',
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '3px',
+                                          transition: 'background 0.2s'
+                                        }}
+                                        onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(168, 85, 247, 0.2)')}
+                                        onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(168, 85, 247, 0.1)')}
+                                      >
+                                        🔗 Hubungkan
+                                      </button>
+                                    </div>
+                                  </>
                                 )}
                                 {item.keterangan && (
                                   <div style={{ fontSize: '11px', color: 'var(--ga-tx3)', marginTop: '2px', fontStyle: 'italic', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', maxWidth: '280px' }} title={item.keterangan}>
