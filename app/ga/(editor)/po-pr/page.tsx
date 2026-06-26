@@ -53,6 +53,21 @@ export default function GaProcurementPage() {
   const [editItem, setEditItem] = useState<ProcurementTracking | null>(null);
   const [selectedTracking, setSelectedTracking] = useState<ProcurementTracking | null>(null);
 
+  // Link Manual Modal States
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [linkingItem, setLinkingItem] = useState<ProcurementTracking | null>(null);
+  const [linkSearch, setLinkSearch] = useState('');
+  const [isCreatingNewItem, setIsCreatingNewItem] = useState(false);
+  const [categories, setCategories] = useState<{ id: number; nama: string }[]>([]);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  // New Master Item Form States
+  const [newItemNama, setNewItemNama] = useState('');
+  const [newItemUom, setNewItemUom] = useState('Pcs');
+  const [newItemHarga, setNewItemHarga] = useState('');
+  const [newItemLokasi, setNewItemLokasi] = useState('');
+  const [newItemKategoriId, setNewItemKategoriId] = useState('');
+
   // Form states
   const [addForm, setAddForm] = useState({
     originalName: '',
@@ -122,7 +137,20 @@ export default function GaProcurementPage() {
     loadGaSettings();
     fetchData();
     fetchMasterItems();
+    fetchCategories();
   }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const res = await fetch('/api/ga/kategori');
+      const json = await res.json();
+      if (json.success) {
+        setCategories(json.data || []);
+      }
+    } catch (e) {
+      console.error('Gagal mengambil kategori GA', e);
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -332,6 +360,121 @@ export default function GaProcurementPage() {
     });
     setShowReceiveModal(true);
   };
+
+  const openLinkModal = (item: ProcurementTracking) => {
+    setLinkingItem(item);
+    setLinkSearch('');
+    setIsCreatingNewItem(false);
+    setNewItemNama(item.originalName);
+    setNewItemUom(item.item?.uom || 'Pcs');
+    setNewItemHarga(item.harga != null ? String(item.harga) : '');
+    setNewItemLokasi('');
+    setNewItemKategoriId('');
+    setShowLinkModal(true);
+  };
+
+  const handleLinkItem = async (itemId: string | null) => {
+    if (!linkingItem) return;
+    if (itemId === null) {
+      if (!confirm(`Apakah Anda yakin ingin memutus hubungan dengan barang master?\nItem pengadaan ini akan kembali menjadi Unlinked.`)) {
+        return;
+      }
+    }
+    setActionLoading(`link-${linkingItem.id}`);
+    try {
+      const res = await fetch('/api/ga/procurement', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: linkingItem.id,
+          itemId,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setShowLinkModal(false);
+        setLinkingItem(null);
+        await fetchData();
+        await fetchMasterItems();
+      } else {
+        alert('Gagal menghubungkan barang: ' + json.error);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Terjadi kesalahan koneksi.');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleCreateAndLinkItem = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!linkingItem) return;
+    if (!newItemNama.trim()) {
+      alert('Nama barang master wajib diisi!');
+      return;
+    }
+    setActionLoading(`create-link-${linkingItem.id}`);
+    try {
+      // 1. Create the new item in master DB
+      const resCreate = await fetch('/api/ga/items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nama: newItemNama.trim(),
+          uom: newItemUom || 'Pcs',
+          harga: newItemHarga ? Number(newItemHarga) : (Number(linkingItem.harga) || 0),
+          lokasi: newItemLokasi.trim() || null,
+          kategoriId: newItemKategoriId ? Number(newItemKategoriId) : null,
+        }),
+      });
+      const jsonCreate = await resCreate.json();
+      if (!jsonCreate.success) {
+        alert(`Gagal mendaftarkan barang baru: ${jsonCreate.error}`);
+        setActionLoading(null);
+        return;
+      }
+
+      const newId = jsonCreate.data.id;
+
+      // 2. Link the procurement item to this new item ID
+      const resLink = await fetch('/api/ga/procurement', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: linkingItem.id,
+          itemId: newId,
+        }),
+      });
+      const jsonLink = await resLink.json();
+      if (jsonLink.success) {
+        setShowLinkModal(false);
+        setLinkingItem(null);
+        setLinkSearch('');
+        await fetchData();
+        await fetchMasterItems();
+        alert('Barang baru berhasil dibuat dan dihubungkan!');
+      } else {
+        alert(`Gagal menghubungkan: ${jsonLink.error}`);
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Terjadi kesalahan jaringan.');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const linkSuggestions = useMemo(() => {
+    if (!linkSearch.trim()) return masterItems;
+    const q = linkSearch.toLowerCase();
+    return masterItems.filter(
+      (item) =>
+        item.nama.toLowerCase().includes(q) ||
+        item.id.toLowerCase().includes(q) ||
+        (item.kodeBarang && item.kodeBarang.toLowerCase().includes(q))
+    );
+  }, [masterItems, linkSearch]);
 
   const formatRupiah = (value: number | null) => {
     if (value === null) return '—';
@@ -899,15 +1042,96 @@ export default function GaProcurementPage() {
                               <td style={{ verticalAlign: 'middle' }}>
                                 <div style={{ fontWeight: '600', color: 'var(--ga-tx)' }}>{item.originalName}</div>
                                 {item.itemId ? (
-                                  <div style={{ fontSize: '11px', color: 'var(--ga-grn)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <div style={{ fontSize: '11px', color: 'var(--ga-grn)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                                       <polyline points="20 6 9 17 4 12" />
                                     </svg>
-                                    Terhubung Master: {item.itemId}
+                                    <span>Terhubung: <strong>{item.item?.nama || '—'}</strong> ({item.itemId})</span>
+                                    <span style={{ color: 'var(--ga-tx3)' }}>·</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => openLinkModal(item)}
+                                      style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        padding: 0,
+                                        color: '#c084fc',
+                                        cursor: 'pointer',
+                                        fontSize: '10.5px',
+                                        fontWeight: 'bold',
+                                        textDecoration: 'underline'
+                                      }}
+                                    >
+                                      ✏️ Ubah
+                                    </button>
+                                    <span style={{ color: 'var(--ga-tx3)' }}>·</span>
+                                    <button
+                                      type="button"
+                                      onClick={async () => {
+                                        if (confirm(`Apakah Anda yakin ingin memutus hubungan dengan barang master?\nItem pengadaan ini akan kembali menjadi Unlinked.`)) {
+                                          try {
+                                            const res = await fetch('/api/ga/procurement', {
+                                              method: 'PATCH',
+                                              headers: { 'Content-Type': 'application/json' },
+                                              body: JSON.stringify({
+                                                id: item.id,
+                                                itemId: null,
+                                              }),
+                                            });
+                                            const json = await res.json();
+                                            if (json.success) {
+                                              fetchData();
+                                              fetchMasterItems();
+                                            } else {
+                                              alert('Gagal memutus hubungan: ' + json.error);
+                                            }
+                                          } catch (err) {
+                                            console.error(err);
+                                            alert('Terjadi kesalahan koneksi.');
+                                          }
+                                        }
+                                      }}
+                                      style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        padding: 0,
+                                        color: 'var(--red)',
+                                        cursor: 'pointer',
+                                        fontSize: '10.5px',
+                                        fontWeight: 'bold',
+                                        textDecoration: 'underline'
+                                      }}
+                                    >
+                                      ❌ Putus
+                                    </button>
                                   </div>
                                 ) : (
-                                  <div style={{ fontSize: '11px', color: 'var(--red)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    ⚠️ Unlinked / General
+                                  <div style={{ fontSize: '11px', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span className="badge badge-red" style={{ fontSize: 9, padding: '2px 6px', display: 'inline-flex', alignItems: 'center', gap: '3px', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+                                      ▲ Unlinked / General
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => openLinkModal(item)}
+                                      style={{
+                                        background: 'rgba(168, 85, 247, 0.1)',
+                                        border: '1px solid rgba(168, 85, 247, 0.3)',
+                                        color: '#c084fc',
+                                        borderRadius: '4px',
+                                        padding: '2px 8px',
+                                        fontSize: '10px',
+                                        fontWeight: 'bold',
+                                        cursor: 'pointer',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '3px',
+                                        transition: 'background 0.2s'
+                                      }}
+                                      onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(168, 85, 247, 0.2)')}
+                                      onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(168, 85, 247, 0.1)')}
+                                    >
+                                      🔗 Hubungkan
+                                    </button>
                                   </div>
                                 )}
                                 {item.keterangan && (
@@ -1239,6 +1463,9 @@ export default function GaProcurementPage() {
                     </option>
                   ))}
                 </select>
+                <small style={{ color: 'var(--ga-tx3)', marginTop: '4px', display: 'block', fontSize: '11px', lineHeight: '1.4' }}>
+                  Barang tidak terdaftar? Batal lalu gunakan tombol <strong>🔗 Hubungkan</strong> di baris barang untuk mendaftarkannya terlebih dahulu.
+                </small>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '10px' }}>
@@ -1313,6 +1540,203 @@ export default function GaProcurementPage() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* MODAL LINK MANUAL BARANG GA */}
+      {showLinkModal && linkingItem && (
+        <div className="modal-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'fixed', inset: 0, zIndex: 1000 }}>
+          <div className="modal-box" style={{ width: '480px', padding: '24px', borderRadius: 'var(--ga-r)', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--ga-br)', paddingBottom: '12px', marginBottom: '16px' }}>
+              <div className="modal-title" style={{ fontSize: '16px', fontWeight: 'bold' }}>🔗 Hubungkan ke Master Barang GA</div>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowLinkModal(false)} style={{ padding: '4px 8px' }}>Tutup</button>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto', flex: 1, paddingRight: '4px' }}>
+              <div style={{ background: 'var(--ga-sf2)', padding: '10px 14px', borderRadius: 'var(--ga-rs)', border: '1px solid var(--ga-br)', marginBottom: 4 }}>
+                <div style={{ fontSize: '11px', color: 'var(--ga-tx3)' }}>NAMA BARANG DI ODOO / SHEETS:</div>
+                <strong style={{ color: 'var(--ga-tx)', display: 'block', marginTop: '2px', fontSize: '14px' }}>{linkingItem.originalName}</strong>
+                <div style={{ fontSize: '12px', color: 'var(--ga-tx2)', marginTop: '4px' }}>
+                  Ordered Qty: <strong>{linkingItem.qty} Pcs</strong>
+                  {linkingItem.harga && ` · Estimasi: ${formatRupiah(linkingItem.harga)}`}
+                </div>
+              </div>
+
+              {/* Tab Selector */}
+              <div style={{ display: 'flex', borderBottom: '1px solid var(--ga-br)', marginBottom: 8, background: 'rgba(0,0,0,0.15)', borderRadius: '6px 6px 0 0', padding: 2 }}>
+                <button
+                  type="button"
+                  onClick={() => setIsCreatingNewItem(false)}
+                  style={{
+                    flex: 1,
+                    padding: '8px 0',
+                    border: 'none',
+                    background: !isCreatingNewItem ? 'var(--ga-sf3)' : 'transparent',
+                    color: !isCreatingNewItem ? '#c084fc' : 'var(--ga-tx3)',
+                    borderRadius: 4,
+                    fontSize: 11,
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  🔍 Cari Barang Master
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsCreatingNewItem(true)}
+                  style={{
+                    flex: 1,
+                    padding: '8px 0',
+                    border: 'none',
+                    background: isCreatingNewItem ? 'var(--ga-sf3)' : 'transparent',
+                    color: isCreatingNewItem ? '#c084fc' : 'var(--ga-tx3)',
+                    borderRadius: 4,
+                    fontSize: 11,
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  ➕ Tambah Baru & Hubungkan
+                </button>
+              </div>
+
+              {!isCreatingNewItem ? (
+                <>
+                  <div>
+                    <label className="form-label" style={{ fontSize: '12px', marginBottom: '4px', display: 'block', fontWeight: 'bold' }}>Cari Barang Resmi di Master DB</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Ketik Nama, ID Barang, atau Kode Barang..."
+                      value={linkSearch}
+                      onChange={(e) => setLinkSearch(e.target.value)}
+                      style={{ width: '100%', padding: '10px', borderRadius: 'var(--ga-rs)' }}
+                      autoFocus
+                    />
+                  </div>
+
+                  <div style={{ maxHeight: 200, overflowY: 'auto', border: '1px solid var(--ga-br)', borderRadius: 'var(--ga-rs)', background: 'var(--ga-sf2)' }}>
+                    {linkSuggestions.length === 0 ? (
+                      <div style={{ padding: 14, textAlign: 'center', fontSize: 11, color: 'var(--ga-tx3)' }}>
+                        Tidak ada barang master yang cocok.
+                      </div>
+                    ) : (
+                      linkSuggestions.slice(0, 15).map(item => (
+                        <div
+                          key={item.id}
+                          onClick={() => handleLinkItem(item.id)}
+                          style={{
+                            padding: '10px 14px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            borderBottom: '1px solid var(--ga-br)'
+                          }}
+                          className="suggestion-item"
+                        >
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ga-tx)' }}>{item.nama}</div>
+                            <div style={{ fontSize: 10, color: 'var(--ga-tx3)' }}>{item.id} · UoM: {item.uom} · Harga: {formatRupiah(item.harga)}</div>
+                          </div>
+                          <span className="badge" style={{ fontSize: 9, background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', border: '1px solid rgba(168, 85, 247, 0.3)' }}>Hubungkan</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </>
+              ) : (
+                <form onSubmit={handleCreateAndLinkItem} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div>
+                    <label className="form-label" style={{ fontSize: '11px', marginBottom: '4px', display: 'block', fontWeight: 'bold' }}>Nama Barang Master <span style={{ color: 'var(--red)' }}>*</span></label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      required
+                      value={newItemNama}
+                      onChange={(e) => setNewItemNama(e.target.value)}
+                      style={{ width: '100%', padding: '10px', borderRadius: 'var(--ga-rs)' }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div>
+                      <label className="form-label" style={{ fontSize: '11px', marginBottom: '4px', display: 'block', fontWeight: 'bold' }}>Kategori Master</label>
+                      <select
+                        className="form-select"
+                        value={newItemKategoriId}
+                        onChange={(e) => setNewItemKategoriId(e.target.value)}
+                        style={{ width: '100%', padding: '10px', borderRadius: 'var(--ga-rs)' }}
+                      >
+                        <option value="">— Tanpa Kategori —</option>
+                        {categories.map(cat => (
+                          <option key={cat.id} value={cat.id}>{cat.nama}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="form-label" style={{ fontSize: '11px', marginBottom: '4px', display: 'block', fontWeight: 'bold' }}>Satuan (UoM)</label>
+                      <select
+                        className="form-select"
+                        value={newItemUom}
+                        onChange={(e) => setNewItemUom(e.target.value)}
+                        style={{ width: '100%', padding: '10px', borderRadius: 'var(--ga-rs)' }}
+                      >
+                        <option value="Pcs">Pcs</option>
+                        <option value="Unit">Unit</option>
+                        <option value="Set">Set</option>
+                        <option value="Roll">Roll</option>
+                        <option value="Meter">Meter</option>
+                        <option value="Box">Box</option>
+                        <option value="Kg">Kg</option>
+                        <option value="Liter">Liter</option>
+                        <option value="Pack">Pack</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div>
+                      <label className="form-label" style={{ fontSize: '11px', marginBottom: '4px', display: 'block', fontWeight: 'bold' }}>Lokasi Penyimpanan</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="Contoh: RAK GA-A"
+                        value={newItemLokasi}
+                        onChange={(e) => setNewItemLokasi(e.target.value)}
+                        style={{ width: '100%', padding: '10px', borderRadius: 'var(--ga-rs)' }}
+                      />
+                    </div>
+                    <div>
+                      <label className="form-label" style={{ fontSize: '11px', marginBottom: '4px', display: 'block', fontWeight: 'bold' }}>Harga Satuan Standar</label>
+                      <input
+                        type="number"
+                        className="form-input"
+                        placeholder="Rp"
+                        value={newItemHarga}
+                        onChange={(e) => setNewItemHarga(e.target.value)}
+                        style={{ width: '100%', padding: '10px', borderRadius: 'var(--ga-rs)' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="modal-footer" style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--ga-br)', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                    <button type="button" className="btn btn-ghost" onClick={() => setShowLinkModal(false)}>Batal</button>
+                    <button
+                      type="submit"
+                      className="btn btn-primary"
+                      disabled={actionLoading !== null}
+                      style={{ fontWeight: '600' }}
+                    >
+                      {actionLoading !== null ? 'Memproses...' : '💾 Simpan & Hubungkan'}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
