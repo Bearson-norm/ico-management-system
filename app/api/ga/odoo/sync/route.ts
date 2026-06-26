@@ -261,7 +261,12 @@ export async function POST(req: NextRequest) {
 
               await prismaGa.$transaction(async (tx) => {
                 for (const line of lines) {
-                  const prodName = Array.isArray(line.product_id) ? line.product_id[1] : (line.name || 'Barang GA');
+                  // Skip baris yang tidak punya product_id (misalnya baris akun analitik seperti "SUPPLIES FACTORY RELATED")
+                  if (!line.product_id || !Array.isArray(line.product_id)) continue;
+
+                  const prodName = line.product_id[1];
+                  if (!prodName?.trim()) continue;
+
                   const qty = Number(line.product_qty) || 1;
                   const price = Number(line.price_unit) || 0;
 
@@ -281,10 +286,11 @@ export async function POST(req: NextRequest) {
                   if (matchedItem) {
                     itemId = matchedItem.id;
                   }
+                  // Tidak auto-create master item — biarkan admin hubungkan secara manual
 
                   await tx.gaProcurementTracking.create({
                     data: {
-                      originalName: prodName,
+                      originalName: prodName.trim(),
                       itemId,
                       qty,
                       harga: price,
@@ -346,7 +352,12 @@ export async function POST(req: NextRequest) {
 
               await prismaGa.$transaction(async (tx) => {
                 for (const line of lines) {
-                  const prodName = Array.isArray(line.product_id) ? line.product_id[1] : (line.name || 'Barang GA');
+                  // Skip baris yang tidak punya product_id (misalnya baris akun analitik seperti "SUPPLIES FACTORY RELATED")
+                  if (!line.product_id || !Array.isArray(line.product_id)) continue;
+
+                  const prodName = line.product_id[1];
+                  if (!prodName?.trim()) continue;
+
                   const qty = Number(line.product_qty) || 1;
                   const price = Number(line.estimated_cost) || 0;
 
@@ -365,10 +376,11 @@ export async function POST(req: NextRequest) {
                   if (matchedItem) {
                     itemId = matchedItem.id;
                   }
+                  // Tidak auto-create master item — biarkan admin hubungkan secara manual
 
                   await tx.gaProcurementTracking.create({
                     data: {
-                      originalName: prodName,
+                      originalName: prodName.trim(),
                       itemId,
                       qty,
                       harga: price,

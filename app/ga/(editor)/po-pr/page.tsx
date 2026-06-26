@@ -8,6 +8,7 @@ interface GaItem {
   nama: string;
   uom: string;
   harga: number;
+  kodeBarang?: string | null;
 }
 
 interface ProcurementTracking {
