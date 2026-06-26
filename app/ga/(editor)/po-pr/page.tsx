@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, FormEvent, useMemo } from 'react';
 import Link from 'next/link';
 
 interface GaItem {
@@ -34,8 +34,13 @@ export default function GaProcurementPage() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState<'ORDERED' | 'RECEIVED'>('ORDERED');
+  const [activeTab, setActiveTab] = useState<'ACTIVE' | 'RECEIVED' | 'ALL'>('ACTIVE');
   const [searchQuery, setSearchQuery] = useState('');
+  const [groupingMode, setGroupingMode] = useState<'PR' | 'PO'>('PR');
+  const [expandedGroups, setExpandedGroups] = useState<{ [key: string]: boolean }>({
+    'DRAFT': true,
+    'BELUM_ADA_PO': true
+  });
   
   // Odoo Session State
   const [odooSessionId, setOdooSessionId] = useState('');
@@ -117,15 +122,15 @@ export default function GaProcurementPage() {
     loadGaSettings();
     fetchData();
     fetchMasterItems();
-  }, [activeTab]);
+  }, []);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/ga/procurement?status=${activeTab}`);
+      const res = await fetch('/api/ga/procurement?status=all');
       const json = await res.json();
       if (json.success) {
-        setItems(json.data);
+        setItems(json.data || []);
       } else {
         alert('Gagal memuat data: ' + json.error);
       }
@@ -338,16 +343,163 @@ export default function GaProcurementPage() {
     }).format(value);
   };
 
+  // Filter items by active tab status
+  const tabScopedItems = useMemo(() => {
+    if (activeTab === 'ACTIVE') {
+      return items.filter(i => i.status === 'ORDERED');
+    }
+    if (activeTab === 'RECEIVED') {
+      return items.filter(i => i.status === 'RECEIVED');
+    }
+    return items;
+  }, [items, activeTab]);
+
   // Filter items based on search query
-  const filteredItems = items.filter((item) => {
-    const q = searchQuery.toLowerCase();
-    return (
-      item.originalName.toLowerCase().includes(q) ||
-      (item.nomorPr && item.nomorPr.toLowerCase().includes(q)) ||
-      (item.nomorPo && item.nomorPo.toLowerCase().includes(q)) ||
-      (item.vendor && item.vendor.toLowerCase().includes(q))
-    );
-  });
+  const filteredItems = useMemo(() => {
+    return tabScopedItems.filter((item) => {
+      const q = searchQuery.toLowerCase();
+      return (
+        item.originalName.toLowerCase().includes(q) ||
+        (item.nomorPr && item.nomorPr.toLowerCase().includes(q)) ||
+        (item.nomorPo && item.nomorPo.toLowerCase().includes(q)) ||
+        (item.vendor && item.vendor.toLowerCase().includes(q))
+      );
+    });
+  }, [tabScopedItems, searchQuery]);
+
+  // Expand / collapse helper
+  const toggleGroupExpand = (key: string) => {
+    setExpandedGroups(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
+
+  // Group items dynamically by PR or PO
+  const groupedGaItems = useMemo(() => {
+    const groups: { [key: string]: ProcurementTracking[] } = {};
+
+    filteredItems.forEach(item => {
+      const key = groupingMode === 'PR' 
+        ? (item.nomorPr?.trim() || 'DRAFT')
+        : (item.nomorPo?.trim() || 'BELUM_ADA_PO');
+      
+      if (!groups[key]) {
+        groups[key] = [];
+      }
+      groups[key].push(item);
+    });
+
+    const sortedKeys = Object.keys(groups).sort((a, b) => {
+      if (groupingMode === 'PR') {
+        if (a === 'DRAFT') return -1;
+        if (b === 'DRAFT') return 1;
+        return b.localeCompare(a);
+      } else {
+        if (a === 'BELUM_ADA_PO') return -1;
+        if (b === 'BELUM_ADA_PO') return 1;
+        return b.localeCompare(a);
+      }
+    });
+
+    return sortedKeys.map(key => {
+      const itemsInGroup = groups[key];
+      let totalQty = 0;
+      let totalCost = 0;
+      const vendorsSet = new Set<string>();
+      const posSet = new Set<string>();
+      const prsSet = new Set<string>();
+      let allDone = true;
+      let someDone = false;
+      let belumGrCount = 0;
+      
+      let oldestDate: Date | null = null;
+      let latestReceiveDate: Date | null = null;
+
+      for (const item of itemsInGroup) {
+        totalQty += item.qty;
+        totalCost += (Number(item.harga) || 0) * item.qty;
+        if (item.vendor?.trim()) vendorsSet.add(item.vendor.trim());
+        if (item.nomorPo?.trim()) posSet.add(item.nomorPo.trim());
+        if (item.nomorPr?.trim()) prsSet.add(item.nomorPr.trim());
+        
+        const isReceived = item.status === 'RECEIVED';
+        if (isReceived) {
+          someDone = true;
+        } else {
+          allDone = false;
+        }
+
+        if (item.nomorPo && !item.grDone) {
+          belumGrCount++;
+        }
+
+        const dateL = new Date(item.tanggalPesan);
+        if (!oldestDate || dateL.getTime() < oldestDate.getTime()) {
+          oldestDate = dateL;
+        }
+
+        if (item.tanggalTerima) {
+          const rxDate = new Date(item.tanggalTerima);
+          if (!latestReceiveDate || rxDate.getTime() > latestReceiveDate.getTime()) {
+            latestReceiveDate = rxDate;
+          }
+        }
+      }
+
+      let overallStatus: 'DRAFT' | 'PR_PROCESS' | 'PO_ACTIVE' | 'PARTIAL' | 'DONE' = 'PR_PROCESS';
+      if (groupingMode === 'PR') {
+        if (key === 'DRAFT') {
+          overallStatus = 'DRAFT';
+        } else if (allDone) {
+          overallStatus = 'DONE';
+        } else if (someDone) {
+          overallStatus = 'PARTIAL';
+        } else if (posSet.size > 0) {
+          overallStatus = 'PO_ACTIVE';
+        } else {
+          overallStatus = 'PR_PROCESS';
+        }
+      } else {
+        if (key === 'BELUM_ADA_PO') {
+          overallStatus = 'PR_PROCESS';
+        } else if (allDone) {
+          overallStatus = 'DONE';
+        } else if (someDone) {
+          overallStatus = 'PARTIAL';
+        } else {
+          overallStatus = 'PO_ACTIVE';
+        }
+      }
+
+      let daysRunningStr = '';
+      if (oldestDate) {
+        const end = allDone && latestReceiveDate ? latestReceiveDate : new Date();
+        const diff = end.getTime() - oldestDate.getTime();
+        const days = Math.max(0, parseFloat((diff / (1000 * 60 * 60 * 24)).toFixed(1)));
+        daysRunningStr = `${days} Hari`;
+      } else {
+        daysRunningStr = '—';
+      }
+
+      return {
+        key,
+        nomorPr: groupingMode === 'PR' ? (key === 'DRAFT' ? null : key) : (Array.from(prsSet).join(', ') || null),
+        nomorPo: groupingMode === 'PO' ? (key === 'BELUM_ADA_PO' ? null : key) : (Array.from(posSet).join(', ') || null),
+        items: itemsInGroup,
+        totalQty,
+        totalCost,
+        vendors: Array.from(vendorsSet).join(', ') || '—',
+        poNumbers: Array.from(posSet).join(', ') || '—',
+        prNumbers: Array.from(prsSet).join(', ') || '—',
+        overallStatus,
+        daysRunningStr,
+        oldestDateStr: oldestDate ? oldestDate.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—',
+        belumGrCount,
+        hasPo: posSet.size > 0,
+      };
+    });
+  }, [filteredItems, groupingMode]);
 
   return (
     <div className="ga-root" style={{ padding: '24px', flex: 1 }}>
@@ -457,27 +609,78 @@ export default function GaProcurementPage() {
             gap: '12px',
           }}
         >
-          <div className="nav-wrap" style={{ display: 'flex', gap: '4px', margin: 0 }} role="tablist" aria-label="Status Pesanan">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === 'ORDERED'}
-              className={`ntab ${activeTab === 'ORDERED' ? 'act-in' : ''}`}
-              onClick={() => setActiveTab('ORDERED')}
-              style={{ minWidth: '130px', textAlign: 'center', fontWeight: '600' }}
-            >
-              Pesanan Aktif
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === 'RECEIVED'}
-              className={`ntab ${activeTab === 'RECEIVED' ? 'act-rp' : ''}`}
-              onClick={() => setActiveTab('RECEIVED')}
-              style={{ minWidth: '130px', textAlign: 'center', fontWeight: '600' }}
-            >
-              Riwayat Terima
-            </button>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div className="nav-wrap" style={{ display: 'flex', gap: '4px', margin: 0 }} role="tablist" aria-label="Status Pesanan">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeTab === 'ACTIVE'}
+                className={`ntab ${activeTab === 'ACTIVE' ? 'act-in' : ''}`}
+                onClick={() => setActiveTab('ACTIVE')}
+                style={{ minWidth: '130px', textAlign: 'center', fontWeight: '600' }}
+              >
+                ⏳ Pesanan Aktif ({items.filter(i => i.status === 'ORDERED').length})
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeTab === 'RECEIVED'}
+                className={`ntab ${activeTab === 'RECEIVED' ? 'act-rp' : ''}`}
+                onClick={() => setActiveTab('RECEIVED')}
+                style={{ minWidth: '130px', textAlign: 'center', fontWeight: '600' }}
+              >
+                📦 Riwayat Terima ({items.filter(i => i.status === 'RECEIVED').length})
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeTab === 'ALL'}
+                className={`ntab ${activeTab === 'ALL' ? 'act-out' : ''}`}
+                onClick={() => setActiveTab('ALL')}
+                style={{ minWidth: '130px', textAlign: 'center', fontWeight: '600' }}
+              >
+                🌐 Semua Dokumen ({items.length})
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', gap: 6, background: 'rgba(0,0,0,0.2)', padding: 4, borderRadius: 8, border: '1px solid var(--ga-br)' }}>
+              <button
+                type="button"
+                onClick={() => setGroupingMode('PR')}
+                style={{
+                  border: 'none',
+                  padding: '4px 12px',
+                  borderRadius: 6,
+                  fontSize: 10,
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  background: groupingMode === 'PR' ? 'var(--ga-sf3)' : 'transparent',
+                  color: groupingMode === 'PR' ? 'var(--ga-accent)' : 'var(--ga-tx3)',
+                  boxShadow: groupingMode === 'PR' ? '0 1px 4px rgba(0,0,0,0.2)' : 'none',
+                  transition: 'all 0.15s'
+                }}
+              >
+                📋 Nomor PR
+              </button>
+              <button
+                type="button"
+                onClick={() => setGroupingMode('PO')}
+                style={{
+                  border: 'none',
+                  padding: '4px 12px',
+                  borderRadius: 6,
+                  fontSize: 10,
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  background: groupingMode === 'PO' ? 'var(--ga-sf3)' : 'transparent',
+                  color: groupingMode === 'PO' ? 'var(--ga-accent)' : 'var(--ga-tx3)',
+                  boxShadow: groupingMode === 'PO' ? '0 1px 4px rgba(0,0,0,0.2)' : 'none',
+                  transition: 'all 0.15s'
+                }}
+              >
+                🚢 Nomor PO & Vendor
+              </button>
+            </div>
           </div>
 
           <div className="search-bar" style={{ display: 'flex', alignItems: 'center', background: 'var(--ga-sf2)', borderRadius: 'var(--ga-rs)', border: '1px solid var(--ga-br)', padding: '0 12px', height: '40px', width: '300px' }}>
@@ -495,140 +698,312 @@ export default function GaProcurementPage() {
           </div>
         </div>
 
-        {/* Table list */}
-        <div className="card" style={{ padding: 0 }}>
-          <div className="table-wrap" style={{ margin: 0, overflowX: 'auto' }}>
-            <table className="table-clean" style={{ width: '100%', fontSize: '13px' }}>
-              <thead>
-                <tr>
-                  <th style={{ width: '130px' }}>No. PR / PO</th>
-                  <th>Nama Barang (Keterangan)</th>
-                  <th style={{ width: '80px', textAlign: 'center' }}>Qty</th>
-                  <th style={{ width: '140px' }}>Estimasi Harga</th>
-                  <th>Vendor</th>
-                  <th style={{ width: '120px' }}>{activeTab === 'ORDERED' ? 'Tgl Pesan' : 'Tgl Terima'}</th>
-                  <th style={{ width: '150px', textAlign: 'right' }}>Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredItems.map((item) => (
-                  <tr key={item.id}>
-                    <td style={{ verticalAlign: 'middle' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        {item.nomorPr && (
-                          <span style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--ga-tx2)', background: 'var(--ga-sf3)', padding: '2px 6px', borderRadius: '4px', width: 'fit-content' }}>
-                            PR: {item.nomorPr}
-                          </span>
-                        )}
-                        {item.nomorPo ? (
-                          <span style={{ fontSize: '11px', fontFamily: 'monospace', color: 'var(--ga-accent)', background: 'var(--ga-accent-d)', padding: '2px 6px', borderRadius: '4px', width: 'fit-content', fontWeight: 'bold' }}>
-                            PO: {item.nomorPo}
-                          </span>
+        {/* GROUPED ACCORDION PR LIST */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {groupedGaItems.map((group) => {
+            const isPrDraft = groupingMode === 'PR' ? group.nomorPr === null : group.nomorPo === null;
+            const prKey = group.key;
+            const isExpanded = !!expandedGroups[prKey];
+
+            // Determine status color and text for header
+            let statusBadge = null;
+            if (groupingMode === 'PR') {
+              if (isPrDraft) {
+                statusBadge = <span className="badge badge-ylw" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700 }}>📋 Draft / Pending PR</span>;
+              } else if (group.overallStatus === 'DONE') {
+                statusBadge = <span className="badge badge-grn" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700 }}>✓ Diterima Lengkap</span>;
+              } else if (group.overallStatus === 'PARTIAL') {
+                statusBadge = <span className="badge badge-ylw" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700, background: 'var(--ylw-d)', color: 'var(--ylw)' }}>⏳ Sebagian Diterima</span>;
+              } else if (group.overallStatus === 'PO_ACTIVE') {
+                statusBadge = <span className="badge" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700, background: 'var(--ga-accent-d)', color: 'var(--ga-accent)', border: '1px solid rgba(251, 146, 60, 0.3)' }}>🚢 Sedang Diproses (PO)</span>;
+              } else {
+                statusBadge = <span className="badge badge-blu" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700 }}>📝 Pengajuan PR GA</span>;
+              }
+            } else {
+              if (isPrDraft) {
+                statusBadge = <span className="badge badge-ylw" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700 }}>⏳ Tahap PR / GA</span>;
+              } else if (group.overallStatus === 'DONE') {
+                statusBadge = <span className="badge badge-grn" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700 }}>✓ Diterima Lengkap</span>;
+              } else if (group.overallStatus === 'PARTIAL') {
+                statusBadge = <span className="badge badge-ylw" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700, background: 'var(--ylw-d)', color: 'var(--ylw)' }}>⏳ Sebagian Diterima</span>;
+              } else {
+                statusBadge = <span className="badge" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700, background: 'var(--ga-accent-d)', color: 'var(--ga-accent)', border: '1px solid rgba(251, 146, 60, 0.3)' }}>🚢 Sedang Diproses (PO)</span>;
+              }
+            }
+
+            return (
+              <div 
+                key={prKey} 
+                className="card" 
+                style={{ 
+                  overflow: 'hidden', 
+                  borderLeft: isPrDraft ? '4px solid var(--ga-accent)' : '1px solid var(--ga-br)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                }}
+              >
+                {/* GROUP CARD HEADER */}
+                <div 
+                  onClick={() => toggleGroupExpand(prKey)}
+                  style={{ 
+                    padding: '16px 20px', 
+                    background: isPrDraft ? 'rgba(251, 146, 60, 0.02)' : 'var(--ga-sf2)',
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    cursor: 'pointer',
+                    userSelect: 'text',
+                    borderBottom: isExpanded ? '1px solid var(--ga-br)' : 'none',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--ga-sf3)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = isPrDraft ? 'rgba(251, 146, 60, 0.02)' : 'var(--ga-sf2)')}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1, flexWrap: 'wrap' }}>
+                    {/* Expand Chevron */}
+                    <span style={{ fontSize: 12, transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s', color: 'var(--ga-tx3)' }}>
+                      ▶
+                    </span>
+
+                    {/* PR/PO Info */}
+                    <div>
+                      {groupingMode === 'PR' ? (
+                        isPrDraft ? (
+                          <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--ga-accent)' }}>
+                            📝 DRAFT PENDING / BELUM ADA NO PR
+                          </div>
                         ) : (
-                          <span style={{ fontSize: '10px', color: 'var(--ga-tx3)', fontStyle: 'italic', paddingLeft: '6px' }}>PO Belum Terbit</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 11, color: 'var(--ga-tx3)', fontWeight: 600 }}>NOMOR PR:</span>
+                            <span 
+                              className="badge badge-ylw" 
+                              style={{ fontSize: 12, padding: '2px 8px', fontWeight: 800, cursor: 'text', userSelect: 'text' }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {group.nomorPr}
+                            </span>
+                          </div>
+                        )
+                      ) : (
+                        isPrDraft ? (
+                          <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--ga-accent)' }}>
+                            ⏳ TAHAP PR / BELUM TERBIT PO
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 11, color: 'var(--ga-tx3)', fontWeight: 600 }}>NOMOR PO:</span>
+                            <span 
+                              className="badge" 
+                              style={{ fontSize: 12, padding: '2px 8px', fontWeight: 800, cursor: 'text', userSelect: 'text', background: 'var(--ga-accent-d)', color: 'var(--ga-accent)' }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {group.nomorPo}
+                            </span>
+                          </div>
+                        )
+                      )}
+                      
+                      <div style={{ fontSize: 10, color: 'var(--ga-tx3)', marginTop: 4 }}>
+                        {groupingMode === 'PR' ? 'Tanggal Pengajuan: ' : 'Tanggal Pengadaan: ' }
+                        <strong style={{ color: 'var(--ga-tx2)' }}>{group.oldestDateStr}</strong> · Lead Time: <strong style={{ color: 'var(--ga-tx)' }}>{group.daysRunningStr}</strong>
+                      </div>
+                    </div>
+
+                    {/* Secondary Badges (PO numbers if grouping by PR, or PR numbers if grouping by PO) */}
+                    {groupingMode === 'PR' ? (
+                      !isPrDraft && group.poNumbers !== '—' && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: 9, color: 'var(--ga-tx3)', fontWeight: 600 }}>PO NO:</span>
+                          {group.poNumbers.split(', ').map(po => (
+                            <span 
+                              key={po} 
+                              className="badge" 
+                              style={{ fontSize: 11, padding: '2px 8px', fontWeight: 800, cursor: 'text', userSelect: 'text', background: 'var(--ga-accent-d)', color: 'var(--ga-accent)' }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {po}
+                            </span>
+                          ))}
+                        </div>
+                      )
+                    ) : (
+                      !isPrDraft && group.prNumbers !== '—' && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: 9, color: 'var(--ga-tx3)', fontWeight: 600 }}>PR NO:</span>
+                          {group.prNumbers.split(', ').map(pr => (
+                            <span 
+                              key={pr} 
+                              className="badge badge-ylw" 
+                              style={{ fontSize: 11, padding: '2px 8px', fontWeight: 800, cursor: 'text', userSelect: 'text' }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {pr}
+                            </span>
+                          ))}
+                        </div>
+                      )
+                    )}
+
+                    {/* Vendor summary */}
+                    <div style={{ fontSize: 11, color: 'var(--ga-tx3)' }}>
+                      Vendor: <span style={{ color: 'var(--ga-tx2)', fontWeight: 600 }}>{group.vendors}</span>
+                    </div>
+                  </div>
+
+                  {/* Summary Pricing & Status */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 14, fontWeight: 900, color: 'var(--ga-tx)' }}>
+                        {formatRupiah(group.totalCost)}
+                      </div>
+                      <div style={{ fontSize: 10, color: 'var(--ga-tx3)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <span>{group.items.length} Item ({group.totalQty} Pcs)</span>
+                        {group.hasPo && (
+                          <>
+                            ·
+                            {group.belumGrCount > 0 ? (
+                              <span className="badge" style={{ fontSize: 9, padding: '2px 6px', fontWeight: 800, background: 'rgba(234, 179, 8, 0.15)', color: '#EAB308', border: '1px solid rgba(234, 179, 8, 0.35)' }} title="Belum GR di Odoo">
+                                ⚠️ {group.belumGrCount} Belum GR Odoo
+                              </span>
+                            ) : (
+                              <span className="badge badge-grn" style={{ fontSize: 9, padding: '2px 6px', fontWeight: 800 }}>
+                                ✓ Semua GR Odoo
+                              </span>
+                            )}
+                          </>
                         )}
                       </div>
-                    </td>
-                    <td style={{ verticalAlign: 'middle' }}>
-                      <div style={{ fontWeight: '600', color: 'var(--ga-tx)' }}>{item.originalName}</div>
-                      {item.itemId && (
-                        <div style={{ fontSize: '11px', color: 'var(--ga-grn)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                            <polyline points="20 6 9 17 4 12" />
-                          </svg>
-                          Terhubung Master: {item.itemId}
-                        </div>
-                      )}
-                      {item.keterangan && (
-                        <div style={{ fontSize: '11px', color: 'var(--ga-tx3)', marginTop: '2px', fontStyle: 'italic', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', maxWidth: '280px' }} title={item.keterangan}>
-                          {item.keterangan}
-                        </div>
-                      )}
-                    </td>
-                    <td style={{ textAlign: 'center', fontWeight: 'bold', verticalAlign: 'middle' }}>
-                      {item.qty} <span style={{ fontSize: '10px', color: 'var(--ga-tx3)', fontWeight: 'normal' }}>{item.item?.uom || 'Pcs'}</span>
-                    </td>
-                    <td style={{ verticalAlign: 'middle' }}>
-                      {formatRupiah(item.harga)}
-                    </td>
-                    <td style={{ color: 'var(--ga-tx2)', verticalAlign: 'middle' }}>
-                      {item.vendor || '—'}
-                    </td>
-                    <td style={{ color: 'var(--ga-tx2)', fontSize: '12px', verticalAlign: 'middle' }}>
-                      {activeTab === 'ORDERED'
-                        ? new Date(item.tanggalPesan).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
-                        : item.tanggalTerima
-                        ? new Date(item.tanggalTerima).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
-                        : '—'}
-                    </td>
-                    <td style={{ textAlign: 'right', verticalAlign: 'middle' }}>
-                      {item.status === 'ORDERED' ? (
-                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
-                          <button
-                            type="button"
-                            className="btn btn-ghost btn-sm"
-                            onClick={() => openEditModal(item)}
-                            style={{ padding: '6px 8px' }}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn-primary btn-sm"
-                            onClick={() => openReceiveModal(item)}
-                            style={{ background: 'var(--ga-grn)', borderColor: 'var(--ga-grn)', color: '#fff', padding: '6px 12px', fontWeight: 'bold' }}
-                          >
-                            Terima
-                          </button>
-                        </div>
-                      ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', alignItems: 'flex-end' }}>
-                          <span
-                            className={item.isStocked ? 'badge badge-grn' : 'badge badge-blu'}
-                            style={{ fontSize: '10px', textTransform: 'uppercase', fontWeight: 'bold', padding: '4px 8px' }}
-                          >
-                            {item.isStocked ? 'Masuk Stok' : 'Pemakaian Langsung'}
-                          </span>
-                          {!item.grDone && (
-                            <span
-                              title={`Nomor ${item.nomorPr || item.nomorPo || 'PR/PO ini'} belum dikonfirmasi GR di Odoo. Minta SPV untuk melakukan GR, lalu klik Sinkronisasi Odoo.`}
-                              style={{
-                                fontSize: '10px',
-                                fontWeight: 'bold',
-                                padding: '3px 8px',
-                                borderRadius: '4px',
-                                background: 'rgba(234, 179, 8, 0.15)',
-                                color: '#EAB308',
-                                border: '1px solid rgba(234, 179, 8, 0.35)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                cursor: 'help',
-                              }}
-                            >
-                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                                <line x1="12" y1="9" x2="12" y2="13" />
-                                <line x1="12" y1="17" x2="12.01" y2="17" />
-                              </svg>
-                              Belum di-GR Odoo
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                {filteredItems.length === 0 && (
-                  <tr>
-                    <td colSpan={7} style={{ textAlign: 'center', padding: '36px', color: 'var(--ga-tx3)' }}>
-                      {loading ? 'Memuat data…' : 'Tidak ada data pesanan ditemukan.'}
-                    </td>
-                  </tr>
+                    </div>
+                    
+                    {statusBadge}
+                  </div>
+                </div>
+
+                {/* GROUP EXPANDED DETAIL VIEW */}
+                {isExpanded && (
+                  <div style={{ padding: '0 0 10px 0', background: 'rgba(255,255,255,0.01)' }}>
+                    <div className="table-wrap" style={{ overflowX: 'auto', border: 'none', borderRadius: 0 }}>
+                      <table className="table-clean" style={{ minWidth: 1000, background: 'transparent' }}>
+                        <thead>
+                          <tr style={{ background: 'rgba(0,0,0,0.1)' }}>
+                            <th>Nama Barang (Keterangan)</th>
+                            <th style={{ width: '80px', textAlign: 'center' }}>Qty</th>
+                            <th style={{ width: '140px' }}>Estimasi Harga</th>
+                            <th>Vendor</th>
+                            <th style={{ width: '120px' }}>{activeTab === 'ACTIVE' ? 'Tgl Pesan' : 'Tgl Terima'}</th>
+                            <th style={{ width: '150px', textAlign: 'right', paddingRight: 20 }}>Aksi</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {group.items.map((item) => (
+                            <tr key={item.id}>
+                              <td style={{ verticalAlign: 'middle' }}>
+                                <div style={{ fontWeight: '600', color: 'var(--ga-tx)' }}>{item.originalName}</div>
+                                {item.itemId ? (
+                                  <div style={{ fontSize: '11px', color: 'var(--ga-grn)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                      <polyline points="20 6 9 17 4 12" />
+                                    </svg>
+                                    Terhubung Master: {item.itemId}
+                                  </div>
+                                ) : (
+                                  <div style={{ fontSize: '11px', color: 'var(--red)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    ⚠️ Unlinked / General
+                                  </div>
+                                )}
+                                {item.keterangan && (
+                                  <div style={{ fontSize: '11px', color: 'var(--ga-tx3)', marginTop: '2px', fontStyle: 'italic', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', maxWidth: '280px' }} title={item.keterangan}>
+                                    {item.keterangan}
+                                  </div>
+                                )}
+                              </td>
+                              <td style={{ textAlign: 'center', fontWeight: 'bold', verticalAlign: 'middle' }}>
+                                {item.qty} <span style={{ fontSize: '10px', color: 'var(--ga-tx3)', fontWeight: 'normal' }}>{item.item?.uom || 'Pcs'}</span>
+                              </td>
+                              <td style={{ verticalAlign: 'middle' }}>
+                                {formatRupiah(item.harga)}
+                              </td>
+                              <td style={{ color: 'var(--ga-tx2)', verticalAlign: 'middle' }}>
+                                {item.vendor || '—'}
+                              </td>
+                              <td style={{ color: 'var(--ga-tx2)', fontSize: '12px', verticalAlign: 'middle' }}>
+                                {item.status === 'ORDERED'
+                                  ? new Date(item.tanggalPesan).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+                                  : item.tanggalTerima
+                                  ? new Date(item.tanggalTerima).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+                                  : '—'}
+                              </td>
+                              <td style={{ textAlign: 'right', verticalAlign: 'middle', paddingRight: 20 }}>
+                                {item.status === 'ORDERED' ? (
+                                  <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                                    <button
+                                      type="button"
+                                      className="btn btn-ghost btn-sm"
+                                      onClick={() => openEditModal(item)}
+                                      style={{ padding: '6px 8px' }}
+                                    >
+                                      Edit
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="btn btn-primary btn-sm"
+                                      onClick={() => openReceiveModal(item)}
+                                      style={{ background: 'var(--ga-grn)', borderColor: 'var(--ga-grn)', color: '#fff', padding: '6px 12px', fontWeight: 'bold' }}
+                                    >
+                                      Terima
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', alignItems: 'flex-end' }}>
+                                    <span
+                                      className={item.isStocked ? 'badge badge-grn' : 'badge badge-blu'}
+                                      style={{ fontSize: '10px', textTransform: 'uppercase', fontWeight: 'bold', padding: '4px 8px' }}
+                                    >
+                                      {item.isStocked ? 'Masuk Stok' : 'Pemakaian Langsung'}
+                                    </span>
+                                    {!item.grDone && (
+                                      <span
+                                        title={`Nomor ${item.nomorPr || item.nomorPo || 'PR/PO ini'} belum dikonfirmasi GR di Odoo. Minta SPV untuk melakukan GR, lalu klik Sinkronisasi Odoo.`}
+                                        style={{
+                                          fontSize: '10px',
+                                          fontWeight: 'bold',
+                                          padding: '3px 8px',
+                                          borderRadius: '4px',
+                                          background: 'rgba(234, 179, 8, 0.15)',
+                                          color: '#EAB308',
+                                          border: '1px solid rgba(234, 179, 8, 0.35)',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '4px',
+                                          cursor: 'help',
+                                        }}
+                                      >
+                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                                          <line x1="12" y1="9" x2="12" y2="13" />
+                                          <line x1="12" y1="17" x2="12.01" y2="17" />
+                                        </svg>
+                                        Belum di-GR Odoo
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 )}
-              </tbody>
-            </table>
-          </div>
+              </div>
+            );
+          })}
+
+          {groupedGaItems.length === 0 && !loading && (
+            <div className="card" style={{ padding: '36px', textAlign: 'center', color: 'var(--ga-tx3)' }}>
+              Tidak ada data pesanan ditemukan.
+            </div>
+          )}
         </div>
       </div>
 

@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     return err('Format JSON tidak valid', 400);
   }
 
-  const { id, tanggalTerima, isStocked, harga, vendor, qty } = body;
+  const { id, tanggalTerima, isStocked, harga, vendor, qty, itemId } = body;
 
   if (!id) return err('ID pengadaan wajib diisi', 400);
   if (!tanggalTerima) return err('Tanggal terima wajib diisi', 400);
@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
     const finalVendor = vendor !== undefined ? vendor : tracking.vendor;
     const finalQty = qty !== undefined && qty !== null ? Number(qty) : tracking.qty;
     const finalIsStocked = isStocked !== undefined ? Boolean(isStocked) : tracking.isStocked;
+    const finalItemId = itemId !== undefined ? (itemId || null) : tracking.itemId;
 
     await prismaGa.$transaction(async (tx) => {
       // 1. Update status tracking ke RECEIVED
@@ -48,14 +49,15 @@ export async function POST(req: NextRequest) {
           harga: finalHarga,
           vendor: finalVendor,
           isStocked: finalIsStocked,
+          itemId: finalItemId,
           grDone: false,
         },
       });
 
       // 2. Jika disetel masuk ke Stok Gudang dan barang terhubung ke Master Item
-      if (finalIsStocked && tracking.itemId) {
+      if (finalIsStocked && finalItemId) {
         const item = await tx.gaItem.findUnique({
-          where: { id: tracking.itemId },
+          where: { id: finalItemId },
         });
 
         if (item) {
@@ -89,7 +91,7 @@ export async function POST(req: NextRequest) {
         await tx.gaStockMovement.create({
           data: {
             tipe: 'OUT',
-            itemId: tracking.itemId || null,
+            itemId: finalItemId || null,
             namaBarang: tracking.originalName,
             qty: finalQty,
             qtyDiterima: finalQty,
@@ -103,9 +105,9 @@ export async function POST(req: NextRequest) {
         });
 
         // Update harga di Master Barang GA jika terhubung
-        if (tracking.itemId) {
+        if (finalItemId) {
           await tx.gaItem.update({
-            where: { id: tracking.itemId },
+            where: { id: finalItemId },
             data: {
               harga: finalHarga,
             },

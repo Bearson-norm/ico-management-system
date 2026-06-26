@@ -267,9 +267,17 @@ export async function POST(req: NextRequest) {
 
                   // Coba cocokkan ke master barang GA
                   let itemId: string | null = null;
-                  const matchedItem = await tx.gaItem.findFirst({
+                  let matchedItem = await tx.gaItem.findFirst({
                     where: { nama: { equals: prodName, mode: 'insensitive' } },
                   });
+                  if (!matchedItem) {
+                    const allItems = await tx.gaItem.findMany({ where: { aktif: true } });
+                    const cleanProd = prodName.toLowerCase().trim();
+                    matchedItem = allItems.find(item => {
+                      const cleanName = item.nama.toLowerCase().trim();
+                      return cleanProd.includes(cleanName) || cleanName.includes(cleanProd);
+                    }) || null;
+                  }
                   if (matchedItem) {
                     itemId = matchedItem.id;
                   }
@@ -343,9 +351,17 @@ export async function POST(req: NextRequest) {
                   const price = Number(line.estimated_cost) || 0;
 
                   let itemId: string | null = null;
-                  const matchedItem = await tx.gaItem.findFirst({
+                  let matchedItem = await tx.gaItem.findFirst({
                     where: { nama: { equals: prodName, mode: 'insensitive' } },
                   });
+                  if (!matchedItem) {
+                    const allItems = await tx.gaItem.findMany({ where: { aktif: true } });
+                    const cleanProd = prodName.toLowerCase().trim();
+                    matchedItem = allItems.find(item => {
+                      const cleanName = item.nama.toLowerCase().trim();
+                      return cleanProd.includes(cleanName) || cleanName.includes(cleanProd);
+                    }) || null;
+                  }
                   if (matchedItem) {
                     itemId = matchedItem.id;
                   }
