@@ -956,7 +956,7 @@ export async function POST(req: NextRequest) {
       for (const item of trackingItems) {
         const prNo = item.nomorPr?.trim();
         const poNo = item.nomorPo?.trim();
-        const docName = poNo || prNo;
+        const docName = prNo || poNo;
         if (!docName) continue;
         if (!groupedItems[docName]) {
           groupedItems[docName] = [];
@@ -1230,24 +1230,36 @@ export async function POST(req: NextRequest) {
                   updateData.harga = amountTotal;
                 }
 
-                if (matchedQty > 0) {
+                // Hitung jumlah qty yang sudah di-GR sebelumnya untuk item ini
+                const siblingItems = await tx.procurementTracking.findMany({
+                  where: {
+                    nomorPo: poName,
+                    originalName: item.originalName,
+                    nomorPr: item.nomorPr
+                  }
+                });
+
+                const alreadyReceivedQty = siblingItems
+                  .filter((sib: any) => sib.statusPo === 'DONE' && sib.id !== item.id)
+                  .reduce((sum: number, sib: any) => sum + sib.qty, 0);
+
+                const newReceiptQty = qtyReceived - alreadyReceivedQty;
+                let finalIsGrDone = isGrDone;
+
+                // Hanya update qty jika item belum di-split (qty lokal masih sama dengan qty Odoo)
+                if (matchedQty > 0 && item.qty === Math.round(matchedQty)) {
                   updateData.qty = Math.round(matchedQty);
                 }
 
-                // SPLIT GR HANDLING: Jika diterima sebagian
-                const currentQty = matchedQty > 0 ? Math.round(matchedQty) : item.qty;
-                let finalIsGrDone = isGrDone;
-                
-                if (qtyReceived > 0 && qtyReceived < currentQty && item.qty === currentQty) {
-                  // Update data baris saat ini menjadi porsi yang SUDAH DITERIMA
-                  updateData.qty = qtyReceived;
+                if (newReceiptQty > 0 && newReceiptQty < item.qty) {
+                  // SPLIT GR HANDLING: Baru diterima sebagian dari porsi pending saat ini
+                  updateData.qty = newReceiptQty;
                   updateData.statusPo = 'DONE';
                   if (odooGrDate) updateData.tanggalTerima = odooGrDate;
                   if (odooGrLink) updateData.linkGr = odooGrLink;
                   finalIsGrDone = true;
 
-                  // Buat baris baru untuk sisa barang yang BELUM DITERIMA
-                  const remainingQty = currentQty - qtyReceived;
+                  const remainingQty = item.qty - newReceiptQty;
                   await tx.procurementTracking.create({
                     data: {
                       fbIndex: item.fbIndex,
@@ -1272,9 +1284,9 @@ export async function POST(req: NextRequest) {
                       linkedPartsJson: item.linkedPartsJson
                     }
                   });
-                  logDebug(`Split GR untuk Item ID ${item.id}: ${qtyReceived} diterima (updated), ${remainingQty} sisa pending (created)`);
-                } else if (isGrDone) {
-                  // Fully GR'd
+                  logDebug(`Split GR untuk Item ID ${item.id}: ${newReceiptQty} diterima baru (updated), ${remainingQty} sisa pending (created)`);
+                } else if (newReceiptQty >= item.qty || isGrDone) {
+                  // Porsi pending saat ini sudah terisi penuh atau PO secara keseluruhan selesai
                   updateData.statusPo = 'DONE';
                   if (odooGrDate) {
                     updateData.tanggalTerima = odooGrDate;
@@ -1282,6 +1294,7 @@ export async function POST(req: NextRequest) {
                   if (odooGrLink) {
                     updateData.linkGr = odooGrLink;
                   }
+                  finalIsGrDone = true;
                 }
 
                 const hasChanges = hasActualChanges(item, updateData);
