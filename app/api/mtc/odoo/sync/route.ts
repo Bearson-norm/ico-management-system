@@ -925,8 +925,12 @@ export async function POST(req: NextRequest) {
         logDebug(`Error request import: ${errReqImport}`);
       }
 
+      const ninetyDaysAgo = new Date();
+      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
       // Find all active tracking items that have a PR or PO number and are not yet complete,
-      // OR completed items that are still missing vendor names or Odoo chatter notes.
+      // OR completed items that are still missing vendor names or Odoo chatter notes,
+      // OR any items created/registered in the last 90 days (to allow status corrections/splits).
       const trackingItems = await prisma.procurementTracking.findMany({
         where: {
           AND: [
@@ -940,6 +944,7 @@ export async function POST(req: NextRequest) {
               OR: [
                 { statusPo: null },
                 { NOT: { statusPo: 'DONE' } },
+                { tanggalList: { gte: ninetyDaysAgo } },
                 { vendor: null },
                 { odooNotes: null },
               ],
@@ -951,7 +956,7 @@ export async function POST(req: NextRequest) {
         }
       });
 
-      // Group tracking items by docName to prevent duplicate Odoo network requests
+      // Group tracking items by docName (prefer prNo to handle split POs correctly)
       const groupedItems: { [docName: string]: typeof trackingItems } = {};
       for (const item of trackingItems) {
         const prNo = item.nomorPr?.trim();
@@ -966,502 +971,503 @@ export async function POST(req: NextRequest) {
 
       let updatedOdooCount = 0;
 
-      for (const docName of Object.keys(groupedItems)) {
+      // Helper function to fetch all Odoo info for a specific group of items (PR/PO)
+      const fetchOdooDataForGroup = async (docName: string, prNo: string | undefined, poNo: string | undefined) => {
+        logDebug(`PO Search for document ${docName} -> poNo: ${poNo}, prNo: ${prNo}`);
+        let odooPos = await queryOdoo(
+          'purchase.order',
+          'search_read',
+          [[
+            '|',
+            '|',
+            ['name', '=', docName],
+            ['origin', '=', docName],
+            ['partner_ref', '=', docName]
+          ]],
+          {
+            fields: ['id', 'name', 'state', 'amount_total', 'partner_id', 'date_order', 'origin', 'partner_ref', 'create_date'],
+            limit: 50
+          },
+          odooOptions
+        );
+
+        if (odooPos && odooPos.length > 0) {
+          logDebug(`Found ${odooPos.length} PO Matches for ${docName}`);
+        }
+
+        // Fuzzy search fallback for purchase.order (handles zero padding e.g. P13722 -> P013722 / PO0013722)
+        if (!odooPos || odooPos.length === 0) {
+          logDebug(`Exact PO Match failed, entering fuzzy PO search for ${docName}...`);
+          const prMatch = docName.match(/^PR0*(\d+)$/i);
+          const poMatch = docName.match(/^P(?:O)?0*(\d+)$/i);
+          const isPrPattern = !!prMatch;
+          const seq = prMatch ? prMatch[1] : (poMatch ? poMatch[1] : null);
+
+          if (seq) {
+            try {
+              const fuzzyPos = await queryOdoo(
+                'purchase.order',
+                'search_read',
+                [[
+                  '|',
+                  '|',
+                  ['name', 'ilike', seq],
+                  ['origin', 'ilike', seq],
+                  ['partner_ref', 'ilike', seq]
+                ]],
+                {
+                  fields: ['id', 'name', 'state', 'amount_total', 'partner_id', 'date_order', 'origin', 'partner_ref', 'create_date'],
+                  limit: 50
+                },
+                odooOptions
+              );
+
+              logDebug(`Fuzzy PO Search returned ${fuzzyPos ? fuzzyPos.length : 0} items for seq: ${seq}`);
+
+              if (fuzzyPos && fuzzyPos.length > 0) {
+                const seqRegex = isPrPattern 
+                  ? new RegExp('(PR|RFQ)[/0-9-]*0*' + seq + '\\\\b', 'i')
+                  : new RegExp('(?:\\\\D|^)0*' + seq + '\\\\b', 'i');
+
+                const matched = fuzzyPos.filter((po: any) => {
+                  const name = po.name || '';
+                  const origin = po.origin || '';
+                  const partnerRef = po.partner_ref || '';
+                  return seqRegex.test(name) || seqRegex.test(origin) || seqRegex.test(partnerRef) || name.includes(docName);
+                });
+                if (matched && matched.length > 0) {
+                  logDebug(`Fuzzy matches selected POs for ${docName}: ${JSON.stringify(matched.map((p: any) => p.name))}`);
+                  odooPos = matched;
+                }
+              }
+            } catch (errFuzzyPo) {
+              console.error(`Gagal melakukan fuzzy search PO untuk ${docName}:`, errFuzzyPo);
+            }
+          }
+        }
+
+        if (!odooPos || odooPos.length === 0) {
+          // Document not found in purchase.order. Fallback to PR.
+          const prOrDocName = prNo || docName;
+          logDebug(`PO not found for ${docName}. Falling back to purchase.requisition/request query for ${prOrDocName}...`);
+          try {
+            const matchedPR = await findOdooPR(prOrDocName, odooOptions);
+            if (matchedPR) {
+              return { isPrOnly: true, matchedPR };
+            }
+          } catch (errPR) {
+            console.error(`Gagal mencari PR fallback Odoo untuk ${docName}:`, errPR);
+          }
+          return null;
+        }
+
+        // We found POs! Gather all PO lines and logs
+        const allPoLines: any[] = [];
+        const allLogs: any[] = [];
+        let prCreateDate: Date | null = null;
+        const poGrStatusMap = new Map<number, { isGrDone: boolean, odooGrDate: Date | null, odooGrLink: string | null }>();
+
+        for (const odooPo of odooPos) {
+          const poId = odooPo.id;
+          const poName = odooPo.name;
+          const odooState = odooPo.state;
+          const localStatusPr = mapOdooStateToLocal(odooState);
+          const vendorName = Array.isArray(odooPo.partner_id) ? odooPo.partner_id[1] : null;
+          const amountTotal = odooPo.amount_total || 0;
+
+          // Fetch PO logs, lines, and GRs in parallel (highly optimized!)
+          const [poLogs, poLines, odooGrs] = await Promise.all([
+            fetchChatterLogs('purchase.order', poId, 'PO', odooOptions).catch(() => []),
+            queryOdoo(
+              'purchase.order.line',
+              'search_read',
+              [[['order_id', '=', poId]]],
+              {
+                fields: ['name', 'price_unit', 'product_qty', 'qty_received', 'product_id'],
+                limit: 50
+              },
+              odooOptions
+            ).catch(() => []),
+            queryOdoo(
+              'good.received',
+              'search_read',
+              [[['purchase_id', '=', poId]]],
+              {
+                fields: ['id', 'state', 'write_date', 'name'],
+                limit: 1
+              },
+              odooOptions
+            ).catch(() => [])
+          ]);
+
+          allLogs.push(...poLogs);
+
+          for (const line of poLines) {
+            line.parentPoName = poName;
+            line.parentPoId = poId;
+            line.parentPoState = odooState;
+            line.parentLocalStatusPr = localStatusPr;
+            line.parentVendorName = vendorName;
+            line.parentAmountTotal = amountTotal;
+          }
+          allPoLines.push(...poLines);
+
+          let odooGrDate: Date | null = null;
+          let isGrDone = false;
+          let odooGrLink: string | null = null;
+
+          if (odooGrs && odooGrs.length > 0) {
+            const odooGr = odooGrs[0];
+            odooGrLink = `https://foomx.odoo.com/web#id=${odooGr.id}&model=good.received&view_type=form`;
+            if (odooGr.state === 'done') {
+              isGrDone = true;
+              if (odooGr.write_date) {
+                const parsedGrDate = new Date(odooGr.write_date);
+                if (!isNaN(parsedGrDate.getTime())) {
+                  odooGrDate = parsedGrDate;
+                }
+              }
+            }
+          }
+          poGrStatusMap.set(poId, { isGrDone, odooGrDate, odooGrLink });
+        }
+
+        // Fetch PR logs
+        const originDoc = odooPos[0].origin?.trim();
+        const prTargets = Array.from(new Set([originDoc, prNo].filter(Boolean) as string[]));
+        for (const target of prTargets) {
+          try {
+            const matchedPR = await findOdooPR(target, odooOptions);
+            if (matchedPR) {
+              const prLogs = await fetchChatterLogs(matchedPR.model, matchedPR.id, 'PR', odooOptions).catch(() => []);
+              allLogs.push(...prLogs);
+
+              if (matchedPR.create_date) {
+                const parsedPrDate = new Date(matchedPR.create_date);
+                if (!isNaN(parsedPrDate.getTime())) {
+                  prCreateDate = parsedPrDate;
+                }
+              }
+            }
+          } catch (errPRLogs) {
+            console.error(`Gagal mengambil log PR untuk target ${target}:`, errPRLogs);
+          }
+        }
+
+        // Deduplicate & sort chatter logs
+        const seen = new Set();
+        const deduplicatedLogs = allLogs.filter(log => {
+          const key = `${log.date}_${log.author}_${log.body}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        deduplicatedLogs.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        const chatterNotes = deduplicatedLogs.length > 0 ? JSON.stringify(deduplicatedLogs) : '';
+
+        if (!prCreateDate && deduplicatedLogs.length > 0) {
+          const oldestLog = deduplicatedLogs[deduplicatedLogs.length - 1];
+          const parsedLogDate = new Date(oldestLog.date);
+          if (!isNaN(parsedLogDate.getTime())) {
+            prCreateDate = parsedLogDate;
+          }
+        }
+
+        return {
+          isPrOnly: false,
+          odooPos,
+          allPoLines,
+          poGrStatusMap,
+          prCreateDate,
+          chatterNotes
+        };
+      };
+
+      // Query Odoo data for all groups in parallel (massively speeds up sync!)
+      logDebug(`Starting parallel Odoo fetches for ${Object.keys(groupedItems).length} documents...`);
+      const fetchPromises = Object.keys(groupedItems).map(async (docName) => {
         const items = groupedItems[docName];
         const representativeItem = items[0];
         const prNo = representativeItem.nomorPr?.trim();
         const poNo = representativeItem.nomorPo?.trim();
-
         try {
-          logDebug(`PO Search for document ${docName} -> poNo: ${poNo}, prNo: ${prNo} (${items.length} items)`);
-          // 1. Search for PO/RFQ in Odoo matching name, origin, or partner_ref (Vendor Reference)
-          let odooPos = await queryOdoo(
-            'purchase.order',
-            'search_read',
-            [[
-              '|',
-              '|',
-              ['name', '=', docName],
-              ['origin', '=', docName],
-              ['partner_ref', '=', docName]
-            ]],
-            {
-              fields: ['id', 'name', 'state', 'amount_total', 'partner_id', 'date_order', 'origin', 'partner_ref', 'create_date'],
-              limit: 50
-            },
-            odooOptions
-          );
+          const data = await fetchOdooDataForGroup(docName, prNo, poNo);
+          return { docName, items, data, error: null };
+        } catch (err) {
+          return { docName, items, data: null, error: err };
+        }
+      });
 
-          if (odooPos && odooPos.length > 0) {
-            logDebug(`Found ${odooPos.length} PO Matches: ${JSON.stringify(odooPos.map((p: any) => p.name))}`);
+      const odooResults = await Promise.all(fetchPromises);
+      logDebug(`Finished parallel Odoo fetches. Processing database updates...`);
+
+      // Process database updates sequentially to avoid write locks and connection limits
+      for (const result of odooResults) {
+        const { docName, items, data: rawData, error } = result;
+        if (error) {
+          console.error(`Gagal menyinkronkan status Odoo untuk ${docName}:`, error);
+          continue;
+        }
+        if (!rawData) continue;
+        const data = rawData as any;
+
+        if (data.isPrOnly) {
+          const matchedPR = data.matchedPR;
+          const reqId = matchedPR.id;
+          const reqState = matchedPR.state;
+          const isRequisition = matchedPR.model === 'purchase.requisition';
+          const localStatusPr = isRequisition
+            ? (reqState === 'in_progress' ? 'TO_APPROVE' : reqState === 'open' ? 'RFQ' : reqState === 'done' ? 'APPROVED' : reqState === 'cancel' ? 'CANCELLED' : 'DRAFT')
+            : (reqState === 'to_approve' ? 'TO_APPROVE' : reqState === 'approved' ? 'APPROVED' : reqState === 'rejected' ? 'CANCELLED' : reqState === 'done' ? 'PO' : 'DRAFT');
+
+          let prLines: any[] = [];
+          try {
+            const lineModel = isRequisition ? 'purchase.requisition.line' : 'purchase.request.line';
+            const parentField = isRequisition ? 'requisition_id' : 'request_id';
+            const priceField = isRequisition ? 'price_unit' : 'estimated_cost';
+
+            prLines = await queryOdoo(
+              lineModel,
+              'search_read',
+              [[[parentField, '=', reqId]]],
+              {
+                fields: ['product_id', 'product_qty', priceField, 'name'],
+                limit: 50
+              },
+              odooOptions
+            );
+          } catch (errReqLines) {
+            console.error(`Gagal mengambil detail line item ${matchedPR.model} ${matchedPR.name}:`, errReqLines);
           }
 
-          // Fuzzy search fallback for purchase.order (handles zero padding e.g. P13722 -> P013722 / PO0013722)
-          if (!odooPos || odooPos.length === 0) {
-            logDebug(`Exact PO Match failed, entering fuzzy PO search...`);
-            const prMatch = docName.match(/^PR0*(\d+)$/i);
-            const poMatch = docName.match(/^P(?:O)?0*(\d+)$/i);
-            const isPrPattern = !!prMatch;
-            const seq = prMatch ? prMatch[1] : (poMatch ? poMatch[1] : null);
+          const odooDateRaw = matchedPR.create_date;
+          let parsedOdooDate = odooDateRaw ? new Date(odooDateRaw) : null;
+          const prLogs = await fetchChatterLogs(matchedPR.model, reqId, 'PR', odooOptions).catch(() => []);
+          const chatterNotes = prLogs.length > 0 ? JSON.stringify(prLogs) : '';
 
-            if (seq) {
-              try {
-                const fuzzyPos = await queryOdoo(
-                  'purchase.order',
-                  'search_read',
-                  [[
-                    '|',
-                    '|',
-                    ['name', 'ilike', seq],
-                    ['origin', 'ilike', seq],
-                    ['partner_ref', 'ilike', seq]
-                  ]],
-                  {
-                    fields: ['id', 'name', 'state', 'amount_total', 'partner_id', 'date_order', 'origin', 'partner_ref', 'create_date'],
-                    limit: 50
-                  },
-                  odooOptions
-                );
-
-                logDebug(`Fuzzy PO Search returned ${fuzzyPos ? fuzzyPos.length : 0} items for seq: ${seq}`);
-
-                if (fuzzyPos && fuzzyPos.length > 0) {
-                  // If it's a PR search, match origin/ref. If PO search, match the PO name.
-                  const seqRegex = isPrPattern 
-                    ? new RegExp('(PR|RFQ)[/0-9-]*0*' + seq + '\\\\b', 'i')
-                    : new RegExp('(?:\\\\D|^)0*' + seq + '\\\\b', 'i');
-
-                  logDebug(`Fuzzy match regex: ${seqRegex.source}`);
-
-                  const matched = fuzzyPos.filter((po: any) => {
-                    const name = po.name || '';
-                    const origin = po.origin || '';
-                    const partnerRef = po.partner_ref || '';
-                    const isMatched = seqRegex.test(name) || seqRegex.test(origin) || seqRegex.test(partnerRef) || name.includes(docName);
-                    logDebug(`  Testing PO: ${name}, origin: ${origin}, ref: ${partnerRef} -> Matched? ${isMatched}`);
-                    return isMatched;
-                  });
-                  if (matched && matched.length > 0) {
-                    logDebug(`Fuzzy matches selected POs: ${JSON.stringify(matched.map((p: any) => p.name))}`);
-                    odooPos = matched;
-                  } else {
-                    logDebug(`Fuzzy matches failed filter regex.`);
-                  }
-                }
-              } catch (errFuzzyPo) {
-                logDebug(`Fuzzy search error: ${errFuzzyPo}`);
-                console.error(`Gagal melakukan fuzzy search PO untuk ${docName}:`, errFuzzyPo);
-              }
+          if ((!parsedOdooDate || isNaN(parsedOdooDate.getTime())) && prLogs.length > 0) {
+            const oldestLog = prLogs[prLogs.length - 1];
+            const tempDate = new Date(oldestLog.date);
+            if (tempDate && !isNaN(tempDate.getTime())) {
+              parsedOdooDate = tempDate;
             }
           }
 
-          if (odooPos && odooPos.length > 0) {
-            // Kita akan menampung semua PO Lines dan logs dari seluruh PO yang ditemukan (bisa lebih dari satu jika split PO)
-            const allPoLines: any[] = [];
-            const allLogs: any[] = [];
-            let prCreateDate: Date | null = null;
-            
-            // Map untuk menyimpan status GR dari masing-masing PO
-            const poGrStatusMap = new Map<number, { isGrDone: boolean, odooGrDate: Date | null, odooGrLink: string | null }>();
+          await prisma.$transaction(async (tx) => {
+            const priceField = isRequisition ? 'price_unit' : 'estimated_cost';
 
-            for (const odooPo of odooPos) {
-              const poId = odooPo.id;
-              const poName = odooPo.name;
-              const odooState = odooPo.state;
-              const localStatusPr = mapOdooStateToLocal(odooState);
-              const vendorName = Array.isArray(odooPo.partner_id) ? odooPo.partner_id[1] : null;
-              const amountTotal = odooPo.amount_total || 0;
-
-              // Ambil log untuk PO ini
-              const poLogs = await fetchChatterLogs('purchase.order', poId, 'PO', odooOptions);
-              allLogs.push(...poLogs);
-
-              // Ambil PO Lines untuk PO ini
-              let poLines: any[] = [];
-              try {
-                poLines = await queryOdoo(
-                  'purchase.order.line',
-                  'search_read',
-                  [[['order_id', '=', poId]]],
-                  {
-                    fields: ['name', 'price_unit', 'product_qty', 'qty_received', 'product_id'],
-                    limit: 50
-                  },
-                  odooOptions
-                );
-              } catch (errLines) {
-                console.error(`Gagal mengambil detail line item PO ${poName}:`, errLines);
+            for (const item of items) {
+              let matchedPrice = 0;
+              let matchedQty = 0;
+              if (prLines && prLines.length > 0) {
+                const matchedLine = findBestMatchedLine(prLines, item);
+                if (matchedLine) {
+                  matchedPrice = matchedLine[priceField] || 0;
+                  matchedQty = matchedLine.product_qty || 0;
+                }
               }
 
-              // Sisipkan informasi parent PO ke setiap baris line item PO
-              for (const line of poLines) {
-                line.parentPoName = poName;
-                line.parentPoId = poId;
-                line.parentPoState = odooState;
-                line.parentLocalStatusPr = localStatusPr;
-                line.parentVendorName = vendorName;
-                line.parentAmountTotal = amountTotal;
+              const updateData: any = {
+                statusPr: localStatusPr,
+                odooNotes: chatterNotes || null
+              };
+              if (matchedPrice > 0) {
+                updateData.harga = matchedPrice;
               }
-              allPoLines.push(...poLines);
-
-              // Cek GR Odoo untuk PO ini
-              let odooGrDate: Date | null = null;
-              let isGrDone = false;
-              let odooGrLink: string | null = null;
-              try {
-                const odooGrs = await queryOdoo(
-                  'good.received',
-                  'search_read',
-                  [[['purchase_id', '=', poId]]],
-                  {
-                    fields: ['id', 'state', 'write_date', 'name'],
-                    limit: 1
-                  },
-                  odooOptions
-                );
-
-                if (odooGrs && odooGrs.length > 0) {
-                  const odooGr = odooGrs[0];
-                  odooGrLink = `https://foomx.odoo.com/web#id=${odooGr.id}&model=good.received&view_type=form`;
-                  if (odooGr.state === 'done') {
-                    isGrDone = true;
-                    if (odooGr.write_date) {
-                      const parsedGrDate = new Date(odooGr.write_date);
-                      if (!isNaN(parsedGrDate.getTime())) {
-                        odooGrDate = parsedGrDate;
-                      }
-                    }
-                  }
-                }
-              } catch (errGr: any) {
-                logDebug(`Gagal mencari Good Received Odoo untuk PO ID ${poId}: ${errGr.message || errGr}`);
+              if (matchedQty > 0 && item.qty === Math.round(matchedQty)) {
+                updateData.qty = Math.round(matchedQty);
+              }
+              if (parsedOdooDate && !isNaN(parsedOdooDate.getTime())) {
+                updateData.tanggalList = parsedOdooDate;
               }
 
-              poGrStatusMap.set(poId, { isGrDone, odooGrDate, odooGrLink });
-            }
+              const hasChanges = hasActualChanges(item, updateData);
+              let updatedItem: any = item;
 
-            // Ambil PR logs jika ada originDoc atau prNo
-            const originDoc = odooPos[0].origin?.trim();
-            const prTargets = Array.from(new Set([originDoc, prNo].filter(Boolean) as string[]));
-            for (const target of prTargets) {
-              try {
-                const matchedPR = await findOdooPR(target, odooOptions);
-                if (matchedPR) {
-                  const prLogs = await fetchChatterLogs(matchedPR.model, matchedPR.id, 'PR', odooOptions);
-                  allLogs.push(...prLogs);
-
-                  if (matchedPR.create_date) {
-                    const parsedPrDate = new Date(matchedPR.create_date);
-                    if (!isNaN(parsedPrDate.getTime())) {
-                      prCreateDate = parsedPrDate;
-                    }
-                  }
-                }
-              } catch (errPRLogs) {
-                console.error(`Gagal mengambil log PR untuk target ${target}:`, errPRLogs);
-              }
-            }
-
-            // Deduplikasi & urutkan log
-            const seen = new Set();
-            const deduplicatedLogs = allLogs.filter(log => {
-              const key = `${log.date}_${log.author}_${log.body}`;
-              if (seen.has(key)) return false;
-              seen.add(key);
-              return true;
-            });
-            deduplicatedLogs.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            const chatterNotes = deduplicatedLogs.length > 0 ? JSON.stringify(deduplicatedLogs) : '';
-
-            if (!prCreateDate && deduplicatedLogs.length > 0) {
-              const oldestLog = deduplicatedLogs[deduplicatedLogs.length - 1];
-              const parsedLogDate = new Date(oldestLog.date);
-              if (!isNaN(parsedLogDate.getTime())) {
-                prCreateDate = parsedLogDate;
-              }
-            }
-
-            // Update item secara lokal
-            await prisma.$transaction(async (tx) => {
-              for (const item of items) {
-                let matchedLine = null;
-                if (allPoLines.length > 0) {
-                  // Gunakan helper pencocokan untuk menemukan baris PO yang tepat
-                  matchedLine = findBestMatchedLine(allPoLines, item);
-                }
-
-                // Tentukan data PO mana yang dipakai (gunakan matched PO, atau fallback ke PO pertama)
-                const targetPo = matchedLine 
-                  ? odooPos.find((p: any) => p.id === matchedLine.parentPoId)
-                  : odooPos[0];
-                const poId = targetPo.id;
-                const poName = targetPo.name;
-                const odooState = targetPo.state;
-                const localStatusPr = mapOdooStateToLocal(odooState);
-                const vendorName = Array.isArray(targetPo.partner_id) ? targetPo.partner_id[1] : null;
-                const amountTotal = targetPo.amount_total || 0;
-                const odooPoUrl = `https://foomx.odoo.com/web#id=${poId}&model=purchase.order&view_type=form`;
-
-                const grStatus = poGrStatusMap.get(poId) || { isGrDone: false, odooGrDate: null, odooGrLink: null };
-                const { isGrDone, odooGrDate, odooGrLink } = grStatus;
-
-                let matchedPrice = matchedLine ? Number(matchedLine.price_unit) || 0 : 0;
-                let matchedQty = matchedLine ? Number(matchedLine.product_qty) || 0 : 0;
-                let qtyReceived = matchedLine ? Number(matchedLine.qty_received) || 0 : 0;
-
-                const updateData: any = {
-                  statusPr: localStatusPr,
-                  nomorPo: poName,
-                  odooNotes: chatterNotes || null,
-                };
-                if (vendorName) updateData.vendor = vendorName;
-
-                if (prCreateDate) {
-                  updateData.tanggalList = prCreateDate;
-                }
-                
-                if (!item.linkReferences) {
-                  updateData.linkReferences = odooPoUrl;
-                }
-
-                if (matchedPrice > 0) {
-                  updateData.harga = matchedPrice;
-                } else if (amountTotal > 0 && (!item.harga || Number(item.harga) === 0)) {
-                  updateData.harga = amountTotal;
-                }
-
-                // Hitung jumlah qty yang sudah di-GR sebelumnya untuk item ini
-                const siblingItems = await tx.procurementTracking.findMany({
-                  where: {
-                    nomorPo: poName,
-                    originalName: item.originalName,
-                    nomorPr: item.nomorPr
-                  }
+              if (hasChanges) {
+                updatedItem = await tx.procurementTracking.update({
+                  where: { id: item.id },
+                  data: updateData
                 });
 
-                const alreadyReceivedQty = siblingItems
-                  .filter((sib: any) => sib.statusPo === 'DONE' && sib.id !== item.id)
-                  .reduce((sum: number, sib: any) => sum + sib.qty, 0);
-
-                const newReceiptQty = qtyReceived - alreadyReceivedQty;
-                let finalIsGrDone = isGrDone;
-
-                // Hanya update qty jika item belum di-split (qty lokal masih sama dengan qty Odoo)
-                if (matchedQty > 0 && item.qty === Math.round(matchedQty)) {
-                  updateData.qty = Math.round(matchedQty);
-                }
-
-                if (newReceiptQty > 0 && newReceiptQty < item.qty) {
-                  // SPLIT GR HANDLING: Baru diterima sebagian dari porsi pending saat ini
-                  updateData.qty = newReceiptQty;
-                  updateData.statusPo = 'DONE';
-                  if (odooGrDate) updateData.tanggalTerima = odooGrDate;
-                  if (odooGrLink) updateData.linkGr = odooGrLink;
-                  finalIsGrDone = true;
-
-                  const remainingQty = item.qty - newReceiptQty;
-                  await tx.procurementTracking.create({
+                if (updatedItem.sparepartId) {
+                  await tx.sparepart.update({
+                    where: { id: updatedItem.sparepartId },
                     data: {
-                      fbIndex: item.fbIndex,
-                      originalName: item.originalName,
-                      sparepartId: item.sparepartId,
-                      keterangan: item.keterangan,
-                      penggunaanBulan: item.penggunaanBulan,
-                      kontrak3Bulan: item.kontrak3Bulan,
-                      tanggalList: prCreateDate || item.tanggalList,
-                      qty: remainingQty,
-                      productCategory: item.productCategory,
-                      reason: item.reason,
-                      urgency: item.urgency,
-                      linkReferences: odooPoUrl,
-                      vendor: vendorName || item.vendor,
-                      harga: matchedPrice > 0 ? matchedPrice : item.harga,
-                      nomorPr: item.nomorPr,
-                      statusPr: localStatusPr,
-                      statusPo: localStatusPr === 'APPROVED' ? 'PO' : localStatusPr,
-                      nomorPo: poName,
+                      purchasingStatus: localStatusPr,
+                      purchasingNoPr: updatedItem.nomorPr,
                       odooNotes: chatterNotes || null,
-                      linkedPartsJson: item.linkedPartsJson
-                    }
-                  });
-                  logDebug(`Split GR untuk Item ID ${item.id}: ${newReceiptQty} diterima baru (updated), ${remainingQty} sisa pending (created)`);
-                } else if (newReceiptQty >= item.qty || isGrDone) {
-                  // Porsi pending saat ini sudah terisi penuh atau PO secara keseluruhan selesai
-                  updateData.statusPo = 'DONE';
-                  if (odooGrDate) {
-                    updateData.tanggalTerima = odooGrDate;
-                  }
-                  if (odooGrLink) {
-                    updateData.linkGr = odooGrLink;
-                  }
-                  finalIsGrDone = true;
-                }
-
-                const hasChanges = hasActualChanges(item, updateData);
-                let updatedItem: any = item;
-
-                if (hasChanges) {
-                  updatedItem = await tx.procurementTracking.update({
-                    where: { id: item.id },
-                    data: updateData
-                  });
-
-                  if (updatedItem.sparepartId) {
-                    const spUpdate: any = {
-                      purchasingStatus: finalIsGrDone ? 'NONE' : localStatusPr,
-                      purchasingNoPr: finalIsGrDone ? null : updatedItem.nomorPr,
-                      purchasingNoPo: finalIsGrDone ? null : updatedItem.nomorPo,
-                      odooNotes: updatedItem.odooNotes,
-                      purchasingQty: finalIsGrDone ? 0 : updatedItem.qty,
+                      purchasingQty: updatedItem.qty,
                       ...(matchedPrice > 0 ? { harga: matchedPrice } : {})
-                    };
-
-                    if (finalIsGrDone && odooGrDate) {
-                      const sp = await tx.sparepart.findUnique({ where: { id: updatedItem.sparepartId } });
-                      if (sp) {
-                        const elapsedMs = odooGrDate.getTime() - new Date(updatedItem.tanggalList).getTime();
-                        const elapsedDays = Math.max(1, elapsedMs / (1000 * 60 * 60 * 24));
-                        const calculatedAvgLeadTime = sp.avgLeadTime === 0
-                          ? elapsedDays
-                          : Number((sp.avgLeadTime * 0.8 + elapsedDays * 0.2).toFixed(2));
-                        const calculatedMaxLeadTime = Math.max(sp.maxLeadTime, Math.round(elapsedDays));
-                        
-                        spUpdate.avgLeadTime = calculatedAvgLeadTime;
-                        spUpdate.maxLeadTime = calculatedMaxLeadTime;
-                        spUpdate.prDate = null;
-                        spUpdate.poDate = null;
-                      }
                     }
-
-                    await tx.sparepart.update({
-                      where: { id: updatedItem.sparepartId },
-                      data: spUpdate
-                    });
-                  }
+                  });
                 }
               }
-            });
+            }
+          });
+          updatedOdooCount += items.length;
+        } else {
+          // PO update
+          const { odooPos, allPoLines, poGrStatusMap, prCreateDate, chatterNotes } = data;
 
-            updatedOdooCount += items.length;
-          } else {
-            // Document not found in purchase.order. Try purchase.requisition/request.
-            const prOrDocName = prNo || docName;
-            logDebug(`PO not found in purchase.order. Falling back to purchase.requisition/request query for prOrDocName: ${prOrDocName}...`);
-            try {
-              const matchedPR = await findOdooPR(prOrDocName, odooOptions);
-              if (matchedPR) {
-                const reqId = matchedPR.id;
-                const reqState = matchedPR.state;
-                const isRequisition = matchedPR.model === 'purchase.requisition';
-                
-                let localStatusPr = 'DRAFT';
-                if (isRequisition) {
-                  if (reqState === 'in_progress') localStatusPr = 'TO_APPROVE';
-                  else if (reqState === 'open') localStatusPr = 'RFQ';
-                  else if (reqState === 'done') localStatusPr = 'APPROVED';
-                  else if (reqState === 'cancel') localStatusPr = 'CANCELLED';
-                } else {
-                  if (reqState === 'to_approve') localStatusPr = 'TO_APPROVE';
-                  else if (reqState === 'approved') localStatusPr = 'APPROVED';
-                  else if (reqState === 'rejected') localStatusPr = 'CANCELLED';
-                  else if (reqState === 'done') localStatusPr = 'PO';
+          await prisma.$transaction(async (tx) => {
+            for (const item of items) {
+              let matchedLine = null;
+              if (allPoLines.length > 0) {
+                matchedLine = findBestMatchedLine(allPoLines, item);
+              }
+
+              const targetPo = matchedLine 
+                ? odooPos.find((p: any) => p.id === matchedLine.parentPoId)
+                : odooPos[0];
+              const poId = targetPo.id;
+              const poName = targetPo.name;
+              const odooState = targetPo.state;
+              const localStatusPr = mapOdooStateToLocal(odooState);
+              const vendorName = Array.isArray(targetPo.partner_id) ? targetPo.partner_id[1] : null;
+              const amountTotal = targetPo.amount_total || 0;
+              const odooPoUrl = `https://foomx.odoo.com/web#id=${poId}&model=purchase.order&view_type=form`;
+
+              const grStatus = poGrStatusMap.get(poId) || { isGrDone: false, odooGrDate: null, odooGrLink: null };
+              const { isGrDone, odooGrDate, odooGrLink } = grStatus;
+
+              let matchedPrice = matchedLine ? Number(matchedLine.price_unit) || 0 : 0;
+              let matchedQty = matchedLine ? Number(matchedLine.product_qty) || 0 : 0;
+              let qtyReceived = matchedLine ? Number(matchedLine.qty_received) || 0 : 0;
+
+              const updateData: any = {
+                statusPr: localStatusPr,
+                nomorPo: poName,
+                odooNotes: chatterNotes || null,
+              };
+              if (vendorName) updateData.vendor = vendorName;
+
+              if (prCreateDate) {
+                updateData.tanggalList = prCreateDate;
+              }
+              
+              if (!item.linkReferences) {
+                updateData.linkReferences = odooPoUrl;
+              }
+
+              if (matchedPrice > 0) {
+                updateData.harga = matchedPrice;
+              } else if (amountTotal > 0 && (!item.harga || Number(item.harga) === 0)) {
+                updateData.harga = amountTotal;
+              }
+
+              // Hitung jumlah qty yang sudah di-GR sebelumnya untuk item ini
+              const siblingItems = await tx.procurementTracking.findMany({
+                where: {
+                  nomorPo: poName,
+                  originalName: item.originalName,
+                  nomorPr: item.nomorPr
                 }
+              });
 
-                const prLogs = await fetchChatterLogs(matchedPR.model, reqId, 'PR', odooOptions);
-                prLogs.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
-                const chatterNotes = prLogs.length > 0 ? JSON.stringify(prLogs) : '';
+              const alreadyReceivedQty = siblingItems
+                .filter((sib: any) => sib.statusPo === 'DONE' && sib.id !== item.id)
+                .reduce((sum: number, sib: any) => sum + sib.qty, 0);
 
-                // Fetch line items price (ONLY ONCE for the group!)
-                let prLines: any[] = [];
-                try {
-                  const lineModel = isRequisition ? 'purchase.requisition.line' : 'purchase.request.line';
-                  const parentField = isRequisition ? 'requisition_id' : 'request_id';
-                  const priceField = isRequisition ? 'price_unit' : 'estimated_cost';
+              const newReceiptQty = qtyReceived - alreadyReceivedQty;
+              let finalIsGrDone = isGrDone;
 
-                  prLines = await queryOdoo(
-                    lineModel,
-                    'search_read',
-                    [[[parentField, '=', reqId]]],
-                    {
-                      fields: ['product_id', 'product_qty', priceField, 'name'],
-                      limit: 50
-                    },
-                    odooOptions
-                  );
-                } catch (errReqLines) {
-                  console.error(`Gagal mengambil detail line item ${matchedPR.model} ${matchedPR.name}:`, errReqLines);
-                }
+              // Hanya update qty jika item belum di-split (qty lokal masih sama dengan qty Odoo)
+              if (matchedQty > 0 && item.qty === Math.round(matchedQty)) {
+                updateData.qty = Math.round(matchedQty);
+              }
 
-                const odooDateRaw = matchedPR.create_date;
-                let parsedOdooDate = odooDateRaw ? new Date(odooDateRaw) : null;
-                if ((!parsedOdooDate || isNaN(parsedOdooDate.getTime())) && prLogs.length > 0) {
-                  const oldestLog = prLogs[prLogs.length - 1];
-                  const tempDate = new Date(oldestLog.date);
-                  if (tempDate && !isNaN(tempDate.getTime())) {
-                    parsedOdooDate = tempDate;
-                  }
-                }
+              if (newReceiptQty > 0 && newReceiptQty < item.qty) {
+                // SPLIT GR HANDLING: Baru diterima sebagian dari porsi pending saat ini
+                updateData.qty = newReceiptQty;
+                updateData.statusPo = 'DONE';
+                if (odooGrDate) updateData.tanggalTerima = odooGrDate;
+                if (odooGrLink) updateData.linkGr = odooGrLink;
+                finalIsGrDone = true;
 
-                await prisma.$transaction(async (tx) => {
-                  const priceField = isRequisition ? 'price_unit' : 'estimated_cost';
-
-                  for (const item of items) {
-                    let matchedPrice = 0;
-                    let matchedQty = 0;
-                    if (prLines && prLines.length > 0) {
-                      const matchedLine = findBestMatchedLine(prLines, item);
-                      if (matchedLine) {
-                        matchedPrice = matchedLine[priceField] || 0;
-                        matchedQty = matchedLine.product_qty || 0;
-                      }
-                    }
-
-                    const updateData: any = {
-                      statusPr: localStatusPr,
-                      odooNotes: chatterNotes || null
-                    };
-                    if (matchedPrice > 0) {
-                      updateData.harga = matchedPrice;
-                    }
-                    if (matchedQty > 0) {
-                      updateData.qty = Math.round(matchedQty);
-                    }
-                    if (parsedOdooDate && !isNaN(parsedOdooDate.getTime())) {
-                      updateData.tanggalList = parsedOdooDate;
-                    }
-
-                    const hasChanges = hasActualChanges(item, updateData);
-                    let updatedItem: any = item;
-
-                    if (hasChanges) {
-                      updatedItem = await tx.procurementTracking.update({
-                        where: { id: item.id },
-                        data: updateData
-                      });
-
-                      if (updatedItem.sparepartId) {
-                        await tx.sparepart.update({
-                          where: { id: updatedItem.sparepartId },
-                          data: {
-                            purchasingStatus: localStatusPr,
-                            purchasingNoPr: updatedItem.nomorPr,
-                            odooNotes: chatterNotes || null,
-                            purchasingQty: updatedItem.qty,
-                            ...(matchedPrice > 0 ? { harga: matchedPrice } : {})
-                          }
-                        });
-                      }
-                    }
+                const remainingQty = item.qty - newReceiptQty;
+                await tx.procurementTracking.create({
+                  data: {
+                    fbIndex: item.fbIndex,
+                    originalName: item.originalName,
+                    sparepartId: item.sparepartId,
+                    keterangan: item.keterangan,
+                    penggunaanBulan: item.penggunaanBulan,
+                    kontrak3Bulan: item.kontrak3Bulan,
+                    tanggalList: prCreateDate || item.tanggalList,
+                    qty: remainingQty,
+                    productCategory: item.productCategory,
+                    reason: item.reason,
+                    urgency: item.urgency,
+                    linkReferences: odooPoUrl,
+                    vendor: vendorName || item.vendor,
+                    harga: matchedPrice > 0 ? matchedPrice : item.harga,
+                    nomorPr: item.nomorPr,
+                    statusPr: localStatusPr,
+                    statusPo: localStatusPr === 'APPROVED' ? 'PO' : localStatusPr,
+                    nomorPo: poName,
+                    odooNotes: chatterNotes || null,
+                    linkedPartsJson: item.linkedPartsJson
                   }
                 });
-                updatedOdooCount += items.length;
+                logDebug(`Split GR untuk Item ID ${item.id}: ${newReceiptQty} diterima baru (updated), ${remainingQty} sisa pending (created)`);
+              } else if (newReceiptQty >= item.qty || isGrDone) {
+                // Porsi pending saat ini sudah terisi penuh atau PO secara keseluruhan selesai
+                updateData.statusPo = 'DONE';
+                if (odooGrDate) {
+                  updateData.tanggalTerima = odooGrDate;
+                }
+                if (odooGrLink) {
+                  updateData.linkGr = odooGrLink;
+                }
+                finalIsGrDone = true;
               }
-            } catch (errReq) {
-              console.error(`Gagal melacak PR Requisition/Request Odoo untuk ${docName}:`, errReq);
+
+              const hasChanges = hasActualChanges(item, updateData);
+              let updatedItem: any = item;
+
+              if (hasChanges) {
+                updatedItem = await tx.procurementTracking.update({
+                  where: { id: item.id },
+                  data: updateData
+                });
+
+                if (updatedItem.sparepartId) {
+                  const spUpdate: any = {
+                    purchasingStatus: finalIsGrDone ? 'NONE' : localStatusPr,
+                    purchasingNoPr: finalIsGrDone ? null : updatedItem.nomorPr,
+                    purchasingNoPo: finalIsGrDone ? null : updatedItem.nomorPo,
+                    odooNotes: updatedItem.odooNotes,
+                    purchasingQty: finalIsGrDone ? 0 : updatedItem.qty,
+                    ...(matchedPrice > 0 ? { harga: matchedPrice } : {})
+                  };
+
+                  if (finalIsGrDone && odooGrDate) {
+                    const sp = await tx.sparepart.findUnique({ where: { id: updatedItem.sparepartId } });
+                    if (sp) {
+                      const elapsedMs = odooGrDate.getTime() - new Date(updatedItem.tanggalList).getTime();
+                      const elapsedDays = Math.max(1, elapsedMs / (1000 * 60 * 60 * 24));
+                      const calculatedAvgLeadTime = sp.avgLeadTime === 0
+                        ? elapsedDays
+                        : Number((sp.avgLeadTime * 0.8 + elapsedDays * 0.2).toFixed(2));
+                      const calculatedMaxLeadTime = Math.max(sp.maxLeadTime, Math.round(elapsedDays));
+                      
+                      spUpdate.avgLeadTime = calculatedAvgLeadTime;
+                      spUpdate.maxLeadTime = calculatedMaxLeadTime;
+                      spUpdate.prDate = null;
+                      spUpdate.poDate = null;
+                    }
+                  }
+
+                  await tx.sparepart.update({
+                    where: { id: updatedItem.sparepartId },
+                    data: spUpdate
+                  });
+                }
+              }
             }
-          }
-        } catch (errItem) {
-          console.error(`Gagal menyinkronkan status Odoo untuk ${docName}:`, errItem);
+          });
+          updatedOdooCount += items.length;
         }
       }
 

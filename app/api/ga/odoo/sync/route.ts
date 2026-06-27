@@ -147,32 +147,36 @@ export async function POST(req: NextRequest) {
   const parsedUid = Number(odooUid) || 34;
 
   try {
-    // -----------------------------------------------------------------
-    // LANGKAH 1: PERBARUI INFO VENDOR DARI ODOO UNTUK PESANAN AKTIF
-    // Sync tidak pernah otomatis menerima barang — admin yang selalu klik Terima.
-    // Langkah ini hanya mengambil nama vendor dari PO di Odoo untuk melengkapi data.
-    // -----------------------------------------------------------------
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
     const activeTrackingItems = await prismaGa.gaProcurementTracking.findMany({
-      where: { status: 'ORDERED' },
+      where: {
+        OR: [
+          { status: 'ORDERED' },
+          { tanggalPesan: { gte: ninetyDaysAgo } }
+        ]
+      },
       include: { item: true }
     });
 
-    // Grouping by docName (nomorPo || nomorPr) to minimize network requests
+    // Grouping by docName (prefer nomorPr for Odoo-origin items to handle split POs correctly)
     const grouped: { [docName: string]: typeof activeTrackingItems } = {};
     for (const item of activeTrackingItems) {
-      const doc = item.nomorPo || item.nomorPr;
-      if (!doc) continue;
-      if (!grouped[doc]) grouped[doc] = [];
-      grouped[doc].push(item);
+      const prNo = item.nomorPr?.trim();
+      const poNo = item.nomorPo?.trim();
+      const docName = prNo || poNo;
+      if (!docName) continue;
+      if (!grouped[docName]) grouped[docName] = [];
+      grouped[docName].push(item);
     }
 
     let vendorUpdatedCount = 0;
 
-    for (const docName of Object.keys(grouped)) {
+    // Fetch Odoo POs and lines in parallel (massively speeds up sync!)
+    const fetchPromises = Object.keys(grouped).map(async (docName) => {
       const items = grouped[docName];
-
       try {
-        // Cari PO di Odoo untuk mendapatkan info vendor (bisa lebih dari satu PO jika split PO)
         const odooPos = await queryOdoo(
           'purchase.order',
           'search_read',
@@ -191,7 +195,6 @@ export async function POST(req: NextRequest) {
 
         if (odooPos && odooPos.length > 0) {
           const allPoLines: any[] = [];
-          
           for (const odooPo of odooPos) {
             const poId = odooPo.id;
             const poName = odooPo.name;
@@ -219,37 +222,51 @@ export async function POST(req: NextRequest) {
             }
             allPoLines.push(...poLines);
           }
-
-          for (const item of items) {
-            let matchedLine = null;
-            if (allPoLines.length > 0) {
-              matchedLine = findBestMatchedLine(allPoLines, item);
-            }
-
-            const targetVendor = matchedLine ? matchedLine.parentVendorName : (Array.isArray(odooPos[0].partner_id) ? odooPos[0].partner_id[1] : null);
-            const targetPoName = matchedLine ? matchedLine.parentPoName : odooPos[0].name;
-
-            const updateData: any = {};
-            if (targetVendor && item.vendor !== targetVendor) {
-              updateData.vendor = targetVendor;
-            }
-            if (targetPoName && item.nomorPo !== targetPoName) {
-              updateData.nomorPo = targetPoName;
-            }
-
-            if (Object.keys(updateData).length > 0) {
-              await prismaGa.gaProcurementTracking.update({
-                where: { id: item.id },
-                data: updateData,
-              });
-              vendorUpdatedCount++;
-            }
-          }
+          return { docName, items, odooPos, allPoLines, error: null };
         }
-      } catch (errDoc: any) {
-        console.error(`Gagal mengambil info vendor dari Odoo untuk ${docName}:`, errDoc);
-        if (errDoc?.message?.toLowerCase()?.includes('session expired')) {
-          throw errDoc;
+        return { docName, items, odooPos: [], allPoLines: [], error: null };
+      } catch (err) {
+        return { docName, items, odooPos: [], allPoLines: [], error: err };
+      }
+    });
+
+    const odooResults = await Promise.all(fetchPromises);
+
+    // Process database updates sequentially to prevent locks
+    for (const result of odooResults) {
+      const { docName, items, odooPos, allPoLines, error } = result;
+      if (error) {
+        console.error(`Gagal mengambil info vendor dari Odoo untuk ${docName}:`, error);
+        if ((error as any)?.message?.toLowerCase()?.includes('session expired')) {
+          throw error;
+        }
+        continue;
+      }
+      if (odooPos.length === 0) continue;
+
+      for (const item of items) {
+        let matchedLine = null;
+        if (allPoLines.length > 0) {
+          matchedLine = findBestMatchedLine(allPoLines, item);
+        }
+
+        const targetVendor = matchedLine ? matchedLine.parentVendorName : (Array.isArray(odooPos[0].partner_id) ? odooPos[0].partner_id[1] : null);
+        const targetPoName = matchedLine ? matchedLine.parentPoName : odooPos[0].name;
+
+        const updateData: any = {};
+        if (targetVendor && item.vendor !== targetVendor) {
+          updateData.vendor = targetVendor;
+        }
+        if (targetPoName && item.nomorPo !== targetPoName) {
+          updateData.nomorPo = targetPoName;
+        }
+
+        if (Object.keys(updateData).length > 0) {
+          await prismaGa.gaProcurementTracking.update({
+            where: { id: item.id },
+            data: updateData,
+          });
+          vendorUpdatedCount++;
         }
       }
     }
