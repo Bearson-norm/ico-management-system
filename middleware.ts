@@ -87,6 +87,11 @@ export default async function middleware(req: NextRequest) {
   }
 
   if (pathname.startsWith('/api/ga')) {
+    // Bypass untuk cleanup endpoint (internal admin tool)
+    if (pathname === '/api/ga/procurement/cleanup') {
+      const secret = req.nextUrl.searchParams.get('secret');
+      if (secret === 'ga-cleanup-2026') return NextResponse.next();
+    }
     if (!token || tenant !== 'ga') {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }

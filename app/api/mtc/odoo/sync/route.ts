@@ -62,6 +62,50 @@ function hasActualChanges(existingItem: any, updateData: any): boolean {
   return false;
 }
 
+// Mencari sparepart di DB lokal berdasarkan nama atau alias (secara eksak maupun fuzzy)
+async function findMtcSparepartMatch(tx: any, prodName: string): Promise<string | null> {
+  const cleanProd = prodName.toLowerCase().trim();
+  if (!cleanProd) return null;
+
+  // 1. Coba match nama secara persis (case-insensitive)
+  let matched = await tx.sparepart.findFirst({
+    where: { 
+      aktif: true,
+      nama: { equals: prodName, mode: 'insensitive' } 
+    }
+  });
+  if (matched) return matched.id;
+
+  // 2. Coba match namaAlias secara persis (case-insensitive)
+  matched = await tx.sparepart.findFirst({
+    where: {
+      aktif: true,
+      namaAlias: { equals: prodName, mode: 'insensitive' }
+    }
+  });
+  if (matched) return matched.id;
+
+  // 3. Coba match fuzzy (seperti GA) dengan list all active spareparts
+  const allSpareparts = await tx.sparepart.findMany({ where: { aktif: true } });
+  
+  const fuzzyMatched = allSpareparts.find((sp: any) => {
+    const cleanSpName = sp.nama.toLowerCase().trim();
+    const cleanAlias = sp.namaAlias?.toLowerCase().trim();
+    
+    // Cocokkan nama sparepart
+    if (cleanSpName && (cleanProd.includes(cleanSpName) || cleanSpName.includes(cleanProd))) {
+      return true;
+    }
+    // Cocokkan alias sparepart
+    if (cleanAlias && (cleanProd.includes(cleanAlias) || cleanAlias.includes(cleanProd))) {
+      return true;
+    }
+    return false;
+  });
+
+  return fuzzyMatched ? fuzzyMatched.id : null;
+}
+
 // Map Odoo's state to our local statusPr values
 function mapOdooStateToLocal(state: string): string {
   switch (state) {
@@ -713,9 +757,15 @@ export async function POST(req: NextRequest) {
     try {
       // 2a. Import new PRs from Odoo created by this user in the last 45 days
       const thirtyDaysAgoDate = new Date();
-      thirtyDaysAgoDate.setDate(thirtyDaysAgoDate.getDate() - 45);
+      thirtyDaysAgoDate.setDate(thirtyDaysAgoDate.getDate() - 365); // Menggunakan 365 hari (1 tahun) agar mencakup semua data PR histori
       const thirtyDaysAgoStr = thirtyDaysAgoDate.toISOString().replace('T', ' ').substring(0, 19);
       const parsedUid = parseInt(String(odooUid)) || 34;
+
+      // Ambil daftar nomor PR yang sudah ada di database lokal untuk mencegah double-import tanpa membebani query loop
+      const existingPRs = await prisma.procurementTracking.findMany({
+        select: { nomorPr: true }
+      });
+      const existingSet = new Set(existingPRs.map(e => e.nomorPr?.trim()).filter(Boolean));
 
       let importedPrCount = 0;
 
@@ -726,8 +776,7 @@ export async function POST(req: NextRequest) {
           'purchase.requisition',
           'search_read',
           [[
-            ['create_date', '>=', thirtyDaysAgoStr],
-            ['create_uid', '=', parsedUid]
+            ['create_date', '>=', thirtyDaysAgoStr]
           ]],
           { fields: ['id', 'name', 'state', 'create_date', 'description'] },
           odooOptions
@@ -740,18 +789,16 @@ export async function POST(req: NextRequest) {
             if (!prName) continue;
 
             // Check if we already have this PR in procurementTracking
-            const existingCount = await prisma.procurementTracking.count({
-              where: { nomorPr: prName }
-            });
+            const exists = existingSet.has(prName);
 
-            if (existingCount === 0) {
+            if (!exists) {
               logDebug(`PR Requisition baru "${prName}" belum ada di DB lokal. Mengimpor line items...`);
               // Fetch line items
               const lines = await queryOdoo(
                 'purchase.requisition.line',
                 'search_read',
                 [[['requisition_id', '=', req.id]]],
-                { fields: ['product_id', 'product_qty', 'price_unit', 'name'], limit: 50 },
+                { fields: ['product_id', 'product_qty', 'price_unit', 'product_description_variants', 'name'], limit: 50 },
                 odooOptions
               );
 
@@ -767,18 +814,12 @@ export async function POST(req: NextRequest) {
 
                 await prisma.$transaction(async (tx) => {
                   for (const line of lines) {
-                    const prodName = Array.isArray(line.product_id) ? line.product_id[1] : (line.name || 'Produk Tanpa Nama');
+                    const prodName = (line.product_description_variants || line.name || (Array.isArray(line.product_id) ? line.product_id[1] : 'Produk Tanpa Nama'))?.trim();
                     const qty = Number(line.product_qty) || 1;
                     const price = Number(line.price_unit) || 0;
 
                     // Match sparepart master if possible
-                    let sparepartId: string | null = null;
-                    const matchedSp = await tx.sparepart.findFirst({
-                      where: { nama: { equals: prodName, mode: 'insensitive' } }
-                    });
-                    if (matchedSp) {
-                      sparepartId = matchedSp.id;
-                    }
+                    const sparepartId = await findMtcSparepartMatch(tx, prodName);
 
                     await tx.procurementTracking.create({
                       data: {
@@ -813,8 +854,7 @@ export async function POST(req: NextRequest) {
           'purchase.request',
           'search_read',
           [[
-            ['create_date', '>=', thirtyDaysAgoStr],
-            ['create_uid', '=', parsedUid]
+            ['create_date', '>=', thirtyDaysAgoStr]
           ]],
           { fields: ['id', 'name', 'state', 'create_date', 'description'] },
           odooOptions
@@ -827,11 +867,9 @@ export async function POST(req: NextRequest) {
             if (!prName) continue;
 
             // Check if we already have this PR in procurementTracking
-            const existingCount = await prisma.procurementTracking.count({
-              where: { nomorPr: prName }
-            });
+            const exists = existingSet.has(prName);
 
-            if (existingCount === 0) {
+            if (!exists) {
               logDebug(`PR Request baru "${prName}" belum ada di DB lokal. Mengimpor line items...`);
               // Fetch line items
               const lines = await queryOdoo(
@@ -854,18 +892,12 @@ export async function POST(req: NextRequest) {
 
                 await prisma.$transaction(async (tx) => {
                   for (const line of lines) {
-                    const prodName = Array.isArray(line.product_id) ? line.product_id[1] : (line.name || 'Produk Tanpa Nama');
+                    const prodName = (line.name || (Array.isArray(line.product_id) ? line.product_id[1] : 'Produk Tanpa Nama'))?.trim();
                     const qty = Number(line.product_qty) || 1;
                     const price = Number(line.estimated_cost) || 0;
 
                     // Match sparepart master if possible
-                    let sparepartId: string | null = null;
-                    const matchedSp = await tx.sparepart.findFirst({
-                      where: { nama: { equals: prodName, mode: 'insensitive' } }
-                    });
-                    if (matchedSp) {
-                      sparepartId = matchedSp.id;
-                    }
+                    const sparepartId = await findMtcSparepartMatch(tx, prodName);
 
                     await tx.procurementTracking.create({
                       data: {

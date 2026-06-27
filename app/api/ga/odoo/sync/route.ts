@@ -137,8 +137,11 @@ export async function POST(req: NextRequest) {
             }
           }
         }
-      } catch (errDoc) {
+      } catch (errDoc: any) {
         console.error(`Gagal mengambil info vendor dari Odoo untuk ${docName}:`, errDoc);
+        if (errDoc?.message?.toLowerCase()?.includes('session expired')) {
+          throw errDoc;
+        }
       }
     }
 
@@ -204,8 +207,11 @@ export async function POST(req: NextRequest) {
               grConfirmedCount += items.length;
             }
           }
-        } catch (errGr) {
+        } catch (errGr: any) {
           console.error(`Gagal cek GR Odoo untuk dokumen ${docName}:`, errGr);
+          if (errGr?.message?.toLowerCase()?.includes('session expired')) {
+            throw errGr;
+          }
         }
       }
     }
@@ -214,8 +220,14 @@ export async function POST(req: NextRequest) {
     // LANGKAH 2: IMPOR PR BARU DARI ODOO BERDASARKAN KATA KUNCI GA
     // -----------------------------------------------------------------
     const fortyFiveDaysAgo = new Date();
-    fortyFiveDaysAgo.setDate(fortyFiveDaysAgo.getDate() - 45);
+    fortyFiveDaysAgo.setDate(fortyFiveDaysAgo.getDate() - 365); // Menggunakan 365 hari (1 tahun) agar mencakup semua data PR histori
     const fortyFiveDaysAgoStr = fortyFiveDaysAgo.toISOString().replace('T', ' ').substring(0, 19);
+
+    // Ambil daftar nomor PR yang sudah ada di database lokal untuk mencegah double-import tanpa membebani query loop
+    const existingPRs = await prismaGa.gaProcurementTracking.findMany({
+      select: { nomorPr: true }
+    });
+    const existingSet = new Set(existingPRs.map(e => e.nomorPr?.trim()).filter(Boolean));
 
     let importedPrCount = 0;
 
@@ -226,7 +238,6 @@ export async function POST(req: NextRequest) {
         'search_read',
         [[
           ['create_date', '>=', fortyFiveDaysAgoStr],
-          ['create_uid', '=', parsedUid],
           '|', '|',
           ['description', 'ilike', 'ga'],
           ['description', 'ilike', 'general affairs'],
@@ -242,17 +253,15 @@ export async function POST(req: NextRequest) {
           if (!prName) continue;
 
           // Periksa apakah PR ini sudah diimpor secara lokal
-          const exists = await prismaGa.gaProcurementTracking.count({
-            where: { nomorPr: prName },
-          });
+          const exists = existingSet.has(prName);
 
-          if (exists === 0) {
+          if (!exists) {
             // Tarik line items dari PR tersebut
             const lines = await queryOdoo(
               'purchase.requisition.line',
               'search_read',
               [[['requisition_id', '=', req.id]]],
-              { fields: ['product_id', 'product_qty', 'price_unit', 'name'], limit: 50 },
+              { fields: ['product_id', 'product_qty', 'price_unit', 'product_description_variants', 'name'], limit: 50 },
               odooSessionId
             );
 
@@ -264,8 +273,8 @@ export async function POST(req: NextRequest) {
                   // Skip baris yang tidak punya product_id (misalnya baris akun analitik seperti "SUPPLIES FACTORY RELATED")
                   if (!line.product_id || !Array.isArray(line.product_id)) continue;
 
-                  const prodName = line.product_id[1];
-                  if (!prodName?.trim()) continue;
+                  const prodName = (line.product_description_variants || line.name || line.product_id[1])?.trim();
+                  if (!prodName) continue;
 
                   const qty = Number(line.product_qty) || 1;
                   const price = Number(line.price_unit) || 0;
@@ -308,8 +317,11 @@ export async function POST(req: NextRequest) {
           }
         }
       }
-    } catch (errReq) {
+    } catch (errReq: any) {
       console.error('Gagal mengimpor Requisitions dari Odoo:', errReq);
+      if (errReq?.message?.toLowerCase()?.includes('session expired')) {
+        throw errReq;
+      }
     }
 
     // Impor dari purchase.request (PR Request Odoo)
@@ -319,7 +331,6 @@ export async function POST(req: NextRequest) {
         'search_read',
         [[
           ['create_date', '>=', fortyFiveDaysAgoStr],
-          ['create_uid', '=', parsedUid],
           '|', '|',
           ['description', 'ilike', 'ga'],
           ['description', 'ilike', 'general affairs'],
@@ -334,11 +345,9 @@ export async function POST(req: NextRequest) {
           const prName = req.name?.trim();
           if (!prName) continue;
 
-          const exists = await prismaGa.gaProcurementTracking.count({
-            where: { nomorPr: prName },
-          });
+          const exists = existingSet.has(prName);
 
-          if (exists === 0) {
+          if (!exists) {
             const lines = await queryOdoo(
               'purchase.request.line',
               'search_read',
@@ -355,8 +364,8 @@ export async function POST(req: NextRequest) {
                   // Skip baris yang tidak punya product_id (misalnya baris akun analitik seperti "SUPPLIES FACTORY RELATED")
                   if (!line.product_id || !Array.isArray(line.product_id)) continue;
 
-                  const prodName = line.product_id[1];
-                  if (!prodName?.trim()) continue;
+                  const prodName = (line.name || line.product_id[1])?.trim();
+                  if (!prodName) continue;
 
                   const qty = Number(line.product_qty) || 1;
                   const price = Number(line.estimated_cost) || 0;
@@ -398,8 +407,11 @@ export async function POST(req: NextRequest) {
           }
         }
       }
-    } catch (errReq) {
+    } catch (errReq: any) {
       console.error('Gagal mengimpor Requests dari Odoo:', errReq);
+      if (errReq?.message?.toLowerCase()?.includes('session expired')) {
+        throw errReq;
+      }
     }
 
     return ok({

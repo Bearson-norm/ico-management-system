@@ -490,10 +490,9 @@ export default function ProcurementTrackingPage() {
 
   // One-Click Sheets & Odoo Cloud Sync
   async function handleOneClickSync() {
-    if (!sheetUrl || !sheetUrl.trim()) {
-      setTempSheetUrl('');
+    if ((!sheetUrl || !sheetUrl.trim()) && (!odooSessionId || !odooSessionId.trim())) {
       setShowSettingsModal(true);
-      alert('Silakan masukkan Link Google Sheets SCM terlebih dahulu pada menu Pengaturan (⚙️).');
+      alert('Silakan masukkan Link Google Sheets SCM atau Odoo Browser Session ID terlebih dahulu pada menu Pengaturan (⚙️).');
       return;
     }
 

@@ -10,6 +10,10 @@ async function testConnection() {
     
     const firstUser = await mtc.user.findFirst({ select: { username: true, role: true } });
     console.log(`👤 First MTC user in database:`, firstUser || 'No users found');
+
+    console.log('\n⚙️ Fetching MTC Settings...');
+    const settings = await mtc.mtcSetting.findMany();
+    console.log('MTC Settings found in database:', settings);
   } catch (error) {
     console.error('❌ MTC Database Connection Failed:');
     console.error(error);
@@ -25,6 +29,10 @@ async function testConnection() {
     
     const firstUser = await ga.user.findFirst({ select: { username: true, role: true } });
     console.log(`👤 First GA user in database:`, firstUser || 'No users found');
+
+    console.log('\n⚙️ Fetching GA Settings...');
+    const settings = await ga.gaSetting.findMany();
+    console.log('GA Settings found in database:', settings);
   } catch (error) {
     console.error('❌ GA Database Connection Failed:');
     console.error(error);
@@ -34,3 +42,4 @@ async function testConnection() {
 }
 
 testConnection();
+
