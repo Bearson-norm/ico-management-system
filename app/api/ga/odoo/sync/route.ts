@@ -45,6 +45,73 @@ async function queryOdoo(
   return json.result;
 }
 
+// Intelligent best match line item helper using name, substring, digits, and quantity scoring
+function findBestMatchedLine(lines: any[], item: any): any {
+  if (!lines || lines.length === 0) return null;
+
+  const odooItemName = item.item?.nama?.toLowerCase()?.trim() || '';
+  const originalName = item.originalName?.toLowerCase()?.trim() || '';
+  const targetQty = Number(item.qty) || 0;
+
+  // Extract all digits from originalName for sequence/specs matching (e.g. "isi 2" -> ["2"])
+  const originalDigits = originalName.match(/\b\d+\b/g) || [];
+
+  let bestLine = null;
+  let bestScore = -1;
+
+  for (const line of lines) {
+    const prodName = Array.isArray(line.product_id) ? line.product_id[1]?.toLowerCase()?.trim() : '';
+    const lineName = line.name?.toLowerCase()?.trim() || '';
+    const lineQty = Number(line.product_qty) || 0;
+
+    let score = 0;
+
+    // 1. Exact Match (highest priority)
+    if (originalName && (originalName === prodName || originalName === lineName)) {
+      score += 100;
+    }
+    if (odooItemName && (odooItemName === prodName || odooItemName === lineName)) {
+      score += 80;
+    }
+
+    // 2. Substring Match
+    if (prodName && prodName.length > 3) {
+      if (originalName.includes(prodName) || prodName.includes(originalName)) {
+        score += 20;
+      }
+      if (odooItemName && (odooItemName.includes(prodName) || prodName.includes(odooItemName))) {
+        score += 15;
+      }
+    }
+
+    if (lineName && lineName.length > 3) {
+      if (originalName.includes(lineName) || lineName.includes(originalName)) {
+        score += 20;
+      }
+    }
+
+    // 3. Digits Specifications Matching
+    const lineDigits = lineName.match(/\b\d+\b/g) || [];
+    let digitMatchCount = 0;
+    for (const d of originalDigits) {
+      if (lineDigits.includes(d)) digitMatchCount++;
+    }
+    score += digitMatchCount * 10;
+
+    // 4. Quantity matching as tie-breaker
+    if (targetQty > 0 && Math.round(targetQty) === Math.round(lineQty)) {
+      score += 5;
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestLine = line;
+    }
+  }
+
+  return bestScore >= 10 ? bestLine : null;
+}
+
 // POST /api/ga/odoo/sync
 export async function POST(req: NextRequest) {
   const session = await requireGaEditor();
@@ -87,6 +154,7 @@ export async function POST(req: NextRequest) {
     // -----------------------------------------------------------------
     const activeTrackingItems = await prismaGa.gaProcurementTracking.findMany({
       where: { status: 'ORDERED' },
+      include: { item: true }
     });
 
     // Grouping by docName (nomorPo || nomorPr) to minimize network requests
@@ -104,7 +172,7 @@ export async function POST(req: NextRequest) {
       const items = grouped[docName];
 
       try {
-        // Cari PO di Odoo untuk mendapatkan info vendor
+        // Cari PO di Odoo untuk mendapatkan info vendor (bisa lebih dari satu PO jika split PO)
         const odooPos = await queryOdoo(
           'purchase.order',
           'search_read',
@@ -116,24 +184,65 @@ export async function POST(req: NextRequest) {
           ]],
           {
             fields: ['id', 'name', 'state', 'partner_id'],
-            limit: 1
+            limit: 50
           },
           odooSessionId
         );
 
         if (odooPos && odooPos.length > 0) {
-          const vendorName = Array.isArray(odooPos[0].partner_id) ? odooPos[0].partner_id[1] : null;
+          const allPoLines: any[] = [];
+          
+          for (const odooPo of odooPos) {
+            const poId = odooPo.id;
+            const poName = odooPo.name;
+            const vendorName = Array.isArray(odooPo.partner_id) ? odooPo.partner_id[1] : null;
 
-          if (vendorName) {
-            // Hanya update vendor, tanpa mengubah status atau membuat stok movement
-            for (const item of items) {
-              if (!item.vendor) {
-                await prismaGa.gaProcurementTracking.update({
-                  where: { id: item.id },
-                  data: { vendor: vendorName },
-                });
-                vendorUpdatedCount++;
-              }
+            let poLines: any[] = [];
+            try {
+              poLines = await queryOdoo(
+                'purchase.order.line',
+                'search_read',
+                [[['order_id', '=', poId]]],
+                {
+                  fields: ['name', 'price_unit', 'product_qty', 'qty_received', 'product_id'],
+                  limit: 50
+                },
+                odooSessionId
+              );
+            } catch (errLines) {
+              console.error(`Gagal mengambil detail line item PO ${poName}:`, errLines);
+            }
+
+            for (const line of poLines) {
+              line.parentPoName = poName;
+              line.parentVendorName = vendorName;
+            }
+            allPoLines.push(...poLines);
+          }
+
+          for (const item of items) {
+            let matchedLine = null;
+            if (allPoLines.length > 0) {
+              matchedLine = findBestMatchedLine(allPoLines, item);
+            }
+
+            const targetVendor = matchedLine ? matchedLine.parentVendorName : (Array.isArray(odooPos[0].partner_id) ? odooPos[0].partner_id[1] : null);
+            const targetPoName = matchedLine ? matchedLine.parentPoName : odooPos[0].name;
+
+            const updateData: any = {};
+            if (targetVendor && item.vendor !== targetVendor) {
+              updateData.vendor = targetVendor;
+            }
+            if (targetPoName && item.nomorPo !== targetPoName) {
+              updateData.nomorPo = targetPoName;
+            }
+
+            if (Object.keys(updateData).length > 0) {
+              await prismaGa.gaProcurementTracking.update({
+                where: { id: item.id },
+                data: updateData,
+              });
+              vendorUpdatedCount++;
             }
           }
         }
