@@ -147,14 +147,15 @@ export async function POST(req: NextRequest) {
   const parsedUid = Number(odooUid) || 34;
 
   try {
-    const ninetyDaysAgo = new Date();
-    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+    const checkDaysAgo = new Date();
+    checkDaysAgo.setDate(checkDaysAgo.getDate() - 180);
 
     const activeTrackingItems = await prismaGa.gaProcurementTracking.findMany({
       where: {
         OR: [
           { status: 'ORDERED' },
-          { tanggalPesan: { gte: ninetyDaysAgo } }
+          { tanggalPesan: { gte: checkDaysAgo } },
+          { createdAt: { gte: checkDaysAgo } }
         ]
       },
       include: { item: true }
