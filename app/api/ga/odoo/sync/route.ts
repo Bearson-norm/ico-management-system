@@ -196,14 +196,15 @@ export async function POST(req: NextRequest) {
 
         if (odooPos && odooPos.length > 0) {
           const allPoLines: any[] = [];
+          const poGrStatusMap = new Map<number, { isGrDone: boolean, odooGrDate: Date | null, odooGrLink: string | null }>();
+
           for (const odooPo of odooPos) {
             const poId = odooPo.id;
             const poName = odooPo.name;
             const vendorName = Array.isArray(odooPo.partner_id) ? odooPo.partner_id[1] : null;
 
-            let poLines: any[] = [];
-            try {
-              poLines = await queryOdoo(
+            const [poLines, odooGrs] = await Promise.all([
+              queryOdoo(
                 'purchase.order.line',
                 'search_read',
                 [[['order_id', '=', poId]]],
@@ -212,30 +213,113 @@ export async function POST(req: NextRequest) {
                   limit: 50
                 },
                 odooSessionId
-              );
-            } catch (errLines) {
-              console.error(`Gagal mengambil detail line item PO ${poName}:`, errLines);
-            }
+              ).catch(() => []),
+              queryOdoo(
+                'good.received',
+                'search_read',
+                [[['purchase_id', '=', poId]]],
+                {
+                  fields: ['id', 'state', 'write_date', 'name'],
+                  limit: 1
+                },
+                odooSessionId
+              ).catch(() => [])
+            ]);
 
             for (const line of poLines) {
               line.parentPoName = poName;
+              line.parentPoId = poId;
               line.parentVendorName = vendorName;
             }
             allPoLines.push(...poLines);
+
+            let odooGrDate: Date | null = null;
+            let isGrDone = false;
+            let odooGrLink: string | null = null;
+
+            if (odooGrs && odooGrs.length > 0) {
+              const odooGr = odooGrs[0];
+              odooGrLink = `https://foomx.odoo.com/web#id=${odooGr.id}&model=good.received&view_type=form`;
+              if (odooGr.state === 'done') {
+                isGrDone = true;
+                if (odooGr.write_date) {
+                  const parsedGrDate = new Date(odooGr.write_date);
+                  if (!isNaN(parsedGrDate.getTime())) {
+                    odooGrDate = parsedGrDate;
+                  }
+                }
+              }
+            }
+            poGrStatusMap.set(poId, { isGrDone, odooGrDate, odooGrLink });
           }
-          return { docName, items, odooPos, allPoLines, error: null };
+          return { docName, items, odooPos, allPoLines, poGrStatusMap, error: null };
         }
-        return { docName, items, odooPos: [], allPoLines: [], error: null };
+        return { docName, items, odooPos: [], allPoLines: [], poGrStatusMap: new Map(), error: null };
       } catch (err) {
-        return { docName, items, odooPos: [], allPoLines: [], error: err };
+        return { docName, items, odooPos: [], allPoLines: [], poGrStatusMap: new Map(), error: err };
       }
     });
 
     const odooResults = await Promise.all(fetchPromises);
 
+    // Helper to create Stock Movement for GA to ensure inventory matches Odoo sync
+    const createGaStockMovement = async (tx: any, tracking: any, qty: number, harga: number, vendor: string | null, date: Date) => {
+      if (tracking.isStocked && tracking.itemId) {
+        const item = await tx.gaItem.findUnique({
+          where: { id: tracking.itemId },
+        });
+
+        if (item) {
+          await tx.gaStockMovement.create({
+            data: {
+              tipe: 'IN',
+              itemId: item.id,
+              namaBarang: item.nama,
+              qty: qty,
+              qtyDiterima: qty,
+              tanggalTerima: date,
+              tanggal: date,
+              harga: harga,
+              vendor: vendor,
+              purchaseType: 'PO',
+              keterangan: `[Sync Odoo - Penerimaan Pesanan GA]${tracking.nomorPo ? ` PO: ${tracking.nomorPo}` : ''}${tracking.keterangan ? ` - ${tracking.keterangan}` : ''}`,
+            },
+          });
+
+          await tx.gaItem.update({
+            where: { id: item.id },
+            data: { harga: harga },
+          });
+        }
+      } else {
+        await tx.gaStockMovement.create({
+          data: {
+            tipe: 'OUT',
+            itemId: tracking.itemId || null,
+            namaBarang: tracking.originalName,
+            qty: qty,
+            qtyDiterima: qty,
+            tanggalTerima: date,
+            tanggal: date,
+            harga: harga,
+            vendor: vendor,
+            purchaseType: 'PO',
+            keterangan: `[Sync Odoo - Penerimaan Langsung]${tracking.nomorPo ? ` PO: ${tracking.nomorPo}` : ''} Alasan: ${tracking.keterangan || 'Kebutuhan langsung'}`,
+          },
+        });
+
+        if (tracking.itemId) {
+          await tx.gaItem.update({
+            where: { id: tracking.itemId },
+            data: { harga: harga },
+          });
+        }
+      }
+    };
+
     // Process database updates sequentially to prevent locks
     for (const result of odooResults) {
-      const { docName, items, odooPos, allPoLines, error } = result;
+      const { docName, items, odooPos, allPoLines, poGrStatusMap, error } = result as any;
       if (error) {
         console.error(`Gagal mengambil info vendor dari Odoo untuk ${docName}:`, error);
         if ((error as any)?.message?.toLowerCase()?.includes('session expired')) {
@@ -245,31 +329,106 @@ export async function POST(req: NextRequest) {
       }
       if (odooPos.length === 0) continue;
 
-      for (const item of items) {
-        let matchedLine = null;
-        if (allPoLines.length > 0) {
-          matchedLine = findBestMatchedLine(allPoLines, item);
-        }
+      await prismaGa.$transaction(async (tx) => {
+        for (const item of items) {
+          let matchedLine = null;
+          if (allPoLines.length > 0) {
+            matchedLine = findBestMatchedLine(allPoLines, item);
+          }
 
-        const targetVendor = matchedLine ? matchedLine.parentVendorName : (Array.isArray(odooPos[0].partner_id) ? odooPos[0].partner_id[1] : null);
-        const targetPoName = matchedLine ? matchedLine.parentPoName : odooPos[0].name;
+          const targetPo = matchedLine 
+            ? odooPos.find((p: any) => p.id === matchedLine.parentPoId)
+            : odooPos[0];
+          const poId = targetPo.id;
+          const poName = targetPo.name;
+          const vendorName = Array.isArray(targetPo.partner_id) ? targetPo.partner_id[1] : null;
 
-        const updateData: any = {};
-        if (targetVendor && item.vendor !== targetVendor) {
-          updateData.vendor = targetVendor;
-        }
-        if (targetPoName && item.nomorPo !== targetPoName) {
-          updateData.nomorPo = targetPoName;
-        }
+          const grStatus = poGrStatusMap.get(poId) || { isGrDone: false, odooGrDate: null, odooGrLink: null };
+          const { isGrDone, odooGrDate } = grStatus;
 
-        if (Object.keys(updateData).length > 0) {
-          await prismaGa.gaProcurementTracking.update({
+          let matchedPrice = matchedLine ? Number(matchedLine.price_unit) || 0 : 0;
+          let matchedQty = matchedLine ? Number(matchedLine.product_qty) || 0 : 0;
+          let qtyReceived = matchedLine ? Number(matchedLine.qty_received) || 0 : 0;
+
+          const updateData: any = {
+            nomorPo: poName,
+          };
+          if (vendorName) updateData.vendor = vendorName;
+          if (matchedPrice > 0) updateData.harga = matchedPrice;
+
+          const siblingItems = await tx.gaProcurementTracking.findMany({
+            where: {
+              nomorPo: poName,
+              originalName: item.originalName,
+              nomorPr: item.nomorPr
+            }
+          });
+
+          const alreadyReceivedQty = siblingItems
+            .filter((sib: any) => sib.status === 'RECEIVED' && sib.id !== item.id)
+            .reduce((sum: number, sib: any) => sum + sib.qty, 0);
+
+          const newReceiptQty = qtyReceived - alreadyReceivedQty;
+          const isPartialOdooGr = !!(matchedLine && qtyReceived > 0 && qtyReceived < matchedQty);
+
+          if (matchedQty > 0 && item.qty === Math.round(matchedQty)) {
+            updateData.qty = Math.round(matchedQty);
+          }
+
+          const tDate = odooGrDate || new Date();
+
+          if (newReceiptQty > 0 && newReceiptQty < item.qty) {
+            // SPLIT GR HANDLING: Baru diterima sebagian dari porsi pending saat ini
+            updateData.qty = newReceiptQty;
+            updateData.status = 'RECEIVED';
+            updateData.grDone = true;
+            updateData.tanggalTerima = tDate;
+
+            const remainingQty = item.qty - newReceiptQty;
+            await tx.gaProcurementTracking.create({
+              data: {
+                originalName: item.originalName,
+                itemId: item.itemId,
+                qty: remainingQty,
+                harga: matchedPrice > 0 ? matchedPrice : item.harga,
+                vendor: vendorName || item.vendor,
+                nomorPr: item.nomorPr,
+                nomorPo: poName,
+                status: 'ORDERED',
+                tanggalPesan: item.tanggalPesan,
+                isStocked: item.isStocked,
+                grDone: false,
+                keterangan: item.keterangan,
+              }
+            });
+
+            // Create stock movement for the received portion
+            await createGaStockMovement(tx, item, newReceiptQty, matchedPrice > 0 ? matchedPrice : Number(item.harga || 0), vendorName || item.vendor, tDate);
+            vendorUpdatedCount++;
+          } else if (newReceiptQty >= item.qty || (isGrDone && !isPartialOdooGr)) {
+            // Porsi pending saat ini sudah terisi penuh atau PO secara keseluruhan selesai
+            updateData.status = 'RECEIVED';
+            updateData.grDone = true;
+            updateData.tanggalTerima = item.tanggalTerima || tDate;
+
+            // Create stock movement only if the status was not already RECEIVED
+            if (item.status !== 'RECEIVED') {
+              await createGaStockMovement(tx, item, updateData.qty || item.qty, matchedPrice > 0 ? matchedPrice : Number(item.harga || 0), vendorName || item.vendor, updateData.tanggalTerima);
+            }
+            vendorUpdatedCount++;
+          } else {
+            // If none match, revert to ORDERED / not RECEIVED
+            updateData.status = 'ORDERED';
+            updateData.grDone = false;
+            updateData.tanggalTerima = null;
+          }
+
+          await tx.gaProcurementTracking.update({
             where: { id: item.id },
             data: updateData,
           });
-          vendorUpdatedCount++;
         }
-      }
+      });
     }
 
 
