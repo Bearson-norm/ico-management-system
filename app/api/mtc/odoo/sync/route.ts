@@ -1373,6 +1373,9 @@ export async function POST(req: NextRequest) {
               const newReceiptQty = qtyReceived - alreadyReceivedQty;
               let finalIsGrDone = isGrDone;
 
+              // Check if Odoo shows this is a partial delivery line (some received, but not all)
+              const isPartialOdooGr = !!(matchedLine && qtyReceived > 0 && qtyReceived < matchedQty);
+
               // Hanya update qty jika item belum di-split (qty lokal masih sama dengan qty Odoo)
               if (matchedQty > 0 && item.qty === Math.round(matchedQty)) {
                 updateData.qty = Math.round(matchedQty);
@@ -1412,7 +1415,7 @@ export async function POST(req: NextRequest) {
                   }
                 });
                 logDebug(`Split GR untuk Item ID ${item.id}: ${newReceiptQty} diterima baru (updated), ${remainingQty} sisa pending (created)`);
-              } else if (newReceiptQty >= item.qty || isGrDone) {
+              } else if (newReceiptQty >= item.qty || (isGrDone && !isPartialOdooGr)) {
                 // Porsi pending saat ini sudah terisi penuh atau PO secara keseluruhan selesai
                 updateData.statusPo = 'DONE';
                 if (odooGrDate) {
