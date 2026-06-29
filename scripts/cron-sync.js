@@ -1,7 +1,7 @@
-import fs from 'fs';
-import path from 'path';
+const fs = require('fs');
+const path = require('path');
 
-// Manual loading of .env file to avoid dependency issues in ts-node
+// Manual loading of .env file
 function loadEnv() {
   const envPath = path.join(process.cwd(), '.env');
   if (fs.existsSync(envPath)) {
@@ -24,7 +24,6 @@ function loadEnv() {
   }
 }
 
-// Load environment variables
 loadEnv();
 
 async function main() {
@@ -60,7 +59,7 @@ async function main() {
 
       console.log(`[Cron Sync] [${ep.name}] HTTP Status Code: ${response.status}`);
       
-      let result: any;
+      let result;
       try {
         result = await response.json();
       } catch (parseError) {
@@ -93,7 +92,7 @@ async function main() {
           console.log(`  - Detail GA: Vendor updated: ${result.data.vendorUpdatedCount}, GR Confirmed: ${result.data.grConfirmedCount}, PR Imported: ${result.data.importedPrCount}`);
         }
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error(`[Cron Sync] [${ep.name}] Error koneksi ke server Next.js:`, error.message || error);
       allSuccess = false;
     }

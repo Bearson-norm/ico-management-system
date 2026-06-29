@@ -95,3 +95,14 @@ jobs:
               pm2 start ecosystem.config.cjs
             fi
             pm2 save
+
+            echo ">>> Registering background cron job for auto-sync..."
+            LOAD_ENV=""
+            if [ -f "$HOME/.nvm/nvm.sh" ]; then
+              LOAD_ENV=". \$HOME/.nvm/nvm.sh && nvm use default &&"
+            elif command -v fnm >/dev/null 2>&1; then
+              LOAD_ENV="eval \"\$(fnm env)\" &&"
+            fi
+            CRON_JOB="*/15 * * * * $LOAD_ENV cd $APP_PATH && node scripts/cron-sync.js >> $APP_PATH/cron-sync.log 2>&1"
+            (crontab -l 2>/dev/null | grep -F "scripts/cron-sync.js") || (crontab -l 2>/dev/null; echo "$CRON_JOB") | crontab -
+            echo ">>> Cron job registered successfully!"
