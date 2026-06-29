@@ -37,50 +37,73 @@ async function main() {
     process.exit(1);
   }
 
-  const syncUrl = `http://${host}:${port}/api/mtc/odoo/sync`;
-  console.log(`[Cron Sync] Memulai sinkronisasi harian otomatis...`);
-  console.log(`[Cron Sync] Menghubungi endpoint: ${syncUrl}`);
+  const endpoints = [
+    { name: 'MTC', url: `http://${host}:${port}/api/mtc/odoo/sync` },
+    { name: 'GA', url: `http://${host}:${port}/api/ga/odoo/sync` }
+  ];
 
-  try {
-    const response = await fetch(syncUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${cronToken}`
-      },
-      body: JSON.stringify({}) // Mengirim body kosong untuk memicu fallback env di server
-    });
+  console.log(`[Cron Sync] Memulai sinkronisasi otomatis harian/berkala...`);
 
-    console.log(`[Cron Sync] HTTP Status Code: ${response.status}`);
-    
-    let result: any;
+  let allSuccess = true;
+
+  for (const ep of endpoints) {
+    console.log(`\n[Cron Sync] [${ep.name}] Menghubungi endpoint: ${ep.url}`);
     try {
-      result = await response.json();
-    } catch (parseError) {
-      const rawText = await response.text();
-      console.error(`[Cron Sync] Gagal mem-parse JSON response. Raw output: ${rawText}`);
-      process.exit(1);
-    }
+      const response = await fetch(ep.url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${cronToken}`
+        },
+        body: JSON.stringify({}) // Mengirim body kosong untuk memicu fallback env di server
+      });
 
-    if (!response.ok || !result.success) {
-      console.error(`[Cron Sync] Sinkronisasi GAGAL!`);
-      console.error(`[Cron Sync] Error detail:`, JSON.stringify(result, null, 2));
-      process.exit(1);
-    }
+      console.log(`[Cron Sync] [${ep.name}] HTTP Status Code: ${response.status}`);
+      
+      let result: any;
+      try {
+        result = await response.json();
+      } catch (parseError) {
+        const rawText = await response.text();
+        console.error(`[Cron Sync] [${ep.name}] Gagal mem-parse JSON response. Raw output: ${rawText}`);
+        allSuccess = false;
+        continue;
+      }
 
-    console.log(`[Cron Sync] Sinkronisasi BERHASIL!`);
-    console.log(`[Cron Sync] Hasil Google Sheets:`, result.data?.sheets?.message || 'Tidak ada pesan');
-    if (result.data?.sheets?.error) {
-      console.warn(`[Cron Sync] Warning Sheets: ${result.data.sheets.error}`);
+      if (!response.ok || !result.success) {
+        console.error(`[Cron Sync] [${ep.name}] Sinkronisasi GAGAL!`);
+        console.error(`[Cron Sync] [${ep.name}] Error detail:`, JSON.stringify(result, null, 2));
+        allSuccess = false;
+        continue;
+      }
+
+      console.log(`[Cron Sync] [${ep.name}] Sinkronisasi BERHASIL!`);
+      if (ep.name === 'MTC') {
+        console.log(`  - Hasil Google Sheets:`, result.data?.sheets?.message || 'Tidak ada pesan');
+        if (result.data?.sheets?.error) {
+          console.warn(`  - Warning Sheets: ${result.data.sheets.error}`);
+        }
+        console.log(`  - Hasil Odoo Cloud:`, result.data?.odoo?.message || 'Tidak ada pesan');
+        if (result.data?.odoo?.error) {
+          console.warn(`  - Warning Odoo: ${result.data.odoo.error}`);
+        }
+      } else {
+        console.log(`  - Hasil GA Odoo:`, result.data?.msg || result.message || 'Tidak ada pesan');
+        if (result.data?.vendorUpdatedCount != null) {
+          console.log(`  - Detail GA: Vendor updated: ${result.data.vendorUpdatedCount}, GR Confirmed: ${result.data.grConfirmedCount}, PR Imported: ${result.data.importedPrCount}`);
+        }
+      }
+    } catch (error: any) {
+      console.error(`[Cron Sync] [${ep.name}] Error koneksi ke server Next.js:`, error.message || error);
+      allSuccess = false;
     }
-    console.log(`[Cron Sync] Hasil Odoo Cloud:`, result.data?.odoo?.message || 'Tidak ada pesan');
-    if (result.data?.odoo?.error) {
-      console.warn(`[Cron Sync] Warning Odoo: ${result.data.odoo.error}`);
-    }
-    
+  }
+
+  if (allSuccess) {
+    console.log(`\n[Cron Sync] Semua proses sinkronisasi selesai dengan sukses!`);
     process.exit(0);
-  } catch (error: any) {
-    console.error(`[Cron Sync] Error koneksi ke server Next.js:`, error.message || error);
+  } else {
+    console.error(`\n[Cron Sync] Ada proses sinkronisasi yang gagal.`);
     process.exit(1);
   }
 }

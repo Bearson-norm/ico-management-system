@@ -151,8 +151,24 @@ function findBestMatchedLine(lines: any[], item: any): any {
 
 // POST /api/ga/odoo/sync
 export async function POST(req: NextRequest) {
-  const session = await requireGaEditor();
-  if (!session) return err('Akses ditolak', 403);
+  // Check CRON_TOKEN bypass
+  const authHeader = req.headers.get('Authorization');
+  const queryToken = req.nextUrl.searchParams.get('token');
+  const reqToken = (authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null) || queryToken;
+  
+  let isAuthorized = false;
+  if (reqToken && process.env.CRON_TOKEN && reqToken === process.env.CRON_TOKEN) {
+    isAuthorized = true;
+  } else {
+    const session = await requireGaEditor();
+    if (session) {
+      isAuthorized = true;
+    }
+  }
+
+  if (!isAuthorized) {
+    return err('Akses ditolak', 403);
+  }
 
   let body: any = {};
   try {
