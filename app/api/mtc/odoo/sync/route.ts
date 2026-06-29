@@ -119,6 +119,43 @@ function mapOdooStateToLocal(state: string): string {
   }
 }
 
+const GENERIC_NAMES = ['EQUIPMENT', 'SPAREPARTS USAGE', 'SUPPLIES', 'FACTORY SUPPLIES', 'Barang GA', 'Produk Tanpa Nama'];
+const ACCOUNT_NAME_PATTERNS = [
+  /^SUPPLIES\s+FACTORY\s+RELATED$/i,
+  /^OFFICE\s+SUPPLIES$/i,
+  /^FACTORY\s+SUPPLIES$/i,
+  /^GENERAL\s+SUPPLIES$/i,
+  /^MAINTENANCE\s+SUPPLIES$/i,
+  /^CLEANING\s+SUPPLIES$/i,
+  /^CONSUMABLE/i,
+  /^Barang\s+GA$/i,
+];
+
+function isGenericName(name: string | null | undefined): boolean {
+  if (!name) return true;
+  const trimmed = name.trim();
+  if (GENERIC_NAMES.some(g => trimmed.toLowerCase() === g.toLowerCase())) {
+    return true;
+  }
+  for (const pattern of ACCOUNT_NAME_PATTERNS) {
+    if (pattern.test(trimmed)) return true;
+  }
+  return false;
+}
+
+function getBestOdooLineName(line: any): string {
+  const desc = (line.product_description_variants || line.name || '')?.trim();
+  const productLabel = (Array.isArray(line.product_id) ? line.product_id[1] : '')?.trim();
+  
+  if (desc && !isGenericName(desc)) {
+    return desc;
+  }
+  if (productLabel && !isGenericName(productLabel)) {
+    return productLabel;
+  }
+  return desc || productLabel || 'Produk Tanpa Nama';
+}
+
 // Intelligent best match line item helper using name, substring, digits, and quantity scoring
 function findBestMatchedLine(lines: any[], item: any): any {
   if (!lines || lines.length === 0) return null;
@@ -814,7 +851,7 @@ export async function POST(req: NextRequest) {
 
                 await prisma.$transaction(async (tx) => {
                   for (const line of lines) {
-                    const prodName = (line.product_description_variants || line.name || (Array.isArray(line.product_id) ? line.product_id[1] : 'Produk Tanpa Nama'))?.trim();
+                    const prodName = getBestOdooLineName(line);
                     const qty = Number(line.product_qty) || 1;
                     const price = Number(line.price_unit) || 0;
 
@@ -892,7 +929,7 @@ export async function POST(req: NextRequest) {
 
                 await prisma.$transaction(async (tx) => {
                   for (const line of lines) {
-                    const prodName = (line.name || (Array.isArray(line.product_id) ? line.product_id[1] : 'Produk Tanpa Nama'))?.trim();
+                    const prodName = getBestOdooLineName(line);
                     const qty = Number(line.product_qty) || 1;
                     const price = Number(line.estimated_cost) || 0;
 
@@ -1260,8 +1297,9 @@ export async function POST(req: NextRequest) {
             for (const item of items) {
               let matchedPrice = 0;
               let matchedQty = 0;
+              let matchedLine = null;
               if (prLines && prLines.length > 0) {
-                const matchedLine = findBestMatchedLine(prLines, item);
+                matchedLine = findBestMatchedLine(prLines, item);
                 if (matchedLine) {
                   matchedPrice = matchedLine[priceField] || 0;
                   matchedQty = matchedLine.product_qty || 0;
@@ -1272,6 +1310,12 @@ export async function POST(req: NextRequest) {
                 statusPr: localStatusPr,
                 odooNotes: chatterNotes || null
               };
+              if (matchedLine && isGenericName(item.originalName)) {
+                const specificName = getBestOdooLineName(matchedLine);
+                if (!isGenericName(specificName)) {
+                  updateData.originalName = specificName;
+                }
+              }
               if (matchedPrice > 0) {
                 updateData.harga = matchedPrice;
               }
@@ -1341,6 +1385,12 @@ export async function POST(req: NextRequest) {
                 nomorPo: poName,
                 odooNotes: chatterNotes || null,
               };
+              if (matchedLine && isGenericName(item.originalName)) {
+                const specificName = getBestOdooLineName(matchedLine);
+                if (!isGenericName(specificName)) {
+                  updateData.originalName = specificName;
+                }
+              }
               if (vendorName) updateData.vendor = vendorName;
 
               if (prCreateDate) {

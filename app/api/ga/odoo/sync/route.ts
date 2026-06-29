@@ -45,6 +45,43 @@ async function queryOdoo(
   return json.result;
 }
 
+const GENERIC_NAMES = ['EQUIPMENT', 'SPAREPARTS USAGE', 'SUPPLIES', 'FACTORY SUPPLIES', 'Barang GA', 'Produk Tanpa Nama'];
+const ACCOUNT_NAME_PATTERNS = [
+  /^SUPPLIES\s+FACTORY\s+RELATED$/i,
+  /^OFFICE\s+SUPPLIES$/i,
+  /^FACTORY\s+SUPPLIES$/i,
+  /^GENERAL\s+SUPPLIES$/i,
+  /^MAINTENANCE\s+SUPPLIES$/i,
+  /^CLEANING\s+SUPPLIES$/i,
+  /^CONSUMABLE/i,
+  /^Barang\s+GA$/i,
+];
+
+function isGenericName(name: string | null | undefined): boolean {
+  if (!name) return true;
+  const trimmed = name.trim();
+  if (GENERIC_NAMES.some(g => trimmed.toLowerCase() === g.toLowerCase())) {
+    return true;
+  }
+  for (const pattern of ACCOUNT_NAME_PATTERNS) {
+    if (pattern.test(trimmed)) return true;
+  }
+  return false;
+}
+
+function getBestOdooLineName(line: any): string {
+  const desc = (line.product_description_variants || line.name || '')?.trim();
+  const productLabel = (Array.isArray(line.product_id) ? line.product_id[1] : '')?.trim();
+  
+  if (desc && !isGenericName(desc)) {
+    return desc;
+  }
+  if (productLabel && !isGenericName(productLabel)) {
+    return productLabel;
+  }
+  return desc || productLabel || 'Produk Tanpa Nama';
+}
+
 // Intelligent best match line item helper using name, substring, digits, and quantity scoring
 function findBestMatchedLine(lines: any[], item: any): any {
   if (!lines || lines.length === 0) return null;
@@ -353,6 +390,12 @@ export async function POST(req: NextRequest) {
           const updateData: any = {
             nomorPo: poName,
           };
+          if (matchedLine && isGenericName(item.originalName)) {
+            const specificName = getBestOdooLineName(matchedLine);
+            if (!isGenericName(specificName)) {
+              updateData.originalName = specificName;
+            }
+          }
           if (vendorName) updateData.vendor = vendorName;
           if (matchedPrice > 0) updateData.harga = matchedPrice;
 
@@ -556,11 +599,9 @@ export async function POST(req: NextRequest) {
 
               await prismaGa.$transaction(async (tx) => {
                 for (const line of lines) {
-                  // Skip baris yang tidak punya product_id (misalnya baris akun analitik seperti "SUPPLIES FACTORY RELATED")
-                  if (!line.product_id || !Array.isArray(line.product_id)) continue;
-
-                  const prodName = (line.product_description_variants || line.name || line.product_id[1])?.trim();
-                  if (!prodName) continue;
+                  const prodName = getBestOdooLineName(line);
+                  // Skip if name is still generic (meaning there is no real item description)
+                  if (!prodName || isGenericName(prodName)) continue;
 
                   const qty = Number(line.product_qty) || 1;
                   const price = Number(line.price_unit) || 0;
@@ -647,11 +688,9 @@ export async function POST(req: NextRequest) {
 
               await prismaGa.$transaction(async (tx) => {
                 for (const line of lines) {
-                  // Skip baris yang tidak punya product_id (misalnya baris akun analitik seperti "SUPPLIES FACTORY RELATED")
-                  if (!line.product_id || !Array.isArray(line.product_id)) continue;
-
-                  const prodName = (line.name || line.product_id[1])?.trim();
-                  if (!prodName) continue;
+                  const prodName = getBestOdooLineName(line);
+                  // Skip if name is still generic (meaning there is no real item description)
+                  if (!prodName || isGenericName(prodName)) continue;
 
                   const qty = Number(line.product_qty) || 1;
                   const price = Number(line.estimated_cost) || 0;
