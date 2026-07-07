@@ -487,7 +487,7 @@ export async function POST(req: NextRequest) {
             // Create stock movement for the received portion
             await createGaStockMovement(tx, item, newReceiptQty, matchedPrice > 0 ? matchedPrice : Number(item.harga || 0), vendorName || item.vendor, tDate);
             vendorUpdatedCount++;
-          } else if (newReceiptQty >= item.qty || (isGrDone && !isPartialOdooGr)) {
+          } else if (newReceiptQty >= item.qty || (newReceiptQty > 0 && isGrDone && !isPartialOdooGr)) {
             // Porsi pending saat ini sudah terisi penuh atau PO secara keseluruhan selesai
             updateData.status = 'RECEIVED';
             updateData.grDone = true;

@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
       }
       finalSheetId = sheetId;
       const fetchUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
-      const res = await fetch(fetchUrl);
+      const res = await fetch(fetchUrl, { cache: 'no-store' });
       if (!res.ok) {
         return err('Gagal mengunduh Google Sheet. Pastikan link dapat diakses publik atau di-share di organisasi Anda.', 400);
       }

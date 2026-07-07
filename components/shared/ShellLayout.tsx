@@ -28,6 +28,7 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
           { href: '/mtc/history', icon: '🧾', label: 'History INOUT', section: 'Audit' },
           { href: '/mtc/master', icon: '⚙️', label: 'Master Data', section: 'System' },
           { href: '/mtc/users', icon: '👥', label: 'Manage Users', section: 'System' },
+          { href: '/mtc/github', icon: '🚀', label: 'GitHub Deploy', section: 'System' },
         ]
       : [{ href: '/mtc/stock', icon: '📦', label: 'Stock Inventory', section: 'Inventory' }]),
   ];

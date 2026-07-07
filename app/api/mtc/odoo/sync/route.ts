@@ -556,7 +556,7 @@ export async function POST(req: NextRequest) {
       }
       const finalSheetId = sheetId;
       const fetchUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
-      const res = await fetch(fetchUrl);
+      const res = await fetch(fetchUrl, { cache: 'no-store' });
       if (!res.ok) {
         throw new Error('Gagal mengunduh Google Sheet CSV. Pastikan link dapat diakses publik.');
       }
@@ -1410,13 +1410,14 @@ export async function POST(req: NextRequest) {
             const lineModel = isRequisition ? 'purchase.requisition.line' : 'purchase.request.line';
             const parentField = isRequisition ? 'requisition_id' : 'request_id';
             const priceField = isRequisition ? 'price_unit' : 'estimated_cost';
+            const nameField = isRequisition ? 'product_description_variants' : 'name';
 
             prLines = await queryOdoo(
               lineModel,
               'search_read',
               [[[parentField, '=', reqId]]],
               {
-                fields: ['product_id', 'product_qty', priceField, 'name'],
+                fields: ['product_id', 'product_qty', priceField, nameField],
                 limit: 50
               },
               odooOptions
@@ -1612,7 +1613,7 @@ export async function POST(req: NextRequest) {
                   }
                 });
                 logDebug(`Split GR untuk Item ID ${item.id}: ${newReceiptQty} diterima baru (updated), ${remainingQty} sisa pending (created)`);
-              } else if (newReceiptQty >= item.qty || (isGrDone && !isPartialOdooGr)) {
+              } else if (newReceiptQty >= item.qty || (newReceiptQty > 0 && isGrDone && !isPartialOdooGr)) {
                 // Porsi pending saat ini sudah terisi penuh atau PO secara keseluruhan selesai
                 updateData.statusPo = 'DONE';
                 if (odooGrDate) {
@@ -1622,6 +1623,12 @@ export async function POST(req: NextRequest) {
                   updateData.linkGr = odooGrLink;
                 }
                 finalIsGrDone = true;
+              } else {
+                // If newReceiptQty <= 0, it means it is not received in Odoo (either because it is pending or because total PO qty has been fully allocated to other items).
+                // Revert/keep as PO (not DONE)
+                updateData.statusPo = 'PO';
+                updateData.tanggalTerima = null;
+                updateData.linkGr = null;
               }
 
               const hasChanges = hasActualChanges(item, updateData);

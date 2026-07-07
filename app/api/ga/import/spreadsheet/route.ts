@@ -168,7 +168,7 @@ export async function POST(req: NextRequest) {
     await autoCleanupDuplicates();
 
     // 1. Fetch the published Google Sheet XLSX buffer
-    const res = await fetch(url);
+    const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) {
       return err(`Gagal mengunduh spreadsheet: HTTP ${res.status}. Pastikan hak akses Google Sheets diatur ke "Siapa saja yang memiliki link dapat melihat" (Anyone with the link can view)`, 400);
     }
