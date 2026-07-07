@@ -326,12 +326,13 @@ export async function POST(req: NextRequest) {
             prismaGa.gaItem.update({
               where: { id: item.itemId },
               data: {
-                kodeBarang: item.kode || undefined,
-                lokasi: item.lokasi || undefined,
-                uom: item.uom !== 'Pcs' ? item.uom : undefined,
-                harga: item.harga.gt(0) ? item.harga : undefined,
-                minQty: item.minQty > 0 ? item.minQty : undefined,
-                maxQty: item.maxQty ? item.maxQty : undefined,
+                nama: item.namaRaw,
+                kodeBarang: item.kode || null,
+                lokasi: item.lokasi || null,
+                uom: item.uom,
+                harga: item.harga,
+                minQty: item.minQty,
+                maxQty: item.maxQty,
               },
             })
           );

@@ -92,6 +92,22 @@ export default async function middleware(req: NextRequest) {
       const secret = req.nextUrl.searchParams.get('secret');
       if (secret === 'ga-cleanup-2026') return NextResponse.next();
     }
+    
+    // Cron auto-sync bypass
+    if (pathname === '/api/ga/odoo/sync') {
+      const authHeader = req.headers.get('Authorization');
+      const queryToken = req.nextUrl.searchParams.get('token');
+      const reqToken = (authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null) || queryToken;
+      if (reqToken && process.env.CRON_TOKEN && reqToken === process.env.CRON_TOKEN) {
+        return NextResponse.next();
+      }
+    }
+
+    // GA Spreadsheet Import Webhook bypass (uses its own X-GA-Sync-Token auth header)
+    if (pathname === '/api/ga/import/webhook') {
+      return NextResponse.next();
+    }
+
     if (!token || tenant !== 'ga') {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }

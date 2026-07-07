@@ -36,6 +36,9 @@ async function importMasterBarang(
   let skipped = 0;
   let stockAdded = 0;
 
+  // Load existing items to match by name or code
+  const existingItems = await prismaGa.gaItem.findMany();
+
   for (const row of rows) {
     const keys = Object.keys(row);
     const get = (candidates: string[]): unknown => {
@@ -60,9 +63,20 @@ async function importMasterBarang(
       continue;
     }
 
-    const itemId = kode
-      ? kode.toUpperCase()
-      : `GA-${namaRaw.toUpperCase().replace(/[^A-Z0-9]/g, '-').replace(/-+/g, '-').substring(0, 20)}`;
+    // Match by code first, then by name
+    let existing = null;
+    if (kode) {
+      existing = existingItems.find((it) => it.kodeBarang?.toUpperCase() === kode.toUpperCase());
+    }
+    if (!existing && namaRaw) {
+      existing = existingItems.find((it) => it.nama.toLowerCase() === namaRaw.toLowerCase());
+    }
+
+    const itemId = existing
+      ? existing.id
+      : (kode
+          ? kode.toUpperCase()
+          : `GA-${namaRaw.toUpperCase().replace(/[^A-Z0-9]/g, '-').replace(/-+/g, '-').substring(0, 20)}`);
 
     try {
       await prismaGa.gaItem.upsert({
@@ -79,12 +93,13 @@ async function importMasterBarang(
           aktif: true,
         },
         update: {
-          kodeBarang: kode || undefined,
-          lokasi: lokasi || undefined,
-          uom: uom !== 'Pcs' ? uom : undefined,
-          harga: harga.gt(0) ? harga : undefined,
-          minQty: minQty > 0 ? minQty : undefined,
-          maxQty: maxQty ? maxQty : undefined,
+          nama: namaRaw,
+          kodeBarang: kode || null,
+          uom,
+          lokasi,
+          harga,
+          minQty,
+          maxQty,
         },
       });
       upserted++;

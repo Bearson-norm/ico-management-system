@@ -119,9 +119,10 @@ function mapOdooStateToLocal(state: string): string {
   }
 }
 
-const GENERIC_NAMES = ['EQUIPMENT', 'SPAREPARTS USAGE', 'SUPPLIES', 'FACTORY SUPPLIES', 'Barang GA', 'Produk Tanpa Nama'];
+const GENERIC_NAMES = ['EQUIPMENT', 'SPAREPARTS USAGE', 'SUPPLIES', 'FACTORY SUPPLIES', 'Barang GA', 'Produk Tanpa Nama', 'REPAIR AND MAINTENANCE', 'REPAIR & MAINTENANCE', 'MEDIA PLACEMENT', 'SPONSORSHIP', 'MARKETING SUPPLIES'];
 const ACCOUNT_NAME_PATTERNS = [
   /^SUPPLIES\s+FACTORY\s+RELATED$/i,
+  /^REPAIR\s+AND\s+MAINTENANCE/i,
   /^OFFICE\s+SUPPLIES$/i,
   /^FACTORY\s+SUPPLIES$/i,
   /^GENERAL\s+SUPPLIES$/i,
@@ -129,6 +130,8 @@ const ACCOUNT_NAME_PATTERNS = [
   /^CLEANING\s+SUPPLIES$/i,
   /^CONSUMABLE/i,
   /^Barang\s+GA$/i,
+  /^MEDIA\s+PLACEMENT$/i,
+  /^SPONSORSHIP$/i,
 ];
 
 function isGenericName(name: string | null | undefined): boolean {
@@ -140,6 +143,14 @@ function isGenericName(name: string | null | undefined): boolean {
   for (const pattern of ACCOUNT_NAME_PATTERNS) {
     if (pattern.test(trimmed)) return true;
   }
+  
+  // All caps + 3+ words + length > 15 = likely analytical account name
+  const isAllCaps = trimmed === trimmed.toUpperCase() && /[A-Z]/.test(trimmed);
+  const wordCount = trimmed.split(/\s+/).length;
+  if (isAllCaps && wordCount >= 3 && trimmed.length > 15) {
+    return true;
+  }
+  
   return false;
 }
 
@@ -792,23 +803,17 @@ export async function POST(req: NextRequest) {
     odooMessage = 'Sinkronisasi Odoo dilewati (Kredensial Odoo tidak dikonfigurasi).';
   } else {
     try {
-      // 2a. Import new PRs from Odoo created by this user in the last 45 days
+      // 2a. Import new PRs and sync active PR lines from Odoo in batch
       const thirtyDaysAgoDate = new Date();
       thirtyDaysAgoDate.setDate(thirtyDaysAgoDate.getDate() - 365); // Menggunakan 365 hari (1 tahun) agar mencakup semua data PR histori
       const thirtyDaysAgoStr = thirtyDaysAgoDate.toISOString().replace('T', ' ').substring(0, 19);
       const parsedUid = parseInt(String(odooUid)) || 34;
 
-      // Ambil daftar nomor PR yang sudah ada di database lokal untuk mencegah double-import tanpa membebani query loop
-      const existingPRs = await prisma.procurementTracking.findMany({
-        select: { nomorPr: true }
-      });
-      const existingSet = new Set(existingPRs.map(e => e.nomorPr?.trim()).filter(Boolean));
-
       let importedPrCount = 0;
 
-      // Import from purchase.requisition
+      // Import/Sync from purchase.requisition
       try {
-        logDebug(`Mencari purchase.requisition baru di Odoo sejak ${thirtyDaysAgoStr} untuk UID ${parsedUid}...`);
+        logDebug(`Mencari purchase.requisition di Odoo sejak ${thirtyDaysAgoStr} untuk UID ${parsedUid}...`);
         const recentRequisitions = await queryOdoo(
           'purchase.requisition',
           'search_read',
@@ -820,63 +825,134 @@ export async function POST(req: NextRequest) {
         );
 
         if (recentRequisitions && recentRequisitions.length > 0) {
-          logDebug(`Ditemukan ${recentRequisitions.length} purchase.requisition baru di Odoo.`);
+          logDebug(`Ditemukan ${recentRequisitions.length} purchase.requisition di Odoo.`);
+          
+          const reqIds = recentRequisitions.map((r: any) => r.id);
+          const prNames = recentRequisitions.map((r: any) => r.name?.trim()).filter(Boolean);
+          
+          // Batch fetch all requisition lines (NO 'name' field!)
+          logDebug(`Batch fetching lines for ${reqIds.length} requisitions...`);
+          const allReqLines = await queryOdoo(
+            'purchase.requisition.line',
+            'search_read',
+            [[['requisition_id', 'in', reqIds]]],
+            { fields: ['requisition_id', 'product_id', 'product_qty', 'price_unit', 'product_description_variants'], limit: 5000 },
+            odooOptions
+          );
+          
+          logDebug(`Ditemukan total ${allReqLines ? allReqLines.length : 0} requisition lines.`);
+
+          // Batch fetch all local tracking items for these PRs
+          const localTrackings = await prisma.procurementTracking.findMany({
+            where: { nomorPr: { in: prNames } },
+            include: { sparepart: true }
+          });
+
+          // Group local trackings by nomorPr
+          const localMap: Record<string, any[]> = {};
+          for (const item of localTrackings) {
+            const key = item.nomorPr?.trim();
+            if (key) {
+              if (!localMap[key]) localMap[key] = [];
+              localMap[key].push(item);
+            }
+          }
+
+          // Process each requisition
           for (const req of recentRequisitions) {
             const prName = req.name?.trim();
             if (!prName) continue;
 
-            // Check if we already have this PR in procurementTracking
-            const exists = existingSet.has(prName);
+            const reqLines = allReqLines.filter((line: any) => line.requisition_id && line.requisition_id[0] === req.id);
+            if (reqLines.length === 0) continue;
 
-            if (!exists) {
-              logDebug(`PR Requisition baru "${prName}" belum ada di DB lokal. Mengimpor line items...`);
-              // Fetch line items
-              const lines = await queryOdoo(
-                'purchase.requisition.line',
-                'search_read',
-                [[['requisition_id', '=', req.id]]],
-                { fields: ['product_id', 'product_qty', 'price_unit', 'product_description_variants', 'name'], limit: 50 },
-                odooOptions
-              );
+            let localItems = localMap[prName] || [];
 
-              if (lines && lines.length > 0) {
-                let localStatusPr = 'DRAFT';
-                const reqState = req.state;
-                if (reqState === 'in_progress') localStatusPr = 'TO_APPROVE';
-                else if (reqState === 'open') localStatusPr = 'RFQ';
-                else if (reqState === 'done') localStatusPr = 'APPROVED';
-                else if (reqState === 'cancel') localStatusPr = 'CANCELLED';
+            let localStatusPr = 'DRAFT';
+            const reqState = req.state;
+            if (reqState === 'in_progress') localStatusPr = 'TO_APPROVE';
+            else if (reqState === 'open') localStatusPr = 'RFQ';
+            else if (reqState === 'done') localStatusPr = 'APPROVED';
+            else if (reqState === 'cancel') localStatusPr = 'CANCELLED';
 
-                const prDate = req.create_date ? new Date(req.create_date) : new Date();
+            const prDate = req.create_date ? new Date(req.create_date) : new Date();
 
-                await prisma.$transaction(async (tx) => {
-                  for (const line of lines) {
-                    const prodName = getBestOdooLineName(line);
-                    const qty = Number(line.product_qty) || 1;
-                    const price = Number(line.price_unit) || 0;
+            await prisma.$transaction(async (tx) => {
+              for (const line of reqLines) {
+                const prodName = getBestOdooLineName(line);
+                const qty = Number(line.product_qty) || 1;
+                const price = Number(line.price_unit) || 0;
 
-                    // Match sparepart master if possible
-                    const sparepartId = await findMtcSparepartMatch(tx, prodName);
+                // Try to find a match in local items for this PR
+                let bestMatchIndex = -1;
+                let bestScore = -1;
 
-                    await tx.procurementTracking.create({
-                      data: {
-                        originalName: prodName,
-                        qty,
-                        harga: price,
-                        nomorPr: prName,
-                        statusPr: localStatusPr,
-                        tanggalList: prDate,
-                        keterangan: line.name || null,
-                        sparepartId,
-                        productCategory: 'Sparepart',
-                        urgency: 'Normal'
-                      }
+                for (let i = 0; i < localItems.length; i++) {
+                  const local = localItems[i];
+                  let score = 0;
+                  const cleanLocalName = local.originalName.toLowerCase().trim();
+                  const cleanProdName = prodName.toLowerCase().trim();
+
+                  if (cleanLocalName === cleanProdName) {
+                    score += 100;
+                  } else if (cleanProdName.length > 3 && (cleanLocalName.includes(cleanProdName) || cleanProdName.includes(cleanLocalName))) {
+                    score += 20;
+                  }
+
+                  if (local.qty === Math.round(qty)) {
+                    score += 10;
+                  }
+
+                  if (score > bestScore) {
+                    bestScore = score;
+                    bestMatchIndex = i;
+                  }
+                }
+
+                const sparepartId = await findMtcSparepartMatch(tx, prodName);
+
+                if (bestMatchIndex !== -1 && bestScore >= 10) {
+                  // MATCH FOUND: update existing local item
+                  const matchedItem = localItems[bestMatchIndex];
+                  localItems.splice(bestMatchIndex, 1);
+
+                  const updateData: any = {
+                    statusPr: localStatusPr,
+                    harga: price > 0 ? price : undefined,
+                    qty: Math.round(qty),
+                    sparepartId: sparepartId || matchedItem.sparepartId,
+                  };
+
+                  if (isGenericName(matchedItem.originalName) && !isGenericName(prodName)) {
+                    updateData.originalName = prodName;
+                  }
+
+                  if (hasActualChanges(matchedItem, updateData)) {
+                    await tx.procurementTracking.update({
+                      where: { id: matchedItem.id },
+                      data: updateData
                     });
                   }
-                });
-                importedPrCount++;
+                } else {
+                  // NO MATCH: create new local item
+                  await tx.procurementTracking.create({
+                    data: {
+                      originalName: prodName,
+                      qty: Math.round(qty),
+                      harga: price,
+                      nomorPr: prName,
+                      statusPr: localStatusPr,
+                      tanggalList: prDate,
+                      keterangan: req.description || null,
+                      sparepartId,
+                      productCategory: 'Sparepart',
+                      urgency: 'Normal'
+                    }
+                  });
+                  importedPrCount++;
+                }
               }
-            }
+            });
           }
         }
       } catch (errReqImport) {
@@ -884,9 +960,9 @@ export async function POST(req: NextRequest) {
         logDebug(`Error requisition import: ${errReqImport}`);
       }
 
-      // Import from purchase.request
+      // Import/Sync from purchase.request
       try {
-        logDebug(`Mencari purchase.request baru di Odoo sejak ${thirtyDaysAgoStr} untuk UID ${parsedUid}...`);
+        logDebug(`Mencari purchase.request di Odoo sejak ${thirtyDaysAgoStr} untuk UID ${parsedUid}...`);
         const recentRequests = await queryOdoo(
           'purchase.request',
           'search_read',
@@ -898,63 +974,134 @@ export async function POST(req: NextRequest) {
         );
 
         if (recentRequests && recentRequests.length > 0) {
-          logDebug(`Ditemukan ${recentRequests.length} purchase.request baru di Odoo.`);
+          logDebug(`Ditemukan ${recentRequests.length} purchase.request di Odoo.`);
+          
+          const reqIds = recentRequests.map((r: any) => r.id);
+          const prNames = recentRequests.map((r: any) => r.name?.trim()).filter(Boolean);
+          
+          // Batch fetch all request lines
+          logDebug(`Batch fetching lines for ${reqIds.length} requests...`);
+          const allReqLines = await queryOdoo(
+            'purchase.request.line',
+            'search_read',
+            [[['request_id', 'in', reqIds]]],
+            { fields: ['request_id', 'product_id', 'product_qty', 'estimated_cost', 'name'], limit: 5000 },
+            odooOptions
+          );
+          
+          logDebug(`Ditemukan total ${allReqLines ? allReqLines.length : 0} request lines.`);
+
+          // Batch fetch all local tracking items for these PRs
+          const localTrackings = await prisma.procurementTracking.findMany({
+            where: { nomorPr: { in: prNames } },
+            include: { sparepart: true }
+          });
+
+          // Group local trackings by nomorPr
+          const localMap: Record<string, any[]> = {};
+          for (const item of localTrackings) {
+            const key = item.nomorPr?.trim();
+            if (key) {
+              if (!localMap[key]) localMap[key] = [];
+              localMap[key].push(item);
+            }
+          }
+
+          // Process each request
           for (const req of recentRequests) {
             const prName = req.name?.trim();
             if (!prName) continue;
 
-            // Check if we already have this PR in procurementTracking
-            const exists = existingSet.has(prName);
+            const reqLines = allReqLines.filter((line: any) => line.request_id && line.request_id[0] === req.id);
+            if (reqLines.length === 0) continue;
 
-            if (!exists) {
-              logDebug(`PR Request baru "${prName}" belum ada di DB lokal. Mengimpor line items...`);
-              // Fetch line items
-              const lines = await queryOdoo(
-                'purchase.request.line',
-                'search_read',
-                [[['request_id', '=', req.id]]],
-                { fields: ['product_id', 'product_qty', 'estimated_cost', 'name'], limit: 50 },
-                odooOptions
-              );
+            let localItems = localMap[prName] || [];
 
-              if (lines && lines.length > 0) {
-                let localStatusPr = 'DRAFT';
-                const reqState = req.state;
-                if (reqState === 'to_approve') localStatusPr = 'TO_APPROVE';
-                else if (reqState === 'approved') localStatusPr = 'APPROVED';
-                else if (reqState === 'rejected') localStatusPr = 'CANCELLED';
-                else if (reqState === 'done') localStatusPr = 'PO';
+            let localStatusPr = 'DRAFT';
+            const reqState = req.state;
+            if (reqState === 'to_approve') localStatusPr = 'TO_APPROVE';
+            else if (reqState === 'approved') localStatusPr = 'APPROVED';
+            else if (reqState === 'rejected') localStatusPr = 'CANCELLED';
+            else if (reqState === 'done') localStatusPr = 'PO';
 
-                const prDate = req.create_date ? new Date(req.create_date) : new Date();
+            const prDate = req.create_date ? new Date(req.create_date) : new Date();
 
-                await prisma.$transaction(async (tx) => {
-                  for (const line of lines) {
-                    const prodName = getBestOdooLineName(line);
-                    const qty = Number(line.product_qty) || 1;
-                    const price = Number(line.estimated_cost) || 0;
+            await prisma.$transaction(async (tx) => {
+              for (const line of reqLines) {
+                const prodName = getBestOdooLineName(line);
+                const qty = Number(line.product_qty) || 1;
+                const price = Number(line.estimated_cost) || 0;
 
-                    // Match sparepart master if possible
-                    const sparepartId = await findMtcSparepartMatch(tx, prodName);
+                // Try to find a match in local items for this PR
+                let bestMatchIndex = -1;
+                let bestScore = -1;
 
-                    await tx.procurementTracking.create({
-                      data: {
-                        originalName: prodName,
-                        qty,
-                        harga: price,
-                        nomorPr: prName,
-                        statusPr: localStatusPr,
-                        tanggalList: prDate,
-                        keterangan: line.name || null,
-                        sparepartId,
-                        productCategory: 'Sparepart',
-                        urgency: 'Normal'
-                      }
+                for (let i = 0; i < localItems.length; i++) {
+                  const local = localItems[i];
+                  let score = 0;
+                  const cleanLocalName = local.originalName.toLowerCase().trim();
+                  const cleanProdName = prodName.toLowerCase().trim();
+
+                  if (cleanLocalName === cleanProdName) {
+                    score += 100;
+                  } else if (cleanProdName.length > 3 && (cleanLocalName.includes(cleanProdName) || cleanProdName.includes(cleanLocalName))) {
+                    score += 20;
+                  }
+
+                  if (local.qty === Math.round(qty)) {
+                    score += 10;
+                  }
+
+                  if (score > bestScore) {
+                    bestScore = score;
+                    bestMatchIndex = i;
+                  }
+                }
+
+                const sparepartId = await findMtcSparepartMatch(tx, prodName);
+
+                if (bestMatchIndex !== -1 && bestScore >= 10) {
+                  // MATCH FOUND: update existing local item
+                  const matchedItem = localItems[bestMatchIndex];
+                  localItems.splice(bestMatchIndex, 1);
+
+                  const updateData: any = {
+                    statusPr: localStatusPr,
+                    harga: price > 0 ? price : undefined,
+                    qty: Math.round(qty),
+                    sparepartId: sparepartId || matchedItem.sparepartId,
+                  };
+
+                  if (isGenericName(matchedItem.originalName) && !isGenericName(prodName)) {
+                    updateData.originalName = prodName;
+                  }
+
+                  if (hasActualChanges(matchedItem, updateData)) {
+                    await tx.procurementTracking.update({
+                      where: { id: matchedItem.id },
+                      data: updateData
                     });
                   }
-                });
-                importedPrCount++;
+                } else {
+                  // NO MATCH: create new local item
+                  await tx.procurementTracking.create({
+                    data: {
+                      originalName: prodName,
+                      qty: Math.round(qty),
+                      harga: price,
+                      nomorPr: prName,
+                      statusPr: localStatusPr,
+                      tanggalList: prDate,
+                      keterangan: line.name || null,
+                      sparepartId,
+                      productCategory: 'Sparepart',
+                      urgency: 'Normal'
+                    }
+                  });
+                  importedPrCount++;
+                }
               }
-            }
+            });
           }
         }
       } catch (errReqImport) {

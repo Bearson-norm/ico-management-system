@@ -2,6 +2,18 @@ import { NextRequest } from 'next/server';
 import { prismaGa } from '@/lib/prisma-ga';
 import { requireGaEditor } from '@/lib/auth';
 import { ok, err } from '@/lib/utils';
+import fs from 'fs';
+import path from 'path';
+
+function logDebug(message: string) {
+  try {
+    const logPath = path.join(process.cwd(), 'odoo_sync_debug.txt');
+    const timestamp = new Date().toISOString();
+    fs.appendFileSync(logPath, `[${timestamp}] ${message}\n`);
+  } catch (e) {
+    console.error('Failed to write debug log:', e);
+  }
+}
 
 // Helper untuk query Odoo via JSON-RPC dengan Cookie session_id
 async function queryOdoo(
@@ -45,9 +57,10 @@ async function queryOdoo(
   return json.result;
 }
 
-const GENERIC_NAMES = ['EQUIPMENT', 'SPAREPARTS USAGE', 'SUPPLIES', 'FACTORY SUPPLIES', 'Barang GA', 'Produk Tanpa Nama'];
+const GENERIC_NAMES = ['EQUIPMENT', 'SPAREPARTS USAGE', 'SUPPLIES', 'FACTORY SUPPLIES', 'Barang GA', 'Produk Tanpa Nama', 'REPAIR AND MAINTENANCE', 'REPAIR & MAINTENANCE', 'MEDIA PLACEMENT', 'SPONSORSHIP', 'MARKETING SUPPLIES'];
 const ACCOUNT_NAME_PATTERNS = [
   /^SUPPLIES\s+FACTORY\s+RELATED$/i,
+  /^REPAIR\s+AND\s+MAINTENANCE/i,
   /^OFFICE\s+SUPPLIES$/i,
   /^FACTORY\s+SUPPLIES$/i,
   /^GENERAL\s+SUPPLIES$/i,
@@ -55,6 +68,8 @@ const ACCOUNT_NAME_PATTERNS = [
   /^CLEANING\s+SUPPLIES$/i,
   /^CONSUMABLE/i,
   /^Barang\s+GA$/i,
+  /^MEDIA\s+PLACEMENT$/i,
+  /^SPONSORSHIP$/i,
 ];
 
 function isGenericName(name: string | null | undefined): boolean {
@@ -66,6 +81,14 @@ function isGenericName(name: string | null | undefined): boolean {
   for (const pattern of ACCOUNT_NAME_PATTERNS) {
     if (pattern.test(trimmed)) return true;
   }
+  
+  // All caps + 3+ words + length > 15 = likely analytical account name
+  const isAllCaps = trimmed === trimmed.toUpperCase() && /[A-Z]/.test(trimmed);
+  const wordCount = trimmed.split(/\s+/).length;
+  if (isAllCaps && wordCount >= 3 && trimmed.length > 15) {
+    return true;
+  }
+  
   return false;
 }
 
@@ -565,99 +588,180 @@ export async function POST(req: NextRequest) {
     // LANGKAH 2: IMPOR PR BARU DARI ODOO BERDASARKAN KATA KUNCI GA
     // -----------------------------------------------------------------
     const fortyFiveDaysAgo = new Date();
-    fortyFiveDaysAgo.setDate(fortyFiveDaysAgo.getDate() - 365); // Menggunakan 365 hari (1 tahun) agar mencakup semua data PR histori
+    fortyFiveDaysAgo.setDate(fortyFiveDaysAgo.getDate() - 120); // Menggunakan 120 hari (4 bulan) agar mencakup PR aktif recent
     const fortyFiveDaysAgoStr = fortyFiveDaysAgo.toISOString().replace('T', ' ').substring(0, 19);
-
-    // Ambil daftar nomor PR yang sudah ada di database lokal untuk mencegah double-import tanpa membebani query loop
-    const existingPRs = await prismaGa.gaProcurementTracking.findMany({
-      select: { nomorPr: true }
-    });
-    const existingSet = new Set(existingPRs.map(e => e.nomorPr?.trim()).filter(Boolean));
 
     let importedPrCount = 0;
 
+    // Load GA Master Items to match in memory
+    const gaMasterItems = await prismaGa.gaItem.findMany({ where: { aktif: true } });
+    const cleanMasterNames = gaMasterItems.map(item => item.nama.toLowerCase().trim());
+
+    function isGaRelated(description: string | null | undefined, reqLines: any[]): boolean {
+      const cleanDesc = (description || '').toLowerCase();
+      // 1. Check description keywords
+      if (cleanDesc.includes('ga') || cleanDesc.includes('general affairs') || cleanDesc.includes('general affair') || cleanDesc.includes('cikupa') || cleanDesc.includes('atk') || cleanDesc.includes('pantry') || cleanDesc.includes('office') || cleanDesc.includes('kebutuhan kantor')) {
+        return true;
+      }
+      // 2. Check if any line product matches a GA master item name
+      for (const line of reqLines) {
+        const prodName = getBestOdooLineName(line).toLowerCase().trim();
+        if (prodName && !isGenericName(prodName)) {
+          if (cleanMasterNames.some(m => prodName.includes(m) || m.includes(prodName))) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    function hasActualChangesGa(existing: any, update: any): boolean {
+      for (const key of Object.keys(update)) {
+        if (update[key] !== existing[key]) return true;
+      }
+      return false;
+    }
+
     // Impor dari purchase.requisition (PR Requisition Odoo)
     try {
+      logDebug(`Mencari purchase.requisition di Odoo sejak ${fortyFiveDaysAgoStr}...`);
       const requisitions = await queryOdoo(
         'purchase.requisition',
         'search_read',
         [[
-          ['create_date', '>=', fortyFiveDaysAgoStr],
-          '|', '|',
-          ['description', 'ilike', 'ga'],
-          ['description', 'ilike', 'general affairs'],
-          ['description', 'ilike', 'cikupa']
+          ['create_date', '>=', fortyFiveDaysAgoStr]
         ]],
-        { fields: ['id', 'name', 'create_date', 'description'] },
+        { fields: ['id', 'name', 'create_date', 'description', 'state'] },
         odooSessionId
       );
 
       if (requisitions && requisitions.length > 0) {
+        logDebug(`Ditemukan ${requisitions.length} purchase.requisition baru di Odoo.`);
+        
+        const reqIds = requisitions.map((r: any) => r.id);
+        const prNames = requisitions.map((r: any) => r.name?.trim()).filter(Boolean);
+
+        // Batch fetch all requisition lines (NO 'name' field!)
+        const allReqLines = await queryOdoo(
+          'purchase.requisition.line',
+          'search_read',
+          [[['requisition_id', 'in', reqIds]]],
+          { fields: ['requisition_id', 'product_id', 'product_qty', 'price_unit', 'product_description_variants'], limit: 5000 },
+          odooSessionId
+        );
+
+        // Batch fetch all local tracking items for these PRs
+        const localTrackings = await prismaGa.gaProcurementTracking.findMany({
+          where: { nomorPr: { in: prNames } },
+          include: { item: true }
+        });
+
+        const localMap: Record<string, any[]> = {};
+        for (const item of localTrackings) {
+          const key = item.nomorPr?.trim();
+          if (key) {
+            if (!localMap[key]) localMap[key] = [];
+            localMap[key].push(item);
+          }
+        }
+
         for (const req of requisitions) {
           const prName = req.name?.trim();
           if (!prName) continue;
 
-          // Periksa apakah PR ini sudah diimpor secara lokal
-          const exists = existingSet.has(prName);
+          const reqLines = allReqLines.filter((line: any) => line.requisition_id && line.requisition_id[0] === req.id);
+          if (reqLines.length === 0) continue;
 
-          if (!exists) {
-            // Tarik line items dari PR tersebut
-            const lines = await queryOdoo(
-              'purchase.requisition.line',
-              'search_read',
-              [[['requisition_id', '=', req.id]]],
-              { fields: ['product_id', 'product_qty', 'price_unit', 'product_description_variants', 'name'], limit: 50 },
-              odooSessionId
-            );
+          // Check GA relevance
+          if (!isGaRelated(req.description, reqLines)) continue;
 
-            if (lines && lines.length > 0) {
-              const prDate = req.create_date ? new Date(req.create_date) : new Date();
+          logDebug(`PR Requisition "${prName}" terdeteksi GA-related. Memproses lines...`);
+          let localItems = localMap[prName] || [];
+          const prDate = req.create_date ? new Date(req.create_date) : new Date();
 
-              await prismaGa.$transaction(async (tx) => {
-                for (const line of lines) {
-                  const prodName = getBestOdooLineName(line);
-                  // Skip if name is still generic (meaning there is no real item description)
-                  if (!prodName || isGenericName(prodName)) continue;
+          await prismaGa.$transaction(async (tx) => {
+            for (const line of reqLines) {
+              const prodName = getBestOdooLineName(line);
+              // Skip if name is still generic (meaning there is no real item description)
+              if (!prodName || isGenericName(prodName)) continue;
 
-                  const qty = Number(line.product_qty) || 1;
-                  const price = Number(line.price_unit) || 0;
+              const qty = Number(line.product_qty) || 1;
+              const price = Number(line.price_unit) || 0;
 
-                  // Coba cocokkan ke master barang GA
-                  let itemId: string | null = null;
-                  let matchedItem = await tx.gaItem.findFirst({
-                    where: { nama: { equals: prodName, mode: 'insensitive' } },
-                  });
-                  if (!matchedItem) {
-                    const allItems = await tx.gaItem.findMany({ where: { aktif: true } });
-                    const cleanProd = prodName.toLowerCase().trim();
-                    matchedItem = allItems.find(item => {
-                      const cleanName = item.nama.toLowerCase().trim();
-                      return cleanProd.includes(cleanName) || cleanName.includes(cleanProd);
-                    }) || null;
-                  }
-                  if (matchedItem) {
-                    itemId = matchedItem.id;
-                  }
-                  // Tidak auto-create master item — biarkan admin hubungkan secara manual
+              // Find match in local items
+              let bestMatchIndex = -1;
+              let bestScore = -1;
 
-                  await tx.gaProcurementTracking.create({
-                    data: {
-                      originalName: prodName.trim(),
-                      itemId,
-                      qty,
-                      harga: price,
-                      nomorPr: prName,
-                      status: 'ORDERED',
-                      tanggalPesan: prDate,
-                      isStocked: true,
-                      keterangan: req.description || line.name || null,
-                    },
+              for (let i = 0; i < localItems.length; i++) {
+                const local = localItems[i];
+                let score = 0;
+                const cleanLocalName = local.originalName.toLowerCase().trim();
+                const cleanProdName = prodName.toLowerCase().trim();
+
+                if (cleanLocalName === cleanProdName) {
+                  score += 100;
+                } else if (cleanProdName.length > 3 && (cleanLocalName.includes(cleanProdName) || cleanProdName.includes(cleanLocalName))) {
+                  score += 20;
+                }
+
+                if (local.qty === Math.round(qty)) {
+                  score += 10;
+                }
+
+                if (score > bestScore) {
+                  bestScore = score;
+                  bestMatchIndex = i;
+                }
+              }
+
+              // Match to GaItem master database
+              let itemId: string | null = null;
+              let matchedItem = gaMasterItems.find(item => item.nama.toLowerCase().trim() === prodName.toLowerCase().trim());
+              if (!matchedItem) {
+                matchedItem = gaMasterItems.find(item => {
+                  const cleanName = item.nama.toLowerCase().trim();
+                  const cleanProd = prodName.toLowerCase().trim();
+                  return cleanProd.includes(cleanName) || cleanName.includes(cleanProd);
+                });
+              }
+              if (matchedItem) {
+                itemId = matchedItem.id;
+              }
+
+              if (bestMatchIndex !== -1 && bestScore >= 10) {
+                const matchedItem = localItems[bestMatchIndex];
+                localItems.splice(bestMatchIndex, 1);
+
+                const updateData: any = {
+                  qty: Math.round(qty),
+                  harga: price > 0 ? price : undefined,
+                  itemId: itemId || matchedItem.itemId,
+                };
+
+                if (hasActualChangesGa(matchedItem, updateData)) {
+                  await tx.gaProcurementTracking.update({
+                    where: { id: matchedItem.id },
+                    data: updateData
                   });
                 }
-              });
-              importedPrCount++;
+              } else {
+                await tx.gaProcurementTracking.create({
+                  data: {
+                    originalName: prodName.trim(),
+                    itemId,
+                    qty: Math.round(qty),
+                    harga: price,
+                    nomorPr: prName,
+                    status: 'ORDERED',
+                    tanggalPesan: prDate,
+                    isStocked: true,
+                    keterangan: req.description || null,
+                  },
+                });
+                importedPrCount++;
+              }
             }
-          }
+          });
         }
       }
     } catch (errReq: any) {
@@ -669,83 +773,144 @@ export async function POST(req: NextRequest) {
 
     // Impor dari purchase.request (PR Request Odoo)
     try {
+      logDebug(`Mencari purchase.request di Odoo sejak ${fortyFiveDaysAgoStr}...`);
       const requests = await queryOdoo(
         'purchase.request',
         'search_read',
         [[
-          ['create_date', '>=', fortyFiveDaysAgoStr],
-          '|', '|',
-          ['description', 'ilike', 'ga'],
-          ['description', 'ilike', 'general affairs'],
-          ['description', 'ilike', 'cikupa']
+          ['create_date', '>=', fortyFiveDaysAgoStr]
         ]],
-        { fields: ['id', 'name', 'create_date', 'description'] },
+        { fields: ['id', 'name', 'create_date', 'description', 'state'] },
         odooSessionId
       );
 
       if (requests && requests.length > 0) {
+        logDebug(`Ditemukan ${requests.length} purchase.request baru di Odoo.`);
+        
+        const reqIds = requests.map((r: any) => r.id);
+        const prNames = requests.map((r: any) => r.name?.trim()).filter(Boolean);
+
+        // Batch fetch all request lines (WITH 'name' field!)
+        const allReqLines = await queryOdoo(
+          'purchase.request.line',
+          'search_read',
+          [[['request_id', 'in', reqIds]]],
+          { fields: ['request_id', 'product_id', 'product_qty', 'estimated_cost', 'name'], limit: 5000 },
+          odooSessionId
+        );
+
+        // Batch fetch all local tracking items for these PRs
+        const localTrackings = await prismaGa.gaProcurementTracking.findMany({
+          where: { nomorPr: { in: prNames } },
+          include: { item: true }
+        });
+
+        const localMap: Record<string, any[]> = {};
+        for (const item of localTrackings) {
+          const key = item.nomorPr?.trim();
+          if (key) {
+            if (!localMap[key]) localMap[key] = [];
+            localMap[key].push(item);
+          }
+        }
+
         for (const req of requests) {
           const prName = req.name?.trim();
           if (!prName) continue;
 
-          const exists = existingSet.has(prName);
+          const reqLines = allReqLines.filter((line: any) => line.request_id && line.request_id[0] === req.id);
+          if (reqLines.length === 0) continue;
 
-          if (!exists) {
-            const lines = await queryOdoo(
-              'purchase.request.line',
-              'search_read',
-              [[['request_id', '=', req.id]]],
-              { fields: ['product_id', 'product_qty', 'estimated_cost', 'name'], limit: 50 },
-              odooSessionId
-            );
+          // Check GA relevance
+          if (!isGaRelated(req.description, reqLines)) continue;
 
-            if (lines && lines.length > 0) {
-              const prDate = req.create_date ? new Date(req.create_date) : new Date();
+          logDebug(`PR Request "${prName}" terdeteksi GA-related. Memproses lines...`);
+          let localItems = localMap[prName] || [];
+          const prDate = req.create_date ? new Date(req.create_date) : new Date();
 
-              await prismaGa.$transaction(async (tx) => {
-                for (const line of lines) {
-                  const prodName = getBestOdooLineName(line);
-                  // Skip if name is still generic (meaning there is no real item description)
-                  if (!prodName || isGenericName(prodName)) continue;
+          await prismaGa.$transaction(async (tx) => {
+            for (const line of reqLines) {
+              const prodName = getBestOdooLineName(line);
+              // Skip if name is still generic (meaning there is no real item description)
+              if (!prodName || isGenericName(prodName)) continue;
 
-                  const qty = Number(line.product_qty) || 1;
-                  const price = Number(line.estimated_cost) || 0;
+              const qty = Number(line.product_qty) || 1;
+              const price = Number(line.estimated_cost) || 0;
 
-                  let itemId: string | null = null;
-                  let matchedItem = await tx.gaItem.findFirst({
-                    where: { nama: { equals: prodName, mode: 'insensitive' } },
-                  });
-                  if (!matchedItem) {
-                    const allItems = await tx.gaItem.findMany({ where: { aktif: true } });
-                    const cleanProd = prodName.toLowerCase().trim();
-                    matchedItem = allItems.find(item => {
-                      const cleanName = item.nama.toLowerCase().trim();
-                      return cleanProd.includes(cleanName) || cleanName.includes(cleanProd);
-                    }) || null;
-                  }
-                  if (matchedItem) {
-                    itemId = matchedItem.id;
-                  }
-                  // Tidak auto-create master item — biarkan admin hubungkan secara manual
+              // Find match in local items
+              let bestMatchIndex = -1;
+              let bestScore = -1;
 
-                  await tx.gaProcurementTracking.create({
-                    data: {
-                      originalName: prodName.trim(),
-                      itemId,
-                      qty,
-                      harga: price,
-                      nomorPr: prName,
-                      status: 'ORDERED',
-                      tanggalPesan: prDate,
-                      isStocked: true,
-                      keterangan: req.description || line.name || null,
-                    },
+              for (let i = 0; i < localItems.length; i++) {
+                const local = localItems[i];
+                let score = 0;
+                const cleanLocalName = local.originalName.toLowerCase().trim();
+                const cleanProdName = prodName.toLowerCase().trim();
+
+                if (cleanLocalName === cleanProdName) {
+                  score += 100;
+                } else if (cleanProdName.length > 3 && (cleanLocalName.includes(cleanProdName) || cleanProdName.includes(cleanLocalName))) {
+                  score += 20;
+                }
+
+                if (local.qty === Math.round(qty)) {
+                  score += 10;
+                }
+
+                if (score > bestScore) {
+                  bestScore = score;
+                  bestMatchIndex = i;
+                }
+              }
+
+              // Match to GaItem master database
+              let itemId: string | null = null;
+              let matchedItem = gaMasterItems.find(item => item.nama.toLowerCase().trim() === prodName.toLowerCase().trim());
+              if (!matchedItem) {
+                matchedItem = gaMasterItems.find(item => {
+                  const cleanName = item.nama.toLowerCase().trim();
+                  const cleanProd = prodName.toLowerCase().trim();
+                  return cleanProd.includes(cleanName) || cleanName.includes(cleanProd);
+                });
+              }
+              if (matchedItem) {
+                itemId = matchedItem.id;
+              }
+
+              if (bestMatchIndex !== -1 && bestScore >= 10) {
+                const matchedItem = localItems[bestMatchIndex];
+                localItems.splice(bestMatchIndex, 1);
+
+                const updateData: any = {
+                  qty: Math.round(qty),
+                  harga: price > 0 ? price : undefined,
+                  itemId: itemId || matchedItem.itemId,
+                };
+
+                if (hasActualChangesGa(matchedItem, updateData)) {
+                  await tx.gaProcurementTracking.update({
+                    where: { id: matchedItem.id },
+                    data: updateData
                   });
                 }
-              });
-              importedPrCount++;
+              } else {
+                await tx.gaProcurementTracking.create({
+                  data: {
+                    originalName: prodName.trim(),
+                    itemId,
+                    qty: Math.round(qty),
+                    harga: price,
+                    nomorPr: prName,
+                    status: 'ORDERED',
+                    tanggalPesan: prDate,
+                    isStocked: true,
+                    keterangan: req.description || line.name || null,
+                  },
+                });
+                importedPrCount++;
+              }
             }
-          }
+          });
         }
       }
     } catch (errReq: any) {
