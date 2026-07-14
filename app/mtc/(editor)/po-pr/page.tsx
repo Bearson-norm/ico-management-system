@@ -163,6 +163,7 @@ export default function ProcurementTrackingPage() {
 
   // MTC PRO: Add and link new sparepart states
   const [dbCategories, setDbCategories] = useState<{ id: number; nama: string; tipe: string }[]>([]);
+  const [dbMesins, setDbMesins] = useState<{ id: number; nama: string; tipe: string; area?: string | null }[]>([]);
   const [isCreatingNewSp, setIsCreatingNewSp] = useState(false);
   const [newSpNama, setNewSpNama] = useState('');
   const [newSpAlias, setNewSpAlias] = useState('');
@@ -170,6 +171,7 @@ export default function ProcurementTrackingPage() {
   const [newSpLokasi, setNewSpLokasi] = useState('');
   const [newSpUom, setNewSpUom] = useState('Pcs');
   const [newSpIsStocked, setNewSpIsStocked] = useState(true);
+  const [newSpMesinIds, setNewSpMesinIds] = useState<string[]>([]);
 
   // Multi-item / Bundle linking states
   const [isBundleMode, setIsBundleMode] = useState(false);
@@ -263,6 +265,7 @@ export default function ProcurementTrackingPage() {
     fetchData();
     fetchSpareparts();
     fetchDbCategories();
+    fetchDbMesins();
     
     async function loadSettings() {
       let currentScriptUrl = '';
@@ -486,6 +489,18 @@ export default function ProcurementTrackingPage() {
       }
     } catch (e) {
       console.error('Gagal mengambil master kategori', e);
+    }
+  }
+
+  async function fetchDbMesins() {
+    try {
+      const res = await fetch('/api/mtc/master/mesin');
+      const json = await res.json();
+      if (json.success) {
+        setDbMesins(json.data || []);
+      }
+    } catch (e) {
+      console.error('Gagal mengambil master mesin', e);
     }
   }
 
@@ -862,6 +877,7 @@ export default function ProcurementTrackingPage() {
           purchasingQty: Number(linkingItem.qty) || 0,
           linkReference: linkingItem.linkReferences || null,
           alasan: linkingItem.reason || null,
+          mesinIds: newSpMesinIds,
         }),
       });
       const jsonSp = await resSp.json();
@@ -888,6 +904,7 @@ export default function ProcurementTrackingPage() {
         setNewSpKategoriId('');
         setNewSpLokasi('');
         setNewSpUom('Pcs');
+        setNewSpMesinIds([]);
         alert('✓ Suku cadang baru berhasil ditambahkan ke daftar paket!');
         return;
       }
@@ -908,6 +925,7 @@ export default function ProcurementTrackingPage() {
         setShowLinkModal(false);
         setLinkingItem(null);
         setLinkSearch('');
+        setNewSpMesinIds([]);
         await fetchData();
         await fetchSpareparts();
         alert('Suku cadang baru berhasil dibuat dan dihubungkan!');
@@ -996,6 +1014,7 @@ export default function ProcurementTrackingPage() {
     setNewSpLokasi('');
     setNewSpUom('Pcs');
     setNewSpIsStocked(true);
+    setNewSpMesinIds([]);
 
     if (item.linkedPartsJson) {
       try {
@@ -3961,6 +3980,33 @@ export default function ProcurementTrackingPage() {
                           ⚡ Langsung
                         </button>
                       </div>
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Digunakan Pada Mesin</label>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', padding: '8px 10px', background: 'var(--sf2)', borderRadius: 6, border: '1px solid var(--br)', maxHeight: '100px', overflowY: 'auto' }}>
+                      {dbMesins.map(m => {
+                        const checked = newSpMesinIds.includes(m.id.toString());
+                        return (
+                          <label key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 10.5, background: checked ? 'var(--pur-d)' : 'var(--bg)', padding: '2px 8px', borderRadius: 12, color: checked ? 'var(--pur)' : 'var(--tx2)', border: `1px solid ${checked ? 'var(--pur)' : 'transparent'}`, userSelect: 'none' }}>
+                            <input 
+                              type="checkbox" 
+                              checked={checked} 
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setNewSpMesinIds([...newSpMesinIds, m.id.toString()]);
+                                } else {
+                                  setNewSpMesinIds(newSpMesinIds.filter(id => id !== m.id.toString()));
+                                }
+                              }}
+                              style={{ display: 'none' }}
+                            />
+                            {checked ? '✓ ' : ''}{m.nama}
+                          </label>
+                        );
+                      })}
+                      {dbMesins.length === 0 && <span className="text-muted" style={{ fontSize: 10 }}>Belum ada data mesin</span>}
                     </div>
                   </div>
 
