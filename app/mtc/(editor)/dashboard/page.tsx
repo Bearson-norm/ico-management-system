@@ -162,7 +162,7 @@ export default async function DashboardPage() {
             📊 Ringkasan Nilai Aset MTC
           </div>
           <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', marginBottom: 0 }}>
-            <Link href="/mtc/master" className="stat-card stat-card--link" style={{
+            <Link href="/mtc/dashboard/valuation-breakdown" className="stat-card stat-card--link" style={{
               background: 'linear-gradient(135deg, rgba(62,181,116,0.08) 0%, rgba(19,19,26,0.65) 100%)',
               border: '1px solid var(--grn-b)',
               borderLeft: '4px solid var(--grn)',
