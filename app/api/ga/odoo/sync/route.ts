@@ -305,9 +305,10 @@ export async function POST(req: NextRequest) {
               queryOdoo(
                 'good.received',
                 'search_read',
-                [[['purchase_id', '=', poId]]],
+                [[['purchase_id', '=', poId], ['state', '=', 'done']]],
                 {
                   fields: ['id', 'state', 'write_date', 'name'],
+                  order: 'write_date desc',
                   limit: 1
                 },
                 odooSessionId
@@ -571,8 +572,8 @@ export async function POST(req: NextRequest) {
             const odooGrs = await queryOdoo(
               'good.received',
               'search_read',
-              [[['purchase_id', '=', poId]]],
-              { fields: ['id', 'state'], limit: 1 },
+              [[['purchase_id', '=', poId], ['state', '=', 'done']]],
+              { fields: ['id', 'state'], order: 'write_date desc', limit: 1 },
               odooSessionId
             );
 

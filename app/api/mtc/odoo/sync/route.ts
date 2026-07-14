@@ -1287,9 +1287,10 @@ export async function POST(req: NextRequest) {
             queryOdoo(
               'good.received',
               'search_read',
-              [[['purchase_id', '=', poId]]],
+              [[['purchase_id', '=', poId], ['state', '=', 'done']]],
               {
                 fields: ['id', 'state', 'write_date', 'name'],
+                order: 'write_date desc',
                 limit: 1
               },
               odooOptions
