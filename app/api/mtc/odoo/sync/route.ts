@@ -911,7 +911,12 @@ export async function POST(req: NextRequest) {
 
                 const sparepartId = await findMtcSparepartMatch(tx, prodName);
 
-                if (bestMatchIndex !== -1 && bestScore >= 10) {
+                const isMatchValid = bestMatchIndex !== -1 && (
+                  bestScore >= 20 ||
+                  (bestScore >= 10 && isGenericName(localItems[bestMatchIndex].originalName))
+                );
+
+                if (isMatchValid) {
                   // MATCH FOUND: update existing local item
                   const matchedItem = localItems[bestMatchIndex];
                   localItems.splice(bestMatchIndex, 1);
@@ -1060,7 +1065,12 @@ export async function POST(req: NextRequest) {
 
                 const sparepartId = await findMtcSparepartMatch(tx, prodName);
 
-                if (bestMatchIndex !== -1 && bestScore >= 10) {
+                const isMatchValid = bestMatchIndex !== -1 && (
+                  bestScore >= 20 ||
+                  (bestScore >= 10 && isGenericName(localItems[bestMatchIndex].originalName))
+                );
+
+                if (isMatchValid) {
                   // MATCH FOUND: update existing local item
                   const matchedItem = localItems[bestMatchIndex];
                   localItems.splice(bestMatchIndex, 1);
