@@ -411,7 +411,8 @@ export default function MasterPage() {
                       <th>Nama Barang</th>
                       <th>Lokasi / SLOC</th>
                       <th>Kategori</th>
-                      <th style={{ textAlign: 'right' }}>Harga</th>
+                      <th style={{ textAlign: 'right' }}>Harga Satuan</th>
+                      <th style={{ textAlign: 'right' }}>Total Nilai</th>
                       <th style={{ textAlign: 'right' }}>Stok</th>
                       <th>Min Qty</th>
                       <th>Status</th>
@@ -432,7 +433,7 @@ export default function MasterPage() {
                       });
 
                       if (list.length === 0 && !loading) {
-                        return <tr><td colSpan={9} style={{ textAlign: 'center', padding: 40 }}>Data tidak ditemukan</td></tr>;
+                        return <tr><td colSpan={10} style={{ textAlign: 'center', padding: 40 }}>Data tidak ditemukan</td></tr>;
                       }
 
                       return list.map(s => (
@@ -445,8 +446,11 @@ export default function MasterPage() {
                           </td>
                           <td data-label="Lokasi"><span className="badge badge-blu" style={{ fontSize: 10 }}>{s.lokasi || '—'}</span></td>
                           <td data-label="Kategori">{s.kategori?.nama || '—'}</td>
-                          <td data-label="Harga">Rp {Number(s.harga).toLocaleString('id-ID')}</td>
-                          <td data-label="Stok" style={{ fontWeight: 700, color: s.currentStock <= 0 ? 'var(--red)' : s.currentStock < s.minQty ? 'var(--ylw)' : 'var(--grn)' }}>
+                          <td data-label="Harga Satuan" style={{ textAlign: 'right' }}>Rp {Number(s.harga).toLocaleString('id-ID')}</td>
+                          <td data-label="Total Nilai" style={{ textAlign: 'right', fontWeight: 700, color: 'var(--tx)' }}>
+                            Rp {Number(Number(s.harga || 0) * Number(s.currentStock || 0)).toLocaleString('id-ID')}
+                          </td>
+                          <td data-label="Stok" style={{ textAlign: 'right', fontWeight: 700, color: s.currentStock <= 0 ? 'var(--red)' : s.currentStock < s.minQty ? 'var(--ylw)' : 'var(--grn)' }}>
                             {s.currentStock ?? 0} {s.uom}
                           </td>
                           <td data-label="Min Qty">{s.minQty}</td>
