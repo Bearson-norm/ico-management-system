@@ -1120,11 +1120,11 @@ export async function POST(req: NextRequest) {
       }
 
       const checkDaysAgo = new Date();
-      checkDaysAgo.setDate(checkDaysAgo.getDate() - 180);
+      checkDaysAgo.setDate(checkDaysAgo.getDate() - 90);
 
-      // Find all active tracking items that have a PR or PO number and are not yet complete,
-      // OR completed items that are still missing vendor names or Odoo chatter notes,
-      // OR any items created/registered in the last 180 days (to allow status corrections/splits).
+      // Find all active tracking items that have a PR or PO number,
+      // are relatively recent (list date within the last 90 days),
+      // and are not yet complete (or missing vendor/notes).
       const trackingItems = await prisma.procurementTracking.findMany({
         where: {
           AND: [
@@ -1135,11 +1135,12 @@ export async function POST(req: NextRequest) {
               ],
             },
             {
+              tanggalList: { gte: checkDaysAgo }
+            },
+            {
               OR: [
                 { statusPo: null },
                 { NOT: { statusPo: 'DONE' } },
-                { tanggalList: { gte: checkDaysAgo } },
-                { createdAt: { gte: checkDaysAgo } },
                 { vendor: null },
                 { odooNotes: null },
               ],

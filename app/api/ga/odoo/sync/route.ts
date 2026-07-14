@@ -224,14 +224,26 @@ export async function POST(req: NextRequest) {
 
   try {
     const checkDaysAgo = new Date();
-    checkDaysAgo.setDate(checkDaysAgo.getDate() - 180);
+    checkDaysAgo.setDate(checkDaysAgo.getDate() - 90);
 
     const activeTrackingItems = await prismaGa.gaProcurementTracking.findMany({
       where: {
-        OR: [
-          { status: 'ORDERED' },
-          { tanggalPesan: { gte: checkDaysAgo } },
-          { createdAt: { gte: checkDaysAgo } }
+        AND: [
+          {
+            OR: [
+              { nomorPr: { not: null } },
+              { nomorPo: { not: null } },
+            ],
+          },
+          {
+            tanggalPesan: { gte: checkDaysAgo }
+          },
+          {
+            OR: [
+              { status: 'ORDERED' },
+              { grDone: false }
+            ],
+          }
         ]
       },
       include: { item: true }
