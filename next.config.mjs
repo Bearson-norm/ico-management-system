@@ -5,7 +5,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: { typedRoutes: false },
+  experimental: {
+    typedRoutes: false,
+    // pdfkit dimuat dari node_modules saat runtime agar file font .afm bawaannya
+    // tidak hilang saat di-bundle webpack (ENOENT Helvetica.afm di VPS).
+    serverComponentsExternalPackages: ['pdfkit'],
+  },
   // Tanpa "standalone": PM2 memakai `next start` (bind HOST/PORT lewat ecosystem / .env).
   typescript: {
     // CI handles typescript checking, so we disable it during next build on VPS to save memory/CPU
