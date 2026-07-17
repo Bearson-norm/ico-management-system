@@ -159,10 +159,24 @@ export async function requireGaAuth() {
   return requireTenant('ga');
 }
 
+/** Editor atau administrator GA (akses operasional penuh) */
 export async function requireGaEditor() {
   const session = await requireTenant('ga');
-  if (!session || session.user.role !== 'editor') return null;
+  if (!session) return null;
+  const role = session.user.role;
+  if (role !== 'editor' && role !== 'administrator') return null;
   return session;
+}
+
+/** Hanya administrator GA (User Management + Cek Audit Trail) */
+export async function requireGaAdmin() {
+  const session = await requireTenant('ga');
+  if (!session || session.user.role !== 'administrator') return null;
+  return session;
+}
+
+export function isGaPrivilegedRole(role: string | undefined | null) {
+  return role === 'editor' || role === 'administrator';
 }
 
 export async function requireAuth() {

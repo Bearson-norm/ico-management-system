@@ -93,8 +93,8 @@ export default async function middleware(req: NextRequest) {
       if (secret === 'ga-cleanup-2026') return NextResponse.next();
     }
     
-    // Cron auto-sync bypass
-    if (pathname === '/api/ga/odoo/sync') {
+    // Cron auto-sync / audit-generate bypass
+    if (pathname === '/api/ga/odoo/sync' || pathname === '/api/ga/audit/generate') {
       const authHeader = req.headers.get('Authorization');
       const queryToken = req.nextUrl.searchParams.get('token');
       const reqToken = (authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null) || queryToken;
@@ -120,6 +120,19 @@ export default async function middleware(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
     const role = (token.role as string) || 'viewer';
+
+    // User Management + Audit Trail: hanya administrator
+    const isAdminOnlyApi =
+      pathname.startsWith('/api/ga/users') ||
+      (pathname.startsWith('/api/ga/audit') && pathname !== '/api/ga/audit/generate');
+    if (isAdminOnlyApi && role !== 'administrator') {
+      return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
+    }
+    // Generate audit: admin session ATAU sudah di-bypass cron di atas
+    if (pathname === '/api/ga/audit/generate' && role !== 'administrator') {
+      return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
+    }
+
     if (role === 'viewer') {
       const method = req.method;
       const viewerOk =
@@ -164,6 +177,15 @@ export default async function middleware(req: NextRequest) {
       return NextResponse.redirect(new URL('/ga/login', origin));
     }
     const role = (token.role as string) || 'viewer';
+
+    // User Management + Cek Audit Trail: hanya administrator
+    if (
+      (pathname.startsWith('/ga/users') || pathname.startsWith('/ga/audit')) &&
+      role !== 'administrator'
+    ) {
+      return NextResponse.redirect(new URL('/ga/dashboard', origin));
+    }
+
     if (role === 'viewer') {
       const allowed = ['/ga/stock'];
       const okPath = allowed.some((p) => pathname.startsWith(p));

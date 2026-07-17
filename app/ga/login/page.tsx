@@ -36,7 +36,9 @@ export default function GaLoginPage() {
     const sessionRes = await fetch('/api/auth/session');
     const session = await sessionRes.json();
     const role = session?.user?.role;
-    router.replace(role === 'editor' ? '/ga/dashboard' : '/ga/stock');
+    router.replace(
+      role === 'editor' || role === 'administrator' ? '/ga/dashboard' : '/ga/stock'
+    );
   }
 
   return (

@@ -11,7 +11,10 @@ export default function GaShellLayout({ children }: { children: React.ReactNode 
   const [navOpen, setNavOpen] = useState(false);
   const role = (session?.user as { role?: string })?.role || 'viewer';
   const name = session?.user?.name || 'User';
-  const isEditor = role === 'editor';
+  const isEditor = role === 'editor' || role === 'administrator';
+  const isAdmin = role === 'administrator';
+  const roleLabel =
+    role === 'administrator' ? 'Administrator' : role === 'editor' ? 'Editor' : 'Viewer';
 
   const menu = [
     ...(isEditor
@@ -100,6 +103,23 @@ export default function GaShellLayout({ children }: { children: React.ReactNode 
             label: 'Riwayat',
             section: 'Audit'
           },
+          ...(isAdmin
+            ? [
+                {
+                  href: '/ga/audit',
+                  icon: (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
+                      <rect x="9" y="3" width="6" height="4" rx="1" />
+                      <path d="M9 12h6" />
+                      <path d="M9 16h6" />
+                    </svg>
+                  ),
+                  label: 'Cek Audit Trail',
+                  section: 'Audit',
+                },
+              ]
+            : []),
           {
             href: '/ga/reports',
             icon: (
@@ -113,6 +133,23 @@ export default function GaShellLayout({ children }: { children: React.ReactNode 
             label: 'Export CSV',
             section: 'Laporan'
           },
+          ...(isAdmin
+            ? [
+                {
+                  href: '/ga/users',
+                  icon: (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                      <circle cx="9" cy="7" r="4" />
+                      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
+                  ),
+                  label: 'User Management',
+                  section: 'System',
+                },
+              ]
+            : []),
           {
             href: '/ga/github',
             icon: (
@@ -196,7 +233,7 @@ export default function GaShellLayout({ children }: { children: React.ReactNode 
         </button>
         <span className="mobile-topbar-title">General Affairs</span>
         <span className="badge badge-blu hide-on-mobile-badge" style={{ flexShrink: 0, fontSize: 10, textTransform: 'uppercase' }}>
-          {role}
+          {roleLabel}
         </span>
       </header>
 
@@ -211,7 +248,7 @@ export default function GaShellLayout({ children }: { children: React.ReactNode 
               <span className="ga-module-tag" style={{ background: 'var(--ga-accent)', color: '#fff', padding: '2px 6px', fontWeight: '800', borderRadius: '4px' }}>GA</span>
             </div>
             <span className="badge badge-blu hide-on-mobile-badge" style={{ fontSize: 10, textTransform: 'uppercase' }}>
-              {role}
+              {roleLabel}
             </span>
           </div>
         </div>
@@ -238,7 +275,7 @@ export default function GaShellLayout({ children }: { children: React.ReactNode 
             <div className="sidebar-avatar">{name.charAt(0).toUpperCase()}</div>
             <div className="sidebar-user-info">
               <div className="sidebar-user-name">{name}</div>
-              <div className="sidebar-user-role">{isEditor ? 'Editor' : 'Viewer'}</div>
+              <div className="sidebar-user-role">{roleLabel}</div>
             </div>
             <button
               type="button"

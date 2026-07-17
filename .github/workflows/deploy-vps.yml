@@ -106,3 +106,8 @@ jobs:
             CRON_JOB="*/15 * * * * $LOAD_ENV cd $APP_PATH && node scripts/cron-sync.js >> $APP_PATH/cron-sync.log 2>&1"
             (crontab -l 2>/dev/null | grep -F "scripts/cron-sync.js") || (crontab -l 2>/dev/null; echo "$CRON_JOB") | crontab -
             echo ">>> Cron job registered successfully!"
+
+            echo ">>> Registering GA monthly audit trail cron (H-1 akhir bulan 00:00 WIB)..."
+            AUDIT_CRON_JOB="0 0 27-30 * * $LOAD_ENV cd $APP_PATH && node scripts/cron-audit-ga.js >> $APP_PATH/cron-audit-ga.log 2>&1"
+            (crontab -l 2>/dev/null | grep -F "scripts/cron-audit-ga.js") || (crontab -l 2>/dev/null; echo "$AUDIT_CRON_JOB") | crontab -
+            echo ">>> GA audit cron registered successfully!"

@@ -140,3 +140,42 @@ model GaSetting {
   @@map("ga_settings")
 }
 
+/// Snapshot audit bulanan per barang (stok sistem vs opname) — immutable setelah digenerate
+model GaAuditSnapshot {
+  id          Int      @id @default(autoincrement())
+  periode     String   @unique // YYYY-MM
+  generatedAt DateTime @default(now()) @map("generated_at")
+  cutoffAt    DateTime @map("cutoff_at")
+  source      String   @default("cron") // cron | manual
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  lines GaAuditSnapshotLine[]
+
+  @@map("ga_audit_snapshot")
+}
+
+model GaAuditSnapshotLine {
+  id               Int     @id @default(autoincrement())
+  snapshotId       Int     @map("snapshot_id")
+  itemId           String  @map("item_id")
+  namaItem         String  @map("nama_item")
+  uom              String  @default("Pcs")
+  lokasi           String?
+  saldoAwal        Int     @map("saldo_awal")
+  totalIn          Int     @map("total_in")
+  totalOut         Int     @map("total_out")
+  totalAdj         Int     @map("total_adj")
+  stokSistem       Int     @map("stok_sistem")
+  qtyFisik         Int?    @map("qty_fisik")
+  selisih          Int?
+  opnameSessionId  Int?    @map("opname_session_id")
+  jumlahTransaksi  Int     @default(0) @map("jumlah_transaksi")
+
+  snapshot GaAuditSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+
+  @@unique([snapshotId, itemId])
+  @@index([snapshotId])
+  @@index([itemId])
+  @@map("ga_audit_snapshot_line")
+}
+
