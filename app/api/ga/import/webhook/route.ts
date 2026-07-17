@@ -311,15 +311,25 @@ async function importOutbound(rows: Record<string, unknown>[]): Promise<{ import
 
 // POST endpoint handler
 export async function POST(req: NextRequest) {
-  // 1. Authenticate using API Token
-  const tokenHeader = req.headers.get('X-GA-Sync-Token');
-  const configuredToken = process.env.GA_SYNC_TOKEN || 'ga_secret_default_token_2026';
+  // 1. Webhook dinonaktifkan secara default. Aktifkan dengan GA_WEBHOOK_ENABLED=true
+  //    dan GA_SYNC_TOKEN (wajib, tanpa nilai default) di .env.
+  if (process.env.GA_WEBHOOK_ENABLED !== 'true') {
+    return err('Webhook GA dinonaktifkan. Set GA_WEBHOOK_ENABLED=true di .env untuk mengaktifkan.', 410);
+  }
 
+  const configuredToken = process.env.GA_SYNC_TOKEN;
+  if (!configuredToken) {
+    console.error('[Webhook Sync] GA_WEBHOOK_ENABLED=true tetapi GA_SYNC_TOKEN belum di-set.');
+    return err('Webhook GA belum dikonfigurasi dengan benar (GA_SYNC_TOKEN kosong).', 503);
+  }
+
+  // 2. Authenticate using API Token
+  const tokenHeader = req.headers.get('X-GA-Sync-Token');
   if (!tokenHeader || tokenHeader !== configuredToken) {
     return err('Unauthorized. Invalid X-GA-Sync-Token.', 401);
   }
 
-  // 2. Parse request body
+  // 3. Parse request body
   let body: { sheetName: string; rows: Record<string, unknown>[] };
   try {
     body = await req.json();
@@ -335,7 +345,7 @@ export async function POST(req: NextRequest) {
   const normalizedSheet = sheetName.toLowerCase().trim();
 
   try {
-    // 3. Match sheet name and execute appropriate import function
+    // 4. Match sheet name and execute appropriate import function
     if (['db barang', 'db', 'database', 'master', 'sheet1'].includes(normalizedSheet)) {
       const result = await importMasterBarang(rows, 'DB Barang');
       return ok({
