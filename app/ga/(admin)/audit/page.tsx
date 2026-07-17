@@ -149,13 +149,26 @@ export default function GaAuditPage() {
               Snapshot stok sistem vs stock opname per bulan (generate H-1 akhir bulan 00:00 WIB)
             </div>
           </div>
-          <button
-            className="btn btn-primary"
-            disabled={generating}
-            onClick={() => handleGenerate(false)}
-          >
-            {generating ? 'Generating…' : 'Generate Sekarang'}
-          </button>
+          <div className="page-header-actions" style={{ display: 'flex', gap: 8 }}>
+            <a
+              className="btn btn-ghost"
+              href={periode ? `/api/ga/audit/export?periode=${periode}` : undefined}
+              aria-disabled={!periode}
+              onClick={(e) => {
+                if (!periode) e.preventDefault();
+              }}
+              style={{ pointerEvents: periode ? 'auto' : 'none', opacity: periode ? 1 : 0.5 }}
+            >
+              Unduh PDF
+            </a>
+            <button
+              className="btn btn-primary"
+              disabled={generating}
+              onClick={() => handleGenerate(false)}
+            >
+              {generating ? 'Generating…' : 'Generate Sekarang'}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -211,11 +224,11 @@ export default function GaAuditPage() {
           )}
         </div>
 
-        <div className="card table-wrap">
-          <table>
+        <div className="card table-wrap table-wrap-x">
+          <table style={{ minWidth: 940 }}>
             <thead>
               <tr>
-                <th></th>
+                <th style={{ width: 44 }}></th>
                 <th>Barang</th>
                 <th>Lokasi</th>
                 <th style={{ textAlign: 'right' }}>Saldo Awal</th>
@@ -265,8 +278,8 @@ export default function GaAuditPage() {
                           line.selisih == null
                             ? undefined
                             : line.selisih === 0
-                              ? 'var(--green, #16a34a)'
-                              : 'var(--red, #dc2626)',
+                              ? 'var(--grn)'
+                              : 'var(--red)',
                       }}
                     >
                       {line.selisih == null
@@ -281,55 +294,57 @@ export default function GaAuditPage() {
                     <tr>
                       <td
                         colSpan={11}
-                        style={{ background: 'var(--surface-2, #f8fafc)', padding: 12 }}
+                        style={{ background: 'var(--sf2)', padding: 12 }}
                       >
                         {loadingMovements ? (
                           <div className="text-muted">Memuat transaksi…</div>
                         ) : movements.length === 0 ? (
                           <div className="text-muted">Tidak ada transaksi pada periode ini.</div>
                         ) : (
-                          <table style={{ width: '100%' }}>
-                            <thead>
-                              <tr>
-                                <th>Tanggal</th>
-                                <th>Tipe</th>
-                                <th style={{ textAlign: 'right' }}>Qty</th>
-                                <th>PIC</th>
-                                <th>Keterangan</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {movements.map((m) => (
-                                <tr key={m.id}>
-                                  <td>
-                                    {new Date(m.tanggal).toLocaleString('id-ID', {
-                                      timeZone: 'Asia/Jakarta',
-                                    })}
-                                  </td>
-                                  <td>
-                                    <span
-                                      className={`badge ${
-                                        m.tipe === 'IN'
-                                          ? 'badge-grn'
-                                          : m.tipe === 'OUT'
-                                            ? 'badge-red'
-                                            : 'badge-blu'
-                                      }`}
-                                    >
-                                      {m.tipe}
-                                    </span>
-                                  </td>
-                                  <td style={{ textAlign: 'right' }}>{m.qty}</td>
-                                  <td>{m.picNama || '—'}</td>
-                                  <td>
-                                    {[m.purchaseType, m.vendor, m.keterangan]
-                                      .filter(Boolean)
-                                      .join(' · ') || '—'}
-                                  </td>
+                          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                            <table style={{ width: '100%', minWidth: 560 }}>
+                              <thead>
+                                <tr>
+                                  <th>Tanggal</th>
+                                  <th>Tipe</th>
+                                  <th style={{ textAlign: 'right' }}>Qty</th>
+                                  <th>PIC</th>
+                                  <th>Keterangan</th>
                                 </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                              </thead>
+                              <tbody>
+                                {movements.map((m) => (
+                                  <tr key={m.id}>
+                                    <td style={{ whiteSpace: 'nowrap' }}>
+                                      {new Date(m.tanggal).toLocaleString('id-ID', {
+                                        timeZone: 'Asia/Jakarta',
+                                      })}
+                                    </td>
+                                    <td>
+                                      <span
+                                        className={`badge ${
+                                          m.tipe === 'IN'
+                                            ? 'badge-grn'
+                                            : m.tipe === 'OUT'
+                                              ? 'badge-red'
+                                              : 'badge-blu'
+                                        }`}
+                                      >
+                                        {m.tipe}
+                                      </span>
+                                    </td>
+                                    <td style={{ textAlign: 'right' }}>{m.qty}</td>
+                                    <td>{m.picNama || '—'}</td>
+                                    <td>
+                                      {[m.purchaseType, m.vendor, m.keterangan]
+                                        .filter(Boolean)
+                                        .join(' · ') || '—'}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
                         )}
                       </td>
                     </tr>
