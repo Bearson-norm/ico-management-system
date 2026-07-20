@@ -48,8 +48,16 @@ export default function GaStockInPage() {
   const filtered = items.filter((it) => {
     if (!search) return true;
     const q = search.toLowerCase();
-    return it.nama.toLowerCase().includes(q) || it.id.toLowerCase().includes(q);
+    return (
+      it.nama.toLowerCase().includes(q) ||
+      it.id.toLowerCase().includes(q) ||
+      (it.lokasi || '').toLowerCase().includes(q)
+    );
   });
+
+  const lokasiOptions = Array.from(
+    new Set(items.map((it) => it.lokasi).filter((l) => l && l !== '—'))
+  ).sort() as string[];
 
   function addRow(it: any) {
     if (existingRows.find((x) => x.itemId === it.id)) return;
@@ -253,12 +261,17 @@ export default function GaStockInPage() {
                   </div>
                   <div className="form-group">
                     <label className="form-label">UOM</label>
-                    <input className="form-input" value={newForm.uom} onChange={(e) => setNewForm({ ...newForm, uom: e.target.value })} />
+                    <input className="form-input" value="Pcs" readOnly disabled />
                   </div>
                 </div>
                 <div className="form-group">
                   <label className="form-label">Lokasi</label>
-                  <input className="form-input" value={newForm.lokasi} onChange={(e) => setNewForm({ ...newForm, lokasi: e.target.value })} />
+                  <input className="form-input" list="lokasi-list" placeholder="Pilih atau ketik lokasi…" value={newForm.lokasi} onChange={(e) => setNewForm({ ...newForm, lokasi: e.target.value })} />
+                  <datalist id="lokasi-list">
+                    {lokasiOptions.map((l) => (
+                      <option key={l} value={l} />
+                    ))}
+                  </datalist>
                 </div>
                 <div className="form-grid-2">
                   <div className="form-group">
@@ -292,7 +305,10 @@ export default function GaStockInPage() {
               <div style={{ maxHeight: 320, overflow: 'auto', marginTop: 12 }}>
                 {filtered.map((it) => (
                   <button key={it.id} type="button" className="btn btn-ghost" style={{ display: 'block', width: '100%', textAlign: 'left', marginBottom: 6 }} onClick={() => addRow(it)}>
-                    {it.nama} <span style={{ color: 'var(--ga-tx2)' }}>({it.id})</span>
+                    <div style={{ fontWeight: 600 }}>{it.nama}</div>
+                    <div style={{ fontSize: 11, color: 'var(--ga-tx2)' }}>
+                      {it.id} · Lokasi: {it.lokasi || '—'}
+                    </div>
                   </button>
                 ))}
               </div>
