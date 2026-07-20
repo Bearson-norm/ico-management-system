@@ -9,7 +9,7 @@ export default function GaStockOutPage() {
   const [form, setForm] = useState({
     tanggal: new Date().toISOString().split('T')[0],
     keterangan: '',
-    rows: [] as { rowId: string; itemId: string; qty: number; nama: string; stok: number; picNama: string }[],
+    rows: [] as { rowId: string; itemId: string; qty: number; nama: string; lokasi: string; stok: number; picNama: string }[],
   });
   const [modal, setModal] = useState(false);
   const [search, setSearch] = useState('');
@@ -26,7 +26,11 @@ export default function GaStockOutPage() {
   const filtered = items.filter((it) => {
     if (!search) return true;
     const q = search.toLowerCase();
-    return it.nama.toLowerCase().includes(q) || it.id.toLowerCase().includes(q);
+    return (
+      it.nama.toLowerCase().includes(q) ||
+      it.id.toLowerCase().includes(q) ||
+      (it.lokasi || '').toLowerCase().includes(q)
+    );
   });
 
   function qtyAllocated(itemId: string, excludeRowId?: string) {
@@ -53,6 +57,7 @@ export default function GaStockOutPage() {
           itemId: it.id,
           qty: 1,
           nama: it.nama,
+          lokasi: it.lokasi || '—',
           stok: it.currentStock,
           picNama: '',
         },
@@ -165,7 +170,7 @@ export default function GaStockOutPage() {
                       <div className="ga-stock-out-lines-name">
                         <strong>{r.nama}</strong>
                         <span className="ga-stock-out-lines-stock">
-                          Sisa stok: {r.stok} · tersedia baris ini: {sisaBaris}
+                          Lokasi: {r.lokasi} · Sisa stok: {r.stok} · tersedia baris ini: {sisaBaris}
                         </span>
                       </div>
                       <div className="ga-stock-out-lines-field ga-stock-out-lines-qty">
@@ -243,10 +248,11 @@ export default function GaStockOutPage() {
                     onClick={() => pick(it)}
                     disabled={sisa <= 0}
                   >
-                    {it.nama}{' '}
-                    <span style={{ color: 'var(--ga-tx2)' }}>
-                      (stok: {it.currentStock}{sisa < it.currentStock ? ` · tersedia: ${sisa}` : ''})
-                    </span>
+                    <div style={{ fontWeight: 600 }}>{it.nama}</div>
+                    <div style={{ fontSize: 11, color: 'var(--ga-tx2)' }}>
+                      {it.id} · Lokasi: {it.lokasi || '—'} · stok: {it.currentStock}
+                      {sisa < it.currentStock ? ` · tersedia: ${sisa}` : ''}
+                    </div>
                   </button>
                   );
                 })}
