@@ -20,7 +20,6 @@
     "seed": "npx prisma generate --schema=prisma/mtc/schema.prisma && npx prisma generate --schema=prisma/ga/schema.prisma && npx ts-node --project tsconfig.scripts.json prisma/seed.ts",
     "import-data": "ts-node --project tsconfig.scripts.json lib/migration/migrate.ts",
     "import:sparepart-csv": "ts-node --project tsconfig.scripts.json scripts/import-sparepart-csv.ts",
-    "import:ga-initial-stock": "ts-node --project tsconfig.scripts.json scripts/import-ga-initial-stock.ts",
     "import:mtc-initial-stock": "ts-node --project tsconfig.scripts.json scripts/import-mtc-initial-stock.ts",
     "flush:db": "ts-node --project tsconfig.scripts.json scripts/flush-db.ts",
     "reset:db": "ts-node --project tsconfig.scripts.json scripts/flush-db.ts --all --confirm --seed",

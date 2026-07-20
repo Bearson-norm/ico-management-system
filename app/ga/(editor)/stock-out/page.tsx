@@ -1,11 +1,6 @@
 'use client';
 import { useEffect, useState, FormEvent } from 'react';
 
-const STOCK_OUT_SAMPLE = `NAMA BARANG\tQuantity\tTanggal Pemakaian\tNAMA
-MASKER\t1\t22/05/2026\tFITA
-TISSUE\t1\t22/05/2026\tFITA
-HAIRNET DISPOSABLE\t1\t22/05/2026\tFITA`;
-
 export default function GaStockOutPage() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -18,10 +13,6 @@ export default function GaStockOutPage() {
   });
   const [modal, setModal] = useState(false);
   const [search, setSearch] = useState('');
-  const [importOpen, setImportOpen] = useState(false);
-  const [importText, setImportText] = useState('');
-  const [importing, setImporting] = useState(false);
-  const [importKeterangan, setImportKeterangan] = useState('');
 
   useEffect(() => {
     fetch('/api/ga/stock')
@@ -69,46 +60,6 @@ export default function GaStockOutPage() {
     }));
   }
 
-  async function handleImportPaste() {
-    if (!importText.trim()) {
-      alert('Data masih kosong');
-      return;
-    }
-    setImporting(true);
-    setMsg(null);
-    try {
-      const res = await fetch('/api/ga/stock/out/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rawText: importText, keterangan: importKeterangan }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        const d = json.data;
-        if (d.skippedRows?.length || d.failedRows?.length) {
-          console.group('Detail import stock out GA');
-          if (d.skippedRows?.length) console.table(d.skippedRows);
-          if (d.failedRows?.length) console.table(d.failedRows);
-          console.groupEnd();
-        }
-        alert(d.message || 'Import selesai');
-        if ((d.failed ?? 0) === 0) {
-          setImportOpen(false);
-          setImportText('');
-        }
-        setMsg(d.message);
-        const j = await fetch('/api/ga/stock').then((r) => r.json());
-        if (j.success) setItems(j.data);
-      } else {
-        alert('Error: ' + json.error);
-      }
-    } catch (e: unknown) {
-      alert('Terjadi kesalahan: ' + (e instanceof Error ? e.message : 'Unknown'));
-    } finally {
-      setImporting(false);
-    }
-  }
-
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (!form.rows.length) return alert('Pilih barang');
@@ -117,16 +68,30 @@ export default function GaStockOutPage() {
     if (over) return alert(`Total qty ${over.nama} melebihi stok tersedia`);
     setSubmitting(true);
     setMsg(null);
-    const res = await fetch('/api/ga/stock/out', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        tanggal: form.tanggal,
-        keterangan: form.keterangan,
-        items: form.rows.map((r) => ({ itemId: r.itemId, qty: r.qty, picNama: r.picNama.trim() })),
-      }),
-    });
-    const json = await res.json();
+    const payload: Record<string, unknown> = {
+      tanggal: form.tanggal,
+      keterangan: form.keterangan,
+      items: form.rows.map((r) => ({ itemId: r.itemId, qty: r.qty, picNama: r.picNama.trim() })),
+    };
+    const post = async (body: Record<string, unknown>) => {
+      const res = await fetch('/api/ga/stock/out', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      return { status: res.status, json: await res.json() };
+    };
+    let { status, json } = await post(payload);
+    if (status === 409) {
+      const lanjut = confirm(
+        (json.error || 'Periode sudah di-closing.') + '\n\nTetap simpan transaksi ini?'
+      );
+      if (!lanjut) {
+        setSubmitting(false);
+        return;
+      }
+      ({ status, json } = await post({ ...payload, overrideLockedPeriod: true }));
+    }
     setSubmitting(false);
     if (json.success) {
       setMsg(`Berhasil: ${json.data.count} baris dicatat`);
@@ -146,12 +111,7 @@ export default function GaStockOutPage() {
         <div className="flex-between">
           <div>
             <div className="page-title">Stock Out GA</div>
-            <div className="page-sub">Pengeluaran barang manual atau import paste dari Excel</div>
-          </div>
-          <div className="ga-page-actions">
-            <button type="button" className="btn btn-ghost" onClick={() => setImportOpen(true)}>
-              Import Paste
-            </button>
+            <div className="page-sub">Pencatatan pengeluaran barang</div>
           </div>
         </div>
       </div>
@@ -301,57 +261,6 @@ export default function GaStockOutPage() {
         </div>
       )}
 
-      {importOpen && (
-        <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && setImportOpen(false)}>
-          <div className="modal-box" style={{ maxWidth: 640 }} onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <div className="modal-title">Import Stock Out (Paste Excel)</div>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setImportOpen(false)} aria-label="Tutup">
-                ✕
-              </button>
-            </div>
-            <div className="modal-body">
-              <div className="alert alert-blu">
-                <div style={{ flex: 1 }}>
-                  <strong>Format data</strong>
-                  <p style={{ marginTop: 4 }}>
-                    Copy dari Excel dengan kolom: <strong>NAMA BARANG</strong>, <strong>Qty</strong>, <strong>Tanggal Pemakaian</strong> (DD/MM/YYYY), <strong>PIC</strong>.
-                    Header opsional. Setiap baris punya tanggal dan PIC sendiri.
-                  </p>
-                </div>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Keterangan (opsional, berlaku semua baris)</label>
-                <input
-                  className="form-input"
-                  placeholder="Catatan tambahan"
-                  value={importKeterangan}
-                  onChange={(e) => setImportKeterangan(e.target.value)}
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Paste data Excel</label>
-                <textarea
-                  className="form-input"
-                  rows={12}
-                  style={{ fontFamily: 'monospace', whiteSpace: 'pre', overflowX: 'auto' }}
-                  placeholder={STOCK_OUT_SAMPLE}
-                  value={importText}
-                  onChange={(e) => setImportText(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button type="button" className="btn btn-ghost" onClick={() => setImportOpen(false)} disabled={importing}>
-                Batal
-              </button>
-              <button type="button" className="btn btn-primary" onClick={handleImportPaste} disabled={importing}>
-                {importing ? 'Memproses…' : 'Mulai Import'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }

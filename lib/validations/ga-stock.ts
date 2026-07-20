@@ -6,6 +6,9 @@ const BaseIn = z.object({
   vendor: z.string().optional().default(''),
   picNama: z.string().min(1, 'PIC penerima wajib diisi'),
   keterangan: z.string().optional().default(''),
+  // Soft period lock: wajib true untuk mencatat transaksi di periode yang
+  // snapshot auditnya sudah digenerate (periode closed).
+  overrideLockedPeriod: z.boolean().optional().default(false),
 });
 
 export const GaStockInExistingSchema = BaseIn.extend({
@@ -39,6 +42,7 @@ export const GaStockInSchema = z.discriminatedUnion('jenis', [GaStockInExistingS
 export const GaStockOutSchema = z.object({
   tanggal: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   keterangan: z.string().optional().default(''),
+  overrideLockedPeriod: z.boolean().optional().default(false),
   items: z
     .array(
       z.object({

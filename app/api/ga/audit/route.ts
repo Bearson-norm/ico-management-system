@@ -2,6 +2,8 @@ import { NextRequest } from 'next/server';
 import { prismaGa } from '@/lib/prisma-ga';
 import { requireGaAdmin } from '@/lib/auth';
 import { ok, err } from '@/lib/utils';
+import { monthBoundsJakarta } from '@/lib/ga/auditSnapshot';
+import { GA_STOCK_MOVEMENT_TIPES } from '@/lib/ga/stockQty';
 
 export async function GET(req: NextRequest) {
   const session = await requireGaAdmin();
@@ -10,7 +12,6 @@ export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const periode = searchParams.get('periode') || '';
   const search = (searchParams.get('search') || '').trim();
-  const status = searchParams.get('status') || ''; // cocok | selisih | belum_opname | ''
 
   const snapshots = await prismaGa.gaAuditSnapshot.findMany({
     orderBy: { periode: 'desc' },
@@ -55,17 +56,27 @@ export async function GET(req: NextRequest) {
     orderBy: { namaItem: 'asc' },
   });
 
-  const filtered = lines.filter((line) => {
-    if (!status) return true;
-    if (status === 'belum_opname') return line.qtyFisik == null;
-    if (status === 'cocok') return line.qtyFisik != null && line.selisih === 0;
-    if (status === 'selisih') return line.qtyFisik != null && line.selisih !== 0;
-    return true;
+  // Item dengan transaksi backdate: tanggal masuk periode snapshot, tetapi
+  // dicatat setelah periode di-closing (createdAt melewati cutoff).
+  const { monthStart } = monthBoundsJakarta(snapshot.periode);
+  const backdatedMovements = await prismaGa.gaStockMovement.findMany({
+    where: {
+      itemId: { not: null },
+      tipe: { in: [...GA_STOCK_MOVEMENT_TIPES] },
+      tanggal: { gte: monthStart, lt: snapshot.cutoffAt },
+      createdAt: { gt: snapshot.cutoffAt },
+    },
+    select: { itemId: true },
+    distinct: ['itemId'],
   });
+  const backdateItemIds = backdatedMovements
+    .map((m) => m.itemId)
+    .filter((id): id is string => id != null);
 
   return ok({
     snapshots,
     snapshot,
-    lines: filtered,
+    lines,
+    backdateItemIds,
   });
 }

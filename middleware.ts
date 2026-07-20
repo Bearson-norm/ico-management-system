@@ -103,19 +103,6 @@ export default async function middleware(req: NextRequest) {
       }
     }
 
-    // GA Spreadsheet Import Webhook bypass (pakai auth X-GA-Sync-Token sendiri).
-    // Hanya di-bypass jika webhook diaktifkan lewat env; jika mati, biarkan lolos
-    // ke route handler yang akan membalas 410 (tanpa perlu session GA).
-    if (pathname === '/api/ga/import/webhook') {
-      if (process.env.GA_WEBHOOK_ENABLED === 'true') {
-        return NextResponse.next();
-      }
-      return NextResponse.json(
-        { success: false, error: 'Webhook GA dinonaktifkan (GA_WEBHOOK_ENABLED tidak di-set).' },
-        { status: 410 }
-      );
-    }
-
     if (!token || tenant !== 'ga') {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }

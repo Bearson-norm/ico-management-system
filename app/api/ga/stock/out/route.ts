@@ -4,6 +4,7 @@ import { requireGaEditor } from '@/lib/auth';
 import { GaStockOutSchema } from '@/lib/validations/ga-stock';
 import { ok, err } from '@/lib/utils';
 import { getGaCurrentStock } from '@/lib/ga/stockQty';
+import { findSnapshotForDate } from '@/lib/ga/auditSnapshot';
 
 export async function POST(req: NextRequest) {
   const session = await requireGaEditor();
@@ -19,6 +20,16 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return err(parsed.error.errors.map((e) => e.message).join(', '));
   const p = parsed.data;
   const tanggal = new Date(p.tanggal + 'T12:00:00');
+
+  // Soft period lock: periode yang sudah punya snapshot audit dianggap closed.
+  const lockedSnapshot = await findSnapshotForDate(prismaGa, tanggal);
+  if (lockedSnapshot && !p.overrideLockedPeriod) {
+    return err(
+      `Periode ${lockedSnapshot.periode} sudah di-closing (snapshot audit sudah digenerate). ` +
+        'Transaksi tetap bisa dicatat, tetapi akan ditandai sebagai backdate di halaman audit.',
+      409
+    );
+  }
 
   const usageByItem = new Map<string, number>();
   for (const it of p.items) {

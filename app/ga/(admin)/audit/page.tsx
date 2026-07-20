@@ -21,8 +21,6 @@ type AuditLine = {
   totalOut: number;
   totalAdj: number;
   stokSistem: number;
-  qtyFisik: number | null;
-  selisih: number | null;
   jumlahTransaksi: number;
 };
 
@@ -35,13 +33,8 @@ type Movement = {
   keterangan: string | null;
   purchaseType: string | null;
   vendor: string | null;
+  backdate?: boolean;
 };
-
-function statusBadge(line: AuditLine) {
-  if (line.qtyFisik == null) return <span className="badge badge-blu">Belum Opname</span>;
-  if (line.selisih === 0) return <span className="badge badge-grn">Cocok</span>;
-  return <span className="badge badge-red">Selisih</span>;
-}
 
 function formatDt(iso: string) {
   return new Date(iso).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
@@ -51,9 +44,9 @@ export default function GaAuditPage() {
   const [snapshots, setSnapshots] = useState<SnapshotMeta[]>([]);
   const [snapshot, setSnapshot] = useState<SnapshotMeta | null>(null);
   const [lines, setLines] = useState<AuditLine[]>([]);
+  const [backdateItemIds, setBackdateItemIds] = useState<string[]>([]);
   const [periode, setPeriode] = useState('');
   const [search, setSearch] = useState('');
-  const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -66,13 +59,13 @@ export default function GaAuditPage() {
       const q = new URLSearchParams();
       if (periode) q.set('periode', periode);
       if (search) q.set('search', search);
-      if (status) q.set('status', status);
       const res = await fetch('/api/ga/audit?' + q.toString());
       const json = await res.json();
       if (json.success) {
         setSnapshots(json.data.snapshots || []);
         setSnapshot(json.data.snapshot || null);
         setLines(json.data.lines || []);
+        setBackdateItemIds(json.data.backdateItemIds || []);
         if (!periode && json.data.snapshot?.periode) {
           setPeriode(json.data.snapshot.periode);
         }
@@ -80,7 +73,7 @@ export default function GaAuditPage() {
     } finally {
       setLoading(false);
     }
-  }, [periode, search, status]);
+  }, [periode, search]);
 
   useEffect(() => {
     fetchData();
@@ -146,7 +139,7 @@ export default function GaAuditPage() {
           <div>
             <div className="page-title">Cek Audit Trail</div>
             <div className="page-sub">
-              Snapshot stok sistem vs stock opname per bulan (generate H-1 akhir bulan 00:00 WIB)
+              Snapshot pergerakan stok sistem per bulan (generate H-1 akhir bulan 00:00 WIB) — hasil fisik lihat di Stock Opname
             </div>
           </div>
           <div className="page-header-actions" style={{ display: 'flex', gap: 8 }}>
@@ -202,19 +195,6 @@ export default function GaAuditPage() {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <div className="form-group" style={{ margin: 0, minWidth: 160 }}>
-              <label className="form-label">Status</label>
-              <select
-                className="form-input form-select"
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-              >
-                <option value="">Semua</option>
-                <option value="cocok">Cocok</option>
-                <option value="selisih">Selisih</option>
-                <option value="belum_opname">Belum Opname</option>
-              </select>
-            </div>
           </div>
           {snapshot && (
             <div className="text-muted text-tiny" style={{ marginTop: 10 }}>
@@ -225,7 +205,7 @@ export default function GaAuditPage() {
         </div>
 
         <div className="card table-wrap table-wrap-x">
-          <table style={{ minWidth: 940 }}>
+          <table style={{ minWidth: 860 }}>
             <thead>
               <tr>
                 <th style={{ width: 44 }}></th>
@@ -236,9 +216,7 @@ export default function GaAuditPage() {
                 <th style={{ textAlign: 'right' }}>OUT</th>
                 <th style={{ textAlign: 'right' }}>ADJ</th>
                 <th style={{ textAlign: 'right' }}>Stok Sistem</th>
-                <th style={{ textAlign: 'right' }}>Stok Fisik</th>
-                <th style={{ textAlign: 'right' }}>Selisih</th>
-                <th>Status</th>
+                <th>Integritas</th>
               </tr>
             </thead>
             <tbody style={{ opacity: loading ? 0.5 : 1 }}>
@@ -267,33 +245,23 @@ export default function GaAuditPage() {
                     <td style={{ textAlign: 'right' }}>{line.totalOut}</td>
                     <td style={{ textAlign: 'right' }}>{line.totalAdj}</td>
                     <td style={{ textAlign: 'right', fontWeight: 600 }}>{line.stokSistem}</td>
-                    <td style={{ textAlign: 'right' }}>
-                      {line.qtyFisik == null ? '—' : line.qtyFisik}
+                    <td>
+                      {backdateItemIds.includes(line.itemId) ? (
+                        <span
+                          className="badge badge-ylw"
+                          title="Ada transaksi yang dicatat setelah periode di-closing"
+                        >
+                          Backdate
+                        </span>
+                      ) : (
+                        <span className="badge badge-grn">Sesuai Closing</span>
+                      )}
                     </td>
-                    <td
-                      style={{
-                        textAlign: 'right',
-                        fontWeight: 600,
-                        color:
-                          line.selisih == null
-                            ? undefined
-                            : line.selisih === 0
-                              ? 'var(--grn)'
-                              : 'var(--red)',
-                      }}
-                    >
-                      {line.selisih == null
-                        ? '—'
-                        : line.selisih > 0
-                          ? `+${line.selisih}`
-                          : line.selisih}
-                    </td>
-                    <td>{statusBadge(line)}</td>
                   </tr>
                   {expandedId === line.itemId && (
                     <tr>
                       <td
-                        colSpan={11}
+                        colSpan={9}
                         style={{ background: 'var(--sf2)', padding: 12 }}
                       >
                         {loadingMovements ? (
@@ -310,6 +278,7 @@ export default function GaAuditPage() {
                                   <th style={{ textAlign: 'right' }}>Qty</th>
                                   <th>PIC</th>
                                   <th>Keterangan</th>
+                                  <th>Pencatatan</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -340,6 +309,18 @@ export default function GaAuditPage() {
                                         .filter(Boolean)
                                         .join(' · ') || '—'}
                                     </td>
+                                    <td>
+                                      {m.backdate ? (
+                                        <span
+                                          className="badge badge-ylw"
+                                          title="Dicatat setelah periode di-closing"
+                                        >
+                                          Backdate
+                                        </span>
+                                      ) : (
+                                        <span className="text-muted text-tiny">Normal</span>
+                                      )}
+                                    </td>
                                   </tr>
                                 ))}
                               </tbody>
@@ -353,7 +334,7 @@ export default function GaAuditPage() {
               ))}
               {!loading && lines.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="text-muted" style={{ textAlign: 'center' }}>
+                  <td colSpan={9} className="text-muted" style={{ textAlign: 'center' }}>
                     {snapshots.length === 0
                       ? 'Belum ada snapshot. Klik "Generate Sekarang" atau tunggu cron H-1 akhir bulan.'
                       : 'Tidak ada baris yang cocok dengan filter.'}

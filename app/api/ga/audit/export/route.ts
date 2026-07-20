@@ -6,12 +6,6 @@ import { monthBoundsJakarta } from '@/lib/ga/auditSnapshot';
 
 export const runtime = 'nodejs';
 
-function statusLabel(qtyFisik: number | null, selisih: number | null) {
-  if (qtyFisik == null) return 'Belum Opname';
-  if (selisih === 0) return 'Cocok';
-  return 'Selisih';
-}
-
 function formatJakarta(value: Date) {
   return value.toLocaleString('id-ID', {
     timeZone: 'Asia/Jakarta',
@@ -53,6 +47,7 @@ export async function GET(req: NextRequest) {
           tipe: true,
           qty: true,
           tanggal: true,
+          createdAt: true,
           picNama: true,
           purchaseType: true,
           vendor: true,
@@ -76,7 +71,7 @@ export async function GET(req: NextRequest) {
     info: {
       Title: `Audit Trail GA ${periode}`,
       Author: session.user.name || 'GA Administrator',
-      Subject: 'Rekonsiliasi stok sistem dan hasil stock opname',
+      Subject: 'Snapshot pergerakan stok sistem per periode',
     },
   });
 
@@ -99,31 +94,31 @@ export async function GET(req: NextRequest) {
   doc.text(`Digenerate: ${formatJakarta(snapshot.generatedAt)} WIB`);
   doc.text(`Cutoff: ${formatJakarta(snapshot.cutoffAt)} WIB | Sumber: ${snapshot.source}`);
 
-  const totalCocok = snapshot.lines.filter((l) => l.qtyFisik != null && l.selisih === 0).length;
-  const totalSelisih = snapshot.lines.filter((l) => l.qtyFisik != null && l.selisih !== 0).length;
-  const belumOpname = snapshot.lines.filter((l) => l.qtyFisik == null).length;
+  const backdateItemIds = new Set(
+    movements
+      .filter((m) => m.itemId && m.createdAt.getTime() > snapshot.cutoffAt.getTime())
+      .map((m) => m.itemId as string)
+  );
   doc.moveDown(0.5);
   doc
     .font('Helvetica-Bold')
     .fontSize(9)
     .fillColor('#111827')
     .text(
-      `Ringkasan: ${snapshot.lines.length} barang | Cocok: ${totalCocok} | Selisih: ${totalSelisih} | Belum Opname: ${belumOpname}`
+      `Ringkasan: ${snapshot.lines.length} barang | Barang dengan transaksi backdate: ${backdateItemIds.size}`
     );
   doc.moveDown(0.8);
 
   const summaryColumns = [
-    { label: 'Kode', width: 65, align: 'left' as const },
-    { label: 'Nama Barang', width: 142, align: 'left' as const },
-    { label: 'Lokasi', width: 63, align: 'left' as const },
-    { label: 'Awal', width: 42, align: 'right' as const },
-    { label: 'IN', width: 38, align: 'right' as const },
-    { label: 'OUT', width: 38, align: 'right' as const },
-    { label: 'ADJ', width: 38, align: 'right' as const },
-    { label: 'Sistem', width: 47, align: 'right' as const },
-    { label: 'Fisik', width: 47, align: 'right' as const },
-    { label: 'Selisih', width: 47, align: 'right' as const },
-    { label: 'Status', width: 72, align: 'left' as const },
+    { label: 'Kode', width: 75, align: 'left' as const },
+    { label: 'Nama Barang', width: 200, align: 'left' as const },
+    { label: 'Lokasi', width: 85, align: 'left' as const },
+    { label: 'Awal', width: 50, align: 'right' as const },
+    { label: 'IN', width: 45, align: 'right' as const },
+    { label: 'OUT', width: 45, align: 'right' as const },
+    { label: 'ADJ', width: 45, align: 'right' as const },
+    { label: 'Sistem', width: 55, align: 'right' as const },
+    { label: 'Integritas', width: 85, align: 'left' as const },
   ];
 
   const drawSummaryHeader = () => {
@@ -156,9 +151,7 @@ export async function GET(req: NextRequest) {
       String(line.totalOut),
       String(line.totalAdj),
       String(line.stokSistem),
-      line.qtyFisik == null ? '-' : String(line.qtyFisik),
-      line.selisih == null ? '-' : String(line.selisih),
-      statusLabel(line.qtyFisik, line.selisih),
+      backdateItemIds.has(line.itemId) ? 'Backdate' : 'Sesuai Closing',
     ];
     doc.font('Helvetica').fontSize(6.5).fillColor('#111827');
     values.forEach((value, colIndex) => {
@@ -225,7 +218,13 @@ export async function GET(req: NextRequest) {
         drawDetailHeader();
       }
       const y = doc.y;
-      const description = [movement.purchaseType, movement.vendor, movement.keterangan]
+      const isBackdate = movement.createdAt.getTime() > snapshot.cutoffAt.getTime();
+      const description = [
+        isBackdate ? '[BACKDATE]' : null,
+        movement.purchaseType,
+        movement.vendor,
+        movement.keterangan,
+      ]
         .filter(Boolean)
         .join(' | ');
       const values = [

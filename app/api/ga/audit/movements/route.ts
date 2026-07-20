@@ -33,6 +33,7 @@ export async function GET(req: NextRequest) {
       tipe: true,
       qty: true,
       tanggal: true,
+      createdAt: true,
       picNama: true,
       keterangan: true,
       purchaseType: true,
@@ -45,6 +46,10 @@ export async function GET(req: NextRequest) {
     periode,
     itemId,
     cutoffAt: cutoffAt.toISOString(),
-    movements,
+    // backdate = dicatat setelah periode di-closing (createdAt melewati cutoff snapshot)
+    movements: movements.map((m) => ({
+      ...m,
+      backdate: m.createdAt.getTime() > cutoffAt.getTime(),
+    })),
   });
 }

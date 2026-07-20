@@ -33,6 +33,19 @@ export function periodeFromJakarta(date: Date = new Date()): string {
   return `${y}-${String(m).padStart(2, '0')}`;
 }
 
+/**
+ * Snapshot audit untuk periode (YYYY-MM Jakarta) yang mencakup tanggal transaksi.
+ * Jika ada, periode dianggap sudah "closed" — transaksi backdate perlu konfirmasi
+ * eksplisit (soft period lock) dan akan ditandai sebagai backdate di halaman audit.
+ */
+export async function findSnapshotForDate(db: Tx | GaClient, tanggal: Date) {
+  const periode = periodeFromJakarta(tanggal);
+  return db.gaAuditSnapshot.findUnique({
+    where: { periode },
+    select: { id: true, periode: true, cutoffAt: true },
+  });
+}
+
 export function monthBoundsJakarta(periode: string): { monthStart: Date; nextMonthStart: Date } {
   const [ys, ms] = periode.split('-');
   const y = Number(ys);
@@ -192,7 +205,7 @@ export async function generateGaAuditSnapshot(
     };
   });
 
-  const snapshot = await db.$transaction(async (tx) => {
+  const snapshot = await (db as GaClient).$transaction(async (tx) => {
     if (existing && force) {
       await tx.gaAuditSnapshotLine.deleteMany({ where: { snapshotId: existing.id } });
       await tx.gaAuditSnapshot.delete({ where: { id: existing.id } });

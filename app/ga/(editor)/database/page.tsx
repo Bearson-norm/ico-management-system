@@ -2,10 +2,6 @@
 
 import { useEffect, useState, FormEvent } from 'react';
 
-const IMPORT_SAMPLE = `NAMA BARANG\tMin Qty\tLOKASI\tKODE BARANG\tHarga
-LABEL NIIMBOT D11 UKURAN 12 X 22 MM \t24\tG2 ATAS\tA0001\tRp98,901
-PLASTIK KLIP UKURAN 25X16 ISI 100PCS\t2\tG2 ATAS\tA0002\tRp44,289`;
-
 type GaItem = {
   id: string;
   nama: string;
@@ -85,16 +81,10 @@ export default function GaDatabasePage() {
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<Filters>(defaultFilters);
   const [lokasiOptions, setLokasiOptions] = useState<string[]>([]);
-  const [importOpen, setImportOpen] = useState(false);
-  const [importText, setImportText] = useState('');
-  const [importing, setImporting] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<EditForm>(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [syncing, setSyncing] = useState(false);
-  const [syncOpen, setSyncOpen] = useState(false);
-  const [spreadsheetUrl, setSpreadsheetUrl] = useState('');
 
   async function fetchItems() {
     setLoading(true);
@@ -107,114 +97,9 @@ export default function GaDatabasePage() {
     }
   }
 
-  async function triggerSync(url: string) {
-    setSyncing(true);
-    try {
-      const res = await fetch('/api/ga/import/spreadsheet', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ spreadsheetUrl: url.trim() }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        const d = json.data;
-        alert(
-          `Sinkronisasi Berhasil!\n\n` +
-          `• Master Barang diproses: ${d.master.upserted} (Dilewati: ${d.master.skipped}, Stok Awal dibuat: ${d.master.stockAdded})\n` +
-          `• Inbound (IN) diimport: ${d.inbound.imported} (Dilewati/Duplikat: ${d.inbound.skipped})\n` +
-          `• Outbound (OUT) diimport: ${d.outbound.imported} (Dilewati/Duplikat: ${d.outbound.skipped})`
-        );
-        setSyncOpen(false);
-        fetchItems();
-      } else {
-        alert('Gagal sinkronisasi: ' + json.error);
-      }
-    } catch (e: unknown) {
-      alert('Terjadi kesalahan: ' + (e instanceof Error ? e.message : 'Unknown'));
-    } finally {
-      setSyncing(false);
-    }
-  }
-
-  async function handleDirectSync() {
-    let currentUrl = spreadsheetUrl;
-    if (!currentUrl.trim()) {
-      if (typeof window !== 'undefined') {
-        const savedUrl = localStorage.getItem('ga_spreadsheet_url') || '';
-        if (savedUrl.trim()) {
-          currentUrl = savedUrl;
-        }
-      }
-    }
-    if (!currentUrl.trim()) {
-      setSyncOpen(true);
-      return;
-    }
-    await triggerSync(currentUrl);
-  }
-
-  async function handleSyncSpreadsheet(e: FormEvent) {
-    e.preventDefault();
-    if (!spreadsheetUrl.trim()) {
-      alert('Tautan Google Sheets wajib diisi');
-      return;
-    }
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('ga_spreadsheet_url', spreadsheetUrl.trim());
-    }
-    try {
-      await fetch('/api/ga/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ga_spreadsheet_url: spreadsheetUrl.trim()
-        })
-      });
-    } catch (err) {
-      console.error('Failed to save GA spreadsheet URL to DB:', err);
-    }
-    await triggerSync(spreadsheetUrl);
-  }
-
   useEffect(() => {
     fetchItems();
   }, [filters]);
-
-  useEffect(() => {
-    async function loadGaSettings() {
-      let currentUrl = '';
-      try {
-        const res = await fetch('/api/ga/settings');
-        const json = await res.json();
-        if (json.success && json.data) {
-          currentUrl = json.data.ga_spreadsheet_url || '';
-        }
-      } catch (err) {
-        console.error('Failed to load GA settings from DB:', err);
-      }
-
-      if (!currentUrl && typeof window !== 'undefined') {
-        const savedUrl = localStorage.getItem('ga_spreadsheet_url') || '';
-        if (savedUrl.trim()) {
-          currentUrl = savedUrl;
-          try {
-            await fetch('/api/ga/settings', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                ga_spreadsheet_url: savedUrl.trim()
-              })
-            });
-          } catch (migrateErr) {
-            console.error('Failed to migrate GA spreadsheet URL to DB:', migrateErr);
-          }
-        }
-      }
-      setSpreadsheetUrl(currentUrl);
-    }
-    loadGaSettings();
-  }, []);
-
 
   useEffect(() => {
     Promise.all([
@@ -297,48 +182,6 @@ export default function GaDatabasePage() {
     }
   }
 
-  async function handleImport() {
-    if (!importText.trim()) {
-      alert('Data masih kosong');
-      return;
-    }
-    setImporting(true);
-    try {
-      const res = await fetch('/api/ga/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rawText: importText }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        const d = json.data;
-        if (d.skippedRows?.length || d.failedRows?.length) {
-          console.group('Detail import GA');
-          if (d.skippedRows?.length) console.table(d.skippedRows);
-          if (d.failedRows?.length) console.table(d.failedRows);
-          console.groupEnd();
-        }
-        alert(d.message || 'Import selesai');
-        if ((d.skipped ?? 0) === 0 && (d.failed ?? 0) === 0) {
-          setImportOpen(false);
-          setImportText('');
-        }
-        fetchItems();
-        fetch('/api/ga/database/facets')
-          .then((r) => r.json())
-          .then((fJson) => {
-            if (fJson.success) setLokasiOptions(fJson.data.lokasi ?? []);
-          });
-      } else {
-        alert('Error: ' + json.error);
-      }
-    } catch (e: unknown) {
-      alert('Terjadi kesalahan: ' + (e instanceof Error ? e.message : 'Unknown'));
-    } finally {
-      setImporting(false);
-    }
-  }
-
   const fmtRp = (n: number) =>
     new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
 
@@ -348,32 +191,7 @@ export default function GaDatabasePage() {
         <div className="flex-between">
           <div>
             <div className="page-title">Database Barang GA</div>
-            <div className="page-sub">Kelola master barang — import massal atau edit per item</div>
-          </div>
-          <div className="ga-page-actions" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <button type="button" className="btn btn-primary" onClick={handleDirectSync} disabled={syncing}>
-              {syncing ? '🔄 Menyinkronkan...' : '🔄 Sinkron Spreadsheet'}
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => setSyncOpen(true)}
-              title="Atur Link Spreadsheet"
-              style={{
-                width: '38px',
-                height: '38px',
-                padding: 0,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '16px',
-              }}
-            >
-              ⚙️
-            </button>
-            <button type="button" className="btn btn-ghost" onClick={() => setImportOpen(true)}>
-              Import Excel
-            </button>
+            <div className="page-sub">Kelola master barang — edit per item</div>
           </div>
         </div>
       </div>
@@ -454,7 +272,7 @@ export default function GaDatabasePage() {
                     <td colSpan={8} className="text-muted text-center" style={{ padding: 24 }}>
                       {hasActiveFilters
                         ? 'Tidak ada barang yang cocok dengan filter.'
-                        : 'Belum ada data. Gunakan Import Excel atau tambah lewat Stock In.'}
+                        : 'Belum ada data. Tambah barang lewat Stock In.'}
                     </td>
                   </tr>
                 ) : (
@@ -618,97 +436,6 @@ export default function GaDatabasePage() {
                 {saving ? 'Menyimpan...' : 'Simpan'}
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {importOpen && (
-        <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && setImportOpen(false)}>
-          <div className="modal-box" style={{ maxWidth: 640 }} onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <div className="modal-title">Import Database GA</div>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setImportOpen(false)} aria-label="Tutup">
-                ✕
-              </button>
-            </div>
-            <div className="modal-body">
-              <div className="alert alert-blu">
-                <div style={{ flex: 1 }}>
-                  <strong>Cara import</strong>
-                  <ol style={{ marginLeft: 16, marginTop: 4 }}>
-                    <li>Copy data dari Excel (termasuk baris header).</li>
-                    <li>Paste ke kotak di bawah (Ctrl+V).</li>
-                    <li>Kode yang sudah ada diperbarui; kode baru ditambahkan.</li>
-                  </ol>
-                </div>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Paste data Excel</label>
-                <textarea
-                  className="form-input"
-                  rows={12}
-                  style={{ fontFamily: 'monospace', whiteSpace: 'pre', overflowX: 'auto' }}
-                  placeholder={IMPORT_SAMPLE}
-                  value={importText}
-                  onChange={(e) => setImportText(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button type="button" className="btn btn-ghost" onClick={() => setImportOpen(false)} disabled={importing}>
-                Batal
-              </button>
-              <button type="button" className="btn btn-primary" onClick={handleImport} disabled={importing}>
-                {importing ? 'Memproses...' : 'Mulai Import'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {syncOpen && (
-        <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && setSyncOpen(false)}>
-          <div className="modal-box" style={{ maxWidth: 540 }} onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <div className="modal-title">Sinkronisasi Google Sheets</div>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setSyncOpen(false)} aria-label="Tutup">
-                ✕
-              </button>
-            </div>
-            <form onSubmit={handleSyncSpreadsheet}>
-              <div className="modal-body">
-                <p style={{ fontSize: 13, color: 'var(--ga-tx2)', marginBottom: 16 }}>
-                  Sinkronisasikan data master barang dan riwayat gerakan (inbound/outbound) langsung dari Google Sheets.
-                </p>
-                <div className="alert alert-blu" style={{ marginBottom: 16 }}>
-                  <div style={{ flex: 1, fontSize: 12 }}>
-                    <strong>PENTING:</strong> Pastikan setelan berbagi spreadsheet Anda diatur ke: <strong style={{ color: 'var(--ga-accent)' }}>Siapa saja yang memiliki link dapat melihat</strong> (Anyone with the link can view).
-                  </div>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Link Google Sheets</label>
-                  <input
-                    type="url"
-                    className="form-input"
-                    placeholder="https://docs.google.com/spreadsheets/d/.../edit?usp=sharing"
-                    value={spreadsheetUrl}
-                    onChange={(e) => setSpreadsheetUrl(e.target.value)}
-                    required
-                  />
-                  <span className="text-tiny text-muted" style={{ marginTop: 4, display: 'block' }}>
-                    Tautan akan disimpan di browser untuk sinkronisasi berikutnya.
-                  </span>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-ghost" onClick={() => setSyncOpen(false)} disabled={syncing}>
-                  Batal
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={syncing}>
-                  {syncing ? 'Menyinkronkan...' : 'Mulai Sinkronisasi'}
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}

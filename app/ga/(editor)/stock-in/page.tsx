@@ -1,11 +1,6 @@
 'use client';
 import { useState, useEffect, FormEvent } from 'react';
 
-const STOCK_INITIAL_SAMPLE = `NAMA BARANG\tKODE BARANG\tQty
-LABEL NIIMBOT D11 UKURAN 12 X 22 MM \tA0001\t24
-PLASTIK KLIP UKURAN 25X16 ISI 100PCS\tA0002\t10
-LABEL TOM & JERRY BULAT NO. 113 WARNA BIRU (PACK)\tA0003\t5`;
-
 export default function GaStockInPage() {
   const [items, setItems] = useState<any[]>([]);
   const [kategoris, setKategoris] = useState<any[]>([]);
@@ -34,14 +29,6 @@ export default function GaStockInPage() {
   });
   const [modal, setModal] = useState(false);
   const [search, setSearch] = useState('');
-  const [importOpen, setImportOpen] = useState(false);
-  const [importText, setImportText] = useState('');
-  const [importing, setImporting] = useState(false);
-  const [importMeta, setImportMeta] = useState({
-    tanggal: new Date().toISOString().split('T')[0],
-    picNama: '',
-    keterangan: 'Saldo awal',
-  });
 
   useEffect(() => {
     (async () => {
@@ -71,54 +58,6 @@ export default function GaStockInPage() {
     setSearch('');
   }
 
-  async function handleImportInitial() {
-    if (!importText.trim()) {
-      alert('Data masih kosong');
-      return;
-    }
-    if (!importMeta.picNama.trim()) {
-      alert('PIC penerima wajib diisi');
-      return;
-    }
-    setImporting(true);
-    try {
-      const res = await fetch('/api/ga/stock/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          rawText: importText,
-          tanggal: importMeta.tanggal,
-          picNama: importMeta.picNama,
-          keterangan: importMeta.keterangan,
-        }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        const d = json.data;
-        if (d.skippedRows?.length || d.failedRows?.length) {
-          console.group('Detail import saldo awal GA');
-          if (d.skippedRows?.length) console.table(d.skippedRows);
-          if (d.failedRows?.length) console.table(d.failedRows);
-          console.groupEnd();
-        }
-        alert(d.message || 'Import selesai');
-        if ((d.failed ?? 0) === 0) {
-          setImportOpen(false);
-          setImportText('');
-        }
-        setMsg(d.message);
-        const rS = await fetch('/api/ga/stock').then((r) => r.json());
-        if (rS.success) setItems(rS.data);
-      } else {
-        alert('Error: ' + json.error);
-      }
-    } catch (e: unknown) {
-      alert('Terjadi kesalahan: ' + (e instanceof Error ? e.message : 'Unknown'));
-    } finally {
-      setImporting(false);
-    }
-  }
-
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setSubmitting(true);
@@ -141,12 +80,25 @@ export default function GaStockInPage() {
         kategoriId: newForm.kategoriId ? Number(newForm.kategoriId) : null,
       };
     }
-    const res = await fetch('/api/ga/stock/in', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const json = await res.json();
+    const post = async (body: Record<string, unknown>) => {
+      const res = await fetch('/api/ga/stock/in', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      return { status: res.status, json: await res.json() };
+    };
+    let { status, json } = await post(payload);
+    if (status === 409) {
+      const lanjut = confirm(
+        (json.error || 'Periode sudah di-closing.') + '\n\nTetap simpan transaksi ini?'
+      );
+      if (!lanjut) {
+        setSubmitting(false);
+        return;
+      }
+      ({ status, json } = await post({ ...payload, overrideLockedPeriod: true }));
+    }
     setSubmitting(false);
     if (json.success) {
       setMsg(json.data.msg);
@@ -177,12 +129,7 @@ export default function GaStockInPage() {
         <div className="flex-between">
           <div>
             <div className="page-title">Stock In GA</div>
-            <div className="page-sub">Restock barang terdaftar, barang baru, atau import saldo awal</div>
-          </div>
-          <div className="ga-page-actions">
-            <button type="button" className="btn btn-ghost" onClick={() => setImportOpen(true)}>
-              Import Saldo Awal
-            </button>
+            <div className="page-sub">Restock barang terdaftar atau daftarkan barang baru</div>
           </div>
         </div>
       </div>
@@ -359,82 +306,6 @@ export default function GaStockInPage() {
         </div>
       )}
 
-      {importOpen && (
-        <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && setImportOpen(false)}>
-          <div className="modal-box" style={{ maxWidth: 640 }} onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <div className="modal-title">Import Saldo Awal</div>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setImportOpen(false)} aria-label="Tutup">
-                ✕
-              </button>
-            </div>
-            <div className="modal-body">
-              <div className="alert alert-blu">
-                <div style={{ flex: 1 }}>
-                  <strong>Cara import</strong>
-                  <ol style={{ marginLeft: 16, marginTop: 4 }}>
-                    <li>Import master barang dulu lewat <strong>Database GA → Import Excel</strong>.</li>
-                    <li>Copy data dari Excel (termasuk header: NAMA BARANG, KODE BARANG, Qty).</li>
-                    <li>Isi tanggal dan PIC, lalu paste dan klik Import.</li>
-                    <li>Barang yang sudah punya stok dilewati agar tidak dobel.</li>
-                  </ol>
-                </div>
-              </div>
-              <div className="form-grid-2">
-                <div className="form-group">
-                  <label className="form-label">
-                    Tanggal <span className="req">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    className="form-input"
-                    value={importMeta.tanggal}
-                    onChange={(e) => setImportMeta({ ...importMeta, tanggal: e.target.value })}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">
-                    PIC penerima <span className="req">*</span>
-                  </label>
-                  <input
-                    className="form-input"
-                    placeholder="Nama yang menerima"
-                    value={importMeta.picNama}
-                    onChange={(e) => setImportMeta({ ...importMeta, picNama: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Keterangan</label>
-                <input
-                  className="form-input"
-                  value={importMeta.keterangan}
-                  onChange={(e) => setImportMeta({ ...importMeta, keterangan: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Paste data Excel</label>
-                <textarea
-                  className="form-input"
-                  rows={12}
-                  style={{ fontFamily: 'monospace', whiteSpace: 'pre', overflowX: 'auto' }}
-                  placeholder={STOCK_INITIAL_SAMPLE}
-                  value={importText}
-                  onChange={(e) => setImportText(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button type="button" className="btn btn-ghost" onClick={() => setImportOpen(false)} disabled={importing}>
-                Batal
-              </button>
-              <button type="button" className="btn btn-primary" onClick={handleImportInitial} disabled={importing}>
-                {importing ? 'Memproses...' : 'Mulai Import'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }
