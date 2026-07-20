@@ -3,6 +3,7 @@ import { prismaGa } from '@/lib/prisma-ga';
 import { requireGaEditor } from '@/lib/auth';
 import { ok, err } from '@/lib/utils';
 import { GaItemUpdateSchema } from '@/lib/validations/ga-item';
+import { getGaCurrentStock } from '@/lib/ga/stockQty';
 
 type RouteCtx = { params: Promise<{ id: string }> };
 
@@ -70,5 +71,49 @@ export async function PUT(req: NextRequest, ctx: RouteCtx) {
   } catch (e) {
     console.error(e);
     return err('Gagal menyimpan perubahan', 500);
+  }
+}
+
+/**
+ * Hapus permanen barang dengan stok 0. Riwayat transaksi tetap disimpan:
+ * relasi itemId di movement/procurement dilepas, nama barang disalin ke
+ * kolom namaBarang agar riwayat tetap terbaca.
+ */
+export async function DELETE(_req: NextRequest, ctx: RouteCtx) {
+  const session = await requireGaEditor();
+  if (!session) return err('Akses ditolak', 403);
+
+  const { id } = await ctx.params;
+  if (!id?.trim()) return err('ID item wajib');
+
+  const existing = await prismaGa.gaItem.findUnique({ where: { id } });
+  if (!existing) return err('Barang tidak ditemukan', 404);
+
+  const currentStock = await getGaCurrentStock(prismaGa, id);
+  if (currentStock !== 0) {
+    return err(`Stok masih ada (${currentStock}), hanya barang dengan stok 0 yang bisa dihapus`);
+  }
+
+  try {
+    await prismaGa.$transaction(async (tx) => {
+      await tx.gaStockMovement.updateMany({
+        where: { itemId: id, namaBarang: null },
+        data: { namaBarang: existing.nama },
+      });
+      await tx.gaStockMovement.updateMany({
+        where: { itemId: id },
+        data: { itemId: null },
+      });
+      await tx.gaProcurementTracking.updateMany({
+        where: { itemId: id },
+        data: { itemId: null },
+      });
+      await tx.gaOpnameLine.deleteMany({ where: { itemId: id } });
+      await tx.gaItem.delete({ where: { id } });
+    });
+    return ok({ msg: 'Barang berhasil dihapus. Riwayat transaksi tetap tersimpan.' });
+  } catch (e) {
+    console.error(e);
+    return err('Gagal menghapus barang', 500);
   }
 }

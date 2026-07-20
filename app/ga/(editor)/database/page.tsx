@@ -85,6 +85,7 @@ export default function GaDatabasePage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<EditForm>(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   async function fetchItems() {
     setLoading(true);
@@ -182,6 +183,29 @@ export default function GaDatabasePage() {
     }
   }
 
+  async function handleDelete(it: GaItem) {
+    const yakin = confirm(
+      `Hapus permanen "${it.nama}" (${it.id})?\n\n` +
+        'Barang akan dihapus dari database, tapi riwayat transaksi (stock in/out) tetap tersimpan.\n' +
+        'Tindakan ini tidak dapat dibatalkan.'
+    );
+    if (!yakin) return;
+    setDeletingId(it.id);
+    try {
+      const res = await fetch(`/api/ga/items/${encodeURIComponent(it.id)}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (json.success) {
+        fetchItems();
+      } else {
+        alert('Gagal menghapus: ' + (json.error || 'Unknown'));
+      }
+    } catch (err: unknown) {
+      alert('Terjadi kesalahan: ' + (err instanceof Error ? err.message : 'Unknown'));
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   const fmtRp = (n: number) =>
     new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
 
@@ -263,7 +287,7 @@ export default function GaDatabasePage() {
                   <th>Harga</th>
                   <th>Stok</th>
                   <th>Status</th>
-                  <th style={{ width: 100 }}>Aksi</th>
+                  <th style={{ width: 140 }}>Aksi</th>
                 </tr>
               </thead>
               <tbody>
@@ -293,6 +317,17 @@ export default function GaDatabasePage() {
                           <button type="button" className="btn btn-ghost btn-sm" onClick={() => openEdit(it)}>
                             Edit
                           </button>
+                          {it.currentStock === 0 && (
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-sm"
+                              style={{ color: 'var(--ga-red, #dc2626)' }}
+                              onClick={() => handleDelete(it)}
+                              disabled={deletingId !== null}
+                            >
+                              {deletingId === it.id ? 'Menghapus…' : 'Hapus'}
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
