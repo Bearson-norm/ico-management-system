@@ -110,6 +110,33 @@ export default function GaAuditPage() {
     }
   }
 
+  async function handleDelete() {
+    if (!snapshot) return;
+    if (
+      !confirm(
+        `Hapus snapshot audit periode ${snapshot.periode} (${snapshot._count.lines} barang)?\n\n` +
+          'Periode ini akan kembali terbuka untuk transaksi (soft lock hilang) sampai snapshot digenerate ulang.'
+      )
+    ) {
+      return;
+    }
+    setGenerating(true);
+    try {
+      const res = await fetch(`/api/ga/audit?periode=${snapshot.periode}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        alert('Error: ' + (json.error || 'Gagal menghapus snapshot'));
+        return;
+      }
+      alert(json.data.msg);
+      setPeriode('');
+      setExpandedId(null);
+      await fetchData();
+    } finally {
+      setGenerating(false);
+    }
+  }
+
   async function toggleExpand(line: AuditLine) {
     if (expandedId === line.itemId) {
       setExpandedId(null);
@@ -154,6 +181,15 @@ export default function GaAuditPage() {
             >
               Unduh PDF
             </a>
+            <button
+              className="btn btn-ghost"
+              disabled={generating || !snapshot}
+              onClick={handleDelete}
+              style={{ color: 'var(--red)' }}
+              title={snapshot ? `Hapus snapshot ${snapshot.periode}` : 'Pilih snapshot dulu'}
+            >
+              Hapus Snapshot
+            </button>
             <button
               className="btn btn-primary"
               disabled={generating}

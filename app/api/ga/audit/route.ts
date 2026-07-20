@@ -80,3 +80,26 @@ export async function GET(req: NextRequest) {
     backdateItemIds,
   });
 }
+
+export async function DELETE(req: NextRequest) {
+  const session = await requireGaAdmin();
+  if (!session) return err('Akses ditolak', 403);
+
+  const periode = req.nextUrl.searchParams.get('periode') || '';
+  if (!/^\d{4}-\d{2}$/.test(periode)) return err('Parameter periode (YYYY-MM) wajib diisi');
+
+  const snapshot = await prismaGa.gaAuditSnapshot.findUnique({
+    where: { periode },
+    select: { id: true, _count: { select: { lines: true } } },
+  });
+  if (!snapshot) return err('Snapshot tidak ditemukan', 404);
+
+  // Lines ikut terhapus via onDelete: Cascade.
+  await prismaGa.gaAuditSnapshot.delete({ where: { id: snapshot.id } });
+
+  return ok({
+    periode,
+    deletedLines: snapshot._count.lines,
+    msg: `Snapshot ${periode} dihapus (${snapshot._count.lines} baris). Periode ini kembali terbuka untuk transaksi.`,
+  });
+}

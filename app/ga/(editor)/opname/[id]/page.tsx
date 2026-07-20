@@ -59,6 +59,7 @@ export default function GaOpnameDetailPage() {
     postMode: 'in_out' as 'in_out' | 'adj',
   });
   const [postModal, setPostModal] = useState(false);
+  const [inputConfirmed, setInputConfirmed] = useState(false);
 
   const isDraft = session?.status === 'draft';
 
@@ -213,6 +214,11 @@ export default function GaOpnameDetailPage() {
     if (!allGedungComplete) {
       alert(incompleteMsg || 'Semua gedung harus selesai dihitung sebelum posting.');
       return;
+    }
+    if (!inputConfirmed) {
+      return alert(
+        'Centang konfirmasi bahwa semua transaksi Stock In / Stock Out sudah diinput terlebih dahulu.'
+      );
     }
     if (!postForm.picNama.trim()) return alert('PIC wajib');
     const saved = await saveLines();
@@ -513,6 +519,21 @@ export default function GaOpnameDetailPage() {
                 <p style={{ fontSize: 13, color: 'var(--ga-tx2)', marginBottom: 16 }}>
                   Semua gedung sudah dihitung ({session.lineCount} barang). Pilih cara mencatat selisih ke stok.
                 </p>
+                <div className="alert alert-ylw" style={{ marginBottom: 16 }}>
+                  <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={inputConfirmed}
+                      onChange={(e) => setInputConfirmed(e.target.checked)}
+                      style={{ marginTop: 2 }}
+                    />
+                    <span>
+                      Saya konfirmasi <strong>semua transaksi Stock In / Stock Out sampai tanggal opname
+                      sudah diinput</strong>. Setelah posting, selisih akan di-adjust ke stok — transaksi susulan
+                      yang diinput belakangan akan membuat stok terkoreksi dobel.
+                    </span>
+                  </label>
+                </div>
                 <div className="form-group">
                   <label className="form-label">Metode penyesuaian</label>
                   <div className="ga-opname-post-modes" role="radiogroup" aria-label="Metode penyesuaian">
@@ -573,7 +594,12 @@ export default function GaOpnameDetailPage() {
                 <button type="button" className="btn btn-ghost" onClick={() => setPostModal(false)}>
                   Batal
                 </button>
-                <button type="submit" className="btn btn-primary" disabled={posting}>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={posting || !inputConfirmed}
+                  title={inputConfirmed ? undefined : 'Centang konfirmasi input transaksi dulu'}
+                >
                   {posting ? 'Memproses…' : 'Posting ke stok'}
                 </button>
               </div>

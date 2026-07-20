@@ -96,6 +96,19 @@ function mapLine(
   };
 }
 
+/**
+ * Opname posted terakhir yang tanggal hitungnya >= tanggal transaksi.
+ * Jika ada, stok pada tanggal itu sudah dipaksa sama dengan hasil hitung fisik —
+ * transaksi susulan ber-tanggal sebelum opname akan membuat stok terkoreksi dobel.
+ */
+export async function findPostedOpnameOnOrAfterDate(tanggal: Date) {
+  return prismaGa.gaOpnameSession.findFirst({
+    where: { status: 'posted', tanggal: { gte: tanggal } },
+    orderBy: { tanggal: 'desc' },
+    select: { id: true, periodeNama: true, tanggal: true, postedAt: true },
+  });
+}
+
 export async function listOpnameSessions(): Promise<OpnameSessionView[]> {
   const sessions = await prismaGa.gaOpnameSession.findMany({
     orderBy: { createdAt: 'desc' },

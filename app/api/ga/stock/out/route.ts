@@ -5,6 +5,7 @@ import { GaStockOutSchema } from '@/lib/validations/ga-stock';
 import { ok, err } from '@/lib/utils';
 import { getGaCurrentStock } from '@/lib/ga/stockQty';
 import { findSnapshotForDate } from '@/lib/ga/auditSnapshot';
+import { findPostedOpnameOnOrAfterDate } from '@/lib/ga/opnameService';
 
 export async function POST(req: NextRequest) {
   const session = await requireGaEditor();
@@ -21,14 +22,31 @@ export async function POST(req: NextRequest) {
   const p = parsed.data;
   const tanggal = new Date(p.tanggal + 'T12:00:00');
 
-  // Soft period lock: periode yang sudah punya snapshot audit dianggap closed.
-  const lockedSnapshot = await findSnapshotForDate(prismaGa, tanggal);
-  if (lockedSnapshot && !p.overrideLockedPeriod) {
-    return err(
-      `Periode ${lockedSnapshot.periode} sudah di-closing (snapshot audit sudah digenerate). ` +
-        'Transaksi tetap bisa dicatat, tetapi akan ditandai sebagai backdate di halaman audit.',
-      409
-    );
+  // Soft lock: butuh konfirmasi eksplisit jika tanggal transaksi jatuh di
+  // periode yang sudah di-closing atau sudah tertutup opname posted.
+  if (!p.overrideLockedPeriod) {
+    const warnings: string[] = [];
+    const [lockedSnapshot, coveringOpname] = await Promise.all([
+      findSnapshotForDate(prismaGa, tanggal),
+      findPostedOpnameOnOrAfterDate(tanggal),
+    ]);
+    if (coveringOpname) {
+      const tglOpname = coveringOpname.tanggal.toISOString().slice(0, 10);
+      warnings.push(
+        `PERHATIAN: opname "${coveringOpname.periodeNama}" (${tglOpname}) sudah diposting untuk tanggal ini atau sesudahnya. ` +
+          'Selisih stok pada tanggal tersebut sudah ter-adjust oleh opname — mencatat transaksi susulan akan membuat stok terkoreksi DOBEL. ' +
+          'Lanjutkan hanya jika transaksi ini memang belum terwakili di hasil hitung opname.'
+      );
+    }
+    if (lockedSnapshot) {
+      warnings.push(
+        `Periode ${lockedSnapshot.periode} sudah di-closing (snapshot audit sudah digenerate). ` +
+          'Transaksi tetap bisa dicatat, tetapi akan ditandai sebagai backdate di halaman audit.'
+      );
+    }
+    if (warnings.length > 0) {
+      return err(warnings.join('\n\n'), 409);
+    }
   }
 
   const usageByItem = new Map<string, number>();

@@ -201,6 +201,14 @@ export default function GaOpnameListPage() {
             </div>
             <form onSubmit={onCreate}>
               <div className="modal-body">
+                <div className="alert alert-ylw" style={{ marginBottom: 16 }}>
+                  <div style={{ flex: 1, fontSize: 12 }}>
+                    <strong>Sebelum mulai opname:</strong> pastikan <strong>semua transaksi Stock In / Stock Out
+                    sampai hari ini sudah diinput</strong>. Selisih hitung fisik vs sistem akan di-adjust saat
+                    posting — transaksi yang baru diinput <em>setelah</em> opname diposting akan membuat stok
+                    terkoreksi dobel.
+                  </div>
+                </div>
                 <p style={{ fontSize: 13, color: 'var(--ga-tx2)', marginBottom: 16 }}>
                   Semua barang aktif masuk satu sesi. Setelah dibuat, pilih gedung/lokasi untuk mengisi qty fisik.
                   Posting selisih baru bisa dilakukan jika <strong>semua gedung</strong> sudah selesai dihitung.
