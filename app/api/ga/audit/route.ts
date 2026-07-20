@@ -33,6 +33,7 @@ export async function GET(req: NextRequest) {
   const snapshot = targetPeriode
     ? await prismaGa.gaAuditSnapshot.findUnique({
         where: { periode: targetPeriode },
+        include: { _count: { select: { lines: true } } },
       })
     : null;
 

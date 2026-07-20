@@ -7,7 +7,7 @@ type SnapshotMeta = {
   generatedAt: string;
   cutoffAt: string;
   source: string;
-  _count: { lines: number };
+  _count?: { lines: number };
 };
 
 type AuditLine = {
@@ -112,9 +112,10 @@ export default function GaAuditPage() {
 
   async function handleDelete() {
     if (!snapshot) return;
+    const lineCount = snapshot._count?.lines ?? lines.length;
     if (
       !confirm(
-        `Hapus snapshot audit periode ${snapshot.periode} (${snapshot._count.lines} barang)?\n\n` +
+        `Hapus snapshot audit periode ${snapshot.periode} (${lineCount} barang)?\n\n` +
           'Periode ini akan kembali terbuka untuk transaksi (soft lock hilang) sampai snapshot digenerate ulang.'
       )
     ) {
@@ -217,7 +218,7 @@ export default function GaAuditPage() {
                 {snapshots.length === 0 && <option value="">Belum ada snapshot</option>}
                 {snapshots.map((s) => (
                   <option key={s.id} value={s.periode}>
-                    {s.periode} ({s._count.lines} barang)
+                    {s.periode} ({s._count?.lines ?? 0} barang)
                   </option>
                 ))}
               </select>
