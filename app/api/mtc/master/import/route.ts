@@ -100,15 +100,26 @@ export async function POST(req: NextRequest) {
           continue;
         }
         try {
-          const mesin = await prisma.mesin.upsert({
-            where: { nama_tipe: { nama: mesinNama, tipe: 'sparepart' } },
-            update: {},
-            create: {
-              nama: mesinNama,
-              tipe: 'sparepart',
-              aktif: true,
-            },
-          });
+          const existing = await prisma.mesin.findUnique({ where: { nama: mesinNama } });
+          let mesin;
+          if (existing) {
+            let newTipe = existing.tipe;
+            if (existing.tipe === 'perbaikan') {
+              newTipe = 'keduanya';
+            }
+            mesin = await prisma.mesin.update({
+              where: { id: existing.id },
+              data: { tipe: newTipe, aktif: true },
+            });
+          } else {
+            mesin = await prisma.mesin.create({
+              data: {
+                nama: mesinNama,
+                tipe: 'sparepart',
+                aktif: true,
+              },
+            });
+          }
           // Check sparepart exists
           const sp = await prisma.sparepart.findUnique({ where: { id: sparepartId } });
           if (!sp) {

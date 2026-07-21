@@ -48,6 +48,11 @@ export async function POST(req: NextRequest) {
       });
       for (const it of p.items) {
         const sp = details.find((d) => d.id === it.sparepartId);
+
+        const mesinTag = it.mesinNama?.trim() ? `[Mesin: ${it.mesinNama.trim()}]` : '';
+        const userKet = it.keterangan?.trim() || p.keterangan?.trim() || '';
+        const finalKeterangan = [mesinTag, userKet].filter(Boolean).join(' ') || null;
+
         await tx.stockMovement.create({
           data: {
             tipe: 'OUT',
@@ -58,7 +63,7 @@ export async function POST(req: NextRequest) {
             lokasi: sp?.lokasi ?? '',
             picId: p.picId,
             noReport: p.noReport || null,
-            keterangan: p.keterangan || null,
+            keterangan: finalKeterangan,
             tanggal,
           },
         });

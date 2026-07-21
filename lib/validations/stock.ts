@@ -9,6 +9,8 @@ export const StockOutSchema = z.object({
   items: z.array(z.object({
     sparepartId: z.string().min(1, 'Item ID wajib diisi'),
     qty:         z.number().int().positive('Qty harus > 0'),
+    mesinNama:   z.string().optional().default(''),
+    keterangan:  z.string().optional().default(''),
   })).min(1, 'Tambah minimal 1 barang'),
 });
 

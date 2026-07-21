@@ -98,16 +98,27 @@ async function main() {
       const cleanSparepartId = sparepartId.trim();
 
       try {
-        // 1. Dapatkan atau buat mesin secara otomatis (upsert)
-        const mesin = await prisma.mesin.upsert({
-          where: { nama_tipe: { nama: cleanMesinNama, tipe: 'sparepart' } },
-          update: {},
-          create: {
-            nama: cleanMesinNama,
-            tipe: 'sparepart',
-            aktif: true,
-          },
-        });
+        // 1. Dapatkan atau buat mesin secara otomatis
+        const existing = await prisma.mesin.findUnique({ where: { nama: cleanMesinNama } });
+        let mesin;
+        if (existing) {
+          let newTipe = existing.tipe;
+          if (existing.tipe === 'perbaikan') {
+            newTipe = 'keduanya';
+          }
+          mesin = await prisma.mesin.update({
+            where: { id: existing.id },
+            data: { tipe: newTipe, aktif: true },
+          });
+        } else {
+          mesin = await prisma.mesin.create({
+            data: {
+              nama: cleanMesinNama,
+              tipe: 'sparepart',
+              aktif: true,
+            },
+          });
+        }
 
         // 2. Cek apakah sparepart ada
         const sparepart = await prisma.sparepart.findUnique({

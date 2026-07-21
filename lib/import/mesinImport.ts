@@ -124,20 +124,35 @@ export async function importMesinBatch(
     }
 
     try {
-      await prisma.mesin.upsert({
-        where: { nama_tipe: { nama: row.nama, tipe: row.tipe } },
-        update: {
-          area: row.area,
-          tipe: row.tipe,
-          aktif: true,
-        },
-        create: {
-          nama: row.nama,
-          area: row.area,
-          tipe: row.tipe,
-          aktif: true,
-        },
+      const existing = await prisma.mesin.findUnique({
+        where: { nama: row.nama },
       });
+
+      if (existing) {
+        let newTipe = existing.tipe;
+        if (existing.tipe !== row.tipe && existing.tipe !== 'keduanya') {
+          newTipe = 'keduanya';
+        }
+        const newArea = (row.area && row.area !== '-') ? row.area : existing.area;
+
+        await prisma.mesin.update({
+          where: { id: existing.id },
+          data: {
+            tipe: newTipe,
+            area: newArea,
+            aktif: true,
+          },
+        });
+      } else {
+        await prisma.mesin.create({
+          data: {
+            nama: row.nama,
+            area: (row.area && row.area !== '-') ? row.area : null,
+            tipe: row.tipe,
+            aktif: true,
+          },
+        });
+      }
       success++;
     } catch (e: unknown) {
       const reason = e instanceof Error ? e.message : 'Gagal simpan';

@@ -63,7 +63,7 @@ async function main() {
     { nama: 'Conveyor Utama', tipe: 'perbaikan', area: 'Gudang' },
   ];
   for (const m of mesins) {
-    await prisma.mesin.upsert({ where: { nama_tipe: { nama: m.nama, tipe: m.tipe } }, update: {}, create: m });
+    await prisma.mesin.upsert({ where: { nama: m.nama }, update: {}, create: m });
   }
 
   const mechKat = await prisma.kategori.findUnique({ where: { nama: 'Mechanical' } });
