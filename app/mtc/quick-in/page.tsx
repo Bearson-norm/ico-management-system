@@ -408,7 +408,7 @@ export default function QuickStockInPage() {
                   >
                     <option value="">— Bukan untuk Mesin Khusus / Umum (Dipakai Semua Mesin) —</option>
                     {mesins
-                      .filter(m => m.tipe === 'sparepart' || m.tipe === 'keduanya')
+                      .filter(m => m.tipe === 'sparepart')
                       .map(m => (
                         <option key={m.id} value={m.id.toString()}>{m.nama}</option>
                       ))}

@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
       data: {
         nama: nama.trim(),
         area: area || null,
-        tipe: tipe || 'keduanya',
+        tipe: tipe || 'perbaikan',
         aktif: aktif !== false,
       },
     });

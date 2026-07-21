@@ -26,7 +26,7 @@ export type ImportMesinReport = {
 
 const MAX_SAMPLES = 30;
 
-const TIPE_ONLY = /^(sparepart|perbaikan|keduanya|spare\s*part)$/i;
+const TIPE_ONLY = /^(sparepart|perbaikan|spare\s*part)$/i;
 
 function cell(row: Record<string, string>, ...keys: string[]): string | undefined {
   for (const key of keys) {
@@ -40,14 +40,12 @@ function cell(row: Record<string, string>, ...keys: string[]): string | undefine
   return undefined;
 }
 
-/** Normalisasi tipe mesin ke nilai schema: sparepart | perbaikan | keduanya */
+/** Normalisasi tipe mesin ke nilai schema: sparepart | perbaikan */
 export function normalizeMesinTipe(raw: string | undefined): string {
   const t = (raw ?? '').trim().toLowerCase();
-  if (!t) return 'keduanya';
-  if (t === 'sparepart' || t === 'spare part' || t === 'sp') return 'sparepart';
-  if (t === 'perbaikan' || t === 'repair' || t === 'maintenance' || t === 'mtc') return 'perbaikan';
-  if (t === 'keduanya' || t === 'both' || t === 'semua' || t === 'all') return 'keduanya';
-  return 'keduanya';
+  if (!t) return 'perbaikan';
+  if (t === 'sparepart' || t === 'spare part' || t === 'sp' || t === 'bom') return 'sparepart';
+  return 'perbaikan';
 }
 
 export function recordToMesinRow(row: Record<string, string>): MesinImportRow | null {

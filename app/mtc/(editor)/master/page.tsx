@@ -411,7 +411,6 @@ export default function MasterPage() {
                       <option value="">🏭 Semua Tipe Mesin</option>
                       <option value="perbaikan">🛠️ Khusus Perbaikan</option>
                       <option value="sparepart">🔩 Khusus Sparepart (BOM)</option>
-                      <option value="keduanya">⚡ Keduanya</option>
                     </select>
                     <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--tx3)', fontSize: 9 }}>
                       ▼
@@ -512,8 +511,7 @@ export default function MasterPage() {
                         <td data-label="Nama Mesin" style={{ fontWeight: 600 }}>{m.nama}</td>
                         <td data-label="Tipe">
                           {m.tipe === 'sparepart' ? <span className="badge badge-blu">Khusus Sparepart (BOM)</span>
-                           : m.tipe === 'perbaikan' ? <span className="badge badge-ylw">Khusus Perbaikan</span>
-                           : <span className="badge badge-pur">Keduanya</span>}
+                           : <span className="badge badge-ylw">Khusus Perbaikan</span>}
                         </td>
                         <td data-label="Area">{m.area || '—'}</td>
                         <td data-label="Spareparts"><span className="badge badge-pur">{m._sparepartCount ?? 0} item</span></td>
@@ -598,7 +596,7 @@ export default function MasterPage() {
                   <tbody>
                     {bomMesins
                       .filter(m => m.nama.toLowerCase().includes(search.toLowerCase()))
-                      .filter(m => m.tipe === 'sparepart' || m.tipe === 'keduanya')
+                      .filter(m => m.tipe === 'sparepart')
                       .map(m => (
                         <React.Fragment key={m.id}>
                         <tr onClick={() => setExpandedMesinId(expandedMesinId === m.id ? null : m.id)} style={{ cursor: 'pointer' }}>
@@ -804,10 +802,9 @@ export default function MasterPage() {
                     </div>
                     <div className="form-group">
                       <label className="form-label">Tipe Mesin</label>
-                      <select className="form-input form-select" value={form.tipe || 'keduanya'} onChange={e => setForm({...form, tipe: e.target.value})}>
-                        <option value="keduanya">Keduanya (Tampil di semua)</option>
-                        <option value="sparepart">Khusus Induk (BOM Sparepart)</option>
+                      <select className="form-input form-select" value={form.tipe || 'perbaikan'} onChange={e => setForm({...form, tipe: e.target.value})}>
                         <option value="perbaikan">Khusus Line (Laporan Perbaikan)</option>
+                        <option value="sparepart">Khusus Induk (BOM Sparepart)</option>
                       </select>
                     </div>
                     {isEdit && (

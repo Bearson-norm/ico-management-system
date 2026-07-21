@@ -7,7 +7,7 @@ export function normalizeNewlines(text: string): string {
   return text.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 }
 
-const TIPE_ONLY = /^(sparepart|perbaikan|keduanya|spare\s*part)$/i;
+const TIPE_ONLY = /^(sparepart|perbaikan|spare\s*part)$/i;
 
 function isSparepartHeaderLine(line: string): boolean {
   const first = line.split('\t')[0]?.trim().toLowerCase() ?? '';
