@@ -13,6 +13,7 @@ export default function MasterPage() {
   const [filterMesin, setFilterMesin] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<string>(''); // '', 'aktif', 'nonaktif'
   const [filterPengadaan, setFilterPengadaan] = useState<string>(''); // '', 'PR', 'PO', 'NONE'
+  const [filterTipeMesin, setFilterTipeMesin] = useState<string>('');
   
   // Data
   const [spareparts, setSpareparts] = useState<any[]>([]);
@@ -44,6 +45,7 @@ export default function MasterPage() {
     setFilterMesin('');
     setFilterStatus('');
     setFilterPengadaan('');
+    setFilterTipeMesin('');
   }, [activeTab]);
 
   useEffect(() => {
@@ -396,6 +398,27 @@ export default function MasterPage() {
                   </div>
                 </div>
               )}
+
+              {activeTab === 'mesin' && (
+                <div className="master-filters">
+                  <div style={{ position: 'relative', display: 'inline-block' }}>
+                    <select
+                      className="form-input form-select"
+                      style={{ padding: '6px 30px 6px 14px', borderRadius: 20, background: 'var(--sf2)', color: 'var(--tx)', border: '1px solid var(--br)', fontSize: 12, height: 'auto', outline: 'none', cursor: 'pointer', appearance: 'none', minWidth: 170, transition: 'all .15s' }}
+                      value={filterTipeMesin}
+                      onChange={e => setFilterTipeMesin(e.target.value)}
+                    >
+                      <option value="">🏭 Semua Tipe Mesin</option>
+                      <option value="perbaikan">🛠️ Khusus Perbaikan</option>
+                      <option value="sparepart">🔩 Khusus Sparepart (BOM)</option>
+                      <option value="keduanya">⚡ Keduanya</option>
+                    </select>
+                    <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--tx3)', fontSize: 9 }}>
+                      ▼
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -482,7 +505,7 @@ export default function MasterPage() {
                   <tbody>
                     {mesins
                       .filter(m => m.nama.toLowerCase().includes(search.toLowerCase()))
-                      .filter(m => m.tipe === 'perbaikan')
+                      .filter(m => !filterTipeMesin || m.tipe === filterTipeMesin)
                       .map(m => (
                       <tr key={m.id}>
                         <td data-label="ID" className="text-muted text-tiny">{m.id}</td>
