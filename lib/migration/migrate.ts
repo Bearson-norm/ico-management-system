@@ -42,7 +42,7 @@ async function main() {
         const parts = row.Mesin.trim().split(/\s+/);
         const area = parts.length > 1 ? parts[parts.length - 1] : null;
         await prisma.mesin.upsert({
-          where: { nama: row.Mesin.trim() },
+          where: { nama_tipe: { nama: row.Mesin.trim(), tipe: 'perbaikan' } },
           update: {}, create: { nama: row.Mesin.trim(), area, tipe: 'perbaikan' }
         });
       }

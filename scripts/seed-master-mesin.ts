@@ -90,74 +90,30 @@ Carton Sealer Cartridge\tSparepart\t-`;
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🔄 Memproses data mesin dari user...');
-
-  // Group by nama
-  const map = new Map<string, { nama: string; tipes: Set<string>; area: string | null }>();
+  console.log('🔄 Memulai Seeding Master Mesin Terpisah (Perbaikan vs Sparepart/BOM)...');
 
   const lines = rawData.split('\n').slice(1);
+
   for (const line of lines) {
     const parts = line.split('\t');
     if (parts.length < 2) continue;
     const nama = parts[0].trim();
-    const tipe = parts[1].trim().toLowerCase();
+    const tipeRaw = parts[1].trim().toLowerCase();
     const areaRaw = parts[2] ? parts[2].trim() : null;
     const area = (areaRaw && areaRaw !== '-') ? areaRaw : null;
 
-    if (!map.has(nama)) {
-      map.set(nama, { nama, tipes: new Set([tipe]), area });
-    } else {
-      const existing = map.get(nama)!;
-      existing.tipes.add(tipe);
-      if (!existing.area && area) {
-        existing.area = area;
-      }
-    }
+    const tipe = tipeRaw === 'sparepart' || tipeRaw === 'sp' ? 'sparepart' : 'perbaikan';
+
+    await prisma.mesin.upsert({
+      where: { nama_tipe: { nama, tipe } },
+      update: { area, aktif: true },
+      create: { nama, tipe, area, aktif: true },
+    });
   }
 
-  console.log(`📊 Total baris input: ${lines.length}`);
-  console.log(`✨ Unique Mesin: ${map.size}`);
+  console.log(`✅ Selesai Import!`);
+  console.log(`📋 Total baris data: ${lines.length}`);
 
-  let createdCount = 0;
-  let updatedCount = 0;
-
-  for (const [nama, data] of map.entries()) {
-    let finalTipe = 'keduanya';
-    if (data.tipes.has('perbaikan') && data.tipes.has('sparepart')) {
-      finalTipe = 'keduanya';
-    } else if (data.tipes.has('perbaikan')) {
-      finalTipe = 'perbaikan';
-    } else if (data.tipes.has('sparepart')) {
-      finalTipe = 'sparepart';
-    }
-
-    const existing = await prisma.mesin.findUnique({ where: { nama } });
-    if (existing) {
-      await prisma.mesin.update({
-        where: { id: existing.id },
-        data: {
-          tipe: finalTipe,
-          area: data.area || existing.area,
-          aktif: true,
-        },
-      });
-      updatedCount++;
-    } else {
-      await prisma.mesin.create({
-        data: {
-          nama,
-          tipe: finalTipe,
-          area: data.area,
-          aktif: true,
-        },
-      });
-      createdCount++;
-    }
-  }
-
-  console.log(`✅ Selesai! Created: ${createdCount}, Updated: ${updatedCount}`);
-
-  // Summary current DB state
   const totalCount = await prisma.mesin.count();
   const byTipe = await prisma.mesin.groupBy({
     by: ['tipe'],
@@ -165,8 +121,8 @@ async function main() {
   });
 
   console.log('\n=== STATUS MESIN DI DATABASE SEKARANG ===');
-  console.log('Total Mesin:', totalCount);
-  console.log('Per rincian tipe:', byTipe);
+  console.log('Total Mesin di DB:', totalCount);
+  console.log('Rincian Tipe:', byTipe);
 }
 
 main().catch(console.error).finally(() => prisma.$disconnect());
