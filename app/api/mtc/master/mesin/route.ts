@@ -12,9 +12,15 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const includeSpareparts = searchParams.get('include') === 'spareparts';
+  const tipeFilter = searchParams.get('tipe'); // e.g. 'perbaikan' | 'sparepart'
+  const hasArea = searchParams.get('hasArea') === '1'; // hanya return mesin yang punya area
 
   const data = await prisma.mesin.findMany({
-    where: { aktif: true },
+    where: {
+      aktif: true,
+      ...(tipeFilter ? { tipe: tipeFilter } : {}),
+      ...(hasArea ? { area: { not: null } } : {}),
+    },
     orderBy: { nama: 'asc' },
     include: includeSpareparts
       ? {

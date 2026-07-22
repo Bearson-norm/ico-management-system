@@ -39,7 +39,7 @@ export default function StockOutPage() {
         const [resT, resS, resM] = await Promise.all([
           fetch('/api/mtc/master/teknisi').then((r) => r.json()),
           fetch('/api/mtc/stock').then((r) => r.json()),
-          fetch('/api/mtc/master/mesin').then((r) => r.json()),
+          fetch('/api/mtc/master/mesin?tipe=perbaikan').then((r) => r.json()),
         ]);
         if (resT.success) setTeknisis(resT.data);
         if (resS.success) setSpareparts(resS.data);

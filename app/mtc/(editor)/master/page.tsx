@@ -490,13 +490,13 @@ export default function MasterPage() {
               {/* TAB: MESIN */}
               {activeTab === 'mesin' && (
                 <>
-                  <thead>
+                   <thead>
                     <tr>
                       <th>ID</th>
                       <th>Nama Mesin</th>
                       <th>Tipe</th>
                       <th>Area</th>
-                      <th>Spareparts</th>
+                      <th>Spareparts (BOM)</th>
                       <th>Status</th>
                       <th style={{ textAlign: 'right' }}>Aksi</th>
                     </tr>
@@ -514,7 +514,11 @@ export default function MasterPage() {
                            : <span className="badge badge-ylw">Khusus Perbaikan</span>}
                         </td>
                         <td data-label="Area">{m.area || '—'}</td>
-                        <td data-label="Spareparts"><span className="badge badge-pur">{m._sparepartCount ?? 0} item</span></td>
+                        <td data-label="Spareparts (BOM)">
+                          {m.tipe === 'sparepart'
+                            ? <span className="badge badge-pur">{m._sparepartCount ?? 0} item</span>
+                            : <span className="text-muted" style={{ fontSize: 13 }}>—</span>}
+                        </td>
                         <td data-label="Status">{m.aktif ? <span className="badge badge-grn">Aktif</span> : <span className="badge badge-red">Nonaktif</span>}</td>
                         <td data-label="Aksi">
                           <button type="button" className="btn btn-ghost btn-sm" onClick={() => openModal('mesin', m)}>Edit</button>
@@ -765,7 +769,7 @@ export default function MasterPage() {
                     <div className="form-group" style={{ gridColumn: '1/-1' }}>
                       <label className="form-label">Digunakan Pada Mesin (BOM)</label>
                       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', padding: '10px 12px', background: 'var(--bg)', borderRadius: 8, border: '1px solid var(--br)' }}>
-                        {mesins.map(m => {
+                        {mesins.filter(m => m.tipe === 'sparepart').map(m => {
                           const checked = form.mesinIds?.includes(m.id.toString());
                           return (
                             <label key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13, background: checked ? 'var(--blu-d)' : 'var(--sf2)', padding: '4px 10px', borderRadius: 20, color: checked ? 'var(--blu)' : 'var(--tx2)', border: `1px solid ${checked ? 'var(--blu)' : 'transparent'}` }}>
@@ -783,7 +787,7 @@ export default function MasterPage() {
                             </label>
                           );
                         })}
-                        {mesins.length === 0 && <span className="text-muted text-tiny">Belum ada data mesin</span>}
+                        {mesins.filter(m => m.tipe === 'sparepart').length === 0 && <span className="text-muted text-tiny">Belum ada mesin tipe BOM. Buat mesin baru dengan tipe "Khusus Induk (BOM Sparepart)" di tab Mesin.</span>}
                       </div>
                     </div>
                   </>

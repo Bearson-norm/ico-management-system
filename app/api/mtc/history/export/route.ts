@@ -27,26 +27,35 @@ export async function GET(req: NextRequest) {
 
   const data = await prisma.stockMovement.findMany({
     where,
-    include: { sparepart: true, pic: true },
+    include: { sparepart: true, pic: true, report: { include: { mesin: true } } },
     orderBy: { tanggal: 'desc' },
   });
 
   // Build rows
-  const rows = data.map((d, i) => ({
-    'No': i + 1,
-    'Tanggal': new Date(d.tanggal).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' }),
-    'Waktu': new Date(d.createdAt).toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' }),
-    'Tipe': d.tipe,
-    'ID Sparepart': d.sparepartId ?? '',
-    'Nama Item': d.sparepart?.nama ?? d.namaItem ?? '',
-    'Qty': d.qty,
-    'Harga (Rp)': d.harga ? Number(d.harga) : 0,
-    'PIC': d.pic?.nama ?? '',
-    'No Report': d.noReport ?? '',
-    'Jenis Pembelian': d.purchaseType ?? '',
-    'Vendor': d.vendor ?? '',
-    'Keterangan': d.keterangan ?? '',
-  }));
+  const rows = data.map((d, i) => {
+    let mesinNama = d.report?.mesin?.nama ?? '';
+    if (!mesinNama && d.keterangan) {
+      const match = d.keterangan.match(/\[Mesin:\s*([^\]]+)\]/i);
+      if (match) mesinNama = match[1].trim();
+    }
+
+    return {
+      'No': i + 1,
+      'Tanggal': new Date(d.tanggal).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' }),
+      'Waktu': new Date(d.createdAt).toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' }),
+      'Tipe': d.tipe,
+      'ID Sparepart': d.sparepartId ?? '',
+      'Nama Item': d.sparepart?.nama ?? d.namaItem ?? '',
+      'Qty': d.qty,
+      'Harga (Rp)': d.harga ? Number(d.harga) : 0,
+      'PIC': d.pic?.nama ?? '',
+      'No Report': d.noReport ?? '',
+      'Mesin': mesinNama,
+      'Jenis Pembelian': d.purchaseType ?? '',
+      'Vendor': d.vendor ?? '',
+      'Keterangan': d.keterangan ?? '',
+    };
+  });
 
   // Build filename
   const tipeLabel = tipe || 'SEMUA';
@@ -90,6 +99,7 @@ export async function GET(req: NextRequest) {
     { wch: 16 }, // Harga
     { wch: 14 }, // PIC
     { wch: 16 }, // No Report
+    { wch: 25 }, // Mesin
     { wch: 14 }, // Jenis Pembelian
     { wch: 30 }, // Vendor
     { wch: 60 }, // Keterangan

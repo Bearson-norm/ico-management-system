@@ -38,7 +38,7 @@ export default function ReportPage() {
     async function loadMaster() {
       try {
         const [resM, resT, resK, resS] = await Promise.all([
-          fetch('/api/mtc/master/mesin').then(r => r.json()),
+          fetch('/api/mtc/master/mesin?tipe=perbaikan&hasArea=1').then(r => r.json()),
           fetch('/api/mtc/master/teknisi').then(r => r.json()),
           fetch('/api/mtc/master/kategori').then(r => r.json()),
           fetch('/api/mtc/stock').then(r => r.json()) // Ambil stok untuk pilihan sparepart
