@@ -1,10 +1,10 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireMtcEditor } from '@/lib/auth';
+import { requireMtcAuth, requireMtcEditor } from '@/lib/auth';
 import { ok, err } from '@/lib/utils';
 
 export async function GET() {
-  const session = await requireMtcEditor();
+  const session = (await requireMtcEditor()) || (await requireMtcAuth());
   if (!session) return err('Akses ditolak', 403);
   const data = await prisma.teknisi.findMany({ orderBy: { nama: 'asc' } });
   return ok(data);

@@ -112,7 +112,9 @@ function HistoryContent() {
     try {
       const res = await fetch('/api/mtc/master/teknisi');
       const json = await res.json();
-      if (Array.isArray(json)) {
+      if (json.success && Array.isArray(json.data)) {
+        setTeknisis(json.data);
+      } else if (Array.isArray(json)) {
         setTeknisis(json);
       }
     } catch {
