@@ -1,18 +1,17 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireMtcAuth } from '@/lib/auth';
+import { requireMtcAuth, requireMtcEditor } from '@/lib/auth';
 import { ok, err } from '@/lib/utils';
 
-interface RouteParams {
-  params: { id: string };
-}
+type RouteCtx = { params: Promise<{ id: string }> | { id: string } };
 
 // ─── PUT /api/mtc/history/[id] - Edit Riwayat Transaksi ──────────────────────
-export async function PUT(req: NextRequest, { params }: RouteParams) {
-  const session = await requireMtcAuth();
-  if (!session) return err('Unauthorized', 401);
+export async function PUT(req: NextRequest, ctx: RouteCtx) {
+  const session = (await requireMtcEditor()) || (await requireMtcAuth());
+  if (!session) return err('Akses ditolak / Unauthorized', 401);
 
-  const id = parseInt(params.id, 10);
+  const resolvedParams = await ctx.params;
+  const id = parseInt(resolvedParams.id, 10);
   if (isNaN(id)) return err('ID transaksi tidak valid', 400);
 
   const body = await req.json();
@@ -50,7 +49,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
       const remaining = movement.sparepart.currentStock + stockChange;
       if (remaining < 0) {
         return err(
-          `Gagal mengubah transaksi: stok barang (${movement.sparepart.nama}) tidak mencukupi. Sisa stok: ${movement.sparepart.currentStock}`,
+          `Gagal mengubah transaksi: stok barang (${movement.sparepart.nama}) tidak mencukupi. Sisa stok saat ini: ${movement.sparepart.currentStock}`,
           400
         );
       }
@@ -96,11 +95,12 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
 }
 
 // ─── DELETE /api/mtc/history/[id] - Hapus / Batalkan Transaksi ──────────────
-export async function DELETE(req: NextRequest, { params }: RouteParams) {
-  const session = await requireMtcAuth();
-  if (!session) return err('Unauthorized', 401);
+export async function DELETE(req: NextRequest, ctx: RouteCtx) {
+  const session = (await requireMtcEditor()) || (await requireMtcAuth());
+  if (!session) return err('Akses ditolak / Unauthorized', 401);
 
-  const id = parseInt(params.id, 10);
+  const resolvedParams = await ctx.params;
+  const id = parseInt(resolvedParams.id, 10);
   if (isNaN(id)) return err('ID transaksi tidak valid', 400);
 
   const movement = await prisma.stockMovement.findUnique({
