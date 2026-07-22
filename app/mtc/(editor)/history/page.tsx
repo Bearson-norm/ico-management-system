@@ -41,12 +41,22 @@ function getPresetRange(preset: string): { from: string; to: string } {
   return { from: '', to: '' };
 }
 
+function formatDateForInput(d: string | Date): string {
+  const dateObj = new Date(d);
+  if (isNaN(dateObj.getTime())) return '';
+  const yyyy = dateObj.getFullYear();
+  const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const dd = String(dateObj.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 function HistoryContent() {
   const searchParams = useSearchParams();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [teknisis, setTeknisis] = useState<any[]>([]);
 
   // Table filters
   const [search, setSearch] = useState('');
@@ -63,6 +73,52 @@ function HistoryContent() {
   const [expTo, setExpTo] = useState('');
   const [expFormat, setExpFormat] = useState<'xlsx' | 'csv'>('xlsx');
   const [exporting, setExporting] = useState(false);
+
+  // Edit modal state
+  const [editItem, setEditItem] = useState<any | null>(null);
+  const [editForm, setEditForm] = useState<{
+    qty: number;
+    picId: string;
+    tanggal: string;
+    harga: number;
+    noReport: string;
+    keterangan: string;
+    vendor: string;
+    purchaseType: string;
+  }>({
+    qty: 1,
+    picId: '',
+    tanggal: '',
+    harga: 0,
+    noReport: '',
+    keterangan: '',
+    vendor: '',
+    purchaseType: '',
+  });
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  // Delete confirm modal state
+  const [deleteItem, setDeleteItem] = useState<any | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // Notification message
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  useEffect(() => {
+    fetchTeknisis();
+  }, []);
+
+  async function fetchTeknisis() {
+    try {
+      const res = await fetch('/api/mtc/master/teknisi');
+      const json = await res.json();
+      if (Array.isArray(json)) {
+        setTeknisis(json);
+      }
+    } catch {
+      // ignore
+    }
+  }
 
   // Sync preset → date range for export
   useEffect(() => {
@@ -128,12 +184,97 @@ function HistoryContent() {
     }
   }
 
+  function openEditModal(item: any) {
+    setEditItem(item);
+    setEditForm({
+      qty: item.qty || 1,
+      picId: item.picId ? String(item.picId) : '',
+      tanggal: formatDateForInput(item.tanggal),
+      harga: item.harga ? Number(item.harga) : 0,
+      noReport: item.noReport || '',
+      keterangan: item.keterangan || '',
+      vendor: item.vendor || '',
+      purchaseType: item.purchaseType || '',
+    });
+  }
+
+  async function handleSaveEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editItem) return;
+
+    if (editForm.qty <= 0) {
+      setToast({ type: 'error', message: 'Jumlah barang (Qty) harus lebih dari 0' });
+      return;
+    }
+
+    setSavingEdit(true);
+    setToast(null);
+
+    try {
+      const res = await fetch(`/api/mtc/history/${editItem.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          qty: editForm.qty,
+          picId: editForm.picId ? parseInt(editForm.picId, 10) : null,
+          tanggal: editForm.tanggal,
+          harga: editForm.harga,
+          noReport: editForm.noReport,
+          keterangan: editForm.keterangan,
+          vendor: editForm.vendor,
+          purchaseType: editForm.purchaseType,
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setToast({ type: 'error', message: json.error || 'Gagal menyimpan perubahan' });
+        return;
+      }
+
+      setToast({ type: 'success', message: 'Berhasil memperbarui transaksi dan menyesuaikan stok!' });
+      setEditItem(null);
+      fetchData();
+    } catch {
+      setToast({ type: 'error', message: 'Terjadi kesalahan jaringan' });
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!deleteItem) return;
+
+    setDeleting(true);
+    setToast(null);
+
+    try {
+      const res = await fetch(`/api/mtc/history/${deleteItem.id}`, {
+        method: 'DELETE',
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setToast({ type: 'error', message: json.error || 'Gagal menghapus transaksi' });
+        return;
+      }
+
+      setToast({ type: 'success', message: json.data?.message || 'Transaksi berhasil dibatalkan dan stok dikembalikan.' });
+      setDeleteItem(null);
+      fetchData();
+    } catch {
+      setToast({ type: 'error', message: 'Terjadi kesalahan jaringan' });
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <>
       <div className="page-header">
         <div style={{ flex: 1 }}>
           <div className="page-title">Riwayat INOUT</div>
-          <div className="page-sub">Audit trail pergerakan stok</div>
+          <div className="page-sub">Audit trail pergerakan stok &amp; koreksi riwayat</div>
         </div>
         <button
           className="btn btn-primary btn-sm"
@@ -148,6 +289,18 @@ function HistoryContent() {
           {showExport ? 'Tutup Export' : 'Export'}
         </button>
       </div>
+
+      {toast && (
+        <div style={{ margin: '0 24px 16px' }}>
+          <div
+            className={`badge ${toast.type === 'success' ? 'badge-grn' : 'badge-red'}`}
+            style={{ padding: '10px 16px', borderRadius: 8, fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+          >
+            <span>{toast.type === 'success' ? '✅' : '⚠️'} {toast.message}</span>
+            <button onClick={() => setToast(null)} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontWeight: 'bold' }}>×</button>
+          </div>
+        </div>
+      )}
 
       {/* Export Panel */}
       {showExport && (
@@ -266,7 +419,7 @@ function HistoryContent() {
           </div>
 
           <div className="table-wrap" style={{ overflowX: 'auto' }}>
-            <table style={{ minWidth: 680 }}>
+            <table style={{ minWidth: 780 }}>
               <thead>
                 <tr>
                   <th>Tanggal</th>
@@ -278,6 +431,7 @@ function HistoryContent() {
                   <th>PIC</th>
                   <th>No Report</th>
                   <th>Keterangan</th>
+                  <th style={{ textAlign: 'center', width: 110 }}>Aksi</th>
                 </tr>
               </thead>
               <tbody style={{ opacity: loading ? 0.5 : 1 }}>
@@ -301,11 +455,31 @@ function HistoryContent() {
                     <td>{d.pic?.nama || '—'}</td>
                     <td className="text-mono text-tiny">{d.noReport || '—'}</td>
                     <td className="text-tiny">{[d.keterangan, d.purchaseType, d.vendor].filter(Boolean).join(' · ') || '—'}</td>
+                    <td style={{ textAlign: 'center' }}>
+                      <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          style={{ padding: '4px 8px', fontSize: 11 }}
+                          onClick={() => openEditModal(d)}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm text-red"
+                          style={{ padding: '4px 8px', fontSize: 11, color: 'var(--red)' }}
+                          onClick={() => setDeleteItem(d)}
+                        >
+                          Batal
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
                 {data.length === 0 && !loading && (
                   <tr>
-                    <td colSpan={9} style={{ textAlign: 'center', padding: '40px', color: 'var(--tx3)' }}>
+                    <td colSpan={10} style={{ textAlign: 'center', padding: '40px', color: 'var(--tx3)' }}>
                       Tidak ada riwayat ditemukan
                     </td>
                   </tr>
@@ -321,6 +495,194 @@ function HistoryContent() {
           </div>
         </div>
       </div>
+
+      {/* Edit Transaction Modal */}
+      {editItem && (
+        <div className="modal-backdrop" onClick={() => setEditItem(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 500, width: '90%' }}>
+            <div className="modal-header">
+              <div>
+                <div className="modal-title">Edit Transaksi Riwayat</div>
+                <div className="modal-sub">
+                  [{editItem.tipe}] {editItem.namaItem}
+                </div>
+              </div>
+              <button className="btn-close" onClick={() => setEditItem(null)}>✕</button>
+            </div>
+
+            <form onSubmit={handleSaveEdit}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                
+                {/* Qty & Tanggal */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div>
+                    <label className="form-label">Qty {editItem.sparepart?.uom ? `(${editItem.sparepart.uom})` : ''}</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      min={1}
+                      value={editForm.qty}
+                      onChange={e => setEditForm({ ...editForm, qty: parseInt(e.target.value, 10) || 0 })}
+                      required
+                    />
+                    {editItem.sparepart && (
+                      <div className="text-tiny text-muted" style={{ marginTop: 4 }}>
+                        Stok saat ini: <b>{editItem.sparepart.currentStock}</b>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="form-label">Tanggal Transaksi</label>
+                    <input
+                      type="date"
+                      className="form-input"
+                      value={editForm.tanggal}
+                      onChange={e => setEditForm({ ...editForm, tanggal: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* PIC Dropdown */}
+                <div>
+                  <label className="form-label">PIC / Teknisi</label>
+                  <select
+                    className="form-input form-select"
+                    value={editForm.picId}
+                    onChange={e => setEditForm({ ...editForm, picId: e.target.value })}
+                  >
+                    <option value="">-- Pilih PIC --</option>
+                    {teknisis.map((t: any) => (
+                      <option key={t.id} value={t.id}>{t.nama}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* No Report */}
+                <div>
+                  <label className="form-label">No Report / No Laporan (Opsional)</label>
+                  <input
+                    type="text"
+                    className="form-input text-mono"
+                    placeholder="Contoh: CM-202607-001"
+                    value={editForm.noReport}
+                    onChange={e => setEditForm({ ...editForm, noReport: e.target.value })}
+                  />
+                </div>
+
+                {/* Harga & Jenis Pembelian (jika transaksi IN) */}
+                {editItem.tipe === 'IN' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div>
+                      <label className="form-label">Harga Satuan (Rp)</label>
+                      <input
+                        type="number"
+                        className="form-input"
+                        min={0}
+                        value={editForm.harga}
+                        onChange={e => setEditForm({ ...editForm, harga: parseFloat(e.target.value) || 0 })}
+                      />
+                    </div>
+                    <div>
+                      <label className="form-label">Jenis Pembelian</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="PR / PO / Direct"
+                        value={editForm.purchaseType}
+                        onChange={e => setEditForm({ ...editForm, purchaseType: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Keterangan */}
+                <div>
+                  <label className="form-label">Keterangan / Catatan</label>
+                  <textarea
+                    className="form-input"
+                    rows={2}
+                    placeholder="Catatan tambahan atau nama mesin penggunaan..."
+                    value={editForm.keterangan}
+                    onChange={e => setEditForm({ ...editForm, keterangan: e.target.value })}
+                  />
+                </div>
+
+                <div className="card" style={{ background: 'var(--bg3)', padding: 10, borderRadius: 6, fontSize: 11, color: 'var(--tx2)' }}>
+                  ℹ️ Mengubah Qty transaksi akan secara otomatis menyesuaikan nilai stok barang yang tersisa di inventory.
+                </div>
+
+              </div>
+
+              <div className="modal-footer">
+                <button type="button" className="btn btn-ghost" onClick={() => setEditItem(null)}>Batal</button>
+                <button type="submit" className="btn btn-primary" disabled={savingEdit}>
+                  {savingEdit ? 'Menyimpan...' : 'Simpan Perubahan'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete / Void Confirmation Modal */}
+      {deleteItem && (
+        <div className="modal-backdrop" onClick={() => setDeleteItem(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 450, width: '90%' }}>
+            <div className="modal-header">
+              <div>
+                <div className="modal-title" style={{ color: 'var(--red)' }}>Batalkan Transaksi Riwayat</div>
+                <div className="modal-sub">Konfirmasi pembatalan pergerakan stok</div>
+              </div>
+              <button className="btn-close" onClick={() => setDeleteItem(null)}>✕</button>
+            </div>
+
+            <div className="modal-body">
+              <p style={{ marginBottom: 12, fontSize: 13, lineHeight: 1.5 }}>
+                Apakah Anda yakin ingin membatalkan transaksi berikut?
+              </p>
+
+              <div className="card" style={{ padding: 14, background: 'var(--bg3)', marginBottom: 16 }}>
+                <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>
+                  [{deleteItem.tipe}] {deleteItem.namaItem}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--tx2)' }}>
+                  Qty: <b>{deleteItem.qty}</b> · Tanggal: {new Date(deleteItem.tanggal).toLocaleDateString('id-ID')}
+                </div>
+                {deleteItem.pic?.nama && (
+                  <div style={{ fontSize: 12, color: 'var(--tx2)', marginTop: 2 }}>
+                    PIC: {deleteItem.pic.nama}
+                  </div>
+                )}
+              </div>
+
+              <div style={{ fontSize: 12, color: 'var(--ylw)', background: 'rgba(234, 179, 8, 0.1)', padding: 10, borderRadius: 6, border: '1px solid rgba(234, 179, 8, 0.3)' }}>
+                {deleteItem.tipe === 'OUT' ? (
+                  <span>⚠️ Membatalkan transaksi <b>Stock OUT</b> ini akan mengembalikan <b>+{deleteItem.qty} item</b> ke dalam stok barang.</span>
+                ) : deleteItem.tipe === 'IN' ? (
+                  <span>⚠️ Membatalkan transaksi <b>Stock IN</b> ini akan menarik <b>-{deleteItem.qty} item</b> dari stok barang.</span>
+                ) : (
+                  <span>⚠️ Transaksi log ini akan dihapus dari riwayat audit trail.</span>
+                )}
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button type="button" className="btn btn-ghost" onClick={() => setDeleteItem(null)}>Tutup</button>
+              <button
+                type="button"
+                className="btn btn-red"
+                style={{ background: 'var(--red)', color: '#fff' }}
+                onClick={handleDelete}
+                disabled={deleting}
+              >
+                {deleting ? 'Membatalkan...' : 'Ya, Batalkan Transaksi'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
