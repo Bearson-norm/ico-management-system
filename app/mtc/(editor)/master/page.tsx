@@ -787,7 +787,7 @@ export default function MasterPage() {
                             </label>
                           );
                         })}
-                        {mesins.filter(m => m.tipe === 'sparepart').length === 0 && <span className="text-muted text-tiny">Belum ada mesin tipe BOM. Buat mesin baru dengan tipe "Khusus Induk (BOM Sparepart)" di tab Mesin.</span>}
+                        {mesins.filter(m => m.tipe === 'sparepart').length === 0 && <span className="text-muted text-tiny">Belum ada mesin tipe BOM. Buat mesin baru dengan tipe &quot;Khusus Induk (BOM Sparepart)&quot; di tab Mesin.</span>}
                       </div>
                     </div>
                   </>
