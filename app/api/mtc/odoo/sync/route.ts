@@ -154,17 +154,36 @@ function isGenericName(name: string | null | undefined): boolean {
   return false;
 }
 
+const NON_MTC_KEYWORDS = [
+  'lollipop', 'lolipop', 'neon box', 'vapestore', 'vape store', 'wus vape', 'montir vape',
+  'media placement', 'sponsorship', 'marketing supplies', 'promo', 'billboard', 'booth',
+  'event', 'influencer', 'endorse', 'branding', 'flyer', 'brosur', 'banner'
+];
+
+function isNonMtcItem(name: string | null | undefined, keterangan: string | null | undefined): boolean {
+  const combined = `${name || ''} ${keterangan || ''}`.toLowerCase();
+  return NON_MTC_KEYWORDS.some(k => combined.includes(k));
+}
+
 function getBestOdooLineName(line: any): string {
-  const desc = (line.product_description_variants || line.name || '')?.trim();
+  const variant = (line.product_description_variants || '')?.trim();
+  const lineName = (line.name || '')?.trim();
   const productLabel = (Array.isArray(line.product_id) ? line.product_id[1] : '')?.trim();
   
-  if (desc && !isGenericName(desc)) {
-    return desc;
+  // 1. Prioritaskan product_description_variants jika ada dan bukan tag generic
+  if (variant && !isGenericName(variant)) {
+    return variant;
   }
+  // 2. Gunakan nama Master Product dari product_id[1] jika bukan tag generic
   if (productLabel && !isGenericName(productLabel)) {
     return productLabel;
   }
-  return desc || productLabel || 'Produk Tanpa Nama';
+  // 3. Gunakan deskripsi line.name jika bukan tag generic
+  if (lineName && !isGenericName(lineName)) {
+    return lineName;
+  }
+  
+  return variant || productLabel || lineName || 'Produk Tanpa Nama';
 }
 
 // Intelligent best match line item helper using name, substring, digits, and quantity scoring
@@ -880,6 +899,8 @@ export async function POST(req: NextRequest) {
             await prisma.$transaction(async (tx) => {
               for (const line of reqLines) {
                 const prodName = getBestOdooLineName(line);
+                if (isNonMtcItem(prodName, req.description)) continue;
+
                 const qty = Number(line.product_qty) || 1;
                 const price = Number(line.price_unit) || 0;
 
@@ -911,15 +932,12 @@ export async function POST(req: NextRequest) {
 
                 const sparepartId = await findMtcSparepartMatch(tx, prodName);
 
-                const isMatchValid = bestMatchIndex !== -1 && (
-                  bestScore >= 20 ||
-                  (bestScore >= 10 && isGenericName(localItems[bestMatchIndex].originalName))
-                );
+                const targetIndex = bestMatchIndex !== -1 ? bestMatchIndex : (localItems.length > 0 ? 0 : -1);
 
-                if (isMatchValid) {
-                  // MATCH FOUND: update existing local item
-                  const matchedItem = localItems[bestMatchIndex];
-                  localItems.splice(bestMatchIndex, 1);
+                if (targetIndex !== -1) {
+                  // MATCH / REUSE FOUND: update existing local item in-place (no duplicates!)
+                  const matchedItem = localItems[targetIndex];
+                  localItems.splice(targetIndex, 1);
 
                   const updateData: any = {
                     statusPr: localStatusPr,
@@ -939,7 +957,7 @@ export async function POST(req: NextRequest) {
                     });
                   }
                 } else {
-                  // NO MATCH: create new local item
+                  // NO MATCH AT ALL & LOCAL LIST EMPTY: create new local item
                   await tx.procurementTracking.create({
                     data: {
                       originalName: prodName,
@@ -1586,8 +1604,8 @@ export async function POST(req: NextRequest) {
               // Check if Odoo shows this is a partial delivery line (some received, but not all)
               const isPartialOdooGr = !!(matchedLine && qtyReceived > 0 && qtyReceived < matchedQty);
 
-              // Hanya update qty jika item belum di-split (qty lokal masih sama dengan qty Odoo)
-              if (matchedQty > 0 && item.qty === Math.round(matchedQty)) {
+              // Set final fixed quantity & price from PO line (PO line in Odoo defines final agreed qty & price)
+              if (matchedQty > 0) {
                 updateData.qty = Math.round(matchedQty);
               }
 
