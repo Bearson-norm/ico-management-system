@@ -279,7 +279,7 @@ async function fetchChatterLogs(
       {
         fields: ['date', 'body', 'author_id'],
         order: 'date desc',
-        limit: 15
+        limit: 5
       },
       credentials
     );
@@ -822,9 +822,9 @@ export async function POST(req: NextRequest) {
     odooMessage = 'Sinkronisasi Odoo dilewati (Kredensial Odoo tidak dikonfigurasi).';
   } else {
     try {
-      // 2a. Import new PRs and sync active PR lines from Odoo in batch
+      // 2a. Import new PRs and sync active PR lines from Odoo in batch (last 60 days for fast response)
       const thirtyDaysAgoDate = new Date();
-      thirtyDaysAgoDate.setDate(thirtyDaysAgoDate.getDate() - 365); // Menggunakan 365 hari (1 tahun) agar mencakup semua data PR histori
+      thirtyDaysAgoDate.setDate(thirtyDaysAgoDate.getDate() - 60);
       const thirtyDaysAgoStr = thirtyDaysAgoDate.toISOString().replace('T', ' ').substring(0, 19);
       const parsedUid = parseInt(String(odooUid)) || 34;
 

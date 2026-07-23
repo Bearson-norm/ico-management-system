@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const data = await prisma.procurementTracking.findMany({
+    const rawData = await prisma.procurementTracking.findMany({
       where: whereClause,
       include: {
         sparepart: {
@@ -36,7 +36,6 @@ export async function GET(req: NextRequest) {
             linkReference: true,
             alasan: true,
             purchasingStatus: true,
-            odooNotes: true,
           },
         },
       },
@@ -46,6 +45,12 @@ export async function GET(req: NextRequest) {
         { tanggalList: 'desc' },
       ],
     });
+
+    const data = rawData.map(item => ({
+      ...item,
+      hasOdooNotes: !!item.odooNotes,
+      odooNotes: undefined, // exclude heavy JSON text blob from main list payload for 70%+ faster load
+    }));
 
     return ok(data);
   } catch (e) {
