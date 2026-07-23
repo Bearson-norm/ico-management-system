@@ -203,6 +203,33 @@ export default function ProcurementTrackingPage() {
         return { background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', border: '1px solid rgba(168, 85, 247, 0.3)' };
     }
   }
+
+  function renderFormattedItemName(name: string) {
+    if (!name) return '—';
+    const dashIndex = name.lastIndexOf(' - ');
+    if (dashIndex > 8) {
+      const mainTitle = name.substring(0, dashIndex).trim();
+      const variantSuffix = name.substring(dashIndex + 3).trim();
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-start' }}>
+          <span style={{ fontWeight: 700, color: 'var(--tx)' }}>{mainTitle}</span>
+          <span style={{
+            fontSize: 10,
+            fontWeight: 700,
+            color: '#38bdf8',
+            background: 'rgba(56, 189, 248, 0.12)',
+            padding: '1px 6px',
+            borderRadius: 4,
+            border: '1px solid rgba(56, 189, 248, 0.25)',
+            display: 'inline-block'
+          }}>
+            🏷️ Varian: {variantSuffix}
+          </span>
+        </div>
+      );
+    }
+    return <span style={{ fontWeight: 700, color: 'var(--tx)' }}>{name}</span>;
+  }
   
   async function handleOdooProcessedSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -2766,7 +2793,7 @@ export default function ProcurementTrackingPage() {
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
                                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                         {isItemUrgent && !isItemReceived && <span style={{ color: 'var(--red)', fontSize: 12 }}>🚨</span>}
-                                        <span style={{ fontWeight: 700, color: 'var(--tx)' }}>{item.originalName}</span>
+                                        {renderFormattedItemName(item.originalName)}
                                       </div>
                                       
                                       {item.statusPr === 'READY_ODOO' && (
