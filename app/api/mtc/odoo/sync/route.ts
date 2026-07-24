@@ -113,7 +113,7 @@ function mapOdooStateToLocal(state: string): string {
     case 'sent': return 'RFQ';
     case 'to approve': return 'TO_APPROVE';
     case 'purchase': return 'PO';
-    case 'done': return 'PO';
+    case 'done': return 'RECEIVED';
     case 'cancel': return 'CANCELLED';
     default: return 'DRAFT';
   }
@@ -891,7 +891,7 @@ export async function POST(req: NextRequest) {
             const reqState = req.state;
             if (reqState === 'in_progress') localStatusPr = 'TO_APPROVE';
             else if (reqState === 'open') localStatusPr = 'RFQ';
-            else if (reqState === 'done') localStatusPr = 'APPROVED';
+            else if (reqState === 'done') localStatusPr = 'RECEIVED';
             else if (reqState === 'cancel') localStatusPr = 'CANCELLED';
 
             const prDate = req.create_date ? new Date(req.create_date) : new Date();
@@ -1045,7 +1045,7 @@ export async function POST(req: NextRequest) {
             if (reqState === 'to_approve') localStatusPr = 'TO_APPROVE';
             else if (reqState === 'approved') localStatusPr = 'APPROVED';
             else if (reqState === 'rejected') localStatusPr = 'CANCELLED';
-            else if (reqState === 'done') localStatusPr = 'PO';
+            else if (reqState === 'done') localStatusPr = 'RECEIVED';
 
             const prDate = req.create_date ? new Date(req.create_date) : new Date();
 

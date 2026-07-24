@@ -413,4 +413,33 @@ export async function PATCH(req: NextRequest) {
   }
 }
 
+// DELETE /api/mtc/procurement
+export async function DELETE(req: NextRequest) {
+  const session = await requireMtcEditor();
+  if (!session) return err('Akses ditolak', 403);
+
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get('id');
+  const action = searchParams.get('action');
+
+  try {
+    if (action === 'clear_all' || action === 'clear_synced') {
+      const deleted = await prisma.procurementTracking.deleteMany();
+      return ok({ msg: `Berhasil menghapus ${deleted.count} data tracking procurement`, count: deleted.count });
+    }
+
+    if (id) {
+      await prisma.procurementTracking.delete({
+        where: { id: Number(id) }
+      });
+      return ok({ msg: 'Item berhasil dihapus' });
+    }
+
+    return err('Parameter id atau action wajib diisi', 400);
+  } catch (e: any) {
+    console.error('[DELETE /api/mtc/procurement]', e);
+    return err(`Gagal menghapus data: ${e.message}`, 500);
+  }
+}
+
 

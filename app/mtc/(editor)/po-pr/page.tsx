@@ -479,6 +479,28 @@ export default function ProcurementTrackingPage() {
     }, 1500);
   }
 
+  async function handleClearAllProcurementData() {
+    if (!confirm('Apakah Anda yakin ingin MENGHAPUS SEMUA DATA sinkronisasi pengadaan/procurement di sistem saat ini? Tindakan ini akan mengosongkan data agar Anda bisa memulainya dari awal secara bersih.')) {
+      return;
+    }
+
+    setActionLoading('clear-all');
+    try {
+      const res = await fetch('/api/mtc/procurement?action=clear_all', { method: 'DELETE' });
+      const json = await res.json();
+      if (json.success) {
+        alert(json.data.msg || 'Data procurement berhasil dikosongkan.');
+        await fetchData();
+      } else {
+        alert(`Gagal mengosongkan data: ${json.error}`);
+      }
+    } catch (err) {
+      alert('Terjadi kesalahan jaringan.');
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
 
   async function fetchData() {
     setLoading(true);
@@ -1246,7 +1268,7 @@ export default function ProcurementTrackingPage() {
 
   // Extract years dynamically
   const yearsList = useMemo(() => {
-    const set = new Set<string>();
+    const set = new Set<string>(['2026', '2025', '2024', '2023']);
     scopedItems.forEach(item => {
       if (item.tanggalList) {
         const year = new Date(item.tanggalList).getFullYear().toString();
