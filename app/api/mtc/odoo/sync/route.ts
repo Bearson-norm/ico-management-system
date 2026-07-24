@@ -833,13 +833,18 @@ export async function POST(req: NextRequest) {
       // Import/Sync from purchase.requisition
       try {
         logDebug(`Mencari purchase.requisition di Odoo sejak ${thirtyDaysAgoStr} untuk UID ${parsedUid}...`);
+        const reqDomain: any[] = [['create_date', '>=', thirtyDaysAgoStr]];
+        if (parsedUid) {
+          reqDomain.push('|');
+          reqDomain.push(['user_id', '=', parsedUid]);
+          reqDomain.push(['create_uid', '=', parsedUid]);
+        }
+
         const recentRequisitions = await queryOdoo(
           'purchase.requisition',
           'search_read',
-          [[
-            ['create_date', '>=', thirtyDaysAgoStr]
-          ]],
-          { fields: ['id', 'name', 'state', 'create_date', 'description'] },
+          [reqDomain],
+          { fields: ['id', 'name', 'origin', 'state', 'create_date', 'description', 'user_id', 'create_uid'] },
           odooOptions
         );
 
@@ -847,7 +852,9 @@ export async function POST(req: NextRequest) {
           logDebug(`Ditemukan ${recentRequisitions.length} purchase.requisition di Odoo.`);
           
           const reqIds = recentRequisitions.map((r: any) => r.id);
-          const prNames = recentRequisitions.map((r: any) => r.name?.trim()).filter(Boolean);
+          const prNames = recentRequisitions
+            .map((r: any) => (r.origin && String(r.origin).trim() ? String(r.origin).trim() : r.name?.trim()))
+            .filter(Boolean);
           
           // Batch fetch all requisition lines (NO 'name' field!)
           logDebug(`Batch fetching lines for ${reqIds.length} requisitions...`);
@@ -879,7 +886,7 @@ export async function POST(req: NextRequest) {
 
           // Process each requisition
           for (const req of recentRequisitions) {
-            const prName = req.name?.trim();
+            const prName = (req.origin && String(req.origin).trim()) ? String(req.origin).trim() : req.name?.trim();
             if (!prName) continue;
 
             const reqLines = allReqLines.filter((line: any) => line.requisition_id && line.requisition_id[0] === req.id);
@@ -986,13 +993,18 @@ export async function POST(req: NextRequest) {
       // Import/Sync from purchase.request
       try {
         logDebug(`Mencari purchase.request di Odoo sejak ${thirtyDaysAgoStr} untuk UID ${parsedUid}...`);
+        const requestDomain: any[] = [['create_date', '>=', thirtyDaysAgoStr]];
+        if (parsedUid) {
+          requestDomain.push('|');
+          requestDomain.push(['requested_by', '=', parsedUid]);
+          requestDomain.push(['create_uid', '=', parsedUid]);
+        }
+
         const recentRequests = await queryOdoo(
           'purchase.request',
           'search_read',
-          [[
-            ['create_date', '>=', thirtyDaysAgoStr]
-          ]],
-          { fields: ['id', 'name', 'state', 'create_date', 'description'] },
+          [requestDomain],
+          { fields: ['id', 'name', 'state', 'create_date', 'description', 'requested_by', 'create_uid'] },
           odooOptions
         );
 
