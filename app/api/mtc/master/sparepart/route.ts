@@ -203,6 +203,53 @@ export async function PUT(req: NextRequest) {
       },
     });
 
+    if (body.currentStock !== undefined && body.currentStock !== null && body.currentStock !== '' && !isNaN(Number(body.currentStock))) {
+      const targetStock = Number(body.currentStock);
+      const spMovements = await tx.stockMovement.findMany({
+        where: { sparepartId: String(id), tipe: { in: ['IN', 'OUT'] } },
+        select: { tipe: true, qty: true },
+      });
+      const totalIn = spMovements.filter((m) => m.tipe === 'IN').reduce((s, m) => s + m.qty, 0);
+      const totalOut = spMovements.filter((m) => m.tipe === 'OUT').reduce((s, m) => s + m.qty, 0);
+      const actualStock = totalIn - totalOut;
+      const diff = targetStock - actualStock;
+
+      if (diff !== 0) {
+        const currentSpDetail = await tx.sparepart.findUnique({
+          where: { id: String(id) },
+          select: { nama: true, harga: true, lokasi: true },
+        });
+
+        if (diff > 0) {
+          await tx.stockMovement.create({
+            data: {
+              tipe: 'IN',
+              sparepartId: String(id),
+              namaItem: currentSpDetail?.nama ?? '',
+              qty: diff,
+              harga: currentSpDetail?.harga ?? 0,
+              lokasi: currentSpDetail?.lokasi ?? null,
+              keterangan: '[SILENT] Penyesuaian Stok Master',
+              tanggal: new Date(),
+            },
+          });
+        } else {
+          await tx.stockMovement.create({
+            data: {
+              tipe: 'OUT',
+              sparepartId: String(id),
+              namaItem: currentSpDetail?.nama ?? '',
+              qty: Math.abs(diff),
+              harga: currentSpDetail?.harga ?? 0,
+              lokasi: currentSpDetail?.lokasi ?? null,
+              keterangan: '[SILENT] Penyesuaian Stok Master',
+              tanggal: new Date(),
+            },
+          });
+        }
+      }
+    }
+
     const currentNoPr = purchasingNoPr !== undefined ? purchasingNoPr : currentSp?.purchasingNoPr;
     const finalNoPo = purchasingNoPo !== undefined ? purchasingNoPo : null;
 

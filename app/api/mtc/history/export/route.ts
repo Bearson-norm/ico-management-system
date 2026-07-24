@@ -14,6 +14,9 @@ export async function GET(req: NextRequest) {
   const format = searchParams.get('format') ?? 'xlsx'; // 'xlsx' | 'csv'
 
   const where = {
+    NOT: {
+      keterangan: { contains: '[SILENT]' },
+    },
     ...(tipe ? { tipe: tipe as 'IN' | 'OUT' | 'LOG' } : {}),
     ...(dateFrom || dateTo
       ? {

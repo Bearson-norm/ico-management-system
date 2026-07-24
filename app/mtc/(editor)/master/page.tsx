@@ -93,8 +93,7 @@ export default function MasterPage() {
     setModalType(type);
     setIsEdit(!!data);
     if (type === 'sparepart') {
-      setForm(data ? { ...data, kategoriId: data.kategoriId || '', purchasingStatus: data.purchasingStatus || 'NONE', mesinIds: data.mesins?.map((m: any) => m.id.toString()) || [] } : { purchasingStatus: 'NONE' });
-      // Sparepart tidak bisa dibuat dari sini, hanya dari menu Stock In -> Beli Baru
+      setForm(data ? { ...data, kategoriId: data.kategoriId || '', purchasingStatus: data.purchasingStatus || 'NONE', mesinIds: data.mesins?.map((m: any) => m.id.toString()) || [], currentStock: data.currentStock ?? 0 } : { purchasingStatus: 'NONE', currentStock: 0 });
     } else if (type === 'mesin') {
       setForm(
         data
@@ -735,9 +734,16 @@ export default function MasterPage() {
                         )}
                       </div>
                       <div className="form-group">
-                        <label className="form-label">Manual Min Qty (Backup Alert)</label>
-                        <input type="number" className="form-input" required value={form.minQty} onChange={e => setForm({...form, minQty: e.target.value})} />
+                        <label className="form-label">Stok Saat Ini (Qty)</label>
+                        <input type="number" step="any" className="form-input" value={form.currentStock ?? 0} onChange={e => setForm({...form, currentStock: e.target.value})} />
+                        <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 4 }}>
+                          *Penyesuaian stok langsung (silent).
+                        </div>
                       </div>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Manual Min Qty (Backup Alert)</label>
+                      <input type="number" className="form-input" required value={form.minQty} onChange={e => setForm({...form, minQty: e.target.value})} />
                     </div>
                     <div className="form-grid-2">
                       <div className="form-group">

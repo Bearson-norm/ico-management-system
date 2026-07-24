@@ -18,6 +18,9 @@ export async function GET(req: NextRequest) {
   const sort = parseHistorySort(searchParams);
 
   const where = {
+    NOT: {
+      keterangan: { contains: '[SILENT]' },
+    },
     ...(tipe ? { tipe: tipe as 'IN' | 'OUT' | 'LOG' } : {}),
     ...(dateFrom || dateTo
       ? {
