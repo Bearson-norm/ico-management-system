@@ -343,7 +343,7 @@ export async function PATCH(req: NextRequest) {
         statusPr: finalStatusPr,
         odooNotes: odooNotes !== undefined ? (odooNotes || null) : undefined,
         sparepartId: sparepartId !== undefined ? (sparepartId || null) : undefined,
-        isStocked: isStocked !== undefined ? Boolean(isStocked) : undefined,
+        isStocked: isStocked !== undefined ? Boolean(isStocked) : (sparepartId ? true : undefined),
         linkedPartsJson: linkedPartsJson !== undefined ? (linkedPartsJson || null) : undefined,
       },
     });

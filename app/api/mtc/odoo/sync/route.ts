@@ -946,11 +946,13 @@ export async function POST(req: NextRequest) {
                   const matchedItem = localItems[targetIndex];
                   localItems.splice(targetIndex, 1);
 
+                  const resolvedSpId = sparepartId || matchedItem.sparepartId;
                   const updateData: any = {
                     statusPr: localStatusPr,
                     harga: price > 0 ? price : undefined,
                     qty: Math.round(qty),
-                    sparepartId: sparepartId || matchedItem.sparepartId,
+                    sparepartId: resolvedSpId,
+                    isStocked: resolvedSpId ? true : undefined,
                   };
 
                   if (isGenericName(matchedItem.originalName) && !isGenericName(prodName)) {
@@ -975,6 +977,7 @@ export async function POST(req: NextRequest) {
                       tanggalList: prDate,
                       keterangan: req.description || null,
                       sparepartId,
+                      isStocked: sparepartId ? true : false,
                       productCategory: 'Sparepart',
                       urgency: 'Normal'
                     }
@@ -1105,11 +1108,13 @@ export async function POST(req: NextRequest) {
                   const matchedItem = localItems[bestMatchIndex];
                   localItems.splice(bestMatchIndex, 1);
 
+                  const resolvedSpId = sparepartId || matchedItem.sparepartId;
                   const updateData: any = {
                     statusPr: localStatusPr,
                     harga: price > 0 ? price : undefined,
                     qty: Math.round(qty),
-                    sparepartId: sparepartId || matchedItem.sparepartId,
+                    sparepartId: resolvedSpId,
+                    isStocked: resolvedSpId ? true : undefined,
                   };
 
                   if (isGenericName(matchedItem.originalName) && !isGenericName(prodName)) {
@@ -1134,6 +1139,7 @@ export async function POST(req: NextRequest) {
                       tanggalList: prDate,
                       keterangan: line.name || null,
                       sparepartId,
+                      isStocked: sparepartId ? true : false,
                       productCategory: 'Sparepart',
                       urgency: 'Normal'
                     }

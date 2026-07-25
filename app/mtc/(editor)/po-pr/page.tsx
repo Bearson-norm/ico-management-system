@@ -881,6 +881,7 @@ export default function ProcurementTrackingPage() {
         body: JSON.stringify({
           id: linkingItem.id,
           sparepartId: sparepartId,
+          isStocked: true,
           linkedPartsJson: null, // Clear bundle json
         }),
       });
