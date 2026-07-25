@@ -412,6 +412,12 @@ export default function ProcurementTrackingPage() {
         }
       }
     }
+
+    const autoRefreshInterval = setInterval(() => {
+      fetchData();
+    }, 180000); // 3 minutes
+
+    return () => clearInterval(autoRefreshInterval);
   }, []);
 
   // Dynamic fetch for Link Modal Suggestions
@@ -687,6 +693,7 @@ export default function ProcurementTrackingPage() {
         setReqLinkReferences('');
         setReqIsStocked(true);
         await fetchData();
+        handleOneClickSync();
         setTimeout(() => setShowRequestForm(false), 2500);
       } else {
         setRequestStatus({ type: 'error', msg: json.error || 'Gagal menyimpan pengajuan.' });
@@ -796,6 +803,7 @@ export default function ProcurementTrackingPage() {
         saveCartToLocalStorage([]);
         setBatchPrNo('');
         await fetchData();
+        handleOneClickSync();
         setTimeout(() => {
           setShowRequestForm(false);
           setRequestStatus(null);
