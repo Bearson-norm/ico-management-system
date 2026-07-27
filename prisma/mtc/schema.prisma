@@ -92,6 +92,7 @@ model Sparepart {
   mesins     Mesin[]
   movements  StockMovement[]
   procurementTrackings ProcurementTracking[]
+  opnameItems OpnameItem[]
 
   @@map("sparepart")
 }
@@ -206,5 +207,48 @@ model MtcSetting {
 
   @@map("mtc_settings")
 }
+
+// ─── Stock Opname ─────────────────────────────────────────────────────────────
+
+model OpnameSession {
+  id          Int          @id @default(autoincrement())
+  judul       String
+  status      String       @default("DRAFT") // "DRAFT" | "WAITING_APPROVAL" | "POSTED" | "REJECTED" | "CANCELLED"
+  lokasi      String?
+  catatan     String?
+  createdById Int?         @map("created_by_id")
+  approvedBy  String?      @map("approved_by")
+  approvedAt  DateTime?    @map("approved_at")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  items OpnameItem[]
+
+  @@map("opname_session")
+}
+
+model OpnameItem {
+  id          Int           @id @default(autoincrement())
+  sessionId   Int           @map("session_id")
+  sparepartId String?       @map("sparepart_id")
+  namaItem    String        @map("nama_item")
+  kategori    String?
+  lokasi      String?
+  uom         String        @default("Pcs")
+  qtySistem   Int           @default(0) @map("qty_sistem")
+  qtyFisik    Int?          @map("qty_fisik")
+  selisih     Int           @default(0)
+  catatan     String?
+  auditedBy   String?       @map("audited_by")
+  isNewItem   Boolean       @default(false) @map("is_new_item")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  session   OpnameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sparepart Sparepart?    @relation(fields: [sparepartId], references: [id])
+
+  @@map("opname_item")
+}
+
 
 
