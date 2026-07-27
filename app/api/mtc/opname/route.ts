@@ -63,11 +63,14 @@ export async function POST(req: NextRequest) {
     }
 
     // 1. Fetch current active master spareparts (filtered by location if provided)
+    const cleanLokasi = lokasi ? String(lokasi).trim() : '';
+    const isAllLocations = !cleanLokasi || cleanLokasi.toLowerCase().includes('semua') || cleanLokasi.toLowerCase().includes('all');
+
     const spareparts = await prisma.sparepart.findMany({
       where: {
         aktif: true,
-        ...(lokasi && String(lokasi).trim() ? {
-          lokasi: { contains: String(lokasi).trim(), mode: 'insensitive' }
+        ...(!isAllLocations ? {
+          lokasi: { contains: cleanLokasi, mode: 'insensitive' }
         } : {})
       },
       include: {
