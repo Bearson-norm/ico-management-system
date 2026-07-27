@@ -26,8 +26,8 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
   const [unlistedKategori, setUnlistedKategori] = useState('Umum');
   const [unlistedLokasi, setUnlistedLokasi] = useState('');
   const [unlistedUom, setUnlistedUom] = useState('Pcs');
-  const [unlistedQtyFisik, setUnlistedQtyFisik] = useState(1);
-  const [unlistedHarga, setUnlistedHarga] = useState(0);
+  const [unlistedQtyFisik, setUnlistedQtyFisik] = useState<string>('1');
+  const [unlistedHarga, setUnlistedHarga] = useState<string>('0');
   const [unlistedCatatan, setUnlistedCatatan] = useState('');
   const [unlistedCreateMaster, setUnlistedCreateMaster] = useState(true);
   const [addingUnlisted, setAddingUnlisted] = useState(false);
@@ -143,8 +143,8 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
           kategori: unlistedKategori.trim(),
           lokasi: unlistedLokasi.trim(),
           uom: unlistedUom.trim(),
-          qtyFisik: unlistedQtyFisik,
-          harga: unlistedHarga,
+          qtyFisik: Math.max(0, parseInt(unlistedQtyFisik) || 1),
+          harga: Math.max(0, parseFloat(unlistedHarga) || 0),
           catatan: unlistedCatatan.trim(),
           createMaster: unlistedCreateMaster
         })
@@ -154,7 +154,8 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
         setShowAddUnlistedModal(false);
         setUnlistedNama('');
         setUnlistedCatatan('');
-        setUnlistedQtyFisik(1);
+        setUnlistedQtyFisik('1');
+        setUnlistedHarga('0');
         await fetchOpnameDetail(false);
         alert(json.data.msg || 'Barang tidak terdaftar berhasil ditambahkan!');
       } else {
@@ -812,7 +813,7 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
                     type="number"
                     min="1"
                     value={unlistedQtyFisik}
-                    onChange={e => setUnlistedQtyFisik(parseInt(e.target.value) || 1)}
+                    onChange={e => setUnlistedQtyFisik(e.target.value)}
                     required
                     style={{ width: '100%', padding: '8px 12px', borderRadius: 8, background: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', fontSize: 12 }}
                   />
@@ -836,7 +837,7 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
                   type="number"
                   placeholder="0"
                   value={unlistedHarga}
-                  onChange={e => setUnlistedHarga(parseFloat(e.target.value) || 0)}
+                  onChange={e => setUnlistedHarga(e.target.value)}
                   style={{ width: '100%', padding: '8px 12px', borderRadius: 8, background: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', fontSize: 12 }}
                 />
               </div>
