@@ -1,9 +1,11 @@
-'use client';
-
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 
 export default function MtcOpnameStandaloneDashboardPage() {
+  const { data: sessionData } = useSession();
+  const isEditor = (sessionData?.user as any)?.role === 'editor';
+
   const [sessions, setSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -99,21 +101,41 @@ export default function MtcOpnameStandaloneDashboardPage() {
           </div>
         </div>
 
-        <Link
-          href="/mtc/stock"
-          style={{
-            color: 'var(--tx2, #cbd5e1)',
-            textDecoration: 'none',
-            fontSize: 12,
-            fontWeight: 700,
-            background: 'var(--bg2, rgba(255,255,255,0.05))',
-            padding: '6px 14px',
-            borderRadius: 20,
-            border: '1px solid var(--bdr, rgba(255,255,255,0.1))'
-          }}
-        >
-          📦 Stok Inventory
-        </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {isEditor && (
+            <Link
+              href="/mtc/dashboard"
+              style={{
+                color: '#a855f7',
+                textDecoration: 'none',
+                fontSize: 12,
+                fontWeight: 800,
+                background: 'rgba(168, 85, 247, 0.15)',
+                padding: '6px 14px',
+                borderRadius: 20,
+                border: '1px solid rgba(168, 85, 247, 0.3)'
+              }}
+            >
+              📊 Dashboard Editor
+            </Link>
+          )}
+
+          <Link
+            href="/mtc/stock"
+            style={{
+              color: 'var(--tx2, #cbd5e1)',
+              textDecoration: 'none',
+              fontSize: 12,
+              fontWeight: 700,
+              background: 'var(--bg2, rgba(255,255,255,0.05))',
+              padding: '6px 14px',
+              borderRadius: 20,
+              border: '1px solid var(--bdr, rgba(255,255,255,0.1))'
+            }}
+          >
+            📦 Stok Inventory
+          </Link>
+        </div>
       </div>
 
       {/* Hero Banner */}

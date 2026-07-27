@@ -69,6 +69,14 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
     const locations = Array.from(locationsSet).sort();
 
+    const masterKategori = await prisma.kategori.findMany({
+      select: { nama: true },
+      orderBy: { nama: 'asc' }
+    });
+    const categoriesSet = new Set<string>(masterKategori.map(k => k.nama));
+    session.items.forEach(i => { if (i.kategori) categoriesSet.add(i.kategori); });
+    const categories = Array.from(categoriesSet).sort();
+
     return ok({
       session: {
         id: session.id,
@@ -93,6 +101,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         netVarianceValue: totalPlusValue - totalMinusValue
       },
       locations,
+      categories,
       items: itemsWithCalc
     });
   } catch (e: any) {

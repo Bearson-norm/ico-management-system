@@ -1,21 +1,24 @@
-'use client';
-
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 
 export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id: string } }) {
   const sessionId = params.id;
+  const { data: sessionData } = useSession();
+  const isEditor = (sessionData?.user as any)?.role === 'editor';
 
   const [session, setSession] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [locations, setLocations] = useState<string[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Filter states
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING' | 'MATCH' | 'PLUS' | 'MINUS'>('ALL');
   const [selectedLocation, setSelectedLocation] = useState<string>('ALL');
+  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
 
   // Multi-user technician name
   const [technicianName, setTechnicianName] = useState('');
@@ -61,6 +64,7 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
         setSession(json.data.session);
         setStats(json.data.stats);
         setLocations(json.data.locations || []);
+        setCategories(json.data.categories || []);
         setItems(json.data.items || []);
       } else {
         alert(`Gagal memuat detail opname: ${json.error}`);
@@ -235,6 +239,10 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
       if ((item.lokasi || '') !== selectedLocation) return false;
     }
 
+    if (selectedCategory !== 'ALL') {
+      if ((item.kategori || '') !== selectedCategory) return false;
+    }
+
     if (activeTab === 'PENDING') return !item.isCounted;
     if (activeTab === 'MATCH') return item.isCounted && item.selisih === 0;
     if (activeTab === 'PLUS') return item.isCounted && item.selisih > 0;
@@ -318,6 +326,24 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
               <span style={{ background: 'rgba(34, 197, 94, 0.2)', color: '#4ade80', padding: '4px 8px', fontSize: 10, fontWeight: 800, borderRadius: 10 }}>
                 ✓ TER-POSTING
               </span>
+            )}
+
+            {isEditor && (
+              <Link
+                href="/mtc/dashboard"
+                style={{
+                  fontSize: 11,
+                  fontWeight: 800,
+                  color: '#a855f7',
+                  background: 'rgba(168, 85, 247, 0.15)',
+                  padding: '6px 12px',
+                  borderRadius: 8,
+                  textDecoration: 'none',
+                  border: '1px solid rgba(168, 85, 247, 0.3)'
+                }}
+              >
+                📊 Dashboard Editor
+              </Link>
             )}
 
             <Link href={`/mtc/opname/${sessionId}/print`} target="_blank" style={{ fontSize: 11, color: '#fff', background: 'rgba(255,255,255,0.1)', padding: '6px 12px', borderRadius: 8, textDecoration: 'none' }}>
@@ -458,27 +484,51 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
               ))}
             </div>
 
-            {locations.length > 0 && (
-              <select
-                value={selectedLocation}
-                onChange={e => setSelectedLocation(e.target.value)}
-                style={{
-                  minWidth: 130,
-                  padding: '6px 10px',
-                  fontSize: 11,
-                  fontWeight: 700,
-                  borderRadius: 8,
-                  background: '#1e293b',
-                  border: '1px solid rgba(255,255,255,0.15)',
-                  color: '#fff'
-                }}
-              >
-                <option value="ALL">📍 Semua Rak ({locations.length})</option>
-                {locations.map(loc => (
-                  <option key={loc} value={loc}>📍 {loc}</option>
-                ))}
-              </select>
-            )}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {locations.length > 0 && (
+                <select
+                  value={selectedLocation}
+                  onChange={e => setSelectedLocation(e.target.value)}
+                  style={{
+                    minWidth: 130,
+                    padding: '6px 10px',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    borderRadius: 8,
+                    background: '#1e293b',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    color: '#fff'
+                  }}
+                >
+                  <option value="ALL">📍 Semua SLOC / Rak ({locations.length})</option>
+                  {locations.map(loc => (
+                    <option key={loc} value={loc}>📍 {loc}</option>
+                  ))}
+                </select>
+              )}
+
+              {categories.length > 0 && (
+                <select
+                  value={selectedCategory}
+                  onChange={e => setSelectedCategory(e.target.value)}
+                  style={{
+                    minWidth: 140,
+                    padding: '6px 10px',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    borderRadius: 8,
+                    background: '#1e293b',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    color: '#fff'
+                  }}
+                >
+                  <option value="ALL">🏷️ Semua Kategori ({categories.length})</option>
+                  {categories.map(cat => (
+                    <option key={cat} value={cat}>🏷️ {cat}</option>
+                  ))}
+                </select>
+              )}
+            </div>
           </div>
         </div>
 
@@ -785,13 +835,21 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
                 <div>
                   <label style={{ fontWeight: 700, fontSize: 11, color: '#cbd5e1', display: 'block', marginBottom: 4 }}>Kategori</label>
-                  <input
-                    type="text"
-                    placeholder="Bearing, Seal, dll"
+                  <select
                     value={unlistedKategori}
                     onChange={e => setUnlistedKategori(e.target.value)}
                     style={{ width: '100%', padding: '8px 12px', borderRadius: 8, background: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', fontSize: 12 }}
-                  />
+                  >
+                    <option value="Umum">Umum</option>
+                    <option value="Bearing">Bearing</option>
+                    <option value="Seal">Seal</option>
+                    <option value="Elektrik">Elektrik</option>
+                    <option value="Mekanik">Mekanik</option>
+                    <option value="Pneumatic">Pneumatic</option>
+                    {categories.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
