@@ -53,6 +53,11 @@ export default async function middleware(req: NextRequest) {
   const tenant = (token?.tenant as string) || '';
 
   if (pathname.startsWith('/api/mtc')) {
+    // Stock Opname API Publik (Hitung Audit Publik tanpa login, kecuali Posting)
+    if (pathname.startsWith('/api/mtc/opname') && !pathname.endsWith('/post')) {
+      return NextResponse.next();
+    }
+
     // Stok viewer publik (tanpa login), sama seperti V2 /api/stock
     if (req.method === 'GET' && pathname === '/api/mtc/stock') {
       return NextResponse.next();
@@ -133,9 +138,9 @@ export default async function middleware(req: NextRequest) {
   }
 
   if (pathname.startsWith('/mtc')) {
-    // Halaman stok publik — /stock dan /mtc/stock (bukan /mtc/stock-in|out)
+    // Halaman stok publik — /stock, /mtc/stock, /mtc/quick-in, dan /mtc/opname
     const isPublicStockPage =
-      pathname === '/mtc/stock' || pathname === '/mtc/stock/' || pathname === '/mtc/quick-in';
+      pathname === '/mtc/stock' || pathname === '/mtc/stock/' || pathname === '/mtc/quick-in' || pathname.startsWith('/mtc/opname');
     if (isPublicStockPage) {
       return NextResponse.next();
     }

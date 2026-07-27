@@ -105,7 +105,6 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const sessionUser = await requireMtcAuth();
-    if (!sessionUser) return err('Unauthorized', 401);
 
     const sessionId = parseInt(params.id);
     if (isNaN(sessionId)) return err('ID sesi tidak valid', 400);
@@ -158,7 +157,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         : Math.max(0, parseInt(String(qtyFisik)) || 0);
 
       const selisih = parsedQtyFisik !== null ? (parsedQtyFisik - targetItem.qtySistem) : 0;
-      const auditorName = auditedBy ? String(auditedBy).trim() : (sessionUser.user?.name || sessionUser.user?.email || 'Teknisi MTC');
+      const auditorName = auditedBy ? String(auditedBy).trim() : (sessionUser?.user?.name || sessionUser?.user?.email || 'Teknisi MTC');
 
       const updatedItem = await prisma.opnameItem.update({
         where: { id: itemNum },

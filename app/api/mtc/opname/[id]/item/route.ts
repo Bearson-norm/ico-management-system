@@ -7,7 +7,6 @@ import { requireMtcAuth } from '@/lib/auth';
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const sessionUser = await requireMtcAuth();
-    if (!sessionUser) return err('Unauthorized', 401);
 
     const sessionId = parseInt(params.id);
     if (isNaN(sessionId)) return err('ID sesi tidak valid', 400);
@@ -71,7 +70,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       sparepartId = newSp.id;
     }
 
-    const auditorName = sessionUser.user?.name || sessionUser.user?.email || 'Teknisi MTC';
+    const auditorName = sessionUser?.user?.name || sessionUser?.user?.email || 'Teknisi MTC';
 
     // Create OpnameItem with isNewItem = true
     const newItem = await prisma.opnameItem.create({

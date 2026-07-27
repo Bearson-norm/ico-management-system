@@ -54,7 +54,6 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const sessionUser = await requireMtcAuth();
-    if (!sessionUser) return err('Unauthorized', 401);
 
     const body = await req.json();
     const { judul, lokasi, catatan } = body;
@@ -100,7 +99,7 @@ export async function POST(req: NextRequest) {
         lokasi: lokasi ? String(lokasi).trim() : null,
         catatan: catatan ? String(catatan).trim() : null,
         status: 'DRAFT',
-        createdById: (sessionUser.user as any)?.id || null
+        createdById: (sessionUser?.user as any)?.id || null
       }
     });
 
