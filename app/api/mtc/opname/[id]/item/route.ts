@@ -71,7 +71,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       sparepartId = newSp.id;
     }
 
-    const auditorName = sessionUser.namaLengkap || sessionUser.username || 'Teknisi MTC';
+    const auditorName = sessionUser.user?.name || sessionUser.user?.email || 'Teknisi MTC';
 
     // Create OpnameItem with isNewItem = true
     const newItem = await prisma.opnameItem.create({

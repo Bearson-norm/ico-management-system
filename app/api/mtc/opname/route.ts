@@ -72,10 +72,7 @@ export async function POST(req: NextRequest) {
         } : {})
       },
       include: {
-        kategori: true,
-        movements: {
-          select: { tipe: { equals: true }, qty: true }
-        }
+        kategori: true
       }
     });
 
@@ -103,7 +100,7 @@ export async function POST(req: NextRequest) {
         lokasi: lokasi ? String(lokasi).trim() : null,
         catatan: catatan ? String(catatan).trim() : null,
         status: 'DRAFT',
-        createdById: sessionUser.id || null
+        createdById: (sessionUser.user as any)?.id || null
       }
     });
 

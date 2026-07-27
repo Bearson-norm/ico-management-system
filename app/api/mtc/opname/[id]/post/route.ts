@@ -24,7 +24,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
     const itemsToAdjust = session.items.filter(item => item.qtyFisik !== null && item.qtyFisik !== undefined && item.selisih !== 0);
 
-    const auditorName = sessionUser.namaLengkap || sessionUser.username || 'Supervisor MTC';
+    const auditorName = sessionUser.user?.name || sessionUser.user?.email || 'Supervisor MTC';
 
     // Transaction to update session and post StockMovements
     await prisma.$transaction(async (tx) => {
