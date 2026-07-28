@@ -24,6 +24,7 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
 
   // Multi-user technician name
   const [technicianName, setTechnicianName] = useState('');
+  const [focusedItemId, setFocusedItemId] = useState<number | null>(null);
 
   // Unlisted item modal
   const [showAddUnlistedModal, setShowAddUnlistedModal] = useState(false);
@@ -58,6 +59,7 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
   }, [sessionId]);
 
   async function fetchOpnameDetail(showLoader = true) {
+    if (!showLoader && focusedItemId !== null) return; // Skip background refresh while user is actively typing
     if (showLoader) setLoading(true);
     try {
       const res = await fetch(`/api/mtc/opname/${sessionId}`);
@@ -128,6 +130,26 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
       }
     } catch (e) {
       console.error('Error saving atomic item count:', e);
+    }
+  }
+
+  // Handle Deleting Item from SO Session
+  async function handleDeleteItem(itemId: number, namaItem: string) {
+    if (!confirm(`Apakah Anda yakin ingin menghapus "${namaItem}" dari sesi Stock Opname ini?`)) return;
+
+    try {
+      const res = await fetch(`/api/mtc/opname/${sessionId}/item?itemId=${itemId}`, {
+        method: 'DELETE'
+      });
+      const json = await res.json();
+      if (json.success) {
+        alert(json.data?.msg || 'Item berhasil dihapus');
+        await fetchOpnameDetail(false);
+      } else {
+        alert(`Gagal menghapus item: ${json.error}`);
+      }
+    } catch (e) {
+      alert('Terjadi kesalahan koneksi saat menghapus item.');
     }
   }
 
@@ -245,7 +267,10 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
       if ((item.kategori || '') !== selectedCategory) return false;
     }
 
-    if (activeTab === 'PENDING') return !item.isCounted;
+    if (activeTab === 'PENDING') {
+      if (item.id === focusedItemId) return true; // Keep card visible while user is actively typing
+      return !item.isCounted;
+    }
     if (activeTab === 'MATCH') return item.isCounted && item.selisih === 0;
     if (activeTab === 'PLUS') return item.isCounted && item.selisih > 0;
     if (activeTab === 'MINUS') return item.isCounted && item.selisih < 0;
@@ -648,6 +673,12 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
                         disabled={isReadOnly}
                         placeholder="Input..."
                         value={item.qtyFisik !== null && item.qtyFisik !== undefined ? item.qtyFisik : ''}
+                        onFocus={() => setFocusedItemId(item.id)}
+                        onBlur={() => {
+                          setTimeout(() => {
+                            setFocusedItemId((prev: number | null) => prev === item.id ? null : prev);
+                          }, 400);
+                        }}
                         onChange={e => {
                           const val = e.target.value === '' ? null : parseInt(e.target.value);
                           handleUpdateCount(item.id, val);
@@ -699,17 +730,27 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
                     </div>
 
                     {!isReadOnly && (
-                      <button
-                        onClick={() => {
-                          const note = prompt('Masukkan catatan/alasan selisih untuk item ini:', item.catatan || '');
-                          if (note !== null) {
-                            handleUpdateCount(item.id, item.qtyFisik, note);
-                          }
-                        }}
-                        style={{ background: 'none', border: 'none', color: '#c084fc', fontSize: 11, cursor: 'pointer', padding: 0 }}
-                      >
-                        💬 {item.catatan ? `Catatan: "${item.catatan}"` : '+ Tambah Catatan'}
-                      </button>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                        <button
+                          onClick={() => {
+                            const note = prompt('Masukkan catatan/alasan selisih untuk item ini:', item.catatan || '');
+                            if (note !== null) {
+                              handleUpdateCount(item.id, item.qtyFisik, note);
+                            }
+                          }}
+                          style={{ background: 'none', border: 'none', color: '#c084fc', fontSize: 11, cursor: 'pointer', padding: 0 }}
+                        >
+                          💬 {item.catatan ? `Catatan: "${item.catatan}"` : '+ Tambah Catatan'}
+                        </button>
+
+                        <button
+                          onClick={() => handleDeleteItem(item.id, item.namaItem)}
+                          style={{ background: 'none', border: 'none', color: '#f87171', fontSize: 11, cursor: 'pointer', padding: '2px 6px', borderRadius: 4 }}
+                          title="Hapus item ini dari sesi opname"
+                        >
+                          🗑️ Hapus
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>

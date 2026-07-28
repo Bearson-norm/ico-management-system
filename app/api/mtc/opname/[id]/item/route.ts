@@ -90,3 +90,50 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return err('Gagal menambahkan barang ke sesi opname: ' + e.message, 500);
   }
 }
+
+// DELETE /api/mtc/opname/[id]/item?itemId=123 - Delete an item from an active SO session
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const sessionId = parseInt(params.id);
+    if (isNaN(sessionId)) return err('ID sesi tidak valid', 400);
+
+    const session = await prisma.opnameSession.findUnique({
+      where: { id: sessionId }
+    });
+    if (!session) return err('Sesi Stock Opname tidak ditemukan', 404);
+    if (session.status === 'POSTED') return err('Sesi sudah di-posting dan tidak dapat diubah', 400);
+
+    const { searchParams } = new URL(req.url);
+    const itemIdStr = searchParams.get('itemId');
+    if (!itemIdStr) return err('Parameter itemId wajib diisi', 400);
+
+    const itemId = parseInt(itemIdStr);
+    if (isNaN(itemId)) return err('ID item tidak valid', 400);
+
+    const opItem = await prisma.opnameItem.findFirst({
+      where: { id: itemId, sessionId }
+    });
+    if (!opItem) return err('Item opname tidak ditemukan', 404);
+
+    // If it was a newly created sparepart master that hasn't been used elsewhere, clean up
+    if (opItem.isNewItem && opItem.sparepartId) {
+      const spMoves = await prisma.stockMovement.count({
+        where: { sparepartId: opItem.sparepartId }
+      });
+      if (spMoves === 0) {
+        await prisma.sparepart.delete({
+          where: { id: opItem.sparepartId }
+        }).catch(() => {});
+      }
+    }
+
+    await prisma.opnameItem.delete({
+      where: { id: itemId }
+    });
+
+    return ok({ msg: `Item "${opItem.namaItem}" berhasil dihapus dari sesi Stock Opname!` });
+  } catch (e: any) {
+    console.error('Error deleting opname item:', e);
+    return err('Gagal menghapus item dari sesi opname: ' + e.message, 500);
+  }
+}
