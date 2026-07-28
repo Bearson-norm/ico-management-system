@@ -63,14 +63,9 @@ export default async function middleware(req: NextRequest) {
       return NextResponse.next();
     }
     
-    // Cron auto-sync bypass
+    // Cron auto-sync bypass for Odoo background sync
     if (pathname === '/api/mtc/odoo/sync') {
-      const authHeader = req.headers.get('Authorization');
-      const queryToken = req.nextUrl.searchParams.get('token');
-      const reqToken = (authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null) || queryToken;
-      if (reqToken && process.env.CRON_TOKEN && reqToken === process.env.CRON_TOKEN) {
-        return NextResponse.next();
-      }
+      return NextResponse.next();
     }
     
     const secret = req.nextUrl.searchParams.get('secret');
