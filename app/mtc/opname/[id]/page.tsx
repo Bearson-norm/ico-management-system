@@ -38,6 +38,13 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
   const [unlistedCreateMaster, setUnlistedCreateMaster] = useState(true);
   const [addingUnlisted, setAddingUnlisted] = useState(false);
 
+  // Edit item modal states
+  const [editingItem, setEditingItem] = useState<any | null>(null);
+  const [editNama, setEditNama] = useState('');
+  const [editLokasi, setEditLokasi] = useState('');
+  const [editUom, setEditUom] = useState('Pcs');
+  const [savingEdit, setSavingEdit] = useState(false);
+
   // Status submitting & action states
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -153,29 +160,46 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
     }
   }
 
-  // Handle Editing Item Name
-  async function handleEditItemName(itemId: number, currentNama: string) {
-    const newName = prompt('Edit nama barang / sparepart:', currentNama);
-    if (!newName || !newName.trim() || newName.trim() === currentNama) return;
+  // Handle Editing Item Modal (Nama, Lokasi Rak, Uom)
+  function openEditModal(item: any) {
+    setEditingItem(item);
+    setEditNama(item.namaItem || '');
+    setEditLokasi(item.lokasi || '');
+    setEditUom(item.uom || 'Pcs');
+  }
 
+  async function handleSaveEditItem(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingItem) return;
+    if (!editNama.trim()) {
+      alert('Nama barang wajib diisi!');
+      return;
+    }
+
+    setSavingEdit(true);
     try {
       const res = await fetch(`/api/mtc/opname/${sessionId}/item`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          itemId,
-          namaItem: newName.trim()
+          itemId: editingItem.id,
+          namaItem: editNama.trim(),
+          lokasi: editLokasi.trim(),
+          uom: editUom.trim()
         })
       });
       const json = await res.json();
       if (json.success) {
-        alert(json.data?.msg || 'Nama barang berhasil diubah');
+        setEditingItem(null);
+        alert(json.data?.msg || 'Detail item berhasil diperbarui!');
         await fetchOpnameDetail(false);
       } else {
-        alert(`Gagal mengubah nama: ${json.error}`);
+        alert(`Gagal memperbarui item: ${json.error}`);
       }
     } catch (e) {
-      alert('Terjadi kesalahan koneksi saat mengubah nama.');
+      alert('Terjadi kesalahan koneksi saat menyimpan perubahan.');
+    } finally {
+      setSavingEdit(false);
     }
   }
 
@@ -771,11 +795,11 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
                           </button>
 
                           <button
-                            onClick={() => handleEditItemName(item.id, item.namaItem)}
+                            onClick={() => openEditModal(item)}
                             style={{ background: 'none', border: 'none', color: '#38bdf8', fontSize: 11, cursor: 'pointer', padding: 0 }}
-                            title="Edit nama barang ini"
+                            title="Edit nama barang dan lokasi rak ini"
                           >
-                            ✏️ Edit Nama
+                            ✏️ Edit (Nama / Rak)
                           </button>
                         </div>
 
@@ -1010,6 +1034,115 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
                 </button>
                 <button type="submit" style={{ padding: '8px 16px', background: '#a855f7', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700, cursor: 'pointer' }} disabled={addingUnlisted}>
                   {addingUnlisted ? '⏳ Menyimpan...' : '➕ Tambahkan ke Audit'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Item Modal */}
+      {editingItem && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.75)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 999,
+          padding: 16
+        }}>
+          <div style={{
+            background: '#1e293b',
+            border: '1px solid rgba(255,255,255,0.15)',
+            borderRadius: 16,
+            padding: 24,
+            width: '100%',
+            maxWidth: 440,
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#fff' }}>
+                ✏️ Edit Nama & Posisi Rak
+              </h3>
+              <button onClick={() => setEditingItem(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: 18, cursor: 'pointer' }}>
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditItem}>
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ fontWeight: 700, fontSize: 11, color: '#cbd5e1', display: 'block', marginBottom: 4 }}>
+                  Nama Barang / Sparepart <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  value={editNama}
+                  onChange={e => setEditNama(e.target.value)}
+                  required
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: 8, background: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', fontSize: 12 }}
+                />
+              </div>
+
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ fontWeight: 700, fontSize: 11, color: '#cbd5e1', display: 'block', marginBottom: 4 }}>
+                  Lokasi / Posisi Rak (SLOC Terdaftar)
+                </label>
+
+                {locations.length > 0 && (
+                  <select
+                    value={editLokasi}
+                    onChange={e => setEditLokasi(e.target.value)}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: 8, background: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', color: '#38bdf8', fontWeight: 700, fontSize: 12, marginBottom: 8 }}
+                  >
+                    <option value="">-- Pilih dari Rak Terdaftar ({locations.length} SLOC) --</option>
+                    {locations.map(loc => (
+                      <option key={loc} value={loc}>📍 {loc}</option>
+                    ))}
+                  </select>
+                )}
+
+                <input
+                  type="text"
+                  list="editRakDatalist"
+                  placeholder="Atau ketik nama lokasi rak baru (cth: Rak 1, 2-C-211)..."
+                  value={editLokasi}
+                  onChange={e => setEditLokasi(e.target.value)}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: 8, background: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', fontSize: 12 }}
+                />
+                <datalist id="editRakDatalist">
+                  {locations.map(loc => (
+                    <option key={loc} value={loc} />
+                  ))}
+                </datalist>
+                <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 4 }}>
+                  Pilih dari rak terdaftar di atas atau ketik nama rak baru jika belum terdaftar.
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 18 }}>
+                <label style={{ fontWeight: 700, fontSize: 11, color: '#cbd5e1', display: 'block', marginBottom: 4 }}>
+                  Satuan (UoM)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Pcs, Set, Roll"
+                  value={editUom}
+                  onChange={e => setEditUom(e.target.value)}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: 8, background: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', fontSize: 12 }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                <button type="button" onClick={() => setEditingItem(null)} style={{ padding: '8px 16px', background: 'transparent', color: '#94a3b8', border: 'none', cursor: 'pointer' }} disabled={savingEdit}>
+                  Batal
+                </button>
+                <button type="submit" style={{ padding: '9px 18px', background: '#38bdf8', color: '#0f172a', border: 'none', borderRadius: 8, fontWeight: 800, cursor: 'pointer' }} disabled={savingEdit}>
+                  {savingEdit ? '⏳ Menyimpan...' : '💾 Simpan Perubahan'}
                 </button>
               </div>
             </form>
