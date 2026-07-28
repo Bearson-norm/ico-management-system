@@ -10,6 +10,7 @@ import {
   normalizeLokasiKey,
   type LokasiProgress,
 } from '@/lib/ga/opnameProgress';
+import { downloadOpnamePdf } from '@/lib/ga/downloadOpnamePdf';
 
 type Line = {
   id: number;
@@ -60,6 +61,7 @@ export default function GaOpnameDetailPage() {
   });
   const [postModal, setPostModal] = useState(false);
   const [inputConfirmed, setInputConfirmed] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   const isDraft = session?.status === 'draft';
 
@@ -255,6 +257,17 @@ export default function GaOpnameDetailPage() {
     return <span className="badge badge-red">{diff}</span>;
   }
 
+  async function handleDownloadPdf() {
+    if (!session) return;
+    setDownloadingPdf(true);
+    try {
+      const ok = await downloadOpnamePdf(session.id);
+      if (!ok) alert('Gagal mengunduh PDF lembar kerja opname.');
+    } finally {
+      setDownloadingPdf(false);
+    }
+  }
+
   if (loading) return <div className="ga-loading">Memuat…</div>;
   if (!session) {
     return (
@@ -290,8 +303,17 @@ export default function GaOpnameDetailPage() {
                 : ''}
             </div>
           </div>
-          {isDraft && (
-            <div className="ga-page-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <div className="ga-page-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={handleDownloadPdf}
+              disabled={downloadingPdf}
+            >
+              {downloadingPdf ? 'Mengunduh…' : 'Unduh PDF'}
+            </button>
+            {isDraft && (
+              <>
               <button type="button" className="btn btn-ghost" onClick={() => saveLines()} disabled={saving}>
                 {saving ? 'Menyimpan…' : 'Simpan draft'}
               </button>
@@ -308,8 +330,9 @@ export default function GaOpnameDetailPage() {
               >
                 Posting selisih
               </button>
-            </div>
-          )}
+              </>
+            )}
+          </div>
         </div>
       </div>
 

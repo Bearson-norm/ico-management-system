@@ -167,7 +167,7 @@ export default function GaAuditPage() {
           <div>
             <div className="page-title">Cek Audit Trail</div>
             <div className="page-sub">
-              Snapshot pergerakan stok sistem per bulan (generate H-1 akhir bulan 00:00 WIB) — hasil fisik lihat di Stock Opname
+              Snapshot pergerakan stok sistem per bulan (generate H-2 akhir bulan 00:00 WIB, geser otomatis jika libur) — hasil fisik lihat di Stock Opname
             </div>
           </div>
           <div className="page-header-actions" style={{ display: 'flex', gap: 8 }}>
@@ -373,7 +373,7 @@ export default function GaAuditPage() {
                 <tr>
                   <td colSpan={9} className="text-muted" style={{ textAlign: 'center' }}>
                     {snapshots.length === 0
-                      ? 'Belum ada snapshot. Klik "Generate Sekarang" atau tunggu cron H-1 akhir bulan.'
+                      ? 'Belum ada snapshot. Klik "Generate Sekarang" atau tunggu cron H-2 akhir bulan (geser otomatis jika libur).'
                       : 'Tidak ada baris yang cocok dengan filter.'}
                   </td>
                 </tr>
