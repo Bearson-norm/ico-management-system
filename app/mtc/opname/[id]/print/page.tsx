@@ -90,42 +90,82 @@ export default function MtcOpnamePrintPage({ params }: { params: { id: string } 
         </button>
       </div>
 
-      {/* Document Header */}
-      <div style={{ borderBottom: '2px solid #000', paddingBottom: 12, marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 'bold' }}>PT FOOM LAB GLOBAL</h1>
-          <div style={{ fontSize: 13, fontWeight: 'bold', color: '#444', marginTop: 2 }}>DEPARTEMEN MAINTENANCE & SPAREPART (MTC)</div>
-          <div style={{ fontSize: 11, color: '#666', marginTop: 2 }}>Laporan Hasil Audit Physical Stock Opname Gudang</div>
-        </div>
-
-        <div style={{ textAlign: 'right' }}>
-          <h2 style={{ margin: 0, fontSize: 16, color: '#2563eb' }}>BERKAS STOCK OPNAME</h2>
-          <div style={{ fontSize: 12, fontWeight: 'bold', marginTop: 4 }}>NO: SO-MTC-{session.id}</div>
-          <div style={{ fontSize: 11, color: '#555' }}>Status: {session.status}</div>
-        </div>
-      </div>
-
-      {/* Audit Metadata */}
-      <table style={{ width: '100%', marginBottom: 20, fontSize: 11, borderCollapse: 'collapse' }}>
+      {/* Official Kop Surat Header Table matching Excel FLG FORM */}
+      <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #000', marginBottom: 16, fontFamily: 'Arial, sans-serif', fontSize: 11 }}>
         <tbody>
           <tr>
-            <td style={{ width: '15%', fontWeight: 'bold', padding: '4px 0' }}>Judul Audit</td>
-            <td style={{ width: '35%', padding: '4px 0' }}>: {session.judul}</td>
-            <td style={{ width: '15%', fontWeight: 'bold', padding: '4px 0' }}>Tanggal Cetak</td>
-            <td style={{ width: '35%', padding: '4px 0' }}>: {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</td>
+            {/* Logo FOOM (Rowspan 3) */}
+            <td rowSpan={3} style={{ width: '22%', border: '1px solid #000', padding: 8, textAlign: 'center', verticalAlign: 'middle', background: '#fff' }}>
+              <img src="/logo.png" alt="FOOM" style={{ maxHeight: 42, maxWidth: '100%', objectFit: 'contain' }} />
+            </td>
+
+            {/* Row 1 Center: PT. FOOM Lab Global */}
+            <td style={{ border: '1px solid #000', padding: '4px 8px', textAlign: 'center', fontWeight: 'bold', fontSize: 12, color: '#000' }}>
+              PT. FOOM Lab Global
+            </td>
+
+            {/* Row 1 Right: No. Dokumen */}
+            <td style={{ width: '13%', border: '1px solid #000', padding: '4px 8px', color: '#000' }}>
+              No. Dokumen
+            </td>
+            <td style={{ width: '25%', border: '1px solid #000', padding: '4px 8px', color: '#000' }}>
+              FLG/FORM/MTC/013-00
+            </td>
+          </tr>
+
+          <tr>
+            {/* Row 2 Center: Cikupa Factory */}
+            <td style={{ border: '1px solid #000', padding: '4px 8px', textAlign: 'center', fontWeight: 'bold', fontSize: 11, color: '#000' }}>
+              Cikupa Factory
+            </td>
+
+            {/* Row 2 Right: Revisi */}
+            <td style={{ border: '1px solid #000', padding: '4px 8px', color: '#000' }}>
+              Revisi
+            </td>
+            <td style={{ border: '1px solid #000', padding: '4px 8px', color: '#000' }}>
+              00
+            </td>
+          </tr>
+
+          <tr>
+            {/* Row 3 Center: LAPORAN STOCK OPNAME */}
+            <td style={{ border: '1px solid #000', padding: '4px 8px', textAlign: 'center', fontWeight: 'bold', fontSize: 11, color: '#000', textTransform: 'uppercase' }}>
+              LAPORAN STOCK OPNAME
+            </td>
+
+            {/* Row 3 Right: Tanggal */}
+            <td style={{ border: '1px solid #000', padding: '4px 8px', color: '#000' }}>
+              Tanggal
+            </td>
+            <td style={{ border: '1px solid #000', padding: '4px 8px', color: '#000' }}>
+              {session.tanggal ? new Date(session.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      {/* Audit Metadata Details */}
+      <table style={{ width: '100%', marginBottom: 18, fontSize: 11, borderCollapse: 'collapse', background: '#fff' }}>
+        <tbody>
+          <tr>
+            <td style={{ width: '14%', fontWeight: 'bold', padding: '4px 0' }}>Judul Audit</td>
+            <td style={{ width: '36%', padding: '4px 0' }}>: <strong>{session.judul}</strong></td>
+            <td style={{ width: '14%', fontWeight: 'bold', padding: '4px 0' }}>No. Sesi SO</td>
+            <td style={{ width: '36%', padding: '4px 0' }}>: <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>SO-MTC-{session.id}</span> ({session.status})</td>
           </tr>
           <tr>
-            <td style={{ fontWeight: 'bold', padding: '4px 0' }}>Lokasi Rak</td>
+            <td style={{ fontWeight: 'bold', padding: '4px 0' }}>Lokasi Audit</td>
             <td style={{ padding: '4px 0' }}>: {session.lokasi || 'Semua Rak Gudang MTC'}</td>
-            <td style={{ fontWeight: 'bold', padding: '4px 0' }}>Di-ACC Oleh</td>
-            <td style={{ padding: '4px 0' }}>: {session.approvedBy ? `${session.approvedBy} (${new Date(session.approvedAt).toLocaleDateString('id-ID')})` : '— (Menunggu ACC)'}</td>
+            <td style={{ fontWeight: 'bold', padding: '4px 0' }}>Tanggal Cetak</td>
+            <td style={{ padding: '4px 0' }}>: {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</td>
           </tr>
         </tbody>
       </table>
 
       {/* Summary Box */}
-      <div style={{ border: '1px solid #000', borderRadius: 6, padding: 12, marginBottom: 20, background: '#f9fafb' }}>
-        <div style={{ fontWeight: 'bold', fontSize: 12, marginBottom: 8, borderBottom: '1px solid #ccc', paddingBottom: 4 }}>
+      <div style={{ border: '1px solid #000', borderRadius: 4, padding: 12, marginBottom: 20, background: '#f9fafb' }}>
+        <div style={{ fontWeight: 'bold', fontSize: 11, marginBottom: 8, borderBottom: '1px solid #d1d5db', paddingBottom: 4, letterSpacing: '0.5px' }}>
           📊 RINGKASAN REKAPITULASI HASIL OPNAME
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, textAlign: 'center', fontSize: 11 }}>
@@ -217,29 +257,21 @@ export default function MtcOpnamePrintPage({ params }: { params: { id: string } 
       </table>
 
       {/* Signature Block */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', textAlign: 'center', marginTop: 40, pageBreakInside: 'avoid' }}>
-        <div style={{ width: '30%' }}>
-          <div style={{ fontSize: 11, marginBottom: 50 }}>Dibuat Oleh (Tim Audit),</div>
+      <div style={{ display: 'flex', justifyContent: 'space-around', textAlign: 'center', marginTop: 40, pageBreakInside: 'avoid' }}>
+        <div style={{ width: '38%' }}>
+          <div style={{ fontSize: 11, marginBottom: 50 }}>Dihitung Oleh,</div>
           <div style={{ borderBottom: '1px solid #000', fontWeight: 'bold', paddingBottom: 4 }}>
             ( ......................................... )
           </div>
-          <div style={{ fontSize: 10, color: '#555', marginTop: 2 }}>Teknisi Audit MTC</div>
+          <div style={{ fontSize: 10, color: '#555', marginTop: 4 }}>Admin Maintenance</div>
         </div>
 
-        <div style={{ width: '30%' }}>
-          <div style={{ fontSize: 11, marginBottom: 50 }}>Diperiksa Oleh,</div>
+        <div style={{ width: '38%' }}>
+          <div style={{ fontSize: 11, marginBottom: 50 }}>Diketahui Oleh,</div>
           <div style={{ borderBottom: '1px solid #000', fontWeight: 'bold', paddingBottom: 4 }}>
             ( ......................................... )
           </div>
-          <div style={{ fontSize: 10, color: '#555', marginTop: 2 }}>Supervisor MTC</div>
-        </div>
-
-        <div style={{ width: '30%' }}>
-          <div style={{ fontSize: 11, marginBottom: 50 }}>Disetujui Oleh (ACC),</div>
-          <div style={{ borderBottom: '1px solid #000', fontWeight: 'bold', paddingBottom: 4 }}>
-            ( {session.approvedBy || '.........................................'} )
-          </div>
-          <div style={{ fontSize: 10, color: '#555', marginTop: 2 }}>Manager Produksi / MTC</div>
+          <div style={{ fontSize: 10, color: '#555', marginTop: 4 }}>Manufacturing Manager</div>
         </div>
       </div>
     </div>
