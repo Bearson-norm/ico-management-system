@@ -299,9 +299,15 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Link href="/mtc/opname" style={{ textDecoration: 'none', fontSize: 20, color: '#94a3b8' }}>
-              ←
-            </Link>
+            {isEditor ? (
+              <Link href="/mtc/opname" style={{ textDecoration: 'none', fontSize: 20, color: '#94a3b8' }} title="Kembali ke Daftar Opname">
+                ←
+              </Link>
+            ) : (
+              <span style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 10, fontWeight: 800, padding: '4px 8px', borderRadius: 6 }}>
+                FOOM MTC
+              </span>
+            )}
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#fff' }}>{session.judul}</h2>

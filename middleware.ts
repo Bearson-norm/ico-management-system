@@ -138,9 +138,9 @@ export default async function middleware(req: NextRequest) {
   }
 
   if (pathname.startsWith('/mtc')) {
-    // Halaman stok publik — /stock, /mtc/stock, /mtc/quick-in, dan /mtc/opname
+    // Halaman stok publik — /stock, /mtc/stock, /mtc/quick-in, dan /mtc/opname/[id] (sesi spesifik)
     const isPublicStockPage =
-      pathname === '/mtc/stock' || pathname === '/mtc/stock/' || pathname === '/mtc/quick-in' || pathname.startsWith('/mtc/opname');
+      pathname === '/mtc/stock' || pathname === '/mtc/stock/' || pathname === '/mtc/quick-in' || pathname.startsWith('/mtc/opname/');
     if (isPublicStockPage) {
       return NextResponse.next();
     }
