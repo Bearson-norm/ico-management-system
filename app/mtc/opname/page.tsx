@@ -99,44 +99,8 @@ export default function MtcOpnameStandaloneDashboardPage() {
           <span style={{ fontSize: 24 }}>📋</span>
           <div>
             <div style={{ fontSize: 18, fontWeight: 900, letterSpacing: '-0.02em' }}>Stock Opname MTC</div>
-            <div style={{ fontSize: 11, color: 'var(--tx3, #94a3b8)' }}>Form Publik Hitung Fisik Gudang</div>
+            <div style={{ fontSize: 11, color: 'var(--tx3, #94a3b8)' }}>Modul Stock Opname</div>
           </div>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {isEditor && (
-            <Link
-              href="/mtc/dashboard"
-              style={{
-                color: '#a855f7',
-                textDecoration: 'none',
-                fontSize: 12,
-                fontWeight: 800,
-                background: 'rgba(168, 85, 247, 0.15)',
-                padding: '6px 14px',
-                borderRadius: 20,
-                border: '1px solid rgba(168, 85, 247, 0.3)'
-              }}
-            >
-              📊 Dashboard Editor
-            </Link>
-          )}
-
-          <Link
-            href="/mtc/stock"
-            style={{
-              color: 'var(--tx2, #cbd5e1)',
-              textDecoration: 'none',
-              fontSize: 12,
-              fontWeight: 700,
-              background: 'var(--bg2, rgba(255,255,255,0.05))',
-              padding: '6px 14px',
-              borderRadius: 20,
-              border: '1px solid var(--bdr, rgba(255,255,255,0.1))'
-            }}
-          >
-            📦 Stok Inventory
-          </Link>
         </div>
       </div>
 
@@ -155,7 +119,7 @@ export default function MtcOpnameStandaloneDashboardPage() {
       }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>Audit Fisik Gudang MTC</h1>
+            <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>Manajemen Audit Stock Opname</h1>
             <span style={{
               background: 'rgba(168, 85, 247, 0.25)',
               color: '#c084fc',
@@ -164,11 +128,11 @@ export default function MtcOpnameStandaloneDashboardPage() {
               padding: '3px 8px',
               borderRadius: 12
             }}>
-              Akses Terbuka Tim Audit
+              Modul MTC
             </span>
           </div>
           <p style={{ margin: 0, color: 'var(--tx2, #cbd5e1)', fontSize: 13, maxWidth: 540 }}>
-            Semua tim teknisi & petugas audit dapat membuka link ini langsung di HP masing-masing untuk menghitung stok fisik secara *real-time*.
+            Kelola sesi audit fisik gudang, buat sesi opname baru, dan tinjau rekapitulasi hasil opname.
           </p>
         </div>
 

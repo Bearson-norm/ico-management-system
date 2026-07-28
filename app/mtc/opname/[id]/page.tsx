@@ -336,24 +336,6 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
               </span>
             )}
 
-            {isEditor && (
-              <Link
-                href="/mtc/dashboard"
-                style={{
-                  fontSize: 11,
-                  fontWeight: 800,
-                  color: '#a855f7',
-                  background: 'rgba(168, 85, 247, 0.15)',
-                  padding: '6px 12px',
-                  borderRadius: 8,
-                  textDecoration: 'none',
-                  border: '1px solid rgba(168, 85, 247, 0.3)'
-                }}
-              >
-                📊 Dashboard Editor
-              </Link>
-            )}
-
             <Link href={`/mtc/opname/${sessionId}/print`} target="_blank" style={{ fontSize: 11, color: '#fff', background: 'rgba(255,255,255,0.1)', padding: '6px 12px', borderRadius: 8, textDecoration: 'none' }}>
               🖨️ Cetak
             </Link>
