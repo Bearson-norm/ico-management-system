@@ -153,6 +153,32 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
     }
   }
 
+  // Handle Editing Item Name
+  async function handleEditItemName(itemId: number, currentNama: string) {
+    const newName = prompt('Edit nama barang / sparepart:', currentNama);
+    if (!newName || !newName.trim() || newName.trim() === currentNama) return;
+
+    try {
+      const res = await fetch(`/api/mtc/opname/${sessionId}/item`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          itemId,
+          namaItem: newName.trim()
+        })
+      });
+      const json = await res.json();
+      if (json.success) {
+        alert(json.data?.msg || 'Nama barang berhasil diubah');
+        await fetchOpnameDetail(false);
+      } else {
+        alert(`Gagal mengubah nama: ${json.error}`);
+      }
+    } catch (e) {
+      alert('Terjadi kesalahan koneksi saat mengubah nama.');
+    }
+  }
+
   // Handle Adding Unlisted Item on-the-fly
   async function handleAddUnlistedItem(e: React.FormEvent) {
     e.preventDefault();
@@ -731,17 +757,27 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
 
                     {!isReadOnly && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                        <button
-                          onClick={() => {
-                            const note = prompt('Masukkan catatan/alasan selisih untuk item ini:', item.catatan || '');
-                            if (note !== null) {
-                              handleUpdateCount(item.id, item.qtyFisik, note);
-                            }
-                          }}
-                          style={{ background: 'none', border: 'none', color: '#c084fc', fontSize: 11, cursor: 'pointer', padding: 0 }}
-                        >
-                          💬 {item.catatan ? `Catatan: "${item.catatan}"` : '+ Tambah Catatan'}
-                        </button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <button
+                            onClick={() => {
+                              const note = prompt('Masukkan catatan/alasan selisih untuk item ini:', item.catatan || '');
+                              if (note !== null) {
+                                handleUpdateCount(item.id, item.qtyFisik, note);
+                              }
+                            }}
+                            style={{ background: 'none', border: 'none', color: '#c084fc', fontSize: 11, cursor: 'pointer', padding: 0 }}
+                          >
+                            💬 {item.catatan ? `Catatan: "${item.catatan}"` : '+ Catatan'}
+                          </button>
+
+                          <button
+                            onClick={() => handleEditItemName(item.id, item.namaItem)}
+                            style={{ background: 'none', border: 'none', color: '#38bdf8', fontSize: 11, cursor: 'pointer', padding: 0 }}
+                            title="Edit nama barang ini"
+                          >
+                            ✏️ Edit Nama
+                          </button>
+                        </div>
 
                         <button
                           onClick={() => handleDeleteItem(item.id, item.namaItem)}

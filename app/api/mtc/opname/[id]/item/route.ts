@@ -137,3 +137,58 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     return err('Gagal menghapus item dari sesi opname: ' + e.message, 500);
   }
 }
+
+// PATCH /api/mtc/opname/[id]/item - Edit an opname item's name/metadata
+export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const sessionId = parseInt(params.id);
+    if (isNaN(sessionId)) return err('ID sesi tidak valid', 400);
+
+    const session = await prisma.opnameSession.findUnique({
+      where: { id: sessionId }
+    });
+    if (!session) return err('Sesi Stock Opname tidak ditemukan', 404);
+    if (session.status === 'POSTED') return err('Sesi sudah di-posting dan tidak dapat diubah', 400);
+
+    const body = await req.json();
+    const { itemId, namaItem, lokasi, kategori, uom } = body;
+
+    if (!itemId || isNaN(parseInt(String(itemId)))) return err('ID item tidak valid', 400);
+    if (!namaItem || !String(namaItem).trim()) return err('Nama item wajib diisi', 400);
+
+    const cleanNama = String(namaItem).trim();
+
+    const opItem = await prisma.opnameItem.findFirst({
+      where: { id: parseInt(String(itemId)), sessionId }
+    });
+    if (!opItem) return err('Item opname tidak ditemukan', 404);
+
+    // Update opnameItem
+    const updated = await prisma.opnameItem.update({
+      where: { id: opItem.id },
+      data: {
+        namaItem: cleanNama,
+        ...(lokasi !== undefined ? { lokasi: String(lokasi).trim() } : {}),
+        ...(kategori !== undefined ? { kategori: String(kategori).trim() } : {}),
+        ...(uom !== undefined ? { uom: String(uom).trim() } : {})
+      }
+    });
+
+    // Sync to sparepart master if created
+    if (opItem.sparepartId) {
+      await prisma.sparepart.update({
+        where: { id: opItem.sparepartId },
+        data: {
+          nama: cleanNama,
+          ...(lokasi !== undefined ? { lokasi: String(lokasi).trim() } : {}),
+          ...(uom !== undefined ? { uom: String(uom).trim() } : {})
+        }
+      }).catch(() => {});
+    }
+
+    return ok({ item: updated, msg: `Nama barang berhasil diubah menjadi "${cleanNama}"!` });
+  } catch (e: any) {
+    console.error('Error updating opname item name:', e);
+    return err('Gagal mengubah nama item: ' + e.message, 500);
+  }
+}
