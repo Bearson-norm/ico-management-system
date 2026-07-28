@@ -168,10 +168,17 @@ export default function MtcOpnamePrintPage({ params }: { params: { id: string } 
         <div style={{ fontWeight: 'bold', fontSize: 11, marginBottom: 8, borderBottom: '1px solid #d1d5db', paddingBottom: 4, letterSpacing: '0.5px' }}>
           📊 RINGKASAN REKAPITULASI HASIL OPNAME
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, textAlign: 'center', fontSize: 11 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10, textAlign: 'center', fontSize: 11 }}>
           <div>
             <div style={{ color: '#666' }}>Total Item Audit</div>
             <div style={{ fontWeight: 'bold', fontSize: 14 }}>{stats.totalItems} Item</div>
+          </div>
+          <div>
+            <div style={{ color: '#0284c7' }}>🎯 Akurasi Data</div>
+            <div style={{ fontWeight: 'bold', fontSize: 14, color: '#0284c7' }}>
+              {stats.accuracyPct !== undefined ? stats.accuracyPct : (stats.totalItems > 0 ? ((stats.totalMatchingCount / (items.filter((i: any) => i.isCounted).length || stats.totalItems)) * 100).toFixed(1) : 0)}%
+            </div>
+            <div style={{ fontSize: 9, color: '#0284c7' }}>({stats.totalMatchingCount} Sesuai)</div>
           </div>
           <div>
             <div style={{ color: '#16a34a' }}>🟢 Sesuai (0)</div>

@@ -98,7 +98,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         totalMatchingCount,
         totalPlusValue,
         totalMinusValue,
-        netVarianceValue: totalPlusValue - totalMinusValue
+        netVarianceValue: totalPlusValue - totalMinusValue,
+        accuracyPct: countedItems > 0 ? Math.round((totalMatchingCount / countedItems) * 1000) / 10 : 0
       },
       locations,
       categories,

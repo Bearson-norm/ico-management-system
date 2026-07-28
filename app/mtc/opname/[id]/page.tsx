@@ -420,6 +420,14 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
 
         {/* Audit Stats Summary Cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 16 }}>
+          <div style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: 12, textAlign: 'center', borderTop: '3px solid #0284c7' }}>
+            <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700 }}>🎯 AKURASI STOK</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: '#38bdf8', marginTop: 2 }}>
+              {stats?.accuracyPct !== undefined ? stats.accuracyPct : (stats?.countedItems > 0 ? ((stats.totalMatchingCount / stats.countedItems) * 100).toFixed(1) : 0)}%
+            </div>
+            <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 2 }}>{stats?.totalMatchingCount} / {stats?.countedItems} Sesuai</div>
+          </div>
+
           <div style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: 12, textAlign: 'center', borderTop: '3px solid #22c55e' }}>
             <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700 }}>🟢 SESUAI (0)</div>
             <div style={{ fontSize: 18, fontWeight: 900, color: '#4ade80', marginTop: 2 }}>{stats?.totalMatchingCount}</div>
