@@ -854,11 +854,17 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
                   <label style={{ fontWeight: 700, fontSize: 11, color: '#cbd5e1', display: 'block', marginBottom: 4 }}>Lokasi / Kode Rak</label>
                   <input
                     type="text"
-                    placeholder="Rak A1, B3, dll"
+                    list="opnameLokasiDatalist"
+                    placeholder="Pilih atau ketik Rak (cth: Rak 1, 2-C-211)"
                     value={unlistedLokasi}
                     onChange={e => setUnlistedLokasi(e.target.value)}
                     style={{ width: '100%', padding: '8px 12px', borderRadius: 8, background: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', fontSize: 12 }}
                   />
+                  <datalist id="opnameLokasiDatalist">
+                    {locations.map(loc => (
+                      <option key={loc} value={loc} />
+                    ))}
+                  </datalist>
                 </div>
               </div>
 

@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { ok, err } from '@/lib/utils';
+import { ok, err, generateItemId } from '@/lib/utils';
 import { requireMtcAuth } from '@/lib/auth';
 
 // POST /api/mtc/opname/[id]/item - Add an unlisted physical item on-the-fly to an active SO session
@@ -44,17 +44,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         });
       }
 
-      // Generate ID for new sparepart (SPXXXX)
-      const lastSp = await prisma.sparepart.findFirst({
-        where: { id: { startsWith: 'SP' } },
-        orderBy: { id: 'desc' }
-      });
-      let nextNum = 1;
-      if (lastSp) {
-        const match = lastSp.id.match(/\d+/);
-        if (match) nextNum = parseInt(match[0]) + 1;
-      }
-      const newSpId = `SP${String(nextNum).padStart(4, '0')}`;
+      // Generate ID matching Stock In (MTC-SP-XXX)
+      const newSpId = await generateItemId(prisma);
 
       const newSp = await prisma.sparepart.create({
         data: {
