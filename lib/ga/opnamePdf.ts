@@ -73,8 +73,63 @@ export async function buildOpnamePdf(
   });
 
   const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
-  const bottom = () => doc.page.height - doc.page.margins.bottom;
+  const FOOTER_HEIGHT = 24;
+  const bottom = () => doc.page.height - doc.page.margins.bottom - FOOTER_HEIGHT;
   const rowHeight = 18;
+
+  const addPageNumbers = () => {
+    const range = doc.bufferedPageRange();
+    for (let i = range.start; i < range.start + range.count; i++) {
+      doc.switchToPage(i);
+      const pageNum = i - range.start + 1;
+      doc
+        .font('Helvetica')
+        .fontSize(8)
+        .fillColor('#6b7280')
+        .text(`Halaman ${pageNum} / ${range.count}`, doc.page.margins.left, doc.page.height - doc.page.margins.bottom + 8, {
+          width: pageWidth,
+          align: 'center',
+          lineBreak: false,
+        });
+    }
+  };
+
+  const drawSignatureBlock = () => {
+    const blockHeight = 88;
+    if (doc.y + blockHeight > bottom()) doc.addPage();
+
+    doc.moveDown(1.2);
+    const y = doc.y;
+    const colWidth = pageWidth / 3;
+    const roles = ['Penghitung', 'Supervisor GA', 'Mengetahui'];
+
+    roles.forEach((role, i) => {
+      const x = doc.page.margins.left + i * colWidth;
+      doc.font('Helvetica').fontSize(8).fillColor('#374151').text('Tanda Tangan:', x + 8, y, {
+        width: colWidth - 16,
+        lineBreak: false,
+      });
+      doc
+        .moveTo(x + 8, y + 36)
+        .lineTo(x + colWidth - 16, y + 36)
+        .strokeColor('#9ca3af')
+        .lineWidth(0.75)
+        .stroke();
+      doc
+        .font('Helvetica-Bold')
+        .fontSize(8)
+        .fillColor('#111827')
+        .text(role, x + 8, y + 44, { width: colWidth - 16, align: 'center', lineBreak: false });
+      doc
+        .font('Helvetica')
+        .fontSize(7)
+        .fillColor('#6b7280')
+        .text('Nama: _________________________', x + 8, y + 58, { width: colWidth - 16, lineBreak: false });
+      doc.text('Tanggal: _____________________', x + 8, y + 70, { width: colWidth - 16, lineBreak: false });
+    });
+
+    doc.y = y + blockHeight;
+  };
 
   const columns = [
     { label: 'No', width: 35, align: 'right' as const },
@@ -153,6 +208,8 @@ export async function buildOpnamePdf(
     doc.moveDown(0.6);
   }
 
+  drawSignatureBlock();
+  addPageNumbers();
   doc.end();
   return completed;
 }
