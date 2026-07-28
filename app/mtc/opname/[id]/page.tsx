@@ -298,6 +298,31 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
     }
   }
 
+  // Manager Reset / Un-ACC Session
+  async function handleUnpostSession() {
+    if (!confirm('Apakah Anda (Supervisor/Manager) yakin ingin BATALKAN ACC / RESET status opname ini kembali ke DRAFT untuk diedit ulang?\n\nPenyesuaian stok pergerakan opname ini akan dibatalkan.')) {
+      return;
+    }
+
+    setActionLoading('unpost-opname');
+    try {
+      const res = await fetch(`/api/mtc/opname/${sessionId}/post`, {
+        method: 'DELETE'
+      });
+      const json = await res.json();
+      if (json.success) {
+        await fetchOpnameDetail();
+        alert(json.data.msg || '✓ Status sesi Opname berhasil dikembalikan ke DRAFT!');
+      } else {
+        alert(`Gagal membatalkan ACC: ${json.error}`);
+      }
+    } catch (e) {
+      alert('Koneksi bermasalah.');
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
   // Filtered items
   const filteredItems = items.filter(item => {
     if (search.trim()) {
@@ -409,6 +434,26 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
               <span style={{ background: 'rgba(34, 197, 94, 0.2)', color: '#4ade80', padding: '4px 8px', fontSize: 10, fontWeight: 800, borderRadius: 10 }}>
                 ✓ TER-POSTING
               </span>
+            )}
+
+            {isEditor && (session.status === 'POSTED' || session.status === 'WAITING_APPROVAL') && (
+              <button
+                onClick={handleUnpostSession}
+                disabled={actionLoading === 'unpost-opname'}
+                style={{
+                  fontSize: 11,
+                  fontWeight: 800,
+                  color: '#f87171',
+                  background: 'rgba(239, 68, 68, 0.15)',
+                  padding: '6px 12px',
+                  borderRadius: 8,
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  cursor: 'pointer'
+                }}
+                title="Batal ACC & kembalikan status ke DRAFT untuk diedit ulang"
+              >
+                {actionLoading === 'unpost-opname' ? '⏳ Resetting...' : '↩️ Batal ACC'}
+              </button>
             )}
 
             <Link href={`/mtc/opname/${sessionId}/print`} target="_blank" style={{ fontSize: 11, color: '#fff', background: 'rgba(255,255,255,0.1)', padding: '6px 12px', borderRadius: 8, textDecoration: 'none' }}>
@@ -894,6 +939,39 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
               {actionLoading === 'post-opname' ? '⏳ Posting...' : '✓ ACC & Post Adjustment'}
             </button>
           )}
+        </div>
+      )}
+
+      {session.status === 'POSTED' && isEditor && (
+        <div style={{
+          position: 'fixed',
+          bottom: 20,
+          left: 16,
+          right: 16,
+          display: 'flex',
+          gap: 10,
+          zIndex: 99,
+          justifyContent: 'center'
+        }}>
+          <button
+            onClick={handleUnpostSession}
+            disabled={actionLoading === 'unpost-opname'}
+            style={{
+              flex: 1,
+              maxWidth: 280,
+              padding: '12px 14px',
+              fontSize: 12,
+              fontWeight: 800,
+              borderRadius: 30,
+              background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+              color: '#fff',
+              border: 'none',
+              cursor: 'pointer',
+              boxShadow: '0 4px 16px rgba(239, 68, 68, 0.4)'
+            }}
+          >
+            {actionLoading === 'unpost-opname' ? '⏳ Membatalkan ACC...' : '↩️ Batal ACC / Edit Ulang'}
+          </button>
         </div>
       )}
 
