@@ -26,48 +26,40 @@ jobs:
           command_timeout: 30m
           script: |
             set -e
-            if [ -f "$HOME/.nvm/nvm.sh" ]; then
-              . "$HOME/.nvm/nvm.sh"
-            fi
-            if command -v fnm >/dev/null 2>&1; then
-              eval "$(fnm env)"
-            fi
             APP_PATH="${{ secrets.VPS_APP_PATH }}"
-            APP_PATH="$(printf '%s' "$APP_PATH" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
             if [ -z "$APP_PATH" ]; then
               APP_PATH="/var/www/ico-management-system"
             fi
-            if [ ! -d "$APP_PATH" ]; then
-              echo "ERROR: Folder tidak ada: $APP_PATH"
-              exit 1
-            fi
             cd "$APP_PATH"
+            export PATH=$PATH:./node_modules/.bin:/usr/local/bin:/usr/bin
+            export NODE_ENV=production
+            export NODE_OPTIONS="--max-old-space-size=2048"
+
             echo ">>> Deploy cwd: $(pwd)"
             echo ">>> SSH user: $(whoami)"
-            if [ ! -f .env ]; then
-              echo "ERROR: Tidak ada file .env di $(pwd)"
-              exit 1
-            fi
-            if [ ! -d .git ]; then
-              echo "ERROR: Bukan working tree Git (folder .git tidak ada)."
-              exit 1
-            fi
+
             if ! git config --global --get-all safe.directory 2>/dev/null | grep -qxF "$APP_PATH"; then
               git config --global --add safe.directory "$APP_PATH"
             fi
-            export NODE_ENV=production
-            export NODE_OPTIONS="--max-old-space-size=2048"
-            export PATH=$PATH:./node_modules/.bin
+
             rm -f odoo_sync_debug.txt || true
             git fetch origin
             TARGET_BRANCH="${{ github.ref_name }}"
             echo ">>> Deploying branch: $TARGET_BRANCH"
             git checkout -f "$TARGET_BRANCH"
             git reset --hard "origin/$TARGET_BRANCH"
+
+            echo ">>> Running npm ci..."
             npm ci --no-audit --no-fund --prefer-offline --include=dev || npm install --no-audit --no-fund
-            npm run prisma:generate || npx prisma generate --schema=prisma/mtc/schema.prisma && npx prisma generate --schema=prisma/ga/schema.prisma
-            npm run migrate || true
+
+            echo ">>> Running Prisma Generate..."
+            npx prisma generate --schema=prisma/mtc/schema.prisma
+            npx prisma generate --schema=prisma/ga/schema.prisma
+
+            echo ">>> Building Next.js application..."
             npm run build
+
+            echo ">>> Restarting PM2 inventory service..."
             if pm2 describe inventory >/dev/null 2>&1; then
               pm2 restart inventory || pm2 restart ecosystem.config.cjs --only inventory --update-env
             else
