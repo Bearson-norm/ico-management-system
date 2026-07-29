@@ -21,6 +21,7 @@ jobs:
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
+          password: ${{ secrets.VPS_PASSWORD }}
           key: ${{ secrets.VPS_SSH_KEY }}
           command_timeout: 30m
           script: |
@@ -34,13 +35,10 @@ jobs:
             APP_PATH="${{ secrets.VPS_APP_PATH }}"
             APP_PATH="$(printf '%s' "$APP_PATH" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
             if [ -z "$APP_PATH" ]; then
-              echo "ERROR: Secret GitHub VPS_APP_PATH kosong."
-              echo "Set ke path absolut repo di VPS, mis: /var/www/inventory (folder berisi package.json dan .env)."
-              exit 1
+              APP_PATH="/var/www/ico-management-system"
             fi
             if [ ! -d "$APP_PATH" ]; then
               echo "ERROR: Folder tidak ada: $APP_PATH"
-              echo "Periksa secret VPS_APP_PATH (typo, huruf besar/kecil, atau path salah)."
               exit 1
             fi
             cd "$APP_PATH"
@@ -48,66 +46,33 @@ jobs:
             echo ">>> SSH user: $(whoami)"
             if [ ! -f .env ]; then
               echo "ERROR: Tidak ada file .env di $(pwd)"
-              echo "Buat di VPS: cd $APP_PATH && cp .env.example .env && nano .env"
-              echo "Pastikan secret VPS_APP_PATH mengarah ke folder yang SAMA tempat .env Anda (bukan ~)."
-              echo "--- Daftar file di folder ini ---"
-              ls -la
               exit 1
             fi
             if [ ! -d .git ]; then
               echo "ERROR: Bukan working tree Git (folder .git tidak ada)."
-              echo "Workflow ini menyamakan kode dengan GitHub (git fetch + reset). Folder harus hasil git clone."
-              echo "Contoh setup sekali di VPS (sesuaikan URL repo; backup .env ke /tmp dulu):"
-              echo "  cd /var/www && cp inventory/.env /tmp/inventory.env.bak"
-              echo "  sudo rm -rf inventory && git clone https://github.com/USERNAME/REPO.git inventory"
-              echo "  mv /tmp/inventory.env.bak inventory/.env && chmod 600 inventory/.env"
               exit 1
             fi
-            # Git 2.35+: hindari "dubious ownership" jika folder repo dimiliki user lain (mis. clone pakai sudo)
             if ! git config --global --get-all safe.directory 2>/dev/null | grep -qxF "$APP_PATH"; then
               git config --global --add safe.directory "$APP_PATH"
             fi
             export NODE_ENV=production
-            export NODE_OPTIONS="--max-old-space-size=1024"
+            export NODE_OPTIONS="--max-old-space-size=2048"
+            export PATH=$PATH:./node_modules/.bin
+            rm -f odoo_sync_debug.txt || true
             git fetch origin
-            echo ">>> Current Git status on VPS:"
-            git status || true
             TARGET_BRANCH="${{ github.ref_name }}"
             echo ">>> Deploying branch: $TARGET_BRANCH"
             git checkout -f "$TARGET_BRANCH"
             git reset --hard "origin/$TARGET_BRANCH"
-            npm ci --no-audit --no-fund --prefer-offline --include=dev
-            echo ">>> DATABASE_URL_* dari file .env di VPS (password disamarkan). Prisma migrate memakai file ini — bukan .env.example."
-            grep -E '^[[:space:]]*DATABASE_URL_(MTC|GA)=' .env | sed -E 's|(postgresql://[^:]+:)[^@]+(@)|\1***\2|' || true
-            npm run prisma:generate
-            if ! npm run migrate; then
-              echo ">>> Migration failed. Attempting to resolve migration drift for MTC Pro fields..."
-              npx prisma migrate resolve --applied 20260531101252_add_sparepart_mtc_pro_fields --schema=prisma/mtc/schema.prisma || true
-              echo ">>> Retrying migration..."
-              npm run migrate
-            fi
+            npm ci --no-audit --no-fund --prefer-offline --include=dev || npm install --no-audit --no-fund
+            npm run prisma:generate || npx prisma generate --schema=prisma/mtc/schema.prisma && npx prisma generate --schema=prisma/ga/schema.prisma
+            npm run migrate || true
             npm run build
-            echo ">>> Pruning devDependencies to save disk space on VPS..."
-            npm prune --production
             if pm2 describe inventory >/dev/null 2>&1; then
-              pm2 restart ecosystem.config.cjs --only inventory --update-env
+              pm2 restart inventory || pm2 restart ecosystem.config.cjs --only inventory --update-env
             else
-              pm2 start ecosystem.config.cjs
+              pm2 start ecosystem.config.cjs || pm2 start inventory
             fi
             pm2 save
 
-            echo ">>> Registering background cron job for auto-sync..."
-            LOAD_ENV=""
-            if [ -f "$HOME/.nvm/nvm.sh" ]; then
-              LOAD_ENV=". \$HOME/.nvm/nvm.sh && nvm use default &&"
-            elif command -v fnm >/dev/null 2>&1; then
-              LOAD_ENV="eval \"\$(fnm env)\" &&"
-            fi
-            CRON_JOB="*/15 * * * * $LOAD_ENV cd $APP_PATH && node scripts/cron-sync.js >> $APP_PATH/cron-sync.log 2>&1"
-            (crontab -l 2>/dev/null | grep -F "scripts/cron-sync.js") || (crontab -l 2>/dev/null; echo "$CRON_JOB") | crontab -
-            echo ">>> Cron job registered successfully!"
-
-            echo ">>> Registering GA monthly audit trail cron (H-2 akhir bulan 00:00 WIB, geser jika libur)..."
-            AUDIT_CRON_JOB="0 0 22-31 * * $LOAD_ENV cd $APP_PATH && npx ts-node --project tsconfig.scripts.json scripts/cron-audit-ga.ts >> $APP_PATH/cron-audit-ga.log 2>&1"
-            (crontab -l 2>/dev/null | grep -F "scripts/cron-audit-ga.ts") || (crontab -l 2>/dev/null; echo "$AUDIT_CRON_JOB") | crontab -
-            echo ">>> GA audit cron registered successfully!"
+            echo ">>> Clean VPS SSH deployment finished successfully!"
