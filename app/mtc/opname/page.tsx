@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
+import ShellLayout from '@/components/shared/ShellLayout';
 
 export default function MtcOpnameStandaloneDashboardPage() {
   const { data: sessionData } = useSession();
@@ -78,13 +79,13 @@ export default function MtcOpnameStandaloneDashboardPage() {
   const totalWaiting = sessions.filter(s => s.status === 'WAITING_APPROVAL').length;
   const totalPosted = sessions.filter(s => s.status === 'POSTED').length;
 
-  return (
+  const content = (
     <div style={{
-      minHeight: '100vh',
+      minHeight: isEditor ? 'auto' : '100vh',
       background: 'var(--bg1, #0f172a)',
       color: 'var(--tx1, #f8fafc)',
       fontFamily: 'Inter, system-ui, sans-serif',
-      padding: '16px 20px 80px 20px'
+      padding: isEditor ? '0 0 40px 0' : '16px 20px 80px 20px'
     }}>
       {/* Top Navbar */}
       <div style={{
@@ -456,4 +457,10 @@ export default function MtcOpnameStandaloneDashboardPage() {
       )}
     </div>
   );
+
+  if (isEditor) {
+    return <ShellLayout>{content}</ShellLayout>;
+  }
+
+  return content;
 }
