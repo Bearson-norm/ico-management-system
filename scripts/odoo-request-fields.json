@@ -1,0 +1,351 @@
+{
+  "activity_ids": {
+    "type": "one2many",
+    "relation": "mail.activity",
+    "string": "Activities"
+  },
+  "activity_state": {
+    "type": "selection",
+    "string": "Activity State"
+  },
+  "activity_user_id": {
+    "type": "many2one",
+    "relation": "res.users",
+    "string": "Responsible User"
+  },
+  "activity_type_id": {
+    "type": "many2one",
+    "relation": "mail.activity.type",
+    "string": "Next Activity Type"
+  },
+  "activity_type_icon": {
+    "type": "char",
+    "string": "Activity Type Icon"
+  },
+  "activity_date_deadline": {
+    "type": "date",
+    "string": "Next Activity Deadline"
+  },
+  "my_activity_date_deadline": {
+    "type": "date",
+    "string": "My Activity Deadline"
+  },
+  "activity_summary": {
+    "type": "char",
+    "string": "Next Activity Summary"
+  },
+  "activity_exception_decoration": {
+    "type": "selection",
+    "string": "Activity Exception Decoration"
+  },
+  "activity_exception_icon": {
+    "type": "char",
+    "string": "Icon"
+  },
+  "activity_calendar_event_id": {
+    "type": "many2one",
+    "relation": "calendar.event",
+    "string": "Next Activity Calendar Event"
+  },
+  "message_is_follower": {
+    "type": "boolean",
+    "string": "Is Follower"
+  },
+  "message_follower_ids": {
+    "type": "one2many",
+    "relation": "mail.followers",
+    "string": "Followers"
+  },
+  "message_partner_ids": {
+    "type": "many2many",
+    "relation": "res.partner",
+    "string": "Followers (Partners)"
+  },
+  "message_ids": {
+    "type": "one2many",
+    "relation": "mail.message",
+    "string": "Messages"
+  },
+  "has_message": {
+    "type": "boolean",
+    "string": "Has Message"
+  },
+  "message_unread": {
+    "type": "boolean",
+    "string": "Unread Messages"
+  },
+  "message_unread_counter": {
+    "type": "integer",
+    "string": "Unread Messages Counter"
+  },
+  "message_needaction": {
+    "type": "boolean",
+    "string": "Action Needed"
+  },
+  "message_needaction_counter": {
+    "type": "integer",
+    "string": "Number of Actions"
+  },
+  "message_has_error": {
+    "type": "boolean",
+    "string": "Message Delivery error"
+  },
+  "message_has_error_counter": {
+    "type": "integer",
+    "string": "Number of errors"
+  },
+  "message_attachment_count": {
+    "type": "integer",
+    "string": "Attachment Count"
+  },
+  "message_main_attachment_id": {
+    "type": "many2one",
+    "relation": "ir.attachment",
+    "string": "Main Attachment"
+  },
+  "website_message_ids": {
+    "type": "one2many",
+    "relation": "mail.message",
+    "string": "Website Messages"
+  },
+  "message_has_sms_error": {
+    "type": "boolean",
+    "string": "SMS Delivery error"
+  },
+  "name": {
+    "type": "char",
+    "string": "Request Reference"
+  },
+  "is_name_editable": {
+    "type": "boolean",
+    "string": "Is Name Editable"
+  },
+  "origin": {
+    "type": "char",
+    "string": "Source Document"
+  },
+  "date_start": {
+    "type": "datetime",
+    "string": "Creation date"
+  },
+  "requested_by": {
+    "type": "many2one",
+    "relation": "res.users",
+    "string": "Requested By"
+  },
+  "assigned_to": {
+    "type": "many2one",
+    "relation": "res.users",
+    "string": "Approver"
+  },
+  "description": {
+    "type": "text",
+    "string": "Objectives/Purpose"
+  },
+  "company_id": {
+    "type": "many2one",
+    "relation": "res.company",
+    "string": "Company"
+  },
+  "line_ids": {
+    "type": "one2many",
+    "relation": "purchase.request.line",
+    "string": "Products to Purchase"
+  },
+  "product_id": {
+    "type": "many2one",
+    "relation": "product.product",
+    "string": "Product"
+  },
+  "state": {
+    "type": "selection",
+    "string": "Status"
+  },
+  "is_editable": {
+    "type": "boolean",
+    "string": "Is Editable"
+  },
+  "to_approve_allowed": {
+    "type": "boolean",
+    "string": "To Approve Allowed"
+  },
+  "picking_type_id": {
+    "type": "many2one",
+    "relation": "stock.picking.type",
+    "string": "Picking Type"
+  },
+  "group_id": {
+    "type": "many2one",
+    "relation": "procurement.group",
+    "string": "Procurement Group"
+  },
+  "line_count": {
+    "type": "integer",
+    "string": "Purchase Request Line count"
+  },
+  "move_count": {
+    "type": "float",
+    "string": "Moves"
+  },
+  "purchase_count": {
+    "type": "integer",
+    "string": "Purchases count"
+  },
+  "currency_id": {
+    "type": "many2one",
+    "relation": "res.currency",
+    "string": "Currency"
+  },
+  "estimated_cost": {
+    "type": "monetary",
+    "string": "Total Estimated Cost"
+  },
+  "purchase_agreement_ids": {
+    "type": "one2many",
+    "relation": "purchase.requisition",
+    "string": "Purchase Agreement"
+  },
+  "agreement_count": {
+    "type": "integer",
+    "string": "Purchase Agreement count"
+  },
+  "proc_state": {
+    "type": "selection",
+    "string": "Status Procurement"
+  },
+  "kebutuhan": {
+    "type": "selection",
+    "string": "Requirement"
+  },
+  "dept": {
+    "type": "selection",
+    "string": "Requestor Department"
+  },
+  "event": {
+    "type": "text",
+    "string": "Project / Event"
+  },
+  "spec_documents_ids": {
+    "type": "one2many",
+    "relation": "documents.document",
+    "string": "Documents"
+  },
+  "date_approval": {
+    "type": "datetime",
+    "string": "Approval date"
+  },
+  "id": {
+    "type": "integer",
+    "string": "ID"
+  },
+  "__last_update": {
+    "type": "datetime",
+    "string": "Last Modified on"
+  },
+  "display_name": {
+    "type": "char",
+    "string": "Display Name"
+  },
+  "create_uid": {
+    "type": "many2one",
+    "relation": "res.users",
+    "string": "Created by"
+  },
+  "create_date": {
+    "type": "datetime",
+    "string": "Created on"
+  },
+  "write_uid": {
+    "type": "many2one",
+    "relation": "res.users",
+    "string": "Last Updated by"
+  },
+  "write_date": {
+    "type": "datetime",
+    "string": "Last Updated on"
+  },
+  "department_id": {
+    "type": "many2one",
+    "relation": "hr.department",
+    "string": "Department"
+  },
+  "analytic_domain_purchase": {
+    "type": "many2many",
+    "relation": "account.analytic.account",
+    "string": "Domain Analytic"
+  },
+  "analytic_group_ids": {
+    "type": "many2many",
+    "relation": "account.analytic.group",
+    "string": "Domain Analytic Group"
+  },
+  "analytic_tag_ids": {
+    "type": "many2many",
+    "relation": "account.analytic.tag",
+    "string": "Domain Analytic Tag"
+  },
+  "approval_ids": {
+    "type": "many2many",
+    "relation": "res.users",
+    "string": "Approval Users"
+  },
+  "all_state": {
+    "type": "selection",
+    "string": "All State"
+  },
+  "agreement_ids": {
+    "type": "one2many",
+    "relation": "purchase.requisition",
+    "string": "Agreement"
+  },
+  "delivery_ids": {
+    "type": "many2many",
+    "relation": "stock.picking",
+    "string": "Delivery"
+  },
+  "purchase_ids": {
+    "type": "many2many",
+    "relation": "purchase.order",
+    "string": "Purchase"
+  },
+  "move_ids": {
+    "type": "many2many",
+    "relation": "stock.move",
+    "string": "Receipt"
+  },
+  "line_for_pa_ids": {
+    "type": "many2many",
+    "relation": "purchase.request.line",
+    "string": "Line for PA"
+  },
+  "domain_user_ids": {
+    "type": "many2many",
+    "relation": "res.users",
+    "string": "Domain PR"
+  },
+  "planned_amount": {
+    "type": "float",
+    "string": "Total Budget"
+  },
+  "practical_amount": {
+    "type": "float",
+    "string": "Budget Realization"
+  },
+  "pending_amount": {
+    "type": "float",
+    "string": "Budget Not Yet Realization"
+  },
+  "spending_amount": {
+    "type": "float",
+    "string": "Budget Spending"
+  },
+  "remind_amount": {
+    "type": "float",
+    "string": "Remining Budget"
+  },
+  "purchase_request_analytic_ids": {
+    "type": "one2many",
+    "relation": "purchase.request.analytic",
+    "string": "Budget Information"
+  }
+}

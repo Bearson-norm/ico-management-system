@@ -1,0 +1,618 @@
+[
+  {
+    "id": 4145,
+    "activity_ids": [],
+    "activity_state": false,
+    "activity_user_id": false,
+    "activity_type_id": false,
+    "activity_type_icon": false,
+    "activity_date_deadline": false,
+    "my_activity_date_deadline": false,
+    "activity_summary": false,
+    "activity_exception_decoration": false,
+    "activity_exception_icon": false,
+    "activity_calendar_event_id": false,
+    "message_is_follower": false,
+    "message_follower_ids": [
+      11199622
+    ],
+    "message_partner_ids": [
+      19552
+    ],
+    "message_ids": [
+      19025622,
+      19025621,
+      19025619,
+      19025571
+    ],
+    "has_message": true,
+    "message_unread": false,
+    "message_unread_counter": 0,
+    "message_needaction": false,
+    "message_needaction_counter": 0,
+    "message_has_error": false,
+    "message_has_error_counter": 0,
+    "message_attachment_count": 0,
+    "message_main_attachment_id": false,
+    "website_message_ids": [],
+    "message_has_sms_error": false,
+    "name": "TE04323",
+    "origin": "PR04426",
+    "order_count": 0,
+    "vendor_id": [
+      1513,
+      "PT HUTAMA SINERGI KARYA"
+    ],
+    "type_id": [
+      2,
+      "Call for Tender"
+    ],
+    "ordering_date": "2026-07-10",
+    "date_end": "2026-07-03 12:04:04",
+    "schedule_date": "2026-07-10",
+    "user_id": [
+      34,
+      "PROD. SPV LIQ"
+    ],
+    "description": "<p><br></p>",
+    "company_id": [
+      1,
+      "PT FOOM LAB GLOBAL"
+    ],
+    "purchase_ids": [],
+    "line_ids": [
+      13665,
+      13666,
+      13667,
+      13668
+    ],
+    "product_id": [
+      7495,
+      "SPAREPARTS USAGE"
+    ],
+    "state": "in_progress",
+    "state_blanket_order": "in_progress",
+    "is_quantity_copy": "copy",
+    "currency_id": [
+      12,
+      "IDR"
+    ],
+    "__last_update": "2026-06-26 12:05:15",
+    "display_name": "TE04323",
+    "create_uid": [
+      68,
+      "PROCUREMENT SPV"
+    ],
+    "create_date": "2026-06-26 12:02:13",
+    "write_uid": [
+      68,
+      "PROCUREMENT SPV"
+    ],
+    "write_date": "2026-06-26 12:05:15",
+    "warehouse_id": [
+      1,
+      "FOOM"
+    ],
+    "picking_type_id": [
+      444,
+      "WH RMPM: Receipts"
+    ],
+    "procurement_group_id": false,
+    "purchase_request_id": [
+      4433,
+      "PR04426"
+    ],
+    "account_analytic_id": false,
+    "analytic_tag_ids": [],
+    "estimated_cost": 1776894,
+    "documents_ids": [],
+    "payment_term_id": [
+      35,
+      "30 Days"
+    ],
+    "purchase_analytic_ids": [
+      4612
+    ],
+    "x_studio_po_status": false,
+    "x_studio_related_field_x1IZd": false,
+    "x_studio_payment_status": false,
+    "x_studio_related_field_RuZp7": false,
+    "x_studio_objectivepurpose": "consumabel part repeat order",
+    "x_studio_project_event": false,
+    "x_studio_objective_purpose": "consumabel part repeat order"
+  },
+  {
+    "id": 4144,
+    "activity_ids": [],
+    "activity_state": false,
+    "activity_user_id": false,
+    "activity_type_id": false,
+    "activity_type_icon": false,
+    "activity_date_deadline": false,
+    "my_activity_date_deadline": false,
+    "activity_summary": false,
+    "activity_exception_decoration": false,
+    "activity_exception_icon": false,
+    "activity_calendar_event_id": false,
+    "message_is_follower": false,
+    "message_follower_ids": [
+      11199238
+    ],
+    "message_partner_ids": [
+      19552
+    ],
+    "message_ids": [
+      19024992
+    ],
+    "has_message": true,
+    "message_unread": false,
+    "message_unread_counter": 0,
+    "message_needaction": false,
+    "message_needaction_counter": 0,
+    "message_has_error": false,
+    "message_has_error_counter": 0,
+    "message_attachment_count": 0,
+    "message_main_attachment_id": false,
+    "website_message_ids": [],
+    "message_has_sms_error": false,
+    "name": "New",
+    "origin": "PR04417",
+    "order_count": 0,
+    "vendor_id": false,
+    "type_id": [
+      2,
+      "Call for Tender"
+    ],
+    "ordering_date": false,
+    "date_end": false,
+    "schedule_date": false,
+    "user_id": [
+      13,
+      "MFG MGR"
+    ],
+    "description": false,
+    "company_id": [
+      1,
+      "PT FOOM LAB GLOBAL"
+    ],
+    "purchase_ids": [],
+    "line_ids": [
+      13664
+    ],
+    "product_id": [
+      9743,
+      "EQUIPMENT"
+    ],
+    "state": "draft",
+    "state_blanket_order": "draft",
+    "is_quantity_copy": "copy",
+    "currency_id": [
+      12,
+      "IDR"
+    ],
+    "__last_update": "2026-06-26 11:21:28",
+    "display_name": "New",
+    "create_uid": [
+      68,
+      "PROCUREMENT SPV"
+    ],
+    "create_date": "2026-06-26 11:21:28",
+    "write_uid": [
+      68,
+      "PROCUREMENT SPV"
+    ],
+    "write_date": "2026-06-26 11:21:28",
+    "warehouse_id": [
+      1,
+      "FOOM"
+    ],
+    "picking_type_id": [
+      1,
+      "FOOM: Receipts - WH Produksi"
+    ],
+    "procurement_group_id": false,
+    "purchase_request_id": [
+      4424,
+      "PR04417"
+    ],
+    "account_analytic_id": false,
+    "analytic_tag_ids": [],
+    "estimated_cost": 0,
+    "documents_ids": [],
+    "payment_term_id": false,
+    "purchase_analytic_ids": [
+      4603
+    ],
+    "x_studio_po_status": false,
+    "x_studio_related_field_x1IZd": false,
+    "x_studio_payment_status": false,
+    "x_studio_related_field_RuZp7": false,
+    "x_studio_objectivepurpose": "KEBUTUHAN PANTRY (IENDAH GA)",
+    "x_studio_project_event": false,
+    "x_studio_objective_purpose": "KEBUTUHAN PANTRY (IENDAH GA)"
+  },
+  {
+    "id": 4143,
+    "activity_ids": [],
+    "activity_state": false,
+    "activity_user_id": false,
+    "activity_type_id": false,
+    "activity_type_icon": false,
+    "activity_date_deadline": false,
+    "my_activity_date_deadline": false,
+    "activity_summary": false,
+    "activity_exception_decoration": false,
+    "activity_exception_icon": false,
+    "activity_calendar_event_id": false,
+    "message_is_follower": false,
+    "message_follower_ids": [
+      11198967
+    ],
+    "message_partner_ids": [
+      19552
+    ],
+    "message_ids": [
+      19024877,
+      19024559,
+      19024558,
+      19024556,
+      19024540
+    ],
+    "has_message": true,
+    "message_unread": false,
+    "message_unread_counter": 0,
+    "message_needaction": false,
+    "message_needaction_counter": 0,
+    "message_has_error": false,
+    "message_has_error_counter": 0,
+    "message_attachment_count": 0,
+    "message_main_attachment_id": false,
+    "website_message_ids": [],
+    "message_has_sms_error": false,
+    "name": "TE04321",
+    "origin": "PR04363",
+    "order_count": 0,
+    "vendor_id": [
+      1513,
+      "PT HUTAMA SINERGI KARYA"
+    ],
+    "type_id": [
+      2,
+      "Call for Tender"
+    ],
+    "ordering_date": "2026-07-10",
+    "date_end": "2026-07-03 10:53:45",
+    "schedule_date": "2026-07-10",
+    "user_id": [
+      34,
+      "PROD. SPV LIQ"
+    ],
+    "description": "<p><br></p>",
+    "company_id": [
+      1,
+      "PT FOOM LAB GLOBAL"
+    ],
+    "purchase_ids": [],
+    "line_ids": [
+      13663
+    ],
+    "product_id": [
+      9743,
+      "EQUIPMENT"
+    ],
+    "state": "in_progress",
+    "state_blanket_order": "in_progress",
+    "is_quantity_copy": "copy",
+    "currency_id": [
+      12,
+      "IDR"
+    ],
+    "__last_update": "2026-06-26 10:54:28",
+    "display_name": "TE04321",
+    "create_uid": [
+      68,
+      "PROCUREMENT SPV"
+    ],
+    "create_date": "2026-06-26 10:53:36",
+    "write_uid": [
+      68,
+      "PROCUREMENT SPV"
+    ],
+    "write_date": "2026-06-26 10:54:28",
+    "warehouse_id": [
+      1,
+      "FOOM"
+    ],
+    "picking_type_id": [
+      444,
+      "WH RMPM: Receipts"
+    ],
+    "procurement_group_id": false,
+    "purchase_request_id": [
+      4370,
+      "PR04363"
+    ],
+    "account_analytic_id": false,
+    "analytic_tag_ids": [],
+    "estimated_cost": 2704792.5,
+    "documents_ids": [],
+    "payment_term_id": [
+      35,
+      "30 Days"
+    ],
+    "purchase_analytic_ids": [
+      4549
+    ],
+    "x_studio_po_status": false,
+    "x_studio_related_field_x1IZd": false,
+    "x_studio_payment_status": false,
+    "x_studio_related_field_RuZp7": false,
+    "x_studio_objectivepurpose": "kebutuhan untuk WTP gedung G2 dan G5",
+    "x_studio_project_event": false,
+    "x_studio_objective_purpose": "kebutuhan untuk WTP gedung G2 dan G5"
+  },
+  {
+    "id": 4142,
+    "activity_ids": [],
+    "activity_state": false,
+    "activity_user_id": false,
+    "activity_type_id": false,
+    "activity_type_icon": false,
+    "activity_date_deadline": false,
+    "my_activity_date_deadline": false,
+    "activity_summary": false,
+    "activity_exception_decoration": false,
+    "activity_exception_icon": false,
+    "activity_calendar_event_id": false,
+    "message_is_follower": false,
+    "message_follower_ids": [
+      11192992
+    ],
+    "message_partner_ids": [
+      19552
+    ],
+    "message_ids": [
+      19013768,
+      19013556,
+      19013284,
+      19013241,
+      19013240,
+      19013230,
+      19013164
+    ],
+    "has_message": true,
+    "message_unread": false,
+    "message_unread_counter": 0,
+    "message_needaction": false,
+    "message_needaction_counter": 0,
+    "message_has_error": false,
+    "message_has_error_counter": 0,
+    "message_attachment_count": 0,
+    "message_main_attachment_id": false,
+    "website_message_ids": [
+      19013768,
+      19013284
+    ],
+    "message_has_sms_error": false,
+    "name": "TE04316",
+    "origin": "PR04418",
+    "order_count": 0,
+    "vendor_id": [
+      124725,
+      "PT SUARA KITA SAMA"
+    ],
+    "type_id": [
+      2,
+      "Call for Tender"
+    ],
+    "ordering_date": "2026-06-26",
+    "date_end": "2026-07-03 06:11:01",
+    "schedule_date": "2026-07-10",
+    "user_id": [
+      20,
+      "ADMIN MARKETING/RETAIL"
+    ],
+    "description": "<p><br></p>",
+    "company_id": [
+      1,
+      "PT FOOM LAB GLOBAL"
+    ],
+    "purchase_ids": [],
+    "line_ids": [
+      13662
+    ],
+    "product_id": [
+      4291,
+      "MEDIA PLACEMENT"
+    ],
+    "state": "in_progress",
+    "state_blanket_order": "in_progress",
+    "is_quantity_copy": "copy",
+    "currency_id": [
+      12,
+      "IDR"
+    ],
+    "__last_update": "2026-06-26 06:12:45",
+    "display_name": "TE04316",
+    "create_uid": [
+      68,
+      "PROCUREMENT SPV"
+    ],
+    "create_date": "2026-06-26 06:10:54",
+    "write_uid": [
+      68,
+      "PROCUREMENT SPV"
+    ],
+    "write_date": "2026-06-26 06:12:45",
+    "warehouse_id": [
+      1,
+      "FOOM"
+    ],
+    "picking_type_id": [
+      571,
+      "PANGLIMA POLIM 2: Receipts PGPL2/Digital Marketing"
+    ],
+    "procurement_group_id": false,
+    "purchase_request_id": [
+      4425,
+      "PR04418"
+    ],
+    "account_analytic_id": false,
+    "analytic_tag_ids": [],
+    "estimated_cost": 45412500,
+    "documents_ids": [],
+    "payment_term_id": [
+      1,
+      "Immediate Payment"
+    ],
+    "purchase_analytic_ids": [
+      4604
+    ],
+    "x_studio_po_status": false,
+    "x_studio_related_field_x1IZd": false,
+    "x_studio_payment_status": false,
+    "x_studio_related_field_RuZp7": false,
+    "x_studio_objectivepurpose": "Payment Virality Threads & X - PT Suara Kita Sama",
+    "x_studio_project_event": "Payment Virality Threads & X - PT Suara Kita Sama",
+    "x_studio_objective_purpose": "Payment Virality Threads & X - PT Suara Kita Sama"
+  },
+  {
+    "id": 4141,
+    "activity_ids": [],
+    "activity_state": false,
+    "activity_user_id": false,
+    "activity_type_id": false,
+    "activity_type_icon": false,
+    "activity_date_deadline": false,
+    "my_activity_date_deadline": false,
+    "activity_summary": false,
+    "activity_exception_decoration": false,
+    "activity_exception_icon": false,
+    "activity_calendar_event_id": false,
+    "message_is_follower": false,
+    "message_follower_ids": [
+      11191909
+    ],
+    "message_partner_ids": [
+      19552
+    ],
+    "message_ids": [
+      19024752,
+      19024748,
+      19024747,
+      19023630,
+      19023619,
+      19023613,
+      19023607,
+      19023600,
+      19023521,
+      19023511,
+      19023508,
+      19023503,
+      19023498,
+      19013493,
+      19013472,
+      19013471,
+      19011781,
+      19011714,
+      19011713,
+      19011705,
+      19011537,
+      19011326
+    ],
+    "has_message": true,
+    "message_unread": false,
+    "message_unread_counter": 0,
+    "message_needaction": false,
+    "message_needaction_counter": 0,
+    "message_has_error": false,
+    "message_has_error_counter": 0,
+    "message_attachment_count": 0,
+    "message_main_attachment_id": false,
+    "website_message_ids": [
+      19011713
+    ],
+    "message_has_sms_error": false,
+    "name": "TE04322",
+    "origin": "PR04419",
+    "order_count": 0,
+    "vendor_id": [
+      124725,
+      "PT SUARA KITA SAMA"
+    ],
+    "type_id": [
+      2,
+      "Call for Tender"
+    ],
+    "ordering_date": "2026-06-26",
+    "date_end": "2026-07-03 05:01:34",
+    "schedule_date": "2026-07-10",
+    "user_id": [
+      20,
+      "ADMIN MARKETING/RETAIL"
+    ],
+    "description": "<p><br></p>",
+    "company_id": [
+      1,
+      "PT FOOM LAB GLOBAL"
+    ],
+    "purchase_ids": [],
+    "line_ids": [
+      13661
+    ],
+    "product_id": [
+      4291,
+      "MEDIA PLACEMENT"
+    ],
+    "state": "in_progress",
+    "state_blanket_order": "in_progress",
+    "is_quantity_copy": "copy",
+    "currency_id": [
+      12,
+      "IDR"
+    ],
+    "__last_update": "2026-06-26 11:07:30",
+    "display_name": "TE04322",
+    "create_uid": [
+      68,
+      "PROCUREMENT SPV"
+    ],
+    "create_date": "2026-06-26 04:57:11",
+    "write_uid": [
+      68,
+      "PROCUREMENT SPV"
+    ],
+    "write_date": "2026-06-26 11:07:30",
+    "warehouse_id": [
+      1,
+      "FOOM"
+    ],
+    "picking_type_id": [
+      571,
+      "PANGLIMA POLIM 2: Receipts PGPL2/Digital Marketing"
+    ],
+    "procurement_group_id": false,
+    "purchase_request_id": [
+      4426,
+      "PR04419"
+    ],
+    "account_analytic_id": false,
+    "analytic_tag_ids": [],
+    "estimated_cost": 1607143,
+    "documents_ids": [],
+    "payment_term_id": [
+      1,
+      "Immediate Payment"
+    ],
+    "purchase_analytic_ids": [
+      4605
+    ],
+    "x_studio_po_status": false,
+    "x_studio_related_field_x1IZd": false,
+    "x_studio_payment_status": false,
+    "x_studio_related_field_RuZp7": false,
+    "x_studio_objectivepurpose": "Payment UGC Threads - PT Suara Kita Sama",
+    "x_studio_project_event": "Payment UGC Threads - PT Suara Kita Sama",
+    "x_studio_objective_purpose": "Payment UGC Threads - PT Suara Kita Sama"
+  }
+]

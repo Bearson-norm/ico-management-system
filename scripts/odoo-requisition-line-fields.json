@@ -1,0 +1,126 @@
+{
+  "product_id": {
+    "type": "many2one",
+    "string": "Product"
+  },
+  "product_uom_id": {
+    "type": "many2one",
+    "string": "Product Unit of Measure"
+  },
+  "product_uom_category_id": {
+    "type": "many2one",
+    "string": "Category"
+  },
+  "product_qty": {
+    "type": "float",
+    "string": "Quantity"
+  },
+  "product_description_variants": {
+    "type": "char",
+    "string": "Custom Description"
+  },
+  "price_unit": {
+    "type": "float",
+    "string": "Unit Price"
+  },
+  "qty_ordered": {
+    "type": "float",
+    "string": "Ordered Quantities"
+  },
+  "requisition_id": {
+    "type": "many2one",
+    "string": "Purchase Agreement"
+  },
+  "company_id": {
+    "type": "many2one",
+    "string": "Company"
+  },
+  "account_analytic_id": {
+    "type": "many2one",
+    "string": "Analytic Account"
+  },
+  "analytic_tag_ids": {
+    "type": "many2many",
+    "string": "Analytic Tags"
+  },
+  "schedule_date": {
+    "type": "date",
+    "string": "Scheduled Date"
+  },
+  "supplier_info_ids": {
+    "type": "one2many",
+    "string": "Supplier Info"
+  },
+  "id": {
+    "type": "integer",
+    "string": "ID"
+  },
+  "__last_update": {
+    "type": "datetime",
+    "string": "Last Modified on"
+  },
+  "display_name": {
+    "type": "char",
+    "string": "Display Name"
+  },
+  "create_uid": {
+    "type": "many2one",
+    "string": "Created by"
+  },
+  "create_date": {
+    "type": "datetime",
+    "string": "Created on"
+  },
+  "write_uid": {
+    "type": "many2one",
+    "string": "Last Updated by"
+  },
+  "write_date": {
+    "type": "datetime",
+    "string": "Last Updated on"
+  },
+  "move_dest_id": {
+    "type": "many2one",
+    "string": "Downstream Move"
+  },
+  "subtotal": {
+    "type": "float",
+    "string": "Subtotal"
+  },
+  "reserved_amount": {
+    "type": "float",
+    "string": "Reserved Amount"
+  },
+  "remain_amount": {
+    "type": "float",
+    "string": "Balance Amount"
+  },
+  "current_amount": {
+    "type": "float",
+    "string": "Remaining Amount"
+  },
+  "series_id": {
+    "type": "many2one",
+    "string": "Series"
+  },
+  "tag_id": {
+    "type": "many2one",
+    "string": "Tags"
+  },
+  "group_id": {
+    "type": "many2one",
+    "string": "Group"
+  },
+  "budget_post_id": {
+    "type": "many2one",
+    "string": "Budget"
+  },
+  "is_purchase": {
+    "type": "boolean",
+    "string": "Is Purchase"
+  },
+  "analytic_group_id": {
+    "type": "many2one",
+    "string": "Analytic Group"
+  }
+}

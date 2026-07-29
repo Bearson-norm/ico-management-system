@@ -1,0 +1,2430 @@
+[
+  {
+    "id": 4446,
+    "nomorPr": "PR04439",
+    "status": "to_approve",
+    "tanggalDibuat": "2026-06-26 11:13:55",
+    "deskripsi": "Kebutuhan part modikasi cellophane untuk new product (Cartridge Bray) ",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": null,
+        "namaBarang": null,
+        "deskripsiBarang": "STARWHEEL BOX CARTRIDGE",
+        "qty": 1
+      }
+    ]
+  },
+  {
+    "id": 4439,
+    "nomorPr": "PR04432",
+    "status": "to_approve",
+    "tanggalDibuat": "2026-06-24 15:44:05",
+    "deskripsi": "Untuk Part Mesin Blister Pod X Gedung G5",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": null,
+        "namaBarang": null,
+        "deskripsiBarang": "Shaft Blister Pod X",
+        "qty": 3
+      }
+    ]
+  },
+  {
+    "id": 4433,
+    "nomorPr": "PR04426",
+    "status": "approved",
+    "tanggalDibuat": "2026-06-24 05:11:35",
+    "deskripsi": "consumabel part repeat order",
+    "totalItems": 4,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Kain Lap Majun",
+        "qty": 20
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Mini Hot Gun Heat Gun Low Watt 300W Electric Alat Pemanas Multifungsi - Hotgun hitam",
+        "qty": 10
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Mata batu gurinda gerinda grinda WD poles asah 4x6 tebal 4 inchi ASLI",
+        "qty": 20
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "ISKU Mata Gurinda Batu Gerinda Potong Besi stain less Cutting Wheel - 25pcs",
+        "qty": 4
+      }
+    ]
+  },
+  {
+    "id": 4427,
+    "nomorPr": "PR04420",
+    "status": "approved",
+    "tanggalDibuat": "2026-06-23 10:24:51",
+    "deskripsi": "Untuk Perbaikan mesin coding date line cartridge G5",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": null,
+        "namaBarang": null,
+        "deskripsiBarang": "SERVIS MESIN T JET 1 PRO",
+        "qty": 1
+      }
+    ]
+  },
+  {
+    "id": 4370,
+    "nomorPr": "PR04363",
+    "status": "approved",
+    "tanggalDibuat": "2026-06-18 08:30:27",
+    "deskripsi": "kebutuhan untuk WTP gedung G2 dan G5",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 9743,
+        "namaBarang": "EQUIPMENT",
+        "deskripsiBarang": "TABUNG FILTER AIR 1054 FRP NANOTEC EUGENTACH Bahan Fiber Kapasitas 1000lt/jam Tinggi 1.5m Diameter 10 inchi Kepala 3 way Strainer Atas dan Bawah Seal Karet - NATURAL",
+        "qty": 3
+      }
+    ]
+  },
+  {
+    "id": 4344,
+    "nomorPr": "PR04337",
+    "status": "approved",
+    "tanggalDibuat": "2026-06-13 05:23:04",
+    "deskripsi": "tinta catridge kebutuhan produksi (Repeat order)",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "CARTRIDGE SOLVENTBASE BLACK",
+        "qty": 15
+      }
+    ]
+  },
+  {
+    "id": 4334,
+    "nomorPr": "PR04327",
+    "status": "approved",
+    "tanggalDibuat": "2026-06-11 08:16:05",
+    "deskripsi": "Kebutuhan exhaust mesin compressor G5 ",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": null,
+        "namaBarang": null,
+        "deskripsiBarang": "JUAL PAKET AXIAL PORTABLE VENTILATOR BLOWER 8 INCH + DUCT HOSE 15mtr",
+        "qty": 1
+      }
+    ]
+  },
+  {
+    "id": 4329,
+    "nomorPr": "PR04322",
+    "status": "approved",
+    "tanggalDibuat": "2026-06-11 02:59:32",
+    "deskripsi": "kebutuhan mixing untuk scanner untuk stock",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 9743,
+        "namaBarang": "EQUIPMENT",
+        "deskripsiBarang": "Scanner Kassen  Type : KS-605",
+        "qty": 2
+      }
+    ]
+  },
+  {
+    "id": 4310,
+    "nomorPr": "PR04303",
+    "status": "approved",
+    "tanggalDibuat": "2026-06-10 04:28:36",
+    "deskripsi": "Keperluan mesh conveyor mesin shrink tunnel line liquid",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Conveyor Wire Mesh Shrink Tunnel Machine BS-3020A 248 x 30 cm",
+        "qty": 1
+      }
+    ]
+  },
+  {
+    "id": 4309,
+    "nomorPr": "PR04302",
+    "status": "approved",
+    "tanggalDibuat": "2026-06-10 04:20:13",
+    "deskripsi": "Alat press bearing (kebutuhan maintenance)",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 9743,
+        "namaBarang": "EQUIPMENT",
+        "deskripsiBarang": "Alat Pres Hidrolik 20 Ton Serbaguna Hand Press Bearing Kruk As Bongkar Pasang Stang Seher Max Stroke 13cm Diameter 37mm - FULL SET",
+        "qty": 1
+      }
+    ]
+  },
+  {
+    "id": 4304,
+    "nomorPr": "PR04297",
+    "status": "approved",
+    "tanggalDibuat": "2026-06-10 03:03:01",
+    "deskripsi": "Sparepart Perawatan Kompresor Gedung G5 (Maintenance)",
+    "totalItems": 3,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Oil Filter MCA15008",
+        "qty": 2
+      },
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "Oil Separator MCA 15011",
+        "qty": 2
+      },
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "Oil 10 Liter CR-46",
+        "qty": 2
+      }
+    ]
+  },
+  {
+    "id": 4302,
+    "nomorPr": "PR04295",
+    "status": "approved",
+    "tanggalDibuat": "2026-06-09 10:26:55",
+    "deskripsi": "kebutuhan produksi untuk print timbangan qty RM",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": null,
+        "namaBarang": null,
+        "deskripsiBarang": "stiker thermal ukuran  50x30",
+        "qty": 200000
+      }
+    ]
+  },
+  {
+    "id": 4285,
+    "nomorPr": "PR04278",
+    "status": "approved",
+    "tanggalDibuat": "2026-06-08 12:02:17",
+    "deskripsi": "Kebutuhan Untuk Sparepart Conveyor di Mesin Sticker (MTC) (ACAL)",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Sponge belt KP-35 (datar)",
+        "qty": 2
+      }
+    ]
+  },
+  {
+    "id": 4283,
+    "nomorPr": "PR04276",
+    "status": "approved",
+    "tanggalDibuat": "2026-06-08 11:44:19",
+    "deskripsi": "Sparepart Mesin Cellophane Line Cartridge (urgent)",
+    "totalItems": 6,
+    "items": [
+      {
+        "productId": 7704,
+        "namaBarang": "LAB CONSUMABLE",
+        "deskripsiBarang": "Per Ø1.5 x 18",
+        "qty": 9
+      },
+      {
+        "productId": 7704,
+        "namaBarang": "LAB CONSUMABLE",
+        "deskripsiBarang": "Sprocket 24z",
+        "qty": 2
+      },
+      {
+        "productId": 7704,
+        "namaBarang": "LAB CONSUMABLE",
+        "deskripsiBarang": "Sprocket 22z",
+        "qty": 2
+      },
+      {
+        "productId": 7704,
+        "namaBarang": "LAB CONSUMABLE",
+        "deskripsiBarang": "Sprocket 16z",
+        "qty": 2
+      },
+      {
+        "productId": 7704,
+        "namaBarang": "LAB CONSUMABLE",
+        "deskripsiBarang": "Timing Belt",
+        "qty": 2
+      },
+      {
+        "productId": 7704,
+        "namaBarang": "LAB CONSUMABLE",
+        "deskripsiBarang": "Roll Karet Ø50 x 400",
+        "qty": 1
+      }
+    ]
+  },
+  {
+    "id": 4278,
+    "nomorPr": "PR04271",
+    "status": "approved",
+    "tanggalDibuat": "2026-06-08 11:18:49",
+    "deskripsi": "consumabel part repeat order",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "LAP KANEBO JUMBO 66 x 43 CHAMOIS KAIN LAP MOBIL MOTOR SERBAGUNA",
+        "qty": 20
+      }
+    ]
+  },
+  {
+    "id": 4277,
+    "nomorPr": "PR04270",
+    "status": "approved",
+    "tanggalDibuat": "2026-06-08 11:17:54",
+    "deskripsi": "stiker kebutuhan mixing (repeat order)",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "Sticker Foom Segel Sudah Dibuka",
+        "qty": 10000
+      }
+    ]
+  },
+  {
+    "id": 4275,
+    "nomorPr": "PR04268",
+    "status": "approved",
+    "tanggalDibuat": "2026-06-08 10:36:28",
+    "deskripsi": "kebutuhan produksi untuk timbangan RM",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 9743,
+        "namaBarang": "EQUIPMENT",
+        "deskripsiBarang": "BENCHSCALE JWI 770P",
+        "qty": 1
+      }
+    ]
+  },
+  {
+    "id": 4263,
+    "nomorPr": "PR04256",
+    "status": "approved",
+    "tanggalDibuat": "2026-06-08 01:46:47",
+    "deskripsi": "kebutuhan produksi untuk timbangan 15 ml",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 9743,
+        "namaBarang": "EQUIPMENT",
+        "deskripsiBarang": "BENCH SCALE T7",
+        "qty": 1
+      }
+    ]
+  },
+  {
+    "id": 4262,
+    "nomorPr": "PR04255",
+    "status": "approved",
+    "tanggalDibuat": "2026-06-08 01:37:19",
+    "deskripsi": "kebutuhan produksi untuk 15ml karton sealer",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7704,
+        "namaBarang": "LAB CONSUMABLE",
+        "deskripsiBarang": "SEMI AUTOMATIC CARTON SEALER MACHINE",
+        "qty": 1
+      }
+    ]
+  },
+  {
+    "id": 4244,
+    "nomorPr": "PR04237",
+    "status": "approved",
+    "tanggalDibuat": "2026-06-04 09:32:17",
+    "deskripsi": "Kebutuhan part mesin stiker dan conveyor stiker (Repeat Order)",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Belt P25-24/0N + Busa Biru Hitam 8mm + K6 Polos Hijau BSC - Uk. 120 x 760 mm Endless",
+        "qty": 3
+      }
+    ]
+  },
+  {
+    "id": 4234,
+    "nomorPr": "PR04227",
+    "status": "approved",
+    "tanggalDibuat": "2026-06-03 09:27:07",
+    "deskripsi": "kebutuhan produksi  (repeat order)",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "ALKOHOL ISOPROPYL 99% 5 LITER",
+        "qty": 10
+      }
+    ]
+  },
+  {
+    "id": 4232,
+    "nomorPr": "PR04225",
+    "status": "approved",
+    "tanggalDibuat": "2026-06-03 08:37:12",
+    "deskripsi": "Untuk CCTV D2 ",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7501,
+        "namaBarang": "FACTORY UTILITIES",
+        "deskripsiBarang": "PAKET KAMERA CCTV 8 Channel dan Jasa Instalasi",
+        "qty": 8
+      }
+    ]
+  },
+  {
+    "id": 4206,
+    "nomorPr": "PR04199",
+    "status": "draft",
+    "tanggalDibuat": "2026-05-30 05:49:19",
+    "deskripsi": "kebutuhan maintenance dan consumable part",
+    "totalItems": 14,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "TaffHOME Smart Door Lock Gagang Pintu Rumah Kunci Elektrik Fingerprint Card Alarm TaffHOME Smart Door Home - XR24",
+        "qty": 1
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "SARUNG TANGAN LAS Kulit LEATHER GLOVE SAJASE Panjang 14 inch Merah",
+        "qty": 4
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Sarung tangan kerja Doting bintik safety 1 pasang (2 Pcs)",
+        "qty": 20
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "fisher gypsum dan skrup fisher kupu kupu + baut2inc - fiser+baut(100)",
+        "qty": 1
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "STOP KONTAK BROCO 2 3 4 5 6 LUBANG / TERMINAL / COLOKAN LISTRIK BROCO - 5 LUBANG",
+        "qty": 10
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "STOP KONTAK BROCO 2 3 4 5 6 LUBANG / TERMINAL / COLOKAN LISTRIK BROCO - 3 LUBANG",
+        "qty": 15
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "STOP KONTAK BROCO 2 3 4 5 6 LUBANG / TERMINAL / COLOKAN LISTRIK BROCO - 2 LUBANG",
+        "qty": 15
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "LEM BAUT TAHAN PANAS DAN GETARAN LOCTITE 243 10ML NON PERMANEN",
+        "qty": 5
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "REDUCER 8 X 6MM SLIP LOCK PNEUMATIC UNTUK SELANG PU 8MM KE 6 MM",
+        "qty": 15
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Fitting Lurus Reduce Type PG Selang 8mm x 12mm",
+        "qty": 15
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Fitting Y Pneumatic PW12-8",
+        "qty": 15
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "BAUT L TANAM M5x08",
+        "qty": 50
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "BAUT L TANAM M5x10",
+        "qty": 50
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "JOLLY BOX RABBIT 0333 / KOTAK SPAREPART / SPAREPART CASE",
+        "qty": 30
+      }
+    ]
+  },
+  {
+    "id": 4205,
+    "nomorPr": "PR04198",
+    "status": "approved",
+    "tanggalDibuat": "2026-05-30 03:46:37",
+    "deskripsi": "Kebutuhan stiker layar device pod switch dan switch prime (repeat order)",
+    "totalItems": 2,
+    "items": [
+      {
+        "productId": 7503,
+        "namaBarang": "OVERHEADS",
+        "deskripsiBarang": "KPL-24.5 10 CLEAR BLANK (PP CLEAR 50 R) TANPA VARNISH, GLUE KILLED, DIE KHUSUS UKURAN 11 X 15 MM",
+        "qty": 100000
+      },
+      {
+        "productId": 7503,
+        "namaBarang": "OVERHEADS",
+        "deskripsiBarang": "KPL-24.5 10 CLEAR BLANK (PP CLEAR 50 R) TANPA VARNISH, GLUE KILLED, DIE KHUSUS UKURAN 10 X 22,5 MM",
+        "qty": 100000
+      }
+    ]
+  },
+  {
+    "id": 4204,
+    "nomorPr": "PR04197",
+    "status": "approved",
+    "tanggalDibuat": "2026-05-30 03:43:03",
+    "deskripsi": "Penambahan compressor backup line liquid include dryer ",
+    "totalItems": 2,
+    "items": [
+      {
+        "productId": 9743,
+        "namaBarang": "EQUIPMENT",
+        "deskripsiBarang": "Jasa instalasi pipa jalur looping angin",
+        "qty": 1
+      },
+      {
+        "productId": 9743,
+        "namaBarang": "EQUIPMENT",
+        "deskripsiBarang": "Paket  Compressor Shark Screw Open Type 5,5 PMIP23 & AIR DRYER",
+        "qty": 1
+      }
+    ]
+  },
+  {
+    "id": 4203,
+    "nomorPr": "PR04196",
+    "status": "approved",
+    "tanggalDibuat": "2026-05-29 10:57:08",
+    "deskripsi": "kebutuhan produksi semua area untuk perapihan kabel dan stock stop kontak (repeat order)",
+    "totalItems": 4,
+    "items": [
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "Broco Stopkontak isi 5",
+        "qty": 5
+      },
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "Broco Stopkontak isi 2",
+        "qty": 10
+      },
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "Broco Stopkontak isi 3",
+        "qty": 10
+      },
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "Kabel Duck NISO CURVE 20 x 70",
+        "qty": 100
+      }
+    ]
+  },
+  {
+    "id": 4186,
+    "nomorPr": "PR04179",
+    "status": "approved",
+    "tanggalDibuat": "2026-05-26 02:58:21",
+    "deskripsi": "kebutuhan maintenance dan consumable part (repeat order)",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "Sarung tangan kerja Doting bintik safety 1 pasang (2 Pcs)",
+        "qty": 150
+      }
+    ]
+  },
+  {
+    "id": 4182,
+    "nomorPr": "PR04175",
+    "status": "approved",
+    "tanggalDibuat": "2026-05-22 07:54:56",
+    "deskripsi": "Untuk pembuatan part2 kecil mesin produksi",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 9743,
+        "namaBarang": "EQUIPMENT",
+        "deskripsiBarang": "Bambulab A1 Mini High Speed Silent Driver Auto Calibration 3D Printer Linear Rail - Brand New Stock",
+        "qty": 1
+      }
+    ]
+  },
+  {
+    "id": 4181,
+    "nomorPr": "PR04174",
+    "status": "approved",
+    "tanggalDibuat": "2026-05-22 07:44:23",
+    "deskripsi": "Untuk visualisasi dashboard MES ",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": null,
+        "namaBarang": null,
+        "deskripsiBarang": "Xiaomi Mi TV Stick Smart TV Android - FHD",
+        "qty": 1
+      }
+    ]
+  },
+  {
+    "id": 4174,
+    "nomorPr": "PR04167",
+    "status": "approved",
+    "tanggalDibuat": "2026-05-21 10:05:10",
+    "deskripsi": "Kebutuhan untuk pintu seluruh gedung (repeat order)\n",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Door Closer Otomatis",
+        "qty": 10
+      }
+    ]
+  },
+  {
+    "id": 4170,
+    "nomorPr": "PR04163",
+    "status": "approved",
+    "tanggalDibuat": "2026-05-20 12:56:43",
+    "deskripsi": "kebutuhan print head untuk liquid 15 ml",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7503,
+        "namaBarang": "OVERHEADS",
+        "deskripsiBarang": "INKJET MX PLUS",
+        "qty": 1
+      }
+    ]
+  },
+  {
+    "id": 4164,
+    "nomorPr": "PR04157",
+    "status": "approved",
+    "tanggalDibuat": "2026-05-20 04:05:17",
+    "deskripsi": "Consumable Part (Repeat Order)",
+    "totalItems": 2,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Kawat Las Nikko RD-260 ukuran @ 2.6 x 350 mm (5kg)",
+        "qty": 3
+      },
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "Baut Mur Washer Ring Set Bulat Hex M2 M3 M4 Paket 1080 pcs Kunci L Stainless SS 304 Hex Head Socket Screw Nut Washer",
+        "qty": 2
+      }
+    ]
+  },
+  {
+    "id": 4163,
+    "nomorPr": "PR04156",
+    "status": "approved",
+    "tanggalDibuat": "2026-05-20 04:02:50",
+    "deskripsi": "stock penggunaan consumable part (repeat order)",
+    "totalItems": 5,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Baut L + mur+ 2 ring plat stainless 304 m5x30(full drat) anti karat",
+        "qty": 100
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Baut L + mur Stainless 304 m6x30 (full drat) anti karat",
+        "qty": 100
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "baut L+mur+ring plat stainless 304 , m8x30",
+        "qty": 100
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Baut+mur+ring plat stainless m8x30",
+        "qty": 100
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Baut+mur+ring plat+ring Ver stainless 304 M6x30, anti karat",
+        "qty": 100
+      }
+    ]
+  },
+  {
+    "id": 4158,
+    "nomorPr": "PR04151",
+    "status": "approved",
+    "tanggalDibuat": "2026-05-19 14:18:41",
+    "deskripsi": "Kebutuhan Pneumatic Part (Consumable Part and Repeat Order) ",
+    "totalItems": 7,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Fitting Y Pneumatic Connector sama selang Nepel HPC - 6 x 6 x 6mm",
+        "qty": 20
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Fitting Y Pneumatic Connector sama selang Nepel HPC - 8 x 8 x 8mm",
+        "qty": 20
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "MSL Fitting Pneumatic Speed Control Pneumatic - SL8-03",
+        "qty": 25
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "MSL Fitting Pneumatic Speed Control Pneumatic - SL6-03",
+        "qty": 25
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Fitting Lurus PU Pneumatic Slip Lock Selang MPU - 12mm",
+        "qty": 25
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Fitting Lurus PU Pneumatic Slip Lock Selang MPU - 8mm",
+        "qty": 25
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Fitting Lurus PU Pneumatic Slip Lock Selang MPU - 6mm",
+        "qty": 25
+      }
+    ]
+  },
+  {
+    "id": 4153,
+    "nomorPr": "PR04146",
+    "status": "approved",
+    "tanggalDibuat": "2026-05-18 11:10:45",
+    "deskripsi": "Full Machine Automation Line Liquid and vulnerable part ",
+    "totalItems": 32,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Belt qr code labeling machine",
+        "qty": 2
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Covering sponge",
+        "qty": 2
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "chain plate",
+        "qty": 20
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "vacuum generator",
+        "qty": 3
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "solenoid valve",
+        "qty": 2
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Discharge port belt",
+        "qty": 2
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Suction cup",
+        "qty": 20
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Ink cartridge",
+        "qty": 10
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "SICK Fiber Optic(LL3-TB01)&Amplifier(WLL180T-P434",
+        "qty": 2
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Overlay wheel",
+        "qty": 1
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Synchronous belt",
+        "qty": 1
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "ceramic pump",
+        "qty": 1
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Filling machine,Display and control human-machine interface,SK-102QS",
+        "qty": 1
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "servo motor for capping head",
+        "qty": 2
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Lid remover",
+        "qty": 2
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Capping station cover spring",
+        "qty": 12
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Inlet and outlet springs of oil injection pump",
+        "qty": 8
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Oil pump inlet and outlet sealing rings",
+        "qty": 24
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Sealing ring of one-way valve for oil injection pump",
+        "qty": 16
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "The conversion part for different sizes bottle",
+        "qty": 1
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "SL51119-7 Sensors are designated to use brand SICK，3 position",
+        "qty": 3
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "SL51119-2 Auto conveyor belt: length 2meters",
+        "qty": 1
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "JBL-TB609 QR coden labeling machine",
+        "qty": 1
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "SL51119-6  Rotating flipping mechanisme",
+        "qty": 1
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "JBL-ZH-80 Small box packaging machine",
+        "qty": 1
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "SL51119-5 Adjust the side with has tax invoice sticker to a fixed position",
+        "qty": 1
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "SL51119-4 Device:to knock down the bottles",
+        "qty": 1
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "SL51119-2 Auto conveyor belt: length 5meters, for manually putting tax stamp",
+        "qty": 1
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "SL51119-3 Automatic feeding round tabel",
+        "qty": 2
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "JBL-PM710 Date digital printer head (FREE ITEM)",
+        "qty": 2
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "SL51119-1 Camera Inspection of label printing errors",
+        "qty": 1
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "JBL-620 Sorting bottle machine, E-liquid oil filling all in one machine-Install a counter, Labeling machine-Install a counter, and vibrating tray-2pcs",
+        "qty": 1
+      }
+    ]
+  },
+  {
+    "id": 4152,
+    "nomorPr": "PR04145",
+    "status": "approved",
+    "tanggalDibuat": "2026-05-18 08:41:23",
+    "deskripsi": "kebutuhan nitrogen untuk mixing (repeat order)",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7503,
+        "namaBarang": "OVERHEADS",
+        "deskripsiBarang": "NItrogen UPH",
+        "qty": 2
+      }
+    ]
+  },
+  {
+    "id": 4151,
+    "nomorPr": "PR04144",
+    "status": "approved",
+    "tanggalDibuat": "2026-05-18 08:30:15",
+    "deskripsi": "kebutuhan produksi untuk pompa mixing PG dan VG",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "WIPRO Pompa Oli Minyak Manual Pump Bahan PVC ORIGINAL TERBAIK",
+        "qty": 5
+      }
+    ]
+  },
+  {
+    "id": 4150,
+    "nomorPr": "PR04143",
+    "status": "draft",
+    "tanggalDibuat": "2026-05-18 08:02:44",
+    "deskripsi": "UHMW-PE 1000 GREEN Untuk bantalan perforasi mesin blister line cartridge",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": null,
+        "namaBarang": null,
+        "deskripsiBarang": "UHMW-PE 1000 GREEN",
+        "qty": 1
+      }
+    ]
+  },
+  {
+    "id": 4145,
+    "nomorPr": "PR04138",
+    "status": "approved",
+    "tanggalDibuat": "2026-05-16 03:09:49",
+    "deskripsi": "consumable part (repeat order)",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Kawat Las Nikko RD-260 ukuran @ 2.6 x 350 mm (5kg)",
+        "qty": 1
+      }
+    ]
+  },
+  {
+    "id": 4135,
+    "nomorPr": "PR04128",
+    "status": "approved",
+    "tanggalDibuat": "2026-05-13 10:28:31",
+    "deskripsi": "Sparepart mesin capping (MTC) (Repeat Order) \n",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Bearing LM12LUU. Dimension: 12x21x57mm",
+        "qty": 10
+      }
+    ]
+  },
+  {
+    "id": 4131,
+    "nomorPr": "PR04124",
+    "status": "approved",
+    "tanggalDibuat": "2026-05-13 08:41:09",
+    "deskripsi": "Kebutuhan IOT Engineer (repeat order) untuk pengukuran daya listrik gedung D2 dan F2",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "ESP32 DevkitC v4",
+        "qty": 5
+      }
+    ]
+  },
+  {
+    "id": 4118,
+    "nomorPr": "PR04111",
+    "status": "approved",
+    "tanggalDibuat": "2026-05-12 10:04:09",
+    "deskripsi": "consumable part (repeat order)",
+    "totalItems": 5,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Selang Pu 12 mm x 8 mm selang pneumatic ( POLYURHETANE ) harga 1 roll - Hitam, 100 M 1 Roll",
+        "qty": 1
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Kabel Tis Nylon Cable Ties High Quality 15cm 20cm 25cm 30cm 40cm - Putih - 4.6x400, Hitam",
+        "qty": 5
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Kabel Tis Nylon Cable Ties High Quality 15cm 20cm 25cm 30cm 40cm - Putih - 3.6x300, Hitam",
+        "qty": 5
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Kabel Tis Nylon Cable Ties High Quality 15cm 20cm 25cm 30cm 40cm - Putih - 2.5x150, Hitam",
+        "qty": 5
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Kabel Tis Nylon Cable Ties High Quality 15cm 20cm 25cm 30cm 40cm - Putih - 2.5x100, Hitam",
+        "qty": 5
+      }
+    ]
+  },
+  {
+    "id": 4117,
+    "nomorPr": "PR04110",
+    "status": "approved",
+    "tanggalDibuat": "2026-05-12 07:55:12",
+    "deskripsi": " Untuk AS caping line liquid (Repeat Order)",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "As Hardchrome dia 20 mm",
+        "qty": 200
+      }
+    ]
+  },
+  {
+    "id": 4113,
+    "nomorPr": "PR04106",
+    "status": "approved",
+    "tanggalDibuat": "2026-05-12 03:02:19",
+    "deskripsi": "consumabel part (repeat order)",
+    "totalItems": 3,
+    "items": [
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "SCHNEIDER MCB DOMAE 1P 25A",
+        "qty": 10
+      },
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "SCHNEIDER MCB DOMAE 1P 32A",
+        "qty": 10
+      },
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "SCHNEIDER MCB DOMAE 1P 16A",
+        "qty": 10
+      }
+    ]
+  },
+  {
+    "id": 4111,
+    "nomorPr": "PR04104",
+    "status": "approved",
+    "tanggalDibuat": "2026-05-12 02:50:53",
+    "deskripsi": "Kebutuhan perapihan kabel line device dan consumable part",
+    "totalItems": 2,
+    "items": [
+      {
+        "productId": 7501,
+        "namaBarang": "FACTORY UTILITIES",
+        "deskripsiBarang": "Duct Cable 50 x 100",
+        "qty": 55
+      },
+      {
+        "productId": 7501,
+        "namaBarang": "FACTORY UTILITIES",
+        "deskripsiBarang": "Kabel 3 x 2.5",
+        "qty": 1
+      }
+    ]
+  },
+  {
+    "id": 4109,
+    "nomorPr": "PR04102",
+    "status": "approved",
+    "tanggalDibuat": "2026-05-12 02:06:40",
+    "deskripsi": "kebutuhan sparepart untuk karton sealer",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Conveyor belt FXJ-5050AS (1548 x 50)",
+        "qty": 6
+      }
+    ]
+  },
+  {
+    "id": 4097,
+    "nomorPr": "PR04090",
+    "status": "approved",
+    "tanggalDibuat": "2026-05-11 02:50:41",
+    "deskripsi": "kebutuhan air WTP G1 (repeat order)",
+    "totalItems": 3,
+    "items": [
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "Pasir Silika Pasir Untuk Filter Air Pam / Sumur Kotor 25Kg Per Sak",
+        "qty": 3
+      },
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "Carbon Actived Filter Air / Karbon Aktif Procarb Isi 25 Kg",
+        "qty": 2
+      },
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "Resin Cation / Kation PUROLITE Softener untuk Filter Air C100-E (25kg)",
+        "qty": 3
+      }
+    ]
+  },
+  {
+    "id": 4091,
+    "nomorPr": "PR04084",
+    "status": "approved",
+    "tanggalDibuat": "2026-05-08 04:13:07",
+    "deskripsi": "sparepart stiker (urgent)",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Roll label axis KP-35",
+        "qty": 4
+      }
+    ]
+  },
+  {
+    "id": 4083,
+    "nomorPr": "PR04076",
+    "status": "approved",
+    "tanggalDibuat": "2026-05-07 09:17:02",
+    "deskripsi": "keranjang untuk kebutuhan all produksi (repeat order)",
+    "totalItems": 2,
+    "items": [
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "Shinpo Container Box CB 150 82.5 x 59.5 x 45.5 cm",
+        "qty": 10
+      },
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "Container Box Atari GreenLeaf 9929  P.60 x L.42 x T.46 cm",
+        "qty": 15
+      }
+    ]
+  },
+  {
+    "id": 4081,
+    "nomorPr": "PR04074",
+    "status": "approved",
+    "tanggalDibuat": "2026-05-07 08:09:27",
+    "deskripsi": "kebutuhan produksi consumable (repeat order) ,  pembersih coding",
+    "totalItems": 2,
+    "items": [
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "UNIVERSAL CLEANER",
+        "qty": 10
+      },
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "ALKOHOL ISOPROPYL 99% 5 LITER",
+        "qty": 12
+      }
+    ]
+  },
+  {
+    "id": 4079,
+    "nomorPr": "PR04072",
+    "status": "approved",
+    "tanggalDibuat": "2026-05-07 04:42:09",
+    "deskripsi": "kebutuhan produksi untuk menyambung stiker (repeat order)",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "Isolasi kertas 1\" lakban kertas PER DUS isi 120 rol",
+        "qty": 3
+      }
+    ]
+  },
+  {
+    "id": 4029,
+    "nomorPr": "PR04022",
+    "status": "approved",
+    "tanggalDibuat": "2026-04-29 08:24:01",
+    "deskripsi": "perbaikan lift produksi D7",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7497,
+        "namaBarang": "REPAIR AND MAINTENANCE FACTORY",
+        "deskripsiBarang": "PERBAIKAN LIFT BARANG PRODUKSI DI D7",
+        "qty": 1
+      }
+    ]
+  },
+  {
+    "id": 4024,
+    "nomorPr": "PR04017",
+    "status": "approved",
+    "tanggalDibuat": "2026-04-27 10:23:18",
+    "deskripsi": "Kebutuhan Mesin Blister Pod X, Blister Pod Y, Conveyor Mesin Authenticity Liquid dan Cartridge, kebutuhan pembersih grease, dan perapihan kabel",
+    "totalItems": 7,
+    "items": [
+      {
+        "productId": 7497,
+        "namaBarang": "REPAIR AND MAINTENANCE FACTORY",
+        "deskripsiBarang": "Disc Spring Washer M20 x T2.5",
+        "qty": 32
+      },
+      {
+        "productId": 7497,
+        "namaBarang": "REPAIR AND MAINTENANCE FACTORY",
+        "deskripsiBarang": "baut mur baja 12.9 M-8x50mm Full drat",
+        "qty": 50
+      },
+      {
+        "productId": 7497,
+        "namaBarang": "REPAIR AND MAINTENANCE FACTORY",
+        "deskripsiBarang": "Baut L Tanam M8x12",
+        "qty": 100
+      },
+      {
+        "productId": 7497,
+        "namaBarang": "REPAIR AND MAINTENANCE FACTORY",
+        "deskripsiBarang": "Cartridge Heater 220V - M10 X 100 400W",
+        "qty": 5
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Duct Cable TC 6",
+        "qty": 100
+      },
+      {
+        "productId": 7497,
+        "namaBarang": "REPAIR AND MAINTENANCE FACTORY",
+        "deskripsiBarang": "Ball Bearing SKF 61901 / 6901 - 2RS1/C3",
+        "qty": 10
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "CAIRAN PEMBERSIH OLI MINYAK GEMUK WATERBASE OIL GREASE CLEANER 5 LITER",
+        "qty": 5
+      }
+    ]
+  },
+  {
+    "id": 3997,
+    "nomorPr": "PR03990",
+    "status": "approved",
+    "tanggalDibuat": "2026-04-26 06:24:09",
+    "deskripsi": "Kebutuhan spare part blister DPP 80 - Line prefilled",
+    "totalItems": 3,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "As Drat Pendek Material S45C (Harden)",
+        "qty": 2
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "As Drat Panjang Material SKD61 (Harden)",
+        "qty": 4
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Molding Sealing 2x1",
+        "qty": 1
+      }
+    ]
+  },
+  {
+    "id": 3996,
+    "nomorPr": "PR03989",
+    "status": "approved",
+    "tanggalDibuat": "2026-04-25 08:18:50",
+    "deskripsi": "Sparepart mesin blister, filling, cek resistance dari Jinbaolian ",
+    "totalItems": 16,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "SL6422-10 (Heating plate upper sealing JBL 150)",
+        "qty": 1
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "SL6422-9 (Heating plate forming upper and lower JBL 150)",
+        "qty": 1
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "SL6422-8 ( Linear bearings with a diameter of 40 * 58 JBL-150)",
+        "qty": 16
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "SL6422-7 (main shaft bearing blister JBL-150)",
+        "qty": 6
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "SL6422-6 ( shaft sleeves JBL-150)",
+        "qty": 16
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "SL6422-5 ( cam shaft cutting JBL-150)",
+        "qty": 2
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "SL6422-4 (roller cutting JBL-150)",
+        "qty": 2
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "SL6422-3 ( cam blister JBL-150)",
+        "qty": 3
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "SL6422-2 (roller perforasi,forming, sealing blister JBL-150)",
+        "qty": 3
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Brushed magnetic pump (filling), equipped with a brushed motor, 0.3ml/rev, 1L/minute",
+        "qty": 5
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Compact cylinder (Spare part mesin roll lanyard)",
+        "qty": 3
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "mold for 150blister(JBL -150), one set for one product",
+        "qty": 1
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "ABS Tray, Custom sizing (CT POD E BRAY)",
+        "qty": 3
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Cylinder pnuematic (Sparepart Mesin blister DPP-120)",
+        "qty": 4
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Dotted cutting knife， size:56.55*18.07*0.73mm",
+        "qty": 30
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Dotted cutting knife， size:62.1*18*0.74mm",
+        "qty": 30
+      }
+    ]
+  },
+  {
+    "id": 3977,
+    "nomorPr": "PR03970",
+    "status": "approved",
+    "tanggalDibuat": "2026-04-24 08:17:38",
+    "deskripsi": "Modifikasi tray cartridge CT ultra (Kurnia Teknik)",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "Modifikasi tray cartridge CT ultra",
+        "qty": 2
+      }
+    ]
+  },
+  {
+    "id": 3967,
+    "nomorPr": "PR03960",
+    "status": "approved",
+    "tanggalDibuat": "2026-04-23 09:19:05",
+    "deskripsi": "Kebutuhan modifikasi fixture cek resistance cartridge ultra",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "MODIFIKASI TRAY FOR CARTRIDGE",
+        "qty": 2
+      }
+    ]
+  },
+  {
+    "id": 3885,
+    "nomorPr": "PR03878",
+    "status": "approved",
+    "tanggalDibuat": "2026-04-15 08:30:37",
+    "deskripsi": "Untuk kebutuhan layar laptop admin cartridge yg rusak",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 9743,
+        "namaBarang": "EQUIPMENT",
+        "deskripsiBarang": "LAYAR LED LCD ASUS VIVOBOOK 14X M1403Q M1403QA 14 INCH FHD+",
+        "qty": 1
+      }
+    ]
+  },
+  {
+    "id": 3872,
+    "nomorPr": "PR03865",
+    "status": "approved",
+    "tanggalDibuat": "2026-04-14 09:52:36",
+    "deskripsi": "Part mesin blister",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Top sealing blister (bronze)",
+        "qty": 1
+      }
+    ]
+  },
+  {
+    "id": 3867,
+    "nomorPr": "PR03860",
+    "status": "approved",
+    "tanggalDibuat": "2026-04-14 04:10:52",
+    "deskripsi": "Untuk tray mesin resistance testing",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "ABS Tray, Custom sizing",
+        "qty": 5
+      }
+    ]
+  },
+  {
+    "id": 3857,
+    "nomorPr": "PR03850",
+    "status": "approved",
+    "tanggalDibuat": "2026-04-11 11:04:22",
+    "deskripsi": "kebutuhan produksi untuk proses pengeprintan hasil timbangan",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "Thermal merk Otani",
+        "qty": 50
+      }
+    ]
+  },
+  {
+    "id": 3855,
+    "nomorPr": "PR03848",
+    "status": "approved",
+    "tanggalDibuat": "2026-04-11 03:50:34",
+    "deskripsi": "Untuk penimbangan PG dan VG",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": null,
+        "namaBarang": null,
+        "deskripsiBarang": "Timbangan lantai 1 ton Floor scale - CAS HDI uk 1mx1m cap 1 ton",
+        "qty": 1
+      }
+    ]
+  },
+  {
+    "id": 3848,
+    "nomorPr": "PR03841",
+    "status": "approved",
+    "tanggalDibuat": "2026-04-10 06:44:49",
+    "deskripsi": "consumable part (Repeat Order)",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Selang Pu 8 mm x 5 mm selang pneumatic 8mm ( POLYURHETANE ) harga 1 roll - Biru, 100 M 1 Roll",
+        "qty": 1
+      }
+    ]
+  },
+  {
+    "id": 3833,
+    "nomorPr": "PR03826",
+    "status": "approved",
+    "tanggalDibuat": "2026-04-07 15:34:29",
+    "deskripsi": "kebutuhan produksi repeat order",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "Carbon Ribbon DC  Type : Wax Ukuran : 110 mm x 300 m",
+        "qty": 100
+      }
+    ]
+  },
+  {
+    "id": 3805,
+    "nomorPr": "PR03798",
+    "status": "approved",
+    "tanggalDibuat": "2026-04-02 01:34:05",
+    "deskripsi": "sparepart blister",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Main shaft dan cam",
+        "qty": 2
+      }
+    ]
+  },
+  {
+    "id": 3801,
+    "nomorPr": "PR03794",
+    "status": "approved",
+    "tanggalDibuat": "2026-04-01 08:21:21",
+    "deskripsi": "Kebutuhan stiker layar device pod switch",
+    "totalItems": 2,
+    "items": [
+      {
+        "productId": 7503,
+        "namaBarang": "OVERHEADS",
+        "deskripsiBarang": "KPL-24.5 10 CLEAR BLANK (PP CLEAR 50 R) TANPA VARNISH, GLUE KILLED, DIE KHUSUS UKURAN 11 X 15 MM",
+        "qty": 100000
+      },
+      {
+        "productId": 7503,
+        "namaBarang": "OVERHEADS",
+        "deskripsiBarang": "KPL-24.5 10 CLEAR BLANK (PP CLEAR 50 R) TANPA VARNISH, GLUE KILLED, DIE KHUSUS UKURAN 10 X 22,5 MM",
+        "qty": 100000
+      }
+    ]
+  },
+  {
+    "id": 3782,
+    "nomorPr": "PR03775",
+    "status": "approved",
+    "tanggalDibuat": "2026-03-31 04:32:14",
+    "deskripsi": "Maintenance Kompresor di gedung G5 (Maintenance)",
+    "totalItems": 3,
+    "items": [
+      {
+        "productId": 7497,
+        "namaBarang": "REPAIR AND MAINTENANCE FACTORY",
+        "deskripsiBarang": "JASA SERVICE (garansi 3bln service part yg sama)",
+        "qty": 1
+      },
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "Oil 10 Liter CR-46",
+        "qty": 1
+      },
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "Oil Separator MCA 15011",
+        "qty": 1
+      }
+    ]
+  },
+  {
+    "id": 3781,
+    "nomorPr": "PR03774",
+    "status": "approved",
+    "tanggalDibuat": "2026-03-31 03:28:11",
+    "deskripsi": "kebutuhan produksi  (repeat order)",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "ALKOHOL ISOPROPYL 99% 5 LITER",
+        "qty": 8
+      }
+    ]
+  },
+  {
+    "id": 3780,
+    "nomorPr": "PR03773",
+    "status": "approved",
+    "tanggalDibuat": "2026-03-31 03:26:23",
+    "deskripsi": "kebutuhan produksi tinta cartridge repeat order",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 5023,
+        "namaBarang": "CARTRIDGE SOLVENTBASE T JET",
+        "deskripsiBarang": "CARTRIDGE SOLVENTBASE T JET",
+        "qty": 10
+      }
+    ]
+  },
+  {
+    "id": 3779,
+    "nomorPr": "PR03772",
+    "status": "approved",
+    "tanggalDibuat": "2026-03-30 12:43:13",
+    "deskripsi": "tinta catridge kebutuhan produksi (Repeat order)",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "CARTRIDGE SOLVENTBASE BLACK",
+        "qty": 5
+      }
+    ]
+  },
+  {
+    "id": 3771,
+    "nomorPr": "PR03764",
+    "status": "approved",
+    "tanggalDibuat": "2026-03-27 06:52:12",
+    "deskripsi": "pengecatan gedung G1,G2,G5(Repeat Order)",
+    "totalItems": 3,
+    "items": [
+      {
+        "productId": 7497,
+        "namaBarang": "REPAIR AND MAINTENANCE FACTORY",
+        "deskripsiBarang": "EPODUR 0800 - Cat Epoxy - Bamboo Green ( Liter)",
+        "qty": 25
+      },
+      {
+        "productId": 7497,
+        "namaBarang": "REPAIR AND MAINTENANCE FACTORY",
+        "deskripsiBarang": "EPODUR 0800 - Cat Epoxy - Bright Blue (Liter)",
+        "qty": 25
+      },
+      {
+        "productId": 7497,
+        "namaBarang": "REPAIR AND MAINTENANCE FACTORY",
+        "deskripsiBarang": "EPODUR 0800 cat epoxy lantai tahan zat kimia 04091 Black 1kg/set",
+        "qty": 25
+      }
+    ]
+  },
+  {
+    "id": 3768,
+    "nomorPr": "PR03761",
+    "status": "draft",
+    "tanggalDibuat": "2026-03-26 08:29:06",
+    "deskripsi": "Kebutuhan IOT Engineer (repeat order)",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "ESP32 DevkitC v4",
+        "qty": 5
+      }
+    ]
+  },
+  {
+    "id": 3737,
+    "nomorPr": "PR03730",
+    "status": "approved",
+    "tanggalDibuat": "2026-03-14 05:20:48",
+    "deskripsi": "Kebutuhan Instalasi Listrik di Gedung D2 (RnD Lantai 1)",
+    "totalItems": 9,
+    "items": [
+      {
+        "productId": 7501,
+        "namaBarang": "FACTORY UTILITIES",
+        "deskripsiBarang": "Busbar RST",
+        "qty": 1
+      },
+      {
+        "productId": 7501,
+        "namaBarang": "FACTORY UTILITIES",
+        "deskripsiBarang": "MCCB 40A",
+        "qty": 1
+      },
+      {
+        "productId": 7501,
+        "namaBarang": "FACTORY UTILITIES",
+        "deskripsiBarang": "MCB C6",
+        "qty": 4
+      },
+      {
+        "productId": 7501,
+        "namaBarang": "FACTORY UTILITIES",
+        "deskripsiBarang": "MCB C16",
+        "qty": 6
+      },
+      {
+        "productId": 7501,
+        "namaBarang": "FACTORY UTILITIES",
+        "deskripsiBarang": "Panel Box 80 x 60 x25",
+        "qty": 1
+      },
+      {
+        "productId": 7501,
+        "namaBarang": "FACTORY UTILITIES",
+        "deskripsiBarang": "Duct Cable 50 x 100",
+        "qty": 25
+      },
+      {
+        "productId": 7501,
+        "namaBarang": "FACTORY UTILITIES",
+        "deskripsiBarang": "Cover  Lampu TL",
+        "qty": 7
+      },
+      {
+        "productId": 7501,
+        "namaBarang": "FACTORY UTILITIES",
+        "deskripsiBarang": "Kabel 4 x 1o",
+        "qty": 22
+      },
+      {
+        "productId": 7501,
+        "namaBarang": "FACTORY UTILITIES",
+        "deskripsiBarang": "Kabel 3 x 2.5",
+        "qty": 6
+      }
+    ]
+  },
+  {
+    "id": 3710,
+    "nomorPr": "PR03703",
+    "status": "approved",
+    "tanggalDibuat": "2026-03-12 05:35:25",
+    "deskripsi": "kebutuhan produksi tinta cartridge repeat order",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 5023,
+        "namaBarang": "CARTRIDGE SOLVENTBASE T JET",
+        "deskripsiBarang": "CARTRIDGE SOLVENTBASE T JET",
+        "qty": 15
+      }
+    ]
+  },
+  {
+    "id": 3704,
+    "nomorPr": "PR03697",
+    "status": "approved",
+    "tanggalDibuat": "2026-03-11 07:59:06",
+    "deskripsi": "kebutuhan produksi (repeat order)",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "Pipet Plastik 10 ml / Disposable Pipette 10 ml",
+        "qty": 4000
+      }
+    ]
+  },
+  {
+    "id": 3702,
+    "nomorPr": "PR03695",
+    "status": "approved",
+    "tanggalDibuat": "2026-03-11 04:42:56",
+    "deskripsi": "kebutuhan produksi area device (repeat order)",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "Kabel Duck NISO CURVE 20 x 70",
+        "qty": 50
+      }
+    ]
+  },
+  {
+    "id": 3696,
+    "nomorPr": "PR03689",
+    "status": "approved",
+    "tanggalDibuat": "2026-03-10 11:27:23",
+    "deskripsi": "kebutuhan produksi (repeat order)",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "Adhesive Remover - Penghilang Bekas Lem,Double Tape,Sticker Kendaraan",
+        "qty": 10
+      }
+    ]
+  },
+  {
+    "id": 3671,
+    "nomorPr": "PR03664",
+    "status": "approved",
+    "tanggalDibuat": "2026-03-10 08:10:01",
+    "deskripsi": "Kebutuhan consumable sparepart maintenance (Acal)",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Kain Lap Maju",
+        "qty": 20
+      }
+    ]
+  },
+  {
+    "id": 3670,
+    "nomorPr": "PR03663",
+    "status": "approved",
+    "tanggalDibuat": "2026-03-10 07:49:55",
+    "deskripsi": "Consumable stock",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "HEAD CLEANER UNTUK TINTA SOLVENT DAN ECO SOLVENT",
+        "qty": 5
+      }
+    ]
+  },
+  {
+    "id": 3669,
+    "nomorPr": "PR03662",
+    "status": "approved",
+    "tanggalDibuat": "2026-03-10 04:36:28",
+    "deskripsi": "Kebutuhan Mixing Liquid untuk cleaning",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 9743,
+        "namaBarang": "EQUIPMENT",
+        "deskripsiBarang": "AC CLEANER STEAM KYODO PROWASH 120 / MESIN CUCI MOBIL MOTOR PRESSURE - +AKSORIS BAWAAN, 25 METER",
+        "qty": 1
+      }
+    ]
+  },
+  {
+    "id": 3653,
+    "nomorPr": "PR03646",
+    "status": "approved",
+    "tanggalDibuat": "2026-03-06 03:06:51",
+    "deskripsi": "Kebutuhan Maintenance untuksparepart mesin blister pod X (Repeat Order) ",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Bearing 6205 Rs",
+        "qty": 20
+      }
+    ]
+  },
+  {
+    "id": 3600,
+    "nomorPr": "PR03593",
+    "status": "approved",
+    "tanggalDibuat": "2026-03-01 07:23:31",
+    "deskripsi": "Kebutuhan sparepart mesin, produksi, dan project IOT ",
+    "totalItems": 4,
+    "items": [
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "Solder Holder Dengan lensa",
+        "qty": 1
+      },
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "PZEM-004T OpenCT + Case",
+        "qty": 9
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "karet silikon / Rubber silicon Sheet 5mm 100cm x 100cm",
+        "qty": 1
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Bearing NTN 6800zz",
+        "qty": 6
+      }
+    ]
+  },
+  {
+    "id": 3557,
+    "nomorPr": "PR03550",
+    "status": "approved",
+    "tanggalDibuat": "2026-02-26 02:16:31",
+    "deskripsi": "Kebutuhan part mesin blister DPP 80",
+    "totalItems": 7,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Cutting sheet perforasi",
+        "qty": 1
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Housing Perforasi Bottom",
+        "qty": 1
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Housing Perforasi Top",
+        "qty": 1
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "PIllow perforasi",
+        "qty": 1
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Cam",
+        "qty": 1
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Bearing Roller Cam",
+        "qty": 3
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Roller Cam",
+        "qty": 3
+      }
+    ]
+  },
+  {
+    "id": 3553,
+    "nomorPr": "PR03546",
+    "status": "approved",
+    "tanggalDibuat": "2026-02-25 08:23:53",
+    "deskripsi": "Penggantian part Transfer board  Mesin coding",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7497,
+        "namaBarang": "REPAIR AND MAINTENANCE FACTORY",
+        "deskripsiBarang": "SERVIS MESIN T JET 1 PRO (AJM1122-020P)",
+        "qty": 1
+      }
+    ]
+  },
+  {
+    "id": 3517,
+    "nomorPr": "PR03510",
+    "status": "approved",
+    "tanggalDibuat": "2026-02-20 08:06:22",
+    "deskripsi": "consumable part (Repeat Order)",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Flap disc",
+        "qty": 40
+      }
+    ]
+  },
+  {
+    "id": 3515,
+    "nomorPr": "PR03508",
+    "status": "approved",
+    "tanggalDibuat": "2026-02-20 07:18:55",
+    "deskripsi": "Consumable part (Repeat Order) (Understock) (MTC) (ACAL)",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "STOP KONTAK BROCO 2 3 4 5 6 LUBANG / TERMINAL / COLOKAN LISTRIK BROCO - 2 LUBANG",
+        "qty": 10
+      }
+    ]
+  },
+  {
+    "id": 3512,
+    "nomorPr": "PR03505",
+    "status": "approved",
+    "tanggalDibuat": "2026-02-20 03:52:42",
+    "deskripsi": "Kebutuhan consumable part (repeat order)",
+    "totalItems": 2,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Flap disc",
+        "qty": 10
+      },
+      {
+        "productId": 9743,
+        "namaBarang": "EQUIPMENT",
+        "deskripsiBarang": "Kabel NYM 3x2.5",
+        "qty": 1
+      }
+    ]
+  },
+  {
+    "id": 3505,
+    "nomorPr": "PR03498",
+    "status": "approved",
+    "tanggalDibuat": "2026-02-19 06:47:51",
+    "deskripsi": "kebutuhan maintenance dan consumable part (repeat order)",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "Sarung tangan kerja Doting bintik safety 1 pasang (2 Pcs)",
+        "qty": 100
+      }
+    ]
+  },
+  {
+    "id": 3502,
+    "nomorPr": "PR03495",
+    "status": "approved",
+    "tanggalDibuat": "2026-02-19 04:56:11",
+    "deskripsi": "Untuk kebutuhan mobile direct selling",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7494,
+        "namaBarang": "OPERATING EXPENSES FACTORY",
+        "deskripsiBarang": "PLASTIK SHRINK PVC Size 16 cm / Plastik Segel / Plastik Shrink 1 Kg - 16 cm",
+        "qty": 15
+      }
+    ]
+  },
+  {
+    "id": 3456,
+    "nomorPr": "PR03449",
+    "status": "approved",
+    "tanggalDibuat": "2026-02-12 11:14:05",
+    "deskripsi": "consumabel part repeat order",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "LAP KANEBO JUMBO 66 x 43 CHAMOIS KAIN LAP MOBIL MOTOR SERBAGUNA",
+        "qty": 20
+      }
+    ]
+  },
+  {
+    "id": 3455,
+    "nomorPr": "PR03448",
+    "status": "approved",
+    "tanggalDibuat": "2026-02-12 11:12:55",
+    "deskripsi": "spare part mesin blister (Repeat Order) (MTC) (ACAL)",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Spare Part Blister Machine (BEARING BLISTER)",
+        "qty": 5
+      }
+    ]
+  },
+  {
+    "id": 3450,
+    "nomorPr": "PR03443",
+    "status": "approved",
+    "tanggalDibuat": "2026-02-12 03:46:21",
+    "deskripsi": "consumabel part (repeat order)",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Broco Steker Arde art. 13310",
+        "qty": 50
+      }
+    ]
+  },
+  {
+    "id": 3424,
+    "nomorPr": "PR03417",
+    "status": "approved",
+    "tanggalDibuat": "2026-02-10 03:37:58",
+    "deskripsi": "Kebutuhan part mesin blister POD X (adhari) (Repeat Order)",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 9743,
+        "namaBarang": "EQUIPMENT",
+        "deskripsiBarang": "Shaft blister pod X (material VCN 150)",
+        "qty": 1
+      }
+    ]
+  },
+  {
+    "id": 3395,
+    "nomorPr": "PR03388",
+    "status": "approved",
+    "tanggalDibuat": "2026-02-04 04:01:10",
+    "deskripsi": "Maintenance tools dan sparepart mesin produksi serta utility",
+    "totalItems": 12,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Linear Bushing Bearing Samick LM10UU",
+        "qty": 10
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Ball Bearing SKF 61902 / 6902",
+        "qty": 6
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Dioda Jembatan KBPC 1510 15A 1000V Silicon Bridge Rectifier Taiwan SEP",
+        "qty": 5
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "EMERGENCY STOP SCHNEIDER SWITCHING OFF PUSH BUTTON DIA22 LATCHING TURN RELEASE 1NC RED - XB5AS8442",
+        "qty": 10
+      },
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "Samgold SS-22",
+        "qty": 3
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Warning Light Buzzer",
+        "qty": 10
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Pressure Switch Pompa Shimizu",
+        "qty": 5
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Impeler Pompa Shimizu",
+        "qty": 5
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Timing Belt 8M 720 / 25 mm",
+        "qty": 3
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Industrial Mobile Mounting Socket & Plug 3 Pin 16A IP44 FORT 013 213 | Mobile Socket Stop Kontak Industri - Plug + Socket",
+        "qty": 3
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "SOLENOID VALVE 3V210-08 NC AC 220 / DC24 VOLT /SOLENOID VALVE AIRTAC - DC24 Voltase",
+        "qty": 4
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "insert bubut CCMT060204 mata pisau carbide SCLCR",
+        "qty": 1
+      }
+    ]
+  },
+  {
+    "id": 3388,
+    "nomorPr": "PR03381",
+    "status": "approved",
+    "tanggalDibuat": "2026-02-03 03:21:28",
+    "deskripsi": "kebutuhan nitrogen untuk mixing (repeat order)",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7503,
+        "namaBarang": "OVERHEADS",
+        "deskripsiBarang": "sewa tabung nitrogen (nov-jan)",
+        "qty": 3
+      }
+    ]
+  },
+  {
+    "id": 3384,
+    "nomorPr": "PR03377",
+    "status": "approved",
+    "tanggalDibuat": "2026-02-02 10:26:17",
+    "deskripsi": "kebutuhan produksi consumable (repeat order)",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "ALKOHOL ISOPROPYL 99% 5 LITER",
+        "qty": 12
+      }
+    ]
+  },
+  {
+    "id": 3329,
+    "nomorPr": "PR03322",
+    "status": "draft",
+    "tanggalDibuat": "2026-01-28 09:34:04",
+    "deskripsi": "Untuk chiller G5",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": null,
+        "namaBarang": null,
+        "deskripsiBarang": "Charging refrigerant R22",
+        "qty": 1
+      }
+    ]
+  },
+  {
+    "id": 3314,
+    "nomorPr": "PR03307",
+    "status": "approved",
+    "tanggalDibuat": "2026-01-27 04:42:33",
+    "deskripsi": "Untuk mesin koding line liquid",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 9743,
+        "namaBarang": "EQUIPMENT",
+        "deskripsiBarang": "T JET 1 PRO Unit 048P",
+        "qty": 1
+      }
+    ]
+  },
+  {
+    "id": 3278,
+    "nomorPr": "PR03271",
+    "status": "approved",
+    "tanggalDibuat": "2026-01-22 01:28:01",
+    "deskripsi": "sparepart untuk mesin resistansi catridge",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Probe (for Resistance Testing Machine)",
+        "qty": 50
+      }
+    ]
+  },
+  {
+    "id": 3256,
+    "nomorPr": "PR03250",
+    "status": "approved",
+    "tanggalDibuat": "2026-01-20 04:12:00",
+    "deskripsi": "Untuk mesin authenticity semua lini Produksi (MTC)",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Conveyor belt KP-40 (KP-75)",
+        "qty": 3
+      }
+    ]
+  }
+]

@@ -1,0 +1,335 @@
+﻿No,Tanggal,Waktu,Tipe,ID Sparepart,Nama Item,Qty,Harga (Rp),PIC,No Report,Jenis Pembelian,Vendor,Keterangan
+1,22/7/2026,11.29,IN,MTC-SP-349,Bearing 6901,3,33000,,,Cash,MM Teknik,
+2,22/7/2026,11.28,IN,MTC-SP-346,Bearing HK1012,2,21000,,,Cash,MM Teknik,
+3,22/7/2026,11.29,IN,MTC-SP-346,Bearing HK1012,1,21000,,,Cash,MM Teknik,
+4,21/7/2026,16.13,IN,MTC-SP-347,Bearing 6003,4,25000,,,Cash,Sinar Kreasi Mandiri,
+5,21/7/2026,19.23,OUT,MTC-SP-348,Bearing 608 ,4,18000,Fandi,,,,[Mesin: Mesin Capping Cam Liquid] Pergantian part mesin cam liquid
+6,21/7/2026,19.23,OUT,MTC-SP-347,Bearing 6003,1,25000,Fandi,,,,[Mesin: Mesin Capping Cam Liquid] Pergantian part mesin cam liquid
+7,21/7/2026,16.13,IN,MTC-SP-348,Bearing 608 ,4,18000,,,Cash,Sinar Kreasi Mandiri,
+8,20/7/2026,09.14,IN,MTC-SP-346,Bearing HK1012,6,21000,,,Cash,MM Bearing,
+9,17/7/2026,11.01,OUT,,Bearing 6800ZZ (NTN),4,37879,Acal,,,,Pergantian part pada mesin cellophane device tension meter
+10,16/7/2026,19.40,OUT,MTC-SP-071,Timing Belt HTD 1295 - 5M,1,1049394,Permana,,,,Untuk pergantian part cellophane
+11,14/7/2026,21.05,IN,MTC-SP-340,Cylinder pnuematic (Blister Pod X),4,350200,,,PO,"Shenzhen Jinbaolian Automation Equipment Co., Ltd.",
+12,14/7/2026,21.23,IN,MTC-SP-345,Dotted cutting knife 56.55x18.07x0.73,30,95200,,,PO,"Shenzhen Jinbaolian Automation Equipment Co., Ltd.",
+13,14/7/2026,20.58,IN,MTC-SP-333, Cam shaft cutting JBL-150,2,1687590,,,PO,"Shenzhen Jinbaolian Automation Equipment Co., Ltd.",
+14,14/7/2026,20.59,IN,MTC-SP-334,Roller cutting JBL-150,2,1500080,,,PO,"Shenzhen Jinbaolian Automation Equipment Co., Ltd.",
+15,14/7/2026,20.59,IN,MTC-SP-335,"Roller perforasi,forming, sealing blister JBL-150",3,1875100,,,PO,"Shenzhen Jinbaolian Automation Equipment Co., Ltd.",
+16,14/7/2026,21.00,IN,MTC-SP-336,Brushed magnetic pump (filling) ,5,2006000,,,PO,"Shenzhen Jinbaolian Automation Equipment Co., Ltd.",
+17,14/7/2026,21.03,IN,MTC-SP-337,Compact cylinder SJA (Mesin lanyard),3,965600,,,PO,"Shenzhen Jinbaolian Automation Equipment Co., Ltd.",
+18,14/7/2026,21.09,IN,MTC-SP-342,Heating plate forming upper and lower,1,3000159,,,PO,"Shenzhen Jinbaolian Automation Equipment Co., Ltd.",
+19,14/7/2026,21.10,IN,MTC-SP-343, Linear bearings with a diameter of 40x58 ,16,131409,,,PO,"Shenzhen Jinbaolian Automation Equipment Co., Ltd.",
+20,14/7/2026,21.22,IN,MTC-SP-344,Cam blister JBL-150,3,1875099,,,PO,"Shenzhen Jinbaolian Automation Equipment Co., Ltd.",
+21,14/7/2026,21.06,IN,MTC-SP-341,Dotted cutting knife 62.1x18x0.74,30,95200,,,PO,"Shenzhen Jinbaolian Automation Equipment Co., Ltd.",
+22,14/7/2026,21.05,IN,MTC-SP-339,"ABS Tray, Custom sizing (CT POD E BRAY)",3,1829200,,,PO,"Shenzhen Jinbaolian Automation Equipment Co., Ltd.",
+23,14/7/2026,21.04,IN,MTC-SP-338,Mold Set,1,30600000,,,PO,"Shenzhen Jinbaolian Automation Equipment Co., Ltd.",
+24,14/7/2026,20.58,IN,MTC-SP-332,Shaft sleeves JBL-150,16,56270,,,PO,"Shenzhen Jinbaolian Automation Equipment Co., Ltd.",
+25,14/7/2026,20.57,IN,MTC-SP-331,Main shaft bearing blister JBL-150,6,850000,,,PO,"Shenzhen Jinbaolian Automation Equipment Co., Ltd.",
+26,9/7/2026,20.14,IN,MTC-SP-325,Heating plate upper sealing JBL 150,1,1125060,,,PO,"Shenzhen Jinbaolian Automation Equipment Co., Ltd.",
+27,2/7/2026,11.17,LOG,,Skun Y 1.25,3,60000,,,Cash,Sinar Electric,[⚡ Insidentil / Sekali Pakai] Untuk kebutuhan wiring
+28,1/7/2026,11.20,LOG,,"SOK Rucika AW 3/4""",1,5000,,,Cash,Abun,[🚨 Emergency / Urgent] Untuk WTP Gedung G1
+29,1/7/2026,11.14,LOG,,Per Tekan Baja T 3.5 Id 23 P 100,2,80000,,,Cash,Technical Outlet,[⚡ Insidentil / Sekali Pakai] Untuk Modif Mesin Capping
+30,1/7/2026,11.14,LOG,,Per Tekan Baja T 3 Id 23 P 100,2,70000,,,Cash,Technical Outlet,[⚡ Insidentil / Sekali Pakai] Untuk Modif Mesin Capping
+31,1/7/2026,11.20,LOG,,"KDD Rucika AW PVC 3/4""",1,8000,,,Cash,Abun,[🚨 Emergency / Urgent] Untuk WTP Gedung G1
+32,1/7/2026,11.19,LOG,,SPI 7X8X300,4,152000,,,Cash,MM Teknik,[🚨 Emergency / Urgent] Untuk Pemasangan SPI Mesin Blister Pod X
+33,1/7/2026,11.14,LOG,,Per Tekan Baja T 2.5 Id 23 P 100,2,60000,,,Cash,Technical Outlet,[⚡ Insidentil / Sekali Pakai] Untuk Modif Mesin Capping
+34,26/6/2026,14.00,LOG,,Roofing 12 x 30,3,52000,,,,Abun,[⚡ Insidentil / Sekali Pakai] Untuk kebutuhan pintu D2
+35,26/6/2026,14.00,LOG,,Pylox Nippon Paint No 200,2,38000,,,,Abun,[⚡ Insidentil / Sekali Pakai] Untuk Pewarnaan Kursi F2
+36,26/6/2026,14.00,LOG,,"Cutting Wheel WD 4""",1,80000,,,,Abun,[⚡ Insidentil / Sekali Pakai] Consumable part
+37,26/6/2026,14.00,LOG,,Gembok Popeye 30 Panjang,1,25000,,,,Abun,[⚡ Insidentil / Sekali Pakai] Untuk Gembok Kompresor F2
+38,26/6/2026,14.40,LOG,,Kabel Duck NISO CURVE 20 x 70,100,41000,,,PO,PT NARAYA INOVASI GLOBAL,[Penerimaan Pengadaan - Langsung Pakai] Alasan: Kebutuhan produksi (Repeat Order)
+39,26/6/2026,14.45,IN,MTC-SP-319,Oil Filter MCA15008,2,375200,,,PO,PT SHARPRINDO DINAMIKA UTAMA,[Penerimaan Pengadaan PR: PR04297 / PO: P13902]
+40,26/6/2026,14.45,IN,MTC-SP-320,Oil Separator MCA 15011,2,572800,,,PO,PT SHARPRINDO DINAMIKA UTAMA,[Penerimaan Pengadaan PR: PR04297 / PO: P13902]
+41,26/6/2026,14.46,IN,MTC-SP-321,Oil 10 Liter CR-46,2,1320000,,,PO,PT SHARPRINDO DINAMIKA UTAMA,[Penerimaan Pengadaan PR: PR04297 / PO: P13902]
+42,26/6/2026,16.29,IN,MTC-SP-322,Stopkontak isi 2,10,43124,,,PO,PT NARAYA INOVASI GLOBAL,[Penerimaan Pengadaan PR: PR04196 / PO: P13888]
+43,26/6/2026,16.29,IN,MTC-SP-323,Stopkontak isi 3,10,61114,,,PO,PT NARAYA INOVASI GLOBAL,[Penerimaan Pengadaan PR: PR04196 / PO: P13888]
+44,26/6/2026,16.29,IN,MTC-SP-324,Stopkontak isi 5,5,40375,,,PO,PT NARAYA INOVASI GLOBAL,[Penerimaan Pengadaan PR: PR04196 / PO: P13888]
+45,26/6/2026,16.30,IN,MTC-SP-004,Cable Tie 3.6x300,5,15200,,,PO,PT HUTAMA SINERGI KARYA,[Penerimaan Pengadaan PR: PR04111 / PO: P13734]
+46,26/6/2026,16.30,LOG,,baut mur baja 12.9 M-8x50mm Full drat,50,18770,,,PO,PT HUTAMA SINERGI KARYA,[Penerimaan Pengadaan - Langsung Pakai] Alasan: Sparepart untuk mesin blister pod X
+47,26/6/2026,16.31,IN,MTC-SP-248,Bearing 6205 Rs SKF,20,86450,,,PO,PT HUTAMA SINERGI KARYA,[Penerimaan Pengadaan PR: PR03646 / PO: P13881]
+48,26/6/2026,16.35,LOG,,Mata Bor Nachi 5mm,1,27250,,,,Sinar Kreasi Mandiri,[🚨 Emergency / Urgent] Pemakaian harian
+49,26/6/2026,16.35,LOG,,Mata Bor Nachi 5.5mm,1,35750,,,,Sinar Kreasi Mandiri,[🚨 Emergency / Urgent] Pemakaian harian
+50,26/6/2026,16.35,LOG,,Mata Bor Nachi 6.5mm,1,47000,,,,Sinar Kreasi Mandiri,[🚨 Emergency / Urgent] Pemakaian harian
+51,25/6/2026,16.36,LOG,,Van Belt A27,4,100000,,,,Egi Teknik,[🔄 Rutin / Terus Menerus] Untuk mesin capping 15Ml
+52,25/6/2026,16.37,LOG,,Fitting Lampu Gatung Broco / Itami Hitam,1,8000,,,Cash,Abun,[⚡ Insidentil / Sekali Pakai] Untuk Lampu F2
+53,25/6/2026,16.39,LOG,,"Kuas Rolset 1 1/2""",1,12000,,,Cash,Abun,[⚡ Insidentil / Sekali Pakai] Untuk Pengecatan Pintu F2 Belakang
+54,25/6/2026,16.39,LOG,,Cat Ftalit 115-610 Stone Grey,1,100000,,,Cash,Abun,[⚡ Insidentil / Sekali Pakai] Untuk Pengecatan Pintu F2 Belakang
+55,25/6/2026,16.38,LOG,,"V Sock Galv 3/4"" X 1/2""",1,16000,,,Cash,Abun,[⚡ Insidentil / Sekali Pakai] Untuk Instalasi Kompresor F2
+56,25/6/2026,16.37,LOG,,Mata Gergaji Beis Tekiro 24 TPI,1,20000,,,,Abun,[⚡ Insidentil / Sekali Pakai] Untuk Pemakaian Harian
+57,25/6/2026,16.38,LOG,,"Water Mur Galv 3/4""",4,160000,,,Cash,Abun,[⚡ Insidentil / Sekali Pakai] Untuk Instalasi Kompresor F2
+58,24/6/2026,22.26,LOG,,"Pipa Rucika ST 3/4""",3,114000,,,Cash,Abun,[⚡ Insidentil / Sekali Pakai] Instalasi AC D8 dan D2
+59,24/6/2026,22.26,LOG,,"Klem Pipa PVC 3/4""",1,13000,,,Cash,Abun,[⚡ Insidentil / Sekali Pakai] Instalasi AC D8 dan D2
+60,24/6/2026,22.26,LOG,,Klem Pipa PVC 1/2,1,10000,,,Cash,Abun,[⚡ Insidentil / Sekali Pakai] Instalasi AC D8 dan D2
+61,24/6/2026,22.26,LOG,,"Pipa Rucika STD 1/2"" AW",1,28000,,,Cash,Abun,[⚡ Insidentil / Sekali Pakai] Instalasi AC D8 dan D2
+62,24/6/2026,22.26,LOG,,"Tee Rucika AW 1/2""",1,6000,,,Cash,Abun,[⚡ Insidentil / Sekali Pakai] Instalasi AC D8 dan D2
+63,24/6/2026,22.26,LOG,,"Pipa Rucika STD 3/4"" AW",1,38000,,,Cash,Abun,[⚡ Insidentil / Sekali Pakai] Instalasi AC D8 dan D2
+64,24/6/2026,22.26,LOG,,Steker Ac Broco set,1,90000,,,Cash,Abun,[⚡ Insidentil / Sekali Pakai] Instalasi AC D8
+65,24/6/2026,22.26,LOG,,"Cutting Wheel WD 4""",10,50000,,,Cash,Abun,[⚡ Insidentil / Sekali Pakai] Consumable part
+66,24/6/2026,22.26,LOG,,Dinabolt 12X129,5,30000,,,Cash,Abun,[⚡ Insidentil / Sekali Pakai] Perbaikan pintu D2
+67,24/6/2026,22.26,LOG,,"TEE Galv 1""",1,32000,,,Cash,Abun,[⚡ Insidentil / Sekali Pakai] Instalasi Kompresor F2
+68,24/6/2026,22.26,LOG,,"Sealtape Onda 1/2""",6,36000,,,Cash,Abun,[⚡ Insidentil / Sekali Pakai] Instalasi Kompresor F2
+69,24/6/2026,22.26,LOG,,"Sok 1""",6,75000,,,Cash,Abun,[⚡ Insidentil / Sekali Pakai] Instalasi Kompresor F2
+70,24/6/2026,22.26,LOG,,"Sock 3/4""",7400,59200,,,Cash,Abun,[⚡ Insidentil / Sekali Pakai] Instalasi Kompresor F2
+71,24/6/2026,22.26,LOG,,Klem Kabel Climax No.17,1,25000,,,Cash,Abun,[⚡ Insidentil / Sekali Pakai] Instalasi Kompresor F2
+72,24/6/2026,22.26,LOG,,Kabel Supreme NYA 4mm,15,224280,,,Cash,Abun,[⚡ Insidentil / Sekali Pakai] Instalasi Kompresor F2
+73,24/6/2026,22.26,LOG,,Valve 3/8 SUS 316,1,40000,,,Cash,Abun,[⚡ Insidentil / Sekali Pakai] Perbaikan Mesin Filling 15Ml
+74,24/6/2026,22.26,LOG,,SPC 10 - 03,2,20000,,,Cash,Abun,[⚡ Insidentil / Sekali Pakai] Perbaikan Mesin Filling 15Ml
+75,24/6/2026,22.26,LOG,,Skun SC 3.5 - 5,1,40000,,,Cash,Abun,[⚡ Insidentil / Sekali Pakai] Instalasi Kompresor F2
+76,24/6/2026,22.26,LOG,,Vinyl Sc 8.5 - 10,1,5000,,,Cash,Abun,[⚡ Insidentil / Sekali Pakai] Instalasi Kompresor F2
+77,24/6/2026,22.26,LOG,,Sok 10 mm,10,30000,,,Cash,Abun,[⚡ Insidentil / Sekali Pakai] Instalasi Kompresor F2
+78,24/6/2026,22.26,LOG,,Svbakar 6mm,1,3000,,,Cash,Abun,[⚡ Insidentil / Sekali Pakai] Instalasi Kompresor F2
+79,24/6/2026,22.26,LOG,,"TEE Rucika AW 3/4""",2,16000,,,Cash,Abun,[⚡ Insidentil / Sekali Pakai] Instalasi AC D8 dan D2
+80,21/6/2026,11.02,LOG,,"Selang Benang Cristal 1""",8,238000,,,,TB 68 Jaya,[⚡ Insidentil / Sekali Pakai] Untuk Pompa Pembuangan Mixing
+81,21/6/2026,11.02,LOG,,Kabel Eterna 2 x 1.5,4,64000,,,,TB 68 Jaya,[⚡ Insidentil / Sekali Pakai] Untuk Lampu D2 atas
+82,21/6/2026,11.02,LOG,,Saklar Serigai,1,25000,,,,TB 68 Jaya,[⚡ Insidentil / Sekali Pakai] Untuk Lampu D2 atas
+83,21/6/2026,11.02,LOG,,"Nepel Selang Kuningan 1"" X 1""",2,70000,,,,TB 68 Jaya,[⚡ Insidentil / Sekali Pakai] Untuk Pompa Pembuangan Mixing
+84,17/6/2026,11.07,IN,MTC-SP-194,Sliding Bearing LM12LUU (Capping),10,76000,,,PO,PT NARAYA INOVASI GLOBAL,[Penerimaan Pengadaan PR: PR04128 / PO: P13853]
+85,17/6/2026,11.07,LOG,,Baut L Tanam M8x12,100,1140,,,PO,PT HUTAMA SINERGI KARYA,[Penerimaan Pengadaan - Langsung Pakai] Alasan: Sparepart mesin blister pod x
+86,15/6/2026,14.00,IN,MTC-SP-309,Cartridge Heater 220V - M10 X 100 400W,5,200450,,,PO,PT HUTAMA SINERGI KARYA,[Penerimaan Pengadaan PR: PR04017 / PO: P13720]
+87,15/6/2026,14.00,LOG,,CAIRAN PEMBERSIH OLI MINYAK GEMUK WATERBASE OIL GREASE CLEANER 5 LITER,5,91200,,,PO,PT HUTAMA SINERGI KARYA,[Penerimaan Pengadaan - Langsung Pakai] Alasan: Consumable untuk cleaner oli dan grease
+88,15/6/2026,14.01,IN,MTC-SP-316,Selang PU 12 x 8 mm,1,709650,,,PO,PT HUTAMA SINERGI KARYA,[Penerimaan Pengadaan PR: PR04111 / PO: P13734]
+89,14/6/2026,12.42,LOG,,Kabel (3 x 2.5),1,1375000,,,PO,PT TRIPUTRA MITRA,[Penerimaan Pengadaan - Langsung Pakai] Alasan: Consumable part
+90,13/6/2026,14.02,IN,MTC-SP-314,MCB C25,10,105735,,,PO,PT HUTAMA SINERGI KARYA,[Penerimaan Pengadaan PR: PR04106 / PO: P13726]
+91,13/6/2026,14.02,IN,MTC-SP-315,MCB C16,10,105735,,,PO,PT HUTAMA SINERGI KARYA,[Penerimaan Pengadaan PR: PR04106 / PO: P13726]
+92,13/6/2026,13.00,LOG,,Klem Conduit 20mm,10,20000,,,Cash,Abun,[⚡ Insidentil / Sekali Pakai] Instalasi Listrik Pos D2
+93,13/6/2026,10.17,LOG,,"RYU Multi cutter 4"" X 40T",1,37500,,,Cash,Mitra 10 Bitung,[⚡ Insidentil / Sekali Pakai] Untuk keperluan pemotongan aluminium
+94,13/6/2026,13.00,LOG,,Keni PVC Polos 20mm,2,6000,,,Cash,Abun,[⚡ Insidentil / Sekali Pakai] Instalasi Listrik Pos D2
+95,13/6/2026,13.00,IN,MTC-SP-310,Ball Bearing SKF 61901 - 2RS1 (Authenticity),10,88261.65,,,PO,PT HUTAMA SINERGI KARYA,[Penerimaan Pengadaan PR: PR04017 / PO: P13720]
+96,13/6/2026,13.17,IN,MTC-SP-311,Duct Cable 50 x 100,55,75000,,,PO,PT TRIPUTRA MITRA,[Penerimaan Pengadaan PR: PR04104 / PO: P13732]
+97,13/6/2026,13.17,IN,MTC-SP-312,Duct Cable TC 6,100,9288,,,PO,PT HUTAMA SINERGI KARYA,[Penerimaan Pengadaan PR: PR04017 / PO: P13720]
+98,13/6/2026,14.02,IN,MTC-SP-313,MCB C32,10,105735,,,PO,PT HUTAMA SINERGI KARYA,[Penerimaan Pengadaan PR: PR04106 / PO: P13726]
+99,12/6/2026,11.35,IN,MTC-SP-308,Disc Spring Washer M20 x T2.5,32,50730,,,PO,PT HUTAMA SINERGI KARYA,[Penerimaan Pengadaan PR: PR04017 / PO: P13720]
+100,12/6/2026,11.38,IN,MTC-SP-006,Cable Tie 2.5x100,5,4709,,,PO,PT HUTAMA SINERGI KARYA,[Penerimaan Pengadaan PR: PR04111 / PO: P13734]
+101,12/6/2026,11.38,IN,MTC-SP-005,Cable Tie 2.5x150,5,5837,,,PO,PT HUTAMA SINERGI KARYA,[Penerimaan Pengadaan PR: PR04111 / PO: P13734]
+102,10/6/2026,20.50,LOG,,Skun Y 2.4,3,120000,,,Cash,Dunia Electric,[🔄 Rutin / Terus Menerus] Up size kapasitas listrik D2
+103,10/6/2026,11.30,LOG,,Kawat Las Nikko RD-260 ukuran @ 2.6 x 350 mm (5kg),1,210425,,,PO,PT HUTAMA SINERGI KARYA,[Penerimaan Pengadaan - Langsung Pakai] Alasan: Consumable part (Repeat Order)
+104,10/6/2026,20.43,LOG,,Paku Beton Hitam / Putih 5 Cm,4,24000,,,,Abun,[⚡ Insidentil / Sekali Pakai] Up size kapasitas listrik D2
+105,10/6/2026,20.43,LOG,,"Klem Pipa PVC 1 1/4""",20,70000,,,,Abun,[⚡ Insidentil / Sekali Pakai] Up size kapasitas listrik D2
+106,10/6/2026,11.26,IN,MTC-SP-307,As Capping CAM,200,3260,,,PO,PT HUTAMA SINERGI KARYA,[Penerimaan Pengadaan PR: PR04110 / PO: P13722]
+107,10/6/2026,20.52,LOG,,WD-40 Specialist® Belt Dressing 360ml – Perawatan Belt (Anti-Slip),1,134500,,,Cash,WD-40 Brand Indonesia,[🔄 Rutin / Terus Menerus] Untuk pelumas belt semua lini produksi
+108,10/6/2026,20.50,LOG,,Kabel ties 30Cm,1,35000,,,Cash,Dunia Electric,[🔄 Rutin / Terus Menerus] Up size kapasitas listrik D2
+109,9/6/2026,17.45,LOG,,Aluminium T.10 X 290 X 180,1,320000,,,,Abun,[🚀 Project / Investasi] Untuk modif mesin capping 4 roda menjadi capping cam
+110,9/6/2026,17.46,LOG,,As VCN DIa 20 X 1000,1,215000,,,,Jaya Baja Sentosa,[🚀 Project / Investasi] Untuk Mesin capping Cam liquid
+111,9/6/2026,17.40,LOG,,Pylox Nippon Paint No.200,2,76000,,,,Abun,[⚡ Insidentil / Sekali Pakai] Kebutuhan pengecetan meja untuk WO
+112,9/6/2026,17.40,LOG,,Pylox Nippon Paint No. 104,1,38000,,,,Abun,[⚡ Insidentil / Sekali Pakai] Kebutuhan pengecetan meja untuk WO
+113,9/6/2026,17.40,LOG,,"Selot PVC 2""",3,24000,,,,Abun,"[⚡ Insidentil / Sekali Pakai] Kebutuhan pengecetan meja untuk WO, Pengecetan casing puff test kecil, dan penggantian slot kamar mandi"
+114,8/6/2026,17.50,LOG,,Roofing 12X30,1,30000,,,Cash,Abun,[🚨 Emergency / Urgent] Kebutuhan untuk pemasangan plat pada pintu G2 bawah
+115,8/6/2026,17.46,LOG,,"Napple Drat 8 - 1/8""",4,40000,,,Cash,Angga Jaya Tehnik,[🚀 Project / Investasi] Kebutuhan Napple selang drat
+116,8/6/2026,10.54,IN,MTC-SP-101,Pisau Porforasi,10,150000,,,PO,PT LIMA ANUGERAH ABADI,[Penerimaan Pengadaan PR: PR03240 / PO: P11958]
+117,8/6/2026,19.39,LOG,,King Naple Hose Nipple SS304 1/8 inch / Nepel Selang Stainless Steel,10,184000,,,,Jaya Suksestama,[🚀 Project / Investasi] Untuk mesin filling manual pompa 15ML
+118,7/6/2026,17.56,LOG,,Meteran WOOD 5 Meter,1,75000,,,Cash,Abun,[🚀 Project / Investasi] Untuk Kanopi Outdoor AC G1
+119,7/6/2026,17.52,LOG,,Seng Plat Galvanlum T.120 X 0.33MM,3,240000,,,Cash,Abun,[🚀 Project / Investasi] Pelindung Kompressor di Gedung F2
+120,7/6/2026,17.51,LOG,,Thinner Alaska Galon,1,120000,,,Cash,Abun,[🚀 Project / Investasi] Pengecetan pos jaga
+121,7/6/2026,17.51,LOG,,Cat Ftalit 115 - 582 Black,1,100000,,,Cash,Abun,[🚀 Project / Investasi] Pengecetan pos jaga
+122,7/6/2026,17.56,LOG,,CNP Baja Ringan Orange,1,90000,,,Cash,Abun,[🚀 Project / Investasi] Untuk Kanopi Outdoor AC G1
+123,7/6/2026,17.56,LOG,,Roofing 12X20,3,84000,,,Cash,Abun,[🚀 Project / Investasi] Pemasangan akrilik pada pos jaga
+124,6/6/2026,17.43,LOG,,Coil Spring Merah OD 12X35,2,66882,,,Cash,Utama Askesoris Mold (Tokopedia),[🚨 Emergency / Urgent] Kebutuhan mesin cellophane line cartridge
+125,6/6/2026,18.12,LOG,,"Keni Rucika AW 1/2""",6,24000,,,Cash,Abun,[🚀 Project / Investasi] Pemasangan filter pada gedung G1
+126,6/6/2026,18.12,LOG,,"Keni Rucika AW 3/4""",6,30000,,,Cash,Abun,[🚀 Project / Investasi] Pemasangan filter pada gedung G1
+127,6/6/2026,18.12,LOG,,"Water Mur PVC 3/4"" Zuki",3,75000,,,Cash,Abun,[🚀 Project / Investasi] Pemasangan filter pada gedung G1
+128,6/6/2026,18.12,LOG,,"SDL Rucika AW 3/4"" X 1/2""",3,21000,,,Cash,Abun,[🚀 Project / Investasi] Pemasangan filter pada gedung G1
+129,6/6/2026,18.12,LOG,,"Seal Tape Onda 1/2""",2,12000,,,Cash,Abun,[🚀 Project / Investasi] Pemasangan filter pada gedung G1
+130,5/6/2026,18.00,LOG,,Sarung Tangan 8 Benang,1,44999,,,Cash,Abun,[🚨 Emergency / Urgent] Untuk Safety
+131,5/6/2026,17.57,LOG,,Steker Ac Broco,1,35000,,,Cash,Abun,[🚨 Emergency / Urgent] Perbaikan AC FG G1
+132,5/6/2026,17.57,LOG,,Saklar AC Broco Tanam G155,1,45000,,,Cash,Abun,[🚨 Emergency / Urgent] Perbaikan AC FG G1
+133,5/6/2026,17.57,LOG,,Solasi Kabel Nitto 30M,5,65000,,,Cash,Abun,[🚨 Emergency / Urgent] Perbaikan AC FG G1
+134,3/6/2026,16.04,LOG,,Reng Baja Ringan 28 Pink (0.4),2,76000,,,Cash,Abun,[⚡ Insidentil / Sekali Pakai] Untuk kebutuhan kanopi ac outdoor produksi
+135,3/6/2026,11.36,LOG,,As capping Dia 20 X 190 SS304,2,360000,,,,,[🚨 Emergency / Urgent] Untuk penggantian As mesin capping cam
+136,3/6/2026,17.37,LOG,,Alkohol Isopropyl 99% 1 Liter,5,182900,,,Cash,Nusa Kimia Indonesia (Tokopedia),[🚨 Emergency / Urgent] Kebutuhan Produksi
+137,2/6/2026,11.38,LOG,,Stop Kontak Atlantic Broco,2,1000000,,,Cash,Sinar Electric,[⚡ Insidentil / Sekali Pakai] Pemasangan CCTV gedung D2 (dalam ruangan QC dan depan ruangan RnD)
+138,2/6/2026,13.00,LOG,,Stop Kontak isi 1,5,102665,,,Cash,Pojok Jaya Elektrik,[⚡ Insidentil / Sekali Pakai] Untuk kebutuhan pemasangan CCTV di F2 
+139,1/6/2026,11.39,LOG,,Kawat Las RD 2.6 @5Kg,1,175000,,,Cash,Abun,[🚨 Emergency / Urgent] Untuk pengelasan dan kebutuhan consumable
+140,29/5/2026,15.22,IN,MTC-SP-188,Three Way T Dus,12,0,,,,,Stock report sync (sync 0 → 12)
+141,29/5/2026,15.22,IN,MTC-SP-190,Mounting,37,0,,,,,Stock report sync (sync 0 → 37)
+142,29/5/2026,15.22,IN,MTC-SP-194,Sliding Bearing LM12LUU (Capping),2,0,,,,,Stock report sync (sync 0 → 2)
+143,29/5/2026,15.22,IN,MTC-SP-202,Kabel Sensor Sick,5,0,,,,,Stock report sync (sync 0 → 5)
+144,29/5/2026,15.22,IN,MTC-SP-203,Fiber Optic Omron,7,0,,,,,Stock report sync (sync 0 → 7)
+145,29/5/2026,15.22,IN,MTC-SP-212,Sensor Omron EE-SX670-WR (Capping),2,0,,,,,Stock report sync (sync 0 → 2)
+146,29/5/2026,15.22,IN,MTC-SP-229,Bolt L M6 x 65,99,0,,,,,Stock report sync (sync 0 → 99)
+147,29/5/2026,15.22,IN,MTC-SP-230,Overload LRD 06,2,0,,,,,Stock report sync (sync 0 → 2)
+148,29/5/2026,15.22,IN,MTC-SP-231,Overload LRD 07,2,0,,,,,Stock report sync (sync 0 → 2)
+149,29/5/2026,15.22,IN,MTC-SP-233,Bolt L M5 X 60,100,0,,,,,Stock report sync (sync 0 → 100)
+150,29/5/2026,15.22,IN,MTC-SP-234,Bolt Hex M5 x 60,100,0,,,,,Stock report sync (sync 0 → 100)
+151,29/5/2026,15.22,IN,MTC-SP-235,Bolt L M4 X 50,94,0,,,,,Stock report sync (sync 0 → 94)
+152,29/5/2026,15.22,IN,MTC-SP-236,Bolt Hex M4 X 50,100,0,,,,,Stock report sync (sync 0 → 100)
+153,29/5/2026,15.22,IN,MTC-SP-237,Bolt Hex M6 X 60,99,0,,,,,Stock report sync (sync 0 → 99)
+154,29/5/2026,15.22,IN,MTC-SP-238,Bolt L M8 X 60,99,0,,,,,Stock report sync (sync 0 → 99)
+155,29/5/2026,15.22,IN,MTC-SP-239,Bolt Hex M8 X 60,100,0,,,,,Stock report sync (sync 0 → 100)
+156,29/5/2026,15.22,IN,MTC-SP-241,Roda 2 inchi PU,12,0,,,,,Stock report sync (sync 0 → 12)
+157,29/5/2026,15.22,IN,MTC-SP-246,Pisau Carton Sealer (FXJ 5050A),6,0,,,,,Stock report sync (sync 0 → 6)
+158,29/5/2026,15.22,IN,MTC-SP-247,Bearing 6205 ZZ NTN,2,0,,,,,Stock report sync (sync 0 → 2)
+159,29/5/2026,15.22,IN,MTC-SP-248,Bearing 6205 Rs SKF,25,0,,,,,Stock report sync (sync 0 → 25)
+160,29/5/2026,15.22,IN,MTC-SP-250,Bolt L Verseng M4 x 25,48,0,,,,,Stock report sync (sync 0 → 48)
+161,29/5/2026,15.22,IN,MTC-SP-251,Bolt L Verseng M5 x 25,44,0,,,,,Stock report sync (sync 0 → 44)
+162,29/5/2026,15.22,IN,MTC-SP-252,Bolt L Verseng M6 x 25,50,0,,,,,Stock report sync (sync 0 → 50)
+163,29/5/2026,15.22,IN,MTC-SP-255,Dioda Bridge MIC KBPC 25A 1K V,1,0,,,,,Stock report sync (sync 0 → 1)
+164,29/5/2026,15.22,IN,MTC-SP-258,Cylinder STNC CXSM 20X30 (Piston Cap 2),3,0,,,,,Stock report sync (sync 0 → 3)
+165,29/5/2026,15.22,IN,MTC-SP-259,Bearing 6204 2RS ASB,12,0,,,,,Stock report sync (sync 0 → 12)
+166,29/5/2026,15.22,IN,MTC-SP-260,Linear Bearing LM20UU,4,0,,,,,Stock report sync (sync 0 → 4)
+167,29/5/2026,15.22,IN,MTC-SP-261,Glass Valve,20,0,,,,,Stock report sync (sync 0 → 20)
+168,29/5/2026,15.22,IN,MTC-SP-263,Compact Cylinder Pneumatic (Capping Line 1),3,0,,,,,Stock report sync (sync 0 → 3)
+169,29/5/2026,15.22,IN,MTC-SP-280,Mini Limit Switch (L-sealer),5,0,,,,,Stock report sync (sync 0 → 5)
+170,29/5/2026,15.22,IN,MTC-SP-281,Timing Belt 8M 720 / 25mm (Cellophane Device),3,0,,,,,Stock report sync (sync 0 → 3)
+171,29/5/2026,15.22,IN,MTC-SP-282,Pogo Pin (Cartridge Resistance),43,0,,,,,Stock report sync (sync 0 → 43)
+172,29/5/2026,15.22,IN,MTC-SP-283,Nozzle check valve filling,5,0,,,,,Stock report sync (sync 0 → 5)
+173,29/5/2026,15.22,IN,MTC-SP-284,BEARING LMK 20 UU (Capping Cam),7,0,,,,,Stock report sync (sync 0 → 7)
+174,29/5/2026,15.22,IN,MTC-SP-287,Solenoid 3V21008 NC,4,0,,,,,Stock report sync (sync 0 → 4)
+175,29/5/2026,15.22,IN,MTC-SP-289,Emergency Switch Schneider,10,0,,,,,Stock report sync (sync 0 → 10)
+176,29/5/2026,15.22,IN,MTC-SP-290,Socket 3 Pin 16A (PLUG),3,0,,,,,Stock report sync (sync 0 → 3)
+177,29/5/2026,15.22,IN,MTC-SP-291,Socket 3 pin 16A,2,0,,,,,Stock report sync (sync 0 → 2)
+178,29/5/2026,15.22,IN,MTC-SP-292,BEARING LM10UU (Cellophane Device),10,0,,,,,Stock report sync (sync 0 → 10)
+179,29/5/2026,15.22,IN,MTC-SP-293,V Belt A51 (Kompresor),2,0,,,,,Stock report sync (sync 0 → 2)
+180,29/5/2026,15.22,IN,MTC-SP-294,Bearing SKF 61902 - 2RS1 (Authenticity),6,0,,,,,Stock report sync (sync 0 → 6)
+181,29/5/2026,15.22,IN,MTC-SP-295,IDEC RJ1S CL D24V (Relay Blister Pod X),6,0,,,,,Stock report sync (sync 0 → 6)
+182,29/5/2026,15.22,IN,MTC-SP-296,Socket Relay IDEC RJ1S CL 24V,6,0,,,,,Stock report sync (sync 0 → 6)
+183,29/5/2026,15.22,IN,MTC-SP-297,Bearing CSK25PP,1,0,,,,,Stock report sync (sync 0 → 1)
+184,29/5/2026,15.22,IN,MTC-SP-298,IDEC RELAY RJ2S (24Vdc),3,0,,,,,Stock report sync (sync 0 → 3)
+185,29/5/2026,15.22,IN,MTC-SP-299,Socket Relay RJ2S,1,0,,,,,Stock report sync (sync 0 → 1)
+186,29/5/2026,15.22,IN,MTC-SP-300,Relay Timer H3Y (24Vdc),2,0,,,,,Stock report sync (sync 0 → 2)
+187,29/5/2026,15.22,IN,MTC-SP-301,RELAY MY4N (24Vdc),1,0,,,,,Stock report sync (sync 0 → 1)
+188,29/5/2026,15.22,IN,MTC-SP-302,Relay MY4N (220Vac),6,0,,,,,Stock report sync (sync 0 → 6)
+189,29/5/2026,15.22,IN,MTC-SP-303,Rod End Bearing Female (Capping Cam),4,0,,,,,Stock report sync (sync 0 → 4)
+190,29/5/2026,12.56,LOG,,Broco Stop Kontak isi 1,4,133512,,,Cash,Pojok Jaya Elektrik (Tokopedia),"[⚡ Insidentil / Sekali Pakai] Untuk Pemasangan CCTV di G5 dan D7, serta pemasangan di fly catcher RnD"
+191,29/5/2026,12.58,LOG,,Kain Bahan Kabulon Bludru - New Blue BCA,2,97500,,,Cash,Raja Kain Textile,[⚡ Insidentil / Sekali Pakai] Untuk kebutuhan mesin cellophane device dan cartridge
+192,29/5/2026,15.22,IN,MTC-SP-147,Solid State Relay (SSR),4,0,,,,,Stock report sync (sync 0 → 4)
+193,29/5/2026,15.21,IN,MTC-SP-005,Cable Tie 2.5x150,2,0,,,,,Stock report sync (sync 0 → 2)
+194,29/5/2026,15.21,IN,MTC-SP-006,Cable Tie 2.5x100,6,0,,,,,Stock report sync (sync 0 → 6)
+195,29/5/2026,15.21,IN,MTC-SP-007,Cartridge Ink,5,0,,,,,Stock report sync (sync 0 → 5)
+196,29/5/2026,15.21,IN,MTC-SP-008,Iron and Steel Grinding,15,0,,,,,Stock report sync (sync 0 → 15)
+197,29/5/2026,15.21,IN,MTC-SP-009,Flap Disc,48,0,,,,,Stock report sync (sync 0 → 48)
+198,29/5/2026,15.21,IN,MTC-SP-010,Cutting Sheet,31,0,,,,,Stock report sync (sync 0 → 31)
+199,29/5/2026,15.21,IN,MTC-SP-011,Dinabolt M12,39,0,,,,,Stock report sync (sync 0 → 39)
+200,29/5/2026,15.21,IN,MTC-SP-012,Dinabolt M8,274,0,,,,,Stock report sync (sync 0 → 274)
+201,29/5/2026,15.21,IN,MTC-SP-013,Fisher Kupu - Kupu,97,0,,,,,Stock report sync (sync 0 → 97)
+202,29/5/2026,15.21,IN,MTC-SP-015,Fisher S6,267,0,,,,,Stock report sync (sync 0 → 267)
+203,29/5/2026,15.21,IN,MTC-SP-016,Bolt Hex M10,32,0,,,,,Stock report sync (sync 0 → 32)
+204,29/5/2026,15.21,IN,MTC-SP-017,Nut M10,83,0,,,,,Stock report sync (sync 0 → 83)
+205,29/5/2026,15.21,IN,MTC-SP-018,Bolt L M10,45,0,,,,,Stock report sync (sync 0 → 45)
+206,29/5/2026,15.21,IN,MTC-SP-019,Bolt L M8,97,0,,,,,Stock report sync (sync 0 → 97)
+207,29/5/2026,15.21,IN,MTC-SP-020,Bolt Hex M8,113,0,,,,,Stock report sync (sync 0 → 113)
+208,29/5/2026,15.21,IN,MTC-SP-021,Nut M8,356,0,,,,,Stock report sync (sync 0 → 356)
+209,29/5/2026,15.21,IN,MTC-SP-022,Ring M8,180,0,,,,,Stock report sync (sync 0 → 180)
+210,29/5/2026,15.21,IN,MTC-SP-024,Bolt Hex M6,87,0,,,,,Stock report sync (sync 0 → 87)
+211,29/5/2026,15.21,IN,MTC-SP-025,Bolt L M6,87,0,,,,,Stock report sync (sync 0 → 87)
+212,29/5/2026,15.21,IN,MTC-SP-026,Nut M6,370,0,,,,,Stock report sync (sync 0 → 370)
+213,29/5/2026,15.22,IN,MTC-SP-027,Ring M6,66,0,,,,,Stock report sync (sync 0 → 66)
+214,29/5/2026,15.22,IN,MTC-SP-028,Ring Per M6,191,0,,,,,Stock report sync (sync 0 → 191)
+215,29/5/2026,15.22,IN,MTC-SP-029,Bolt L M5,65,0,,,,,Stock report sync (sync 0 → 65)
+216,29/5/2026,15.22,IN,MTC-SP-030,Nut M5,290,0,,,,,Stock report sync (sync 0 → 290)
+217,29/5/2026,15.22,IN,MTC-SP-031,Ring M5,278,0,,,,,Stock report sync (sync 0 → 278)
+218,29/5/2026,15.22,IN,MTC-SP-032,Fitting Lurus 6 - 6,8,0,,,,,Stock report sync (sync 0 → 8)
+219,29/5/2026,15.22,IN,MTC-SP-033,Fitting Lurus 6 - 8,9,0,,,,,Stock report sync (sync 0 → 9)
+220,29/5/2026,15.22,IN,MTC-SP-034,Fitting Lurus 8 - 8,10,0,,,,,Stock report sync (sync 0 → 10)
+221,29/5/2026,15.22,IN,MTC-SP-035,Fitting Lurus 8 - 12,2,0,,,,,Stock report sync (sync 0 → 2)
+222,29/5/2026,15.22,IN,MTC-SP-036,Fitting Lurus 12 - 12,17,0,,,,,Stock report sync (sync 0 → 17)
+223,29/5/2026,15.22,IN,MTC-SP-037,"Fitting 6 - 1/2""",16,0,,,,,Stock report sync (sync 0 → 16)
+224,29/5/2026,15.22,IN,MTC-SP-038,"Fitting 8 - 1/2""",12,0,,,,,Stock report sync (sync 0 → 12)
+225,29/5/2026,15.22,IN,MTC-SP-039,"Fitting 12 - 1/2""",1,0,,,,,Stock report sync (sync 0 → 1)
+226,29/5/2026,15.22,IN,MTC-SP-040,"Fitting 12 - 1""",1,0,,,,,Stock report sync (sync 0 → 1)
+227,29/5/2026,15.22,IN,MTC-SP-043,"Double Naple 1/2"" - 5/8""",2,0,,,,,Stock report sync (sync 0 → 2)
+228,29/5/2026,15.22,IN,MTC-SP-044,"Fitting L 6 - 3/16""",10,0,,,,,Stock report sync (sync 0 → 10)
+229,29/5/2026,15.22,IN,MTC-SP-045,"Fitting L 6 - 3/8""",7,0,,,,,Stock report sync (sync 0 → 7)
+230,29/5/2026,15.22,IN,MTC-SP-046,"Fitting L 8 - 3/8""",11,0,,,,,Stock report sync (sync 0 → 11)
+231,29/5/2026,15.22,IN,MTC-SP-047,"Fitting L 8 - 1/2""",4,0,,,,,Stock report sync (sync 0 → 4)
+232,29/5/2026,15.22,IN,MTC-SP-048,"Fitting L 10 - 1/2""",2,0,,,,,Stock report sync (sync 0 → 2)
+233,29/5/2026,15.22,IN,MTC-SP-049,"Naple Speed Control 8 - 3/8""",8,0,,,,,Stock report sync (sync 0 → 8)
+234,29/5/2026,15.22,IN,MTC-SP-050,"Naple Speed Control 8 - 5/8""",10,0,,,,,Stock report sync (sync 0 → 10)
+235,29/5/2026,15.22,IN,MTC-SP-051,"Naple Speed Control 6 - 3/16""",5,0,,,,,Stock report sync (sync 0 → 5)
+236,29/5/2026,15.22,IN,MTC-SP-052,"Naple Speed Control 6 - 1/2""",20,0,,,,,Stock report sync (sync 0 → 20)
+237,29/5/2026,15.22,IN,MTC-SP-053,"Naple Speed Control 6 - 5/8""",10,0,,,,,Stock report sync (sync 0 → 10)
+238,29/5/2026,15.22,IN,MTC-SP-054,Fitting Y 6 - 6,17,0,,,,,Stock report sync (sync 0 → 17)
+239,29/5/2026,15.22,IN,MTC-SP-055,Fitting Y 6 - 8,19,0,,,,,Stock report sync (sync 0 → 19)
+240,29/5/2026,15.22,IN,MTC-SP-056,Fitting Y 8 - 8,4,0,,,,,Stock report sync (sync 0 → 4)
+241,29/5/2026,15.22,IN,MTC-SP-057,Fitting Y 8 - 12,13,0,,,,,Stock report sync (sync 0 → 13)
+242,29/5/2026,15.22,IN,MTC-SP-058,Fitting Y 12 - 12,15,0,,,,,Stock report sync (sync 0 → 15)
+243,29/5/2026,15.22,IN,MTC-SP-059,Fitting T 6 - 8,21,0,,,,,Stock report sync (sync 0 → 21)
+244,29/5/2026,15.22,IN,MTC-SP-060,Fitting T 8 - 8,9,0,,,,,Stock report sync (sync 0 → 9)
+245,29/5/2026,15.22,IN,MTC-SP-061,"Silencer Pneumatic 3/8""",9,0,,,,,Stock report sync (sync 0 → 9)
+246,29/5/2026,15.22,IN,MTC-SP-062,Biaxial Cylinder TN 20 X 40S,8,0,,,,,Stock report sync (sync 0 → 8)
+247,29/5/2026,15.22,IN,MTC-SP-063,Cylinder 16 X 30 (Piston Capping),3,0,,,,,Stock report sync (sync 0 → 3)
+248,29/5/2026,15.22,IN,MTC-SP-064,Cellophane Heater,2,0,,,,,Stock report sync (sync 0 → 2)
+249,29/5/2026,15.22,IN,MTC-SP-066,Timing Belt 150L,3,0,,,,,Stock report sync (sync 0 → 3)
+250,29/5/2026,15.22,IN,MTC-SP-067,Timing Belt 270XL,5,0,,,,,Stock report sync (sync 0 → 5)
+251,29/5/2026,15.22,IN,MTC-SP-068,Timing Belt HTD 450 - 5M,4,0,,,,,Stock report sync (sync 0 → 4)
+252,29/5/2026,15.22,IN,MTC-SP-069,Timing Belt HTD 475 - 5M,2,0,,,,,Stock report sync (sync 0 → 2)
+253,29/5/2026,15.22,IN,MTC-SP-070,Timing Belt HTD 550 - 5M,1,0,,,,,Stock report sync (sync 0 → 1)
+254,29/5/2026,15.22,IN,MTC-SP-071,Timing Belt HTD 1295 - 5M,3,0,,,,,Stock report sync (sync 0 → 3)
+255,29/5/2026,15.22,IN,MTC-SP-072,V Belt A 25,3,0,,,,,Stock report sync (sync 0 → 3)
+256,29/5/2026,15.22,IN,MTC-SP-073,V Belt M28,1,0,,,,,Stock report sync (sync 0 → 1)
+257,29/5/2026,15.22,IN,MTC-SP-074,Kepala Steker,39,0,,,,,Stock report sync (sync 0 → 39)
+258,29/5/2026,15.22,IN,MTC-SP-075,Loctite,2,0,,,,,Stock report sync (sync 0 → 2)
+259,29/5/2026,15.22,IN,MTC-SP-077,Solenoid 4V21008 (AC 220V),6,0,,,,,Stock report sync (sync 0 → 6)
+260,29/5/2026,15.22,IN,MTC-SP-079,Solenoid 4V21008 (DC 24V),10,0,,,,,Stock report sync (sync 0 → 10)
+261,29/5/2026,15.22,IN,MTC-SP-080,Karet Holding,2,0,,,,,Stock report sync (sync 0 → 2)
+262,29/5/2026,15.22,IN,MTC-SP-081,Karet Capping,17,0,,,,,Stock report sync (sync 0 → 17)
+263,29/5/2026,15.22,IN,MTC-SP-082,Insulation Tape,5,0,,,,,Stock report sync (sync 0 → 5)
+264,29/5/2026,15.22,IN,MTC-SP-084,Floating Joint,4,0,,,,,Stock report sync (sync 0 → 4)
+265,29/5/2026,15.22,IN,MTC-SP-086,Solenoid 3V21008 (DC 24),4,0,,,,,Stock report sync (sync 0 → 4)
+266,29/5/2026,15.22,IN,MTC-SP-088,Nikelin,6,0,,,,,Stock report sync (sync 0 → 6)
+267,29/5/2026,15.22,IN,MTC-SP-089,Rod End Bearing,13,0,,,,,Stock report sync (sync 0 → 13)
+268,29/5/2026,15.22,IN,MTC-SP-090,Bearing 6002,17,0,,,,,Stock report sync (sync 0 → 17)
+269,29/5/2026,15.22,IN,MTC-SP-091,Bearing LM25UU,31,0,,,,,Stock report sync (sync 0 → 31)
+270,29/5/2026,15.22,IN,MTC-SP-092,Bearing 6800ZZ,2,0,,,,,Stock report sync (sync 0 → 2)
+271,29/5/2026,15.22,IN,MTC-SP-093,Bearing 680ZZ,3,0,,,,,Stock report sync (sync 0 → 3)
+272,29/5/2026,15.22,IN,MTC-SP-094,Cylinder SDA 40 x 30,1,0,,,,,Stock report sync (sync 0 → 1)
+273,29/5/2026,15.22,IN,MTC-SP-095,Bearing 6004Z,1,0,,,,,Stock report sync (sync 0 → 1)
+274,29/5/2026,15.22,IN,MTC-SP-097,Bearing 6001ZZ,4,0,,,,,Stock report sync (sync 0 → 4)
+275,29/5/2026,15.22,IN,MTC-SP-099,Micro Gear Pump (Motor Filling),4,0,,,,,Stock report sync (sync 0 → 4)
+276,29/5/2026,15.22,IN,MTC-SP-100,Carbon Brush Shrink,15,0,,,,,Stock report sync (sync 0 → 15)
+277,29/5/2026,15.22,IN,MTC-SP-101,Pisau Porforasi,7,0,,,,,Stock report sync (sync 0 → 7)
+278,29/5/2026,15.22,IN,MTC-SP-102,Sliding Block,2,0,,,,,Stock report sync (sync 0 → 2)
+279,29/5/2026,15.22,IN,MTC-SP-106,Pilot Lamp Yellow,6,0,,,,,Stock report sync (sync 0 → 6)
+280,29/5/2026,15.22,IN,MTC-SP-107,Emergency Switch,5,0,,,,,Stock report sync (sync 0 → 5)
+281,29/5/2026,15.22,IN,MTC-SP-108,Servo Motor DC 5,2,0,,,,,Stock report sync (sync 0 → 2)
+282,29/5/2026,15.22,IN,MTC-SP-109,Push Button,8,0,,,,,Stock report sync (sync 0 → 8)
+283,29/5/2026,15.22,IN,MTC-SP-110,Pilot Lamp Red,6,0,,,,,Stock report sync (sync 0 → 6)
+284,29/5/2026,15.22,IN,MTC-SP-111,Pilot Lamp Green,8,0,,,,,Stock report sync (sync 0 → 8)
+285,29/5/2026,15.22,IN,MTC-SP-113,Kapasitor 7 mF,5,0,,,,,Stock report sync (sync 0 → 5)
+286,29/5/2026,15.22,IN,MTC-SP-114,Kapasitor 8 mF,4,0,,,,,Stock report sync (sync 0 → 4)
+287,29/5/2026,15.22,IN,MTC-SP-115,Kapasitor 10 mF,4,0,,,,,Stock report sync (sync 0 → 4)
+288,29/5/2026,15.22,IN,MTC-SP-116,Kapasitor 40 mF,2,0,,,,,Stock report sync (sync 0 → 2)
+289,29/5/2026,15.22,IN,MTC-SP-117,Kapasitor 50 mF,3,0,,,,,Stock report sync (sync 0 → 3)
+290,29/5/2026,15.22,IN,MTC-SP-118,Kapasitor 200 mF,3,0,,,,,Stock report sync (sync 0 → 3)
+291,29/5/2026,15.22,IN,MTC-SP-119,Potensiometer,5,0,,,,,Stock report sync (sync 0 → 5)
+292,29/5/2026,15.22,IN,MTC-SP-120,Selector Switch,13,0,,,,,Stock report sync (sync 0 → 13)
+293,29/5/2026,15.22,IN,MTC-SP-121,Power Push Button Switch,4,0,,,,,Stock report sync (sync 0 → 4)
+294,29/5/2026,15.22,IN,MTC-SP-122,Changover Switch,3,0,,,,,Stock report sync (sync 0 → 3)
+295,29/5/2026,15.22,IN,MTC-SP-123,Sensor BF3RX,11,0,,,,,Stock report sync (sync 0 → 11)
+296,29/5/2026,15.22,IN,MTC-SP-124,Sensor BF5R - D1 - N,7,0,,,,,Stock report sync (sync 0 → 7)
+297,29/5/2026,15.22,IN,MTC-SP-125,Photoelectric Switch,6,0,,,,,Stock report sync (sync 0 → 6)
+298,29/5/2026,15.22,IN,MTC-SP-127,Terminal 12 Slot,7,0,,,,,Stock report sync (sync 0 → 7)
+299,29/5/2026,15.22,IN,MTC-SP-128,Proximity Sensor,3,0,,,,,Stock report sync (sync 0 → 3)
+300,29/5/2026,15.22,IN,MTC-SP-129,Speed Controller,3,0,,,,,Stock report sync (sync 0 → 3)
+301,29/5/2026,15.22,IN,MTC-SP-130,Temperature Controller,3,0,,,,,Stock report sync (sync 0 → 3)
+302,29/5/2026,15.22,IN,MTC-SP-131,Counter,2,0,,,,,Stock report sync (sync 0 → 2)
+303,29/5/2026,15.22,IN,MTC-SP-132,Timer,6,0,,,,,Stock report sync (sync 0 → 6)
+304,29/5/2026,15.22,IN,MTC-SP-133,DC Brushed Motor Speed governor,5,0,,,,,Stock report sync (sync 0 → 5)
+305,29/5/2026,15.22,IN,MTC-SP-134,Fork Sensor Sick,5,0,,,,,Stock report sync (sync 0 → 5)
+306,29/5/2026,15.22,IN,MTC-SP-135,Photoelectric Sensor,1,0,,,,,Stock report sync (sync 0 → 1)
+307,29/5/2026,15.22,IN,MTC-SP-136,Insulator,2,0,,,,,Stock report sync (sync 0 → 2)
+308,29/5/2026,15.22,IN,MTC-SP-137,Switch ON/OFF,9,0,,,,,Stock report sync (sync 0 → 9)
+309,29/5/2026,15.22,IN,MTC-SP-138,Relay MKS2P,5,0,,,,,Stock report sync (sync 0 → 5)
+310,29/5/2026,15.22,IN,MTC-SP-139,Relay Socket PTF - 08A,64,0,,,,,Stock report sync (sync 0 → 64)
+311,29/5/2026,15.22,IN,MTC-SP-140,Relay LY2N DC,55,0,,,,,Stock report sync (sync 0 → 55)
+312,29/5/2026,15.22,IN,MTC-SP-141,Relay LY2N AC,50,0,,,,,Stock report sync (sync 0 → 50)
+313,29/5/2026,15.22,IN,MTC-SP-142,Contactor 09A,3,0,,,,,Stock report sync (sync 0 → 3)
+314,29/5/2026,15.22,IN,MTC-SP-143,Contactor 25A,6,0,,,,,Stock report sync (sync 0 → 6)
+315,29/5/2026,15.22,IN,MTC-SP-144,Relay Songle 10mF,5,0,,,,,Stock report sync (sync 0 → 5)
+316,29/5/2026,15.22,IN,MTC-SP-145,Single Phase Motor Speed Regulator,2,0,,,,,Stock report sync (sync 0 → 2)
+317,29/5/2026,15.22,IN,MTC-SP-146,Relay Socket PF0 - 083A (Socket Timer & Counter),15,0,,,,,Stock report sync (sync 0 → 15)
+318,29/5/2026,15.21,IN,MTC-SP-001,Isolasi Tahan Panas,31,0,,,,,Stock report sync (sync 0 → 31)
+319,29/5/2026,15.22,IN,MTC-SP-148,Overload LRD 12,4,0,,,,,Stock report sync (sync 0 → 4)
+320,29/5/2026,15.22,IN,MTC-SP-149,Relay MY2N DC,10,0,,,,,Stock report sync (sync 0 → 10)
+321,29/5/2026,15.22,IN,MTC-SP-176,"Tee Kombinasi Galvanish 1/4"" - 1/2""",5,0,,,,,Stock report sync (sync 0 → 5)
+322,29/5/2026,15.22,IN,MTC-SP-177,"Tee Galvanish 1""",1,0,,,,,Stock report sync (sync 0 → 1)
+323,29/5/2026,15.22,IN,MTC-SP-178,"Elbow 1""",2,0,,,,,Stock report sync (sync 0 → 2)
+324,29/5/2026,15.22,IN,MTC-SP-179,Watermoor Galvanish,1,0,,,,,Stock report sync (sync 0 → 1)
+325,29/5/2026,15.22,IN,MTC-SP-180,Taffhome Tutup Pintu Automatic,1,0,,,,,Stock report sync (sync 0 → 1)
+326,29/5/2026,15.22,IN,MTC-SP-182,Ball Valve,3,0,,,,,Stock report sync (sync 0 → 3)
+327,29/5/2026,15.22,IN,MTC-SP-183,"Elbow 1 1/2""",6,0,,,,,Stock report sync (sync 0 → 6)
+328,29/5/2026,15.22,IN,MTC-SP-185,"Double Naple Galvanish 1""",3,0,,,,,Stock report sync (sync 0 → 3)
+329,29/5/2026,15.22,IN,MTC-SP-186,"Double Naple Galvanish 3/4""",2,0,,,,,Stock report sync (sync 0 → 2)
+330,29/5/2026,15.22,IN,MTC-SP-187,"Double Naple Galvanish 1/2""",3,0,,,,,Stock report sync (sync 0 → 3)
+331,8/5/2026,16.06,IN,MTC-SP-304,Bearing 6801 ZZ (NTN),3,38000,,,Cash,Toko Agung Teknik,
+332,6/5/2026,17.44,LOG,,Piston A03 Filling Machine,1,168000,,,Cash,Hualian Machinery Indonesia (Tokopedia),[🚨 Emergency / Urgent] Kebutuhan pergantian sparepart mesin filling manual
+333,1/4/2026,12.36,IN,,Bearing 6800ZZ (NTN),6,37879,,,PO,Tokopedia,
+334,23/1/2026,16.15,IN,MTC-SP-305,Bearing 6000ZZ (NTN),2,23000,,,Cash,MM Bearing,

@@ -1,0 +1,2816 @@
+[
+  {
+    "id": 4446,
+    "name": "PR04439",
+    "state": "to_approve",
+    "create_date": "2026-06-26 11:13:55",
+    "description": "Kebutuhan part modikasi cellophane untuk new product (Cartridge Bray) "
+  },
+  {
+    "id": 4439,
+    "name": "PR04432",
+    "state": "to_approve",
+    "create_date": "2026-06-24 15:44:05",
+    "description": "Untuk Part Mesin Blister Pod X Gedung G5"
+  },
+  {
+    "id": 4433,
+    "name": "PR04426",
+    "state": "approved",
+    "create_date": "2026-06-24 05:11:35",
+    "description": "consumabel part repeat order"
+  },
+  {
+    "id": 4427,
+    "name": "PR04420",
+    "state": "approved",
+    "create_date": "2026-06-23 10:24:51",
+    "description": "Untuk Perbaikan mesin coding date line cartridge G5"
+  },
+  {
+    "id": 4370,
+    "name": "PR04363",
+    "state": "approved",
+    "create_date": "2026-06-18 08:30:27",
+    "description": "kebutuhan untuk WTP gedung G2 dan G5"
+  },
+  {
+    "id": 4344,
+    "name": "PR04337",
+    "state": "approved",
+    "create_date": "2026-06-13 05:23:04",
+    "description": "tinta catridge kebutuhan produksi (Repeat order)"
+  },
+  {
+    "id": 4334,
+    "name": "PR04327",
+    "state": "approved",
+    "create_date": "2026-06-11 08:16:05",
+    "description": "Kebutuhan exhaust mesin compressor G5 "
+  },
+  {
+    "id": 4329,
+    "name": "PR04322",
+    "state": "approved",
+    "create_date": "2026-06-11 02:59:32",
+    "description": "kebutuhan mixing untuk scanner untuk stock"
+  },
+  {
+    "id": 4310,
+    "name": "PR04303",
+    "state": "approved",
+    "create_date": "2026-06-10 04:28:36",
+    "description": "Keperluan mesh conveyor mesin shrink tunnel line liquid"
+  },
+  {
+    "id": 4309,
+    "name": "PR04302",
+    "state": "approved",
+    "create_date": "2026-06-10 04:20:13",
+    "description": "Alat press bearing (kebutuhan maintenance)"
+  },
+  {
+    "id": 4304,
+    "name": "PR04297",
+    "state": "approved",
+    "create_date": "2026-06-10 03:03:01",
+    "description": "Sparepart Perawatan Kompresor Gedung G5 (Maintenance)"
+  },
+  {
+    "id": 4302,
+    "name": "PR04295",
+    "state": "approved",
+    "create_date": "2026-06-09 10:26:55",
+    "description": "kebutuhan produksi untuk print timbangan qty RM"
+  },
+  {
+    "id": 4285,
+    "name": "PR04278",
+    "state": "approved",
+    "create_date": "2026-06-08 12:02:17",
+    "description": "Kebutuhan Untuk Sparepart Conveyor di Mesin Sticker (MTC) (ACAL)"
+  },
+  {
+    "id": 4283,
+    "name": "PR04276",
+    "state": "approved",
+    "create_date": "2026-06-08 11:44:19",
+    "description": "Sparepart Mesin Cellophane Line Cartridge (urgent)"
+  },
+  {
+    "id": 4278,
+    "name": "PR04271",
+    "state": "approved",
+    "create_date": "2026-06-08 11:18:49",
+    "description": "consumabel part repeat order"
+  },
+  {
+    "id": 4277,
+    "name": "PR04270",
+    "state": "approved",
+    "create_date": "2026-06-08 11:17:54",
+    "description": "stiker kebutuhan mixing (repeat order)"
+  },
+  {
+    "id": 4275,
+    "name": "PR04268",
+    "state": "approved",
+    "create_date": "2026-06-08 10:36:28",
+    "description": "kebutuhan produksi untuk timbangan RM"
+  },
+  {
+    "id": 4263,
+    "name": "PR04256",
+    "state": "approved",
+    "create_date": "2026-06-08 01:46:47",
+    "description": "kebutuhan produksi untuk timbangan 15 ml"
+  },
+  {
+    "id": 4262,
+    "name": "PR04255",
+    "state": "approved",
+    "create_date": "2026-06-08 01:37:19",
+    "description": "kebutuhan produksi untuk 15ml karton sealer"
+  },
+  {
+    "id": 4244,
+    "name": "PR04237",
+    "state": "approved",
+    "create_date": "2026-06-04 09:32:17",
+    "description": "Kebutuhan part mesin stiker dan conveyor stiker (Repeat Order)"
+  },
+  {
+    "id": 4234,
+    "name": "PR04227",
+    "state": "approved",
+    "create_date": "2026-06-03 09:27:07",
+    "description": "kebutuhan produksi  (repeat order)"
+  },
+  {
+    "id": 4232,
+    "name": "PR04225",
+    "state": "approved",
+    "create_date": "2026-06-03 08:37:12",
+    "description": "Untuk CCTV D2 "
+  },
+  {
+    "id": 4206,
+    "name": "PR04199",
+    "state": "draft",
+    "create_date": "2026-05-30 05:49:19",
+    "description": "kebutuhan maintenance dan consumable part"
+  },
+  {
+    "id": 4205,
+    "name": "PR04198",
+    "state": "approved",
+    "create_date": "2026-05-30 03:46:37",
+    "description": "Kebutuhan stiker layar device pod switch dan switch prime (repeat order)"
+  },
+  {
+    "id": 4204,
+    "name": "PR04197",
+    "state": "approved",
+    "create_date": "2026-05-30 03:43:03",
+    "description": "Penambahan compressor backup line liquid include dryer "
+  },
+  {
+    "id": 4203,
+    "name": "PR04196",
+    "state": "approved",
+    "create_date": "2026-05-29 10:57:08",
+    "description": "kebutuhan produksi semua area untuk perapihan kabel dan stock stop kontak (repeat order)"
+  },
+  {
+    "id": 4186,
+    "name": "PR04179",
+    "state": "approved",
+    "create_date": "2026-05-26 02:58:21",
+    "description": "kebutuhan maintenance dan consumable part (repeat order)"
+  },
+  {
+    "id": 4182,
+    "name": "PR04175",
+    "state": "approved",
+    "create_date": "2026-05-22 07:54:56",
+    "description": "Untuk pembuatan part2 kecil mesin produksi"
+  },
+  {
+    "id": 4181,
+    "name": "PR04174",
+    "state": "approved",
+    "create_date": "2026-05-22 07:44:23",
+    "description": "Untuk visualisasi dashboard MES "
+  },
+  {
+    "id": 4174,
+    "name": "PR04167",
+    "state": "approved",
+    "create_date": "2026-05-21 10:05:10",
+    "description": "Kebutuhan untuk pintu seluruh gedung (repeat order)\n"
+  },
+  {
+    "id": 4170,
+    "name": "PR04163",
+    "state": "approved",
+    "create_date": "2026-05-20 12:56:43",
+    "description": "kebutuhan print head untuk liquid 15 ml"
+  },
+  {
+    "id": 4164,
+    "name": "PR04157",
+    "state": "approved",
+    "create_date": "2026-05-20 04:05:17",
+    "description": "Consumable Part (Repeat Order)"
+  },
+  {
+    "id": 4163,
+    "name": "PR04156",
+    "state": "approved",
+    "create_date": "2026-05-20 04:02:50",
+    "description": "stock penggunaan consumable part (repeat order)"
+  },
+  {
+    "id": 4158,
+    "name": "PR04151",
+    "state": "approved",
+    "create_date": "2026-05-19 14:18:41",
+    "description": "Kebutuhan Pneumatic Part (Consumable Part and Repeat Order) "
+  },
+  {
+    "id": 4153,
+    "name": "PR04146",
+    "state": "approved",
+    "create_date": "2026-05-18 11:10:45",
+    "description": "Full Machine Automation Line Liquid and vulnerable part "
+  },
+  {
+    "id": 4152,
+    "name": "PR04145",
+    "state": "approved",
+    "create_date": "2026-05-18 08:41:23",
+    "description": "kebutuhan nitrogen untuk mixing (repeat order)"
+  },
+  {
+    "id": 4151,
+    "name": "PR04144",
+    "state": "approved",
+    "create_date": "2026-05-18 08:30:15",
+    "description": "kebutuhan produksi untuk pompa mixing PG dan VG"
+  },
+  {
+    "id": 4150,
+    "name": "PR04143",
+    "state": "draft",
+    "create_date": "2026-05-18 08:02:44",
+    "description": "UHMW-PE 1000 GREEN Untuk bantalan perforasi mesin blister line cartridge"
+  },
+  {
+    "id": 4145,
+    "name": "PR04138",
+    "state": "approved",
+    "create_date": "2026-05-16 03:09:49",
+    "description": "consumable part (repeat order)"
+  },
+  {
+    "id": 4135,
+    "name": "PR04128",
+    "state": "approved",
+    "create_date": "2026-05-13 10:28:31",
+    "description": "Sparepart mesin capping (MTC) (Repeat Order) \n"
+  },
+  {
+    "id": 4131,
+    "name": "PR04124",
+    "state": "approved",
+    "create_date": "2026-05-13 08:41:09",
+    "description": "Kebutuhan IOT Engineer (repeat order) untuk pengukuran daya listrik gedung D2 dan F2"
+  },
+  {
+    "id": 4118,
+    "name": "PR04111",
+    "state": "approved",
+    "create_date": "2026-05-12 10:04:09",
+    "description": "consumable part (repeat order)"
+  },
+  {
+    "id": 4117,
+    "name": "PR04110",
+    "state": "approved",
+    "create_date": "2026-05-12 07:55:12",
+    "description": " Untuk AS caping line liquid (Repeat Order)"
+  },
+  {
+    "id": 4113,
+    "name": "PR04106",
+    "state": "approved",
+    "create_date": "2026-05-12 03:02:19",
+    "description": "consumabel part (repeat order)"
+  },
+  {
+    "id": 4111,
+    "name": "PR04104",
+    "state": "approved",
+    "create_date": "2026-05-12 02:50:53",
+    "description": "Kebutuhan perapihan kabel line device dan consumable part"
+  },
+  {
+    "id": 4109,
+    "name": "PR04102",
+    "state": "approved",
+    "create_date": "2026-05-12 02:06:40",
+    "description": "kebutuhan sparepart untuk karton sealer"
+  },
+  {
+    "id": 4097,
+    "name": "PR04090",
+    "state": "approved",
+    "create_date": "2026-05-11 02:50:41",
+    "description": "kebutuhan air WTP G1 (repeat order)"
+  },
+  {
+    "id": 4091,
+    "name": "PR04084",
+    "state": "approved",
+    "create_date": "2026-05-08 04:13:07",
+    "description": "sparepart stiker (urgent)"
+  },
+  {
+    "id": 4083,
+    "name": "PR04076",
+    "state": "approved",
+    "create_date": "2026-05-07 09:17:02",
+    "description": "keranjang untuk kebutuhan all produksi (repeat order)"
+  },
+  {
+    "id": 4081,
+    "name": "PR04074",
+    "state": "approved",
+    "create_date": "2026-05-07 08:09:27",
+    "description": "kebutuhan produksi consumable (repeat order) ,  pembersih coding"
+  },
+  {
+    "id": 4079,
+    "name": "PR04072",
+    "state": "approved",
+    "create_date": "2026-05-07 04:42:09",
+    "description": "kebutuhan produksi untuk menyambung stiker (repeat order)"
+  },
+  {
+    "id": 4029,
+    "name": "PR04022",
+    "state": "approved",
+    "create_date": "2026-04-29 08:24:01",
+    "description": "perbaikan lift produksi D7"
+  },
+  {
+    "id": 4024,
+    "name": "PR04017",
+    "state": "approved",
+    "create_date": "2026-04-27 10:23:18",
+    "description": "Kebutuhan Mesin Blister Pod X, Blister Pod Y, Conveyor Mesin Authenticity Liquid dan Cartridge, kebutuhan pembersih grease, dan perapihan kabel"
+  },
+  {
+    "id": 3997,
+    "name": "PR03990",
+    "state": "approved",
+    "create_date": "2026-04-26 06:24:09",
+    "description": "Kebutuhan spare part blister DPP 80 - Line prefilled"
+  },
+  {
+    "id": 3996,
+    "name": "PR03989",
+    "state": "approved",
+    "create_date": "2026-04-25 08:18:50",
+    "description": "Sparepart mesin blister, filling, cek resistance dari Jinbaolian "
+  },
+  {
+    "id": 3977,
+    "name": "PR03970",
+    "state": "approved",
+    "create_date": "2026-04-24 08:17:38",
+    "description": "Modifikasi tray cartridge CT ultra (Kurnia Teknik)"
+  },
+  {
+    "id": 3967,
+    "name": "PR03960",
+    "state": "approved",
+    "create_date": "2026-04-23 09:19:05",
+    "description": "Kebutuhan modifikasi fixture cek resistance cartridge ultra"
+  },
+  {
+    "id": 3885,
+    "name": "PR03878",
+    "state": "approved",
+    "create_date": "2026-04-15 08:30:37",
+    "description": "Untuk kebutuhan layar laptop admin cartridge yg rusak"
+  },
+  {
+    "id": 3872,
+    "name": "PR03865",
+    "state": "approved",
+    "create_date": "2026-04-14 09:52:36",
+    "description": "Part mesin blister"
+  },
+  {
+    "id": 3867,
+    "name": "PR03860",
+    "state": "approved",
+    "create_date": "2026-04-14 04:10:52",
+    "description": "Untuk tray mesin resistance testing"
+  },
+  {
+    "id": 3857,
+    "name": "PR03850",
+    "state": "approved",
+    "create_date": "2026-04-11 11:04:22",
+    "description": "kebutuhan produksi untuk proses pengeprintan hasil timbangan"
+  },
+  {
+    "id": 3855,
+    "name": "PR03848",
+    "state": "approved",
+    "create_date": "2026-04-11 03:50:34",
+    "description": "Untuk penimbangan PG dan VG"
+  },
+  {
+    "id": 3848,
+    "name": "PR03841",
+    "state": "approved",
+    "create_date": "2026-04-10 06:44:49",
+    "description": "consumable part (Repeat Order)"
+  },
+  {
+    "id": 3833,
+    "name": "PR03826",
+    "state": "approved",
+    "create_date": "2026-04-07 15:34:29",
+    "description": "kebutuhan produksi repeat order"
+  },
+  {
+    "id": 3805,
+    "name": "PR03798",
+    "state": "approved",
+    "create_date": "2026-04-02 01:34:05",
+    "description": "sparepart blister"
+  },
+  {
+    "id": 3801,
+    "name": "PR03794",
+    "state": "approved",
+    "create_date": "2026-04-01 08:21:21",
+    "description": "Kebutuhan stiker layar device pod switch"
+  },
+  {
+    "id": 3782,
+    "name": "PR03775",
+    "state": "approved",
+    "create_date": "2026-03-31 04:32:14",
+    "description": "Maintenance Kompresor di gedung G5 (Maintenance)"
+  },
+  {
+    "id": 3781,
+    "name": "PR03774",
+    "state": "approved",
+    "create_date": "2026-03-31 03:28:11",
+    "description": "kebutuhan produksi  (repeat order)"
+  },
+  {
+    "id": 3780,
+    "name": "PR03773",
+    "state": "approved",
+    "create_date": "2026-03-31 03:26:23",
+    "description": "kebutuhan produksi tinta cartridge repeat order"
+  },
+  {
+    "id": 3779,
+    "name": "PR03772",
+    "state": "approved",
+    "create_date": "2026-03-30 12:43:13",
+    "description": "tinta catridge kebutuhan produksi (Repeat order)"
+  },
+  {
+    "id": 3771,
+    "name": "PR03764",
+    "state": "approved",
+    "create_date": "2026-03-27 06:52:12",
+    "description": "pengecatan gedung G1,G2,G5(Repeat Order)"
+  },
+  {
+    "id": 3768,
+    "name": "PR03761",
+    "state": "draft",
+    "create_date": "2026-03-26 08:29:06",
+    "description": "Kebutuhan IOT Engineer (repeat order)"
+  },
+  {
+    "id": 3737,
+    "name": "PR03730",
+    "state": "approved",
+    "create_date": "2026-03-14 05:20:48",
+    "description": "Kebutuhan Instalasi Listrik di Gedung D2 (RnD Lantai 1)"
+  },
+  {
+    "id": 3710,
+    "name": "PR03703",
+    "state": "approved",
+    "create_date": "2026-03-12 05:35:25",
+    "description": "kebutuhan produksi tinta cartridge repeat order"
+  },
+  {
+    "id": 3704,
+    "name": "PR03697",
+    "state": "approved",
+    "create_date": "2026-03-11 07:59:06",
+    "description": "kebutuhan produksi (repeat order)"
+  },
+  {
+    "id": 3702,
+    "name": "PR03695",
+    "state": "approved",
+    "create_date": "2026-03-11 04:42:56",
+    "description": "kebutuhan produksi area device (repeat order)"
+  },
+  {
+    "id": 3696,
+    "name": "PR03689",
+    "state": "approved",
+    "create_date": "2026-03-10 11:27:23",
+    "description": "kebutuhan produksi (repeat order)"
+  },
+  {
+    "id": 3671,
+    "name": "PR03664",
+    "state": "approved",
+    "create_date": "2026-03-10 08:10:01",
+    "description": "Kebutuhan consumable sparepart maintenance (Acal)"
+  },
+  {
+    "id": 3670,
+    "name": "PR03663",
+    "state": "approved",
+    "create_date": "2026-03-10 07:49:55",
+    "description": "Consumable stock"
+  },
+  {
+    "id": 3669,
+    "name": "PR03662",
+    "state": "approved",
+    "create_date": "2026-03-10 04:36:28",
+    "description": "Kebutuhan Mixing Liquid untuk cleaning"
+  },
+  {
+    "id": 3653,
+    "name": "PR03646",
+    "state": "approved",
+    "create_date": "2026-03-06 03:06:51",
+    "description": "Kebutuhan Maintenance untuksparepart mesin blister pod X (Repeat Order) "
+  },
+  {
+    "id": 3600,
+    "name": "PR03593",
+    "state": "approved",
+    "create_date": "2026-03-01 07:23:31",
+    "description": "Kebutuhan sparepart mesin, produksi, dan project IOT "
+  },
+  {
+    "id": 3557,
+    "name": "PR03550",
+    "state": "approved",
+    "create_date": "2026-02-26 02:16:31",
+    "description": "Kebutuhan part mesin blister DPP 80"
+  },
+  {
+    "id": 3553,
+    "name": "PR03546",
+    "state": "approved",
+    "create_date": "2026-02-25 08:23:53",
+    "description": "Penggantian part Transfer board  Mesin coding"
+  },
+  {
+    "id": 3517,
+    "name": "PR03510",
+    "state": "approved",
+    "create_date": "2026-02-20 08:06:22",
+    "description": "consumable part (Repeat Order)"
+  },
+  {
+    "id": 3515,
+    "name": "PR03508",
+    "state": "approved",
+    "create_date": "2026-02-20 07:18:55",
+    "description": "Consumable part (Repeat Order) (Understock) (MTC) (ACAL)"
+  },
+  {
+    "id": 3512,
+    "name": "PR03505",
+    "state": "approved",
+    "create_date": "2026-02-20 03:52:42",
+    "description": "Kebutuhan consumable part (repeat order)"
+  },
+  {
+    "id": 3505,
+    "name": "PR03498",
+    "state": "approved",
+    "create_date": "2026-02-19 06:47:51",
+    "description": "kebutuhan maintenance dan consumable part (repeat order)"
+  },
+  {
+    "id": 3502,
+    "name": "PR03495",
+    "state": "approved",
+    "create_date": "2026-02-19 04:56:11",
+    "description": "Untuk kebutuhan mobile direct selling"
+  },
+  {
+    "id": 3456,
+    "name": "PR03449",
+    "state": "approved",
+    "create_date": "2026-02-12 11:14:05",
+    "description": "consumabel part repeat order"
+  },
+  {
+    "id": 3455,
+    "name": "PR03448",
+    "state": "approved",
+    "create_date": "2026-02-12 11:12:55",
+    "description": "spare part mesin blister (Repeat Order) (MTC) (ACAL)"
+  },
+  {
+    "id": 3450,
+    "name": "PR03443",
+    "state": "approved",
+    "create_date": "2026-02-12 03:46:21",
+    "description": "consumabel part (repeat order)"
+  },
+  {
+    "id": 3424,
+    "name": "PR03417",
+    "state": "approved",
+    "create_date": "2026-02-10 03:37:58",
+    "description": "Kebutuhan part mesin blister POD X (adhari) (Repeat Order)"
+  },
+  {
+    "id": 3395,
+    "name": "PR03388",
+    "state": "approved",
+    "create_date": "2026-02-04 04:01:10",
+    "description": "Maintenance tools dan sparepart mesin produksi serta utility"
+  },
+  {
+    "id": 3388,
+    "name": "PR03381",
+    "state": "approved",
+    "create_date": "2026-02-03 03:21:28",
+    "description": "kebutuhan nitrogen untuk mixing (repeat order)"
+  },
+  {
+    "id": 3384,
+    "name": "PR03377",
+    "state": "approved",
+    "create_date": "2026-02-02 10:26:17",
+    "description": "kebutuhan produksi consumable (repeat order)"
+  },
+  {
+    "id": 3329,
+    "name": "PR03322",
+    "state": "draft",
+    "create_date": "2026-01-28 09:34:04",
+    "description": "Untuk chiller G5"
+  },
+  {
+    "id": 3314,
+    "name": "PR03307",
+    "state": "approved",
+    "create_date": "2026-01-27 04:42:33",
+    "description": "Untuk mesin koding line liquid"
+  },
+  {
+    "id": 3278,
+    "name": "PR03271",
+    "state": "approved",
+    "create_date": "2026-01-22 01:28:01",
+    "description": "sparepart untuk mesin resistansi catridge"
+  },
+  {
+    "id": 3256,
+    "name": "PR03250",
+    "state": "approved",
+    "create_date": "2026-01-20 04:12:00",
+    "description": "Untuk mesin authenticity semua lini Produksi (MTC)"
+  },
+  {
+    "id": 3255,
+    "name": "PR03249",
+    "state": "approved",
+    "create_date": "2026-01-20 03:35:52",
+    "description": "Kebutuhan Mesin FIlling pada Produksi Liquid (MTC) (ACAL) (Repeat Order)"
+  },
+  {
+    "id": 3251,
+    "name": "PR03245",
+    "state": "approved",
+    "create_date": "2026-01-19 11:11:32",
+    "description": "Untuk Sparepart Holding Sticker capping dan filling (MTC) (Repeat Order)"
+  },
+  {
+    "id": 3245,
+    "name": "PR03240",
+    "state": "approved",
+    "create_date": "2026-01-17 04:31:17",
+    "description": "part blister perporate (Repeat Order) (MTC)"
+  },
+  {
+    "id": 3222,
+    "name": "PR03217",
+    "state": "approved",
+    "create_date": "2026-01-14 08:34:30",
+    "description": "Sparepart motor filling (kebutuhan produksi) (MTC)"
+  },
+  {
+    "id": 3194,
+    "name": "PR03191",
+    "state": "approved",
+    "create_date": "2026-01-12 09:07:24",
+    "description": "Untuk compressor D7 (Device)"
+  },
+  {
+    "id": 3166,
+    "name": "PR03165",
+    "state": "approved",
+    "create_date": "2026-01-07 05:03:33",
+    "description": "Sparepart mesin blister pod X "
+  },
+  {
+    "id": 3164,
+    "name": "PR03163",
+    "state": "approved",
+    "create_date": "2026-01-06 16:54:31",
+    "description": "spare part mesin filling (MTC) (Repeat Order) untuk stock sparepart critical part"
+  },
+  {
+    "id": 3163,
+    "name": "PR03162",
+    "state": "approved",
+    "create_date": "2026-01-06 16:11:04",
+    "description": "Sparepart Blister Pod X (Repeat Order) (MTC) (ACAL)"
+  },
+  {
+    "id": 3162,
+    "name": "PR03161",
+    "state": "approved",
+    "create_date": "2026-01-06 16:05:16",
+    "description": "Sparepart mesin capping (MTC) (Repeat Order) (ACAL)"
+  },
+  {
+    "id": 3145,
+    "name": "PR03144",
+    "state": "approved",
+    "create_date": "2026-01-06 03:56:54",
+    "description": "TOOLS Maintenance untuk Machining dan pengukuran"
+  },
+  {
+    "id": 3129,
+    "name": "PR03128",
+    "state": "approved",
+    "create_date": "2025-12-31 08:16:52",
+    "description": "kebutuhan untuk pengecatan lantai dan tembok G1 (repeat order)"
+  },
+  {
+    "id": 3124,
+    "name": "PR03123",
+    "state": "approved",
+    "create_date": "2025-12-30 08:57:01",
+    "description": "kebutuhan air WTP G1 (repeat order)"
+  },
+  {
+    "id": 3123,
+    "name": "PR03122",
+    "state": "approved",
+    "create_date": "2025-12-30 08:29:34",
+    "description": "Belt Conveyor"
+  },
+  {
+    "id": 3116,
+    "name": "PR03115",
+    "state": "approved",
+    "create_date": "2025-12-27 04:09:32",
+    "description": "kebutuhan sparepart pneumatic (repeat order)"
+  },
+  {
+    "id": 3105,
+    "name": "PR03105",
+    "state": "approved",
+    "create_date": "2025-12-26 07:46:24",
+    "description": "Kebutuhan Cartridge Produksi"
+  },
+  {
+    "id": 3103,
+    "name": "PR03103",
+    "state": "approved",
+    "create_date": "2025-12-26 07:35:24",
+    "description": "kebutuhan IOT engineer untuk timbangan (Repeat Order)"
+  },
+  {
+    "id": 3100,
+    "name": "PR03100",
+    "state": "approved",
+    "create_date": "2025-12-24 07:28:36",
+    "description": "Untuk kebutuhan produksi bray (Adhari) (repeat order)"
+  },
+  {
+    "id": 3099,
+    "name": "PR03099",
+    "state": "approved",
+    "create_date": "2025-12-24 05:14:56",
+    "description": "Kebutuhan part mesin stiker dan conveyor stiker  "
+  },
+  {
+    "id": 3098,
+    "name": "PR03098",
+    "state": "approved",
+    "create_date": "2025-12-23 13:29:27",
+    "description": "consumable part kebutuhan produksi (repeat order) (acal)"
+  },
+  {
+    "id": 3083,
+    "name": "PR03083",
+    "state": "approved",
+    "create_date": "2025-12-22 05:15:20",
+    "description": "kebutuhan spare part all mesin stiker (Repeat Order)"
+  },
+  {
+    "id": 3078,
+    "name": "PR03078",
+    "state": "approved",
+    "create_date": "2025-12-20 05:51:40",
+    "description": "Untuk kebutuhan material bushing mesin blister"
+  },
+  {
+    "id": 3064,
+    "name": "PR03064",
+    "state": "approved",
+    "create_date": "2025-12-19 07:31:00",
+    "description": "Consumable part (Repeat Order) (Understock) (MTC) (ACAL)"
+  },
+  {
+    "id": 3041,
+    "name": "PR03041",
+    "state": "approved",
+    "create_date": "2025-12-17 02:23:56",
+    "description": "kebutuhan sparepart mesin blister pod x, cutting blister"
+  },
+  {
+    "id": 3034,
+    "name": "PR03034",
+    "state": "approved",
+    "create_date": "2025-12-15 10:47:19",
+    "description": "Electrical part  untuk mesin authenticity (CT,LQ,dan Dvc) (Maintenance) (Acal)"
+  },
+  {
+    "id": 3005,
+    "name": "PR03005",
+    "state": "approved",
+    "create_date": "2025-12-12 02:46:33",
+    "description": "Kebutuhan Mesin Capping Line 2, kabel untuk mesin mixing, sparepart electrical untuk mesin Blister Pod X, tools maintenance, serta sparepart electrical untuk mesin filling dan kebutuhan mesin produksi."
+  },
+  {
+    "id": 2998,
+    "name": "PR02998",
+    "state": "approved",
+    "create_date": "2025-12-10 09:58:42",
+    "description": "spare part mesin blister (Repeat Order) (Urgency: Urgent) (MTC) (ACAL)"
+  },
+  {
+    "id": 2995,
+    "name": "PR02995",
+    "state": "approved",
+    "create_date": "2025-12-10 04:22:20",
+    "description": "consumable part (repeat order)"
+  },
+  {
+    "id": 2994,
+    "name": "PR02994",
+    "state": "approved",
+    "create_date": "2025-12-10 04:16:41",
+    "description": "kebutuhan produksi tinta cartridge repeat order"
+  },
+  {
+    "id": 2993,
+    "name": "PR02993",
+    "state": "approved",
+    "create_date": "2025-12-09 07:43:45",
+    "description": "kebutuhan nitrogen untuk mixing (repeat order)"
+  },
+  {
+    "id": 2947,
+    "name": "PR02947",
+    "state": "approved",
+    "create_date": "2025-11-28 08:49:49",
+    "description": "Kebutuhan produksi dan IOT (MTC) (ACAL)"
+  },
+  {
+    "id": 2929,
+    "name": "PR02929",
+    "state": "approved",
+    "create_date": "2025-11-27 07:30:39",
+    "description": "Kebutuhan Part Mesin FIlling (MTC) (ACAL)"
+  },
+  {
+    "id": 2928,
+    "name": "PR02928",
+    "state": "approved",
+    "create_date": "2025-11-27 07:25:41",
+    "description": "spare part mesin filling"
+  },
+  {
+    "id": 2902,
+    "name": "PR02902",
+    "state": "approved",
+    "create_date": "2025-11-25 04:31:22",
+    "description": "Kebutuhan Mesin FIlling pada Produksi Liquid (MTC) (ACAL)"
+  },
+  {
+    "id": 2892,
+    "name": "PR02892",
+    "state": "approved",
+    "create_date": "2025-11-22 02:50:06",
+    "description": "Kebutuhan Untuk Sparepart Conveyor di Mesin Sticker (MTC) (ACAL)"
+  },
+  {
+    "id": 2876,
+    "name": "PR02876",
+    "state": "approved",
+    "create_date": "2025-11-20 05:14:58",
+    "description": "kebutuhan sparepart mesin produksi untuk filling dan stock di gudang sparepart (acal)"
+  },
+  {
+    "id": 2852,
+    "name": "PR02852",
+    "state": "approved",
+    "create_date": "2025-11-14 08:15:45",
+    "description": "Untuk filter supply mesin filling (adhari)"
+  },
+  {
+    "id": 2828,
+    "name": "PR02828",
+    "state": "approved",
+    "create_date": "2025-11-14 01:16:12",
+    "description": "Kebutuhan part mesin blister POD X (adhari)"
+  },
+  {
+    "id": 2782,
+    "name": "PR02782",
+    "state": "approved",
+    "create_date": "2025-11-06 12:02:40",
+    "description": "kebutuhan spare part mesin capping (Mainteannce) (Acal) "
+  },
+  {
+    "id": 2772,
+    "name": "PR02772",
+    "state": "approved",
+    "create_date": "2025-11-06 02:56:42",
+    "description": "kebutuhan produksi (repeat order)"
+  },
+  {
+    "id": 2758,
+    "name": "PR02758",
+    "state": "approved",
+    "create_date": "2025-11-04 08:51:20",
+    "description": "kebutuhan produksi (kertas intrnas untuk di prodksi)"
+  },
+  {
+    "id": 2753,
+    "name": "PR02753",
+    "state": "approved",
+    "create_date": "2025-11-03 10:16:25",
+    "description": "Kebutuhan Produksi untuk Dokumen dan penyimpanan Cartridge Ink "
+  },
+  {
+    "id": 2752,
+    "name": "PR02752",
+    "state": "approved",
+    "create_date": "2025-11-03 10:06:45",
+    "description": "Kebutuhan Mesin Blister pod X (Part Sealing) (Adhari)"
+  },
+  {
+    "id": 2750,
+    "name": "PR02750",
+    "state": "approved",
+    "create_date": "2025-11-03 09:55:55",
+    "description": "Kebutuhan Mesin Blister pod X (Part Sealing) (Adhari)"
+  },
+  {
+    "id": 2743,
+    "name": "PR02743",
+    "state": "approved",
+    "create_date": "2025-11-03 03:14:54",
+    "description": "Kebutuhan Kompresor (Maintenance) "
+  },
+  {
+    "id": 2734,
+    "name": "PR02734",
+    "state": "approved",
+    "create_date": "2025-10-30 04:53:56",
+    "description": "Stock penggunaan consumable part (Repeat order) Hutama"
+  },
+  {
+    "id": 2729,
+    "name": "PR02729",
+    "state": "approved",
+    "create_date": "2025-10-29 11:20:24",
+    "description": "Kebutuhan untuk pintu di F2, dan G2 d"
+  },
+  {
+    "id": 2728,
+    "name": "PR02728",
+    "state": "approved",
+    "create_date": "2025-10-29 11:14:48",
+    "description": "Kebutuhan Maintenance untuk bikin bushing mesin blister pod X, untuk sparepart mesin blister pod X, dan untuk tools harden as mesin blister pod X (Acal)"
+  },
+  {
+    "id": 2727,
+    "name": "PR02727",
+    "state": "approved",
+    "create_date": "2025-10-29 11:05:53",
+    "description": "Kebutuhan Maintenance untuk AS caping 02 dan untuk dudukan bor duduk"
+  },
+  {
+    "id": 2726,
+    "name": "PR02726",
+    "state": "approved",
+    "create_date": "2025-10-29 10:59:45",
+    "description": "Kebutuhan Maintenance untuk pembuatan guide pada conveyor, untuk membuat pengunci rubber wheel, untuk penyimpanan tools di produksi, untuk pintu di F2, dan G2, "
+  },
+  {
+    "id": 2725,
+    "name": "PR02725",
+    "state": "approved",
+    "create_date": "2025-10-29 10:32:13",
+    "description": "Kebutuhan Maintenance Tools Mesin Bubut (Acal)"
+  },
+  {
+    "id": 2724,
+    "name": "PR02724",
+    "state": "approved",
+    "create_date": "2025-10-29 10:24:37",
+    "description": "Kebutuhan consumable sparepart maintenance (Acal)"
+  },
+  {
+    "id": 2686,
+    "name": "PR02686",
+    "state": "approved",
+    "create_date": "2025-10-22 04:57:27",
+    "description": "keranjang untuk kebutuhan all produksi (repeat order)"
+  },
+  {
+    "id": 2672,
+    "name": "PR02672",
+    "state": "approved",
+    "create_date": "2025-10-16 09:53:51",
+    "description": "Maintenance tools (Acal)"
+  },
+  {
+    "id": 2669,
+    "name": "PR02669",
+    "state": "approved",
+    "create_date": "2025-10-16 09:25:58",
+    "description": "Kebutuhan mesin cartoon sealer"
+  },
+  {
+    "id": 2668,
+    "name": "PR02668",
+    "state": "approved",
+    "create_date": "2025-10-16 09:11:18",
+    "description": "Pneumatic sparepart"
+  },
+  {
+    "id": 2667,
+    "name": "PR02667",
+    "state": "approved",
+    "create_date": "2025-10-16 04:17:11",
+    "description": "untuk kebutuhan produksi sebagai tempat reject botol"
+  },
+  {
+    "id": 2666,
+    "name": "PR02666",
+    "state": "approved",
+    "create_date": "2025-10-16 03:16:00",
+    "description": "Maintenance tools"
+  },
+  {
+    "id": 2665,
+    "name": "PR02665",
+    "state": "approved",
+    "create_date": "2025-10-16 01:43:59",
+    "description": "kebutuhan produksi untuk perbaikan GMP (repeat order)"
+  },
+  {
+    "id": 2653,
+    "name": "PR02653",
+    "state": "draft",
+    "create_date": "2025-10-14 16:05:34",
+    "description": "Kebutuhan mesin L-Sealer (Acal)"
+  },
+  {
+    "id": 2652,
+    "name": "PR02652",
+    "state": "approved",
+    "create_date": "2025-10-14 15:58:59",
+    "description": "consumable part (Repeat Order)"
+  },
+  {
+    "id": 2651,
+    "name": "PR02651",
+    "state": "approved",
+    "create_date": "2025-10-14 15:57:31",
+    "description": "Sparepart mesin capping (Acal)"
+  },
+  {
+    "id": 2650,
+    "name": "PR02650",
+    "state": "approved",
+    "create_date": "2025-10-14 15:44:34",
+    "description": "Kebutuhan mesin capping (Acal)"
+  },
+  {
+    "id": 2645,
+    "name": "PR02645",
+    "state": "approved",
+    "create_date": "2025-10-14 11:18:37",
+    "description": "Kebutuhan Electrical (Acal)"
+  },
+  {
+    "id": 2639,
+    "name": "PR02639",
+    "state": "approved",
+    "create_date": "2025-10-14 06:56:29",
+    "description": "Untuk kebutuhan line cartridge dan device (Adhari)"
+  },
+  {
+    "id": 2638,
+    "name": "PR02638",
+    "state": "approved",
+    "create_date": "2025-10-14 06:53:40",
+    "description": "Untuk penggantian roda turn table (Acal)"
+  },
+  {
+    "id": 2636,
+    "name": "PR02636",
+    "state": "approved",
+    "create_date": "2025-10-14 04:42:46",
+    "description": "Tools Maintenance (acal)"
+  },
+  {
+    "id": 2635,
+    "name": "PR02635",
+    "state": "approved",
+    "create_date": "2025-10-14 04:41:09",
+    "description": "Untuk kebutuhan pelumas mesin (acal)"
+  },
+  {
+    "id": 2634,
+    "name": "PR02634",
+    "state": "approved",
+    "create_date": "2025-10-14 04:37:28",
+    "description": "Untuk Utility (Pemasangan di G5) "
+  },
+  {
+    "id": 2619,
+    "name": "PR02619",
+    "state": "approved",
+    "create_date": "2025-10-10 03:17:28",
+    "description": "consumable part"
+  },
+  {
+    "id": 2611,
+    "name": "PR02611",
+    "state": "approved",
+    "create_date": "2025-10-09 10:54:22",
+    "description": "kebutuhan produksi"
+  },
+  {
+    "id": 2604,
+    "name": "PR02604",
+    "state": "approved",
+    "create_date": "2025-10-09 02:17:03",
+    "description": " consumable part (Repeat order)"
+  },
+  {
+    "id": 2603,
+    "name": "PR02603",
+    "state": "approved",
+    "create_date": "2025-10-08 11:32:38",
+    "description": "kebutuhan produksi"
+  },
+  {
+    "id": 2591,
+    "name": "PR02591",
+    "state": "approved",
+    "create_date": "2025-10-08 02:13:47",
+    "description": "kebutuhan produkis untuk area D7 proses fotocopy kertas intrans dan print (repeat order)"
+  },
+  {
+    "id": 2565,
+    "name": "PR02565",
+    "state": "approved",
+    "create_date": "2025-10-03 12:00:15",
+    "description": "kebutuhan untuk pengecatan lantai dan tembok G1"
+  },
+  {
+    "id": 2561,
+    "name": "PR02561",
+    "state": "approved",
+    "create_date": "2025-10-02 12:32:36",
+    "description": "Untuk kebutuhan maintenance (Utility) pemasangan WH"
+  },
+  {
+    "id": 2517,
+    "name": "PR02517",
+    "state": "approved",
+    "create_date": "2025-09-29 07:02:58",
+    "description": "Kebutuhan Kompresor (Maintenance)"
+  },
+  {
+    "id": 2515,
+    "name": "PR02515",
+    "state": "approved",
+    "create_date": "2025-09-27 04:39:47",
+    "description": "spare part mesin filling, capping, stiker (repeat order)"
+  },
+  {
+    "id": 2514,
+    "name": "PR02514",
+    "state": "approved",
+    "create_date": "2025-09-26 10:26:11",
+    "description": "penambahan lampu area produksi dan area gudang (MTC)"
+  },
+  {
+    "id": 2511,
+    "name": "PR02511",
+    "state": "approved",
+    "create_date": "2025-09-26 06:26:28",
+    "description": "Kebutuhan electrical (Maintenance)"
+  },
+  {
+    "id": 2508,
+    "name": "PR02508",
+    "state": "approved",
+    "create_date": "2025-09-25 10:51:32",
+    "description": "kebutuhan untuk produksi untuk pemasangan pin"
+  },
+  {
+    "id": 2486,
+    "name": "PR02486",
+    "state": "approved",
+    "create_date": "2025-09-22 10:37:51",
+    "description": "consumable part dan kebutuhan maintenance"
+  },
+  {
+    "id": 2477,
+    "name": "PR02477",
+    "state": "approved",
+    "create_date": "2025-09-20 02:02:06",
+    "description": "kebutuhan sparepart kompressor"
+  },
+  {
+    "id": 2476,
+    "name": "PR02476",
+    "state": "approved",
+    "create_date": "2025-09-19 10:37:53",
+    "description": "Stock penggunaan consumable part"
+  },
+  {
+    "id": 2475,
+    "name": "PR02475",
+    "state": "approved",
+    "create_date": "2025-09-19 10:09:23",
+    "description": "Untuk kebutuhan maintenance"
+  },
+  {
+    "id": 2474,
+    "name": "PR02474",
+    "state": "approved",
+    "create_date": "2025-09-19 10:02:38",
+    "description": "untuk stock maintenance "
+  },
+  {
+    "id": 2473,
+    "name": "PR02473",
+    "state": "approved",
+    "create_date": "2025-09-19 09:59:00",
+    "description": "untuk stock maintenance (Repeat Order)"
+  },
+  {
+    "id": 2472,
+    "name": "PR02472",
+    "state": "approved",
+    "create_date": "2025-09-19 09:56:21",
+    "description": "Stock penggunaan consumable part"
+  },
+  {
+    "id": 2471,
+    "name": "PR02471",
+    "state": "approved",
+    "create_date": "2025-09-19 09:49:44",
+    "description": "Untuk stock maintenance "
+  },
+  {
+    "id": 2470,
+    "name": "PR02470",
+    "state": "approved",
+    "create_date": "2025-09-19 09:43:43",
+    "description": "Untuk kebutuhan maintenance"
+  },
+  {
+    "id": 2449,
+    "name": "PR02449",
+    "state": "approved",
+    "create_date": "2025-09-19 05:56:14",
+    "description": "Electrical Part "
+  },
+  {
+    "id": 2448,
+    "name": "PR02448",
+    "state": "approved",
+    "create_date": "2025-09-19 05:54:03",
+    "description": "Kebutuhan electrical (Sensor)"
+  },
+  {
+    "id": 2447,
+    "name": "PR02447",
+    "state": "approved",
+    "create_date": "2025-09-19 04:01:44",
+    "description": "Kebutuhan Pneumatic "
+  },
+  {
+    "id": 2429,
+    "name": "PR02429",
+    "state": "approved",
+    "create_date": "2025-09-18 09:46:42",
+    "description": "kebutuhan produksi tinta cartridge repeat order"
+  },
+  {
+    "id": 2417,
+    "name": "PR02417",
+    "state": "approved",
+    "create_date": "2025-09-17 02:07:07",
+    "description": "kebutuhan produksi "
+  },
+  {
+    "id": 2413,
+    "name": "PR02413",
+    "state": "approved",
+    "create_date": "2025-09-16 05:48:23",
+    "description": "kebutuhan IOT engineer (project pak doni)"
+  },
+  {
+    "id": 2412,
+    "name": "PR02412",
+    "state": "approved",
+    "create_date": "2025-09-16 05:09:43",
+    "description": "consumable part (Repeat Order)"
+  },
+  {
+    "id": 2409,
+    "name": "PR02409",
+    "state": "approved",
+    "create_date": "2025-09-15 06:59:26",
+    "description": "electrikal part (repeat order)"
+  },
+  {
+    "id": 2391,
+    "name": "PR02391",
+    "state": "approved",
+    "create_date": "2025-09-12 06:24:47",
+    "description": "kebutuhan produksi "
+  },
+  {
+    "id": 2383,
+    "name": "PR02383",
+    "state": "approved",
+    "create_date": "2025-09-11 05:13:53",
+    "description": "kebutuhan consumable part (Repeat Order)"
+  },
+  {
+    "id": 2376,
+    "name": "PR02376",
+    "state": "approved",
+    "create_date": "2025-09-10 04:42:54",
+    "description": "kebutuhan nitrogen untuk mixing (repeat order)"
+  },
+  {
+    "id": 2375,
+    "name": "PR02375",
+    "state": "approved",
+    "create_date": "2025-09-10 04:38:57",
+    "description": "kebutuhan nitrogen untuk mixing (repeat order)"
+  },
+  {
+    "id": 2357,
+    "name": "PR02357",
+    "state": "approved",
+    "create_date": "2025-09-09 05:05:53",
+    "description": "spare part mesin capping"
+  },
+  {
+    "id": 2346,
+    "name": "PR02346",
+    "state": "approved",
+    "create_date": "2025-09-08 03:44:45",
+    "description": "stock. penggunaan : spare part handpallet"
+  },
+  {
+    "id": 2345,
+    "name": "PR02345",
+    "state": "approved",
+    "create_date": "2025-09-08 03:42:28",
+    "description": "stock. penggunaan : consumable"
+  },
+  {
+    "id": 2342,
+    "name": "PR02342",
+    "state": "approved",
+    "create_date": "2025-09-08 02:45:05",
+    "description": "Kebutuhan IOT Engineer"
+  },
+  {
+    "id": 2338,
+    "name": "PR02338",
+    "state": "approved",
+    "create_date": "2025-09-06 04:50:33",
+    "description": "kebutuhan untuk area mixing dan produksi"
+  },
+  {
+    "id": 2337,
+    "name": "PR02337",
+    "state": "approved",
+    "create_date": "2025-09-06 04:40:06",
+    "description": "kebutuhan sparepart kompresor"
+  },
+  {
+    "id": 2331,
+    "name": "PR02331",
+    "state": "approved",
+    "create_date": "2025-09-04 02:42:27",
+    "description": "kebutuhan maintenance"
+  },
+  {
+    "id": 2305,
+    "name": "PR02305",
+    "state": "approved",
+    "create_date": "2025-09-02 04:24:00",
+    "description": "sparepart mesin shrink"
+  },
+  {
+    "id": 2298,
+    "name": "PR02298",
+    "state": "approved",
+    "create_date": "2025-08-30 03:59:43",
+    "description": "kebutuhan produksi (repeat order)"
+  },
+  {
+    "id": 2285,
+    "name": "PR02285",
+    "state": "approved",
+    "create_date": "2025-08-28 05:40:18",
+    "description": "kebutuhan IOT dan electrikal part (repeat order)"
+  },
+  {
+    "id": 2283,
+    "name": "PR02283",
+    "state": "approved",
+    "create_date": "2025-08-28 02:48:47",
+    "description": "stiker kebutuhan mixing"
+  },
+  {
+    "id": 2282,
+    "name": "PR02282",
+    "state": "approved",
+    "create_date": "2025-08-28 02:36:37",
+    "description": "spare part untuk tabung nitrogen (repeat order)"
+  },
+  {
+    "id": 2269,
+    "name": "PR02269",
+    "state": "approved",
+    "create_date": "2025-08-25 11:29:41",
+    "description": "stock penggunaan consumable part (repeat order)"
+  },
+  {
+    "id": 2257,
+    "name": "PR02257",
+    "state": "approved",
+    "create_date": "2025-08-22 09:13:52",
+    "description": "stock. penggunaan : consumable"
+  },
+  {
+    "id": 2253,
+    "name": "PR02253",
+    "state": "approved",
+    "create_date": "2025-08-21 07:58:41",
+    "description": "kebutuhan produksi untuk pengeleman packaging capsul"
+  },
+  {
+    "id": 2252,
+    "name": "PR02252",
+    "state": "approved",
+    "create_date": "2025-08-21 07:55:52",
+    "description": "stock penggunaan consumable part"
+  },
+  {
+    "id": 2251,
+    "name": "PR02251",
+    "state": "approved",
+    "create_date": "2025-08-21 07:40:10",
+    "description": "kebutuhan nitrogen untuk mixing (repeat order)"
+  },
+  {
+    "id": 2235,
+    "name": "PR02235",
+    "state": "approved",
+    "create_date": "2025-08-20 04:03:42",
+    "description": "sparepart mesin capping"
+  },
+  {
+    "id": 2200,
+    "name": "PR02200",
+    "state": "approved",
+    "create_date": "2025-08-14 05:29:35",
+    "description": "consumable part dan kebutuhan maintenance"
+  },
+  {
+    "id": 2198,
+    "name": "PR02198",
+    "state": "approved",
+    "create_date": "2025-08-14 04:21:20",
+    "description": "kebutuhan mixing untuk scanner untuk stock"
+  },
+  {
+    "id": 2168,
+    "name": "PR02168",
+    "state": "approved",
+    "create_date": "2025-08-12 04:49:10",
+    "description": "kebutuhan untuk pemasangan kabel lan internet di area produksi"
+  },
+  {
+    "id": 2167,
+    "name": "PR02167",
+    "state": "approved",
+    "create_date": "2025-08-12 04:44:50",
+    "description": "keranjang untuk kebutuhan all produksi"
+  },
+  {
+    "id": 2160,
+    "name": "PR02160",
+    "state": "approved",
+    "create_date": "2025-08-11 04:24:17",
+    "description": "kebutuhan produksi tinta cartridge repeat order"
+  },
+  {
+    "id": 2154,
+    "name": "PR02154",
+    "state": "approved",
+    "create_date": "2025-08-07 07:08:15",
+    "description": "consumable part repeat order"
+  },
+  {
+    "id": 2152,
+    "name": "PR02152",
+    "state": "approved",
+    "create_date": "2025-08-07 06:39:19",
+    "description": "consumabel part repeat order"
+  },
+  {
+    "id": 2151,
+    "name": "PR02151",
+    "state": "approved",
+    "create_date": "2025-08-07 06:32:38",
+    "description": "kebutuhan spare part all mesin stiker"
+  },
+  {
+    "id": 2146,
+    "name": "PR02146",
+    "state": "approved",
+    "create_date": "2025-08-07 03:41:32",
+    "description": "kebutuhan maintenance safety shoes"
+  },
+  {
+    "id": 2097,
+    "name": "PR02097",
+    "state": "approved",
+    "create_date": "2025-07-28 13:12:00",
+    "description": "spare part mesin blister"
+  },
+  {
+    "id": 2091,
+    "name": "PR02091",
+    "state": "approved",
+    "create_date": "2025-07-27 05:59:44",
+    "description": "penambahan lampu area produksi"
+  },
+  {
+    "id": 2089,
+    "name": "PR02089",
+    "state": "approved",
+    "create_date": "2025-07-26 08:24:02",
+    "description": "kebutuhan produksi (repeat order)"
+  },
+  {
+    "id": 2088,
+    "name": "PR02088",
+    "state": "approved",
+    "create_date": "2025-07-26 06:37:27",
+    "description": "kebutuhan IOT dan electrikal part"
+  },
+  {
+    "id": 2055,
+    "name": "PR02055",
+    "state": "approved",
+    "create_date": "2025-07-22 01:55:35",
+    "description": "consumable part"
+  },
+  {
+    "id": 2050,
+    "name": "PR02050",
+    "state": "approved",
+    "create_date": "2025-07-21 09:38:38",
+    "description": "tochscreen HMI stiker dan PLC mesin capping"
+  },
+  {
+    "id": 2044,
+    "name": "PR02044",
+    "state": "approved",
+    "create_date": "2025-07-17 04:54:14",
+    "description": "sparepart mesin capping"
+  },
+  {
+    "id": 2034,
+    "name": "PR02034",
+    "state": "approved",
+    "create_date": "2025-07-16 04:08:05",
+    "description": "kebutuhan maintenance dan consumable part (repeat order)"
+  },
+  {
+    "id": 2033,
+    "name": "PR02033",
+    "state": "approved",
+    "create_date": "2025-07-16 03:55:51",
+    "description": "sparepart stiker (urgent)"
+  },
+  {
+    "id": 2032,
+    "name": "PR02032",
+    "state": "approved",
+    "create_date": "2025-07-15 13:14:55",
+    "description": "sparepart conveyor"
+  },
+  {
+    "id": 2028,
+    "name": "PR02028",
+    "state": "approved",
+    "create_date": "2025-07-15 07:11:29",
+    "description": "kebutuhan maintenance"
+  },
+  {
+    "id": 2026,
+    "name": "PR02026",
+    "state": "approved",
+    "create_date": "2025-07-15 03:48:03",
+    "description": "kebutuhan produksi"
+  },
+  {
+    "id": 2019,
+    "name": "PR02019",
+    "state": "approved",
+    "create_date": "2025-07-12 03:15:11",
+    "description": "electrical Part"
+  },
+  {
+    "id": 1997,
+    "name": "PR01997",
+    "state": "approved",
+    "create_date": "2025-07-09 09:49:26",
+    "description": "tochscreen HMI mesin  filling,capping,stiker"
+  },
+  {
+    "id": 1990,
+    "name": "PR01990",
+    "state": "approved",
+    "create_date": "2025-07-08 06:48:09",
+    "description": "kebutuhan produksi untuk mixing \n(repeat order)"
+  },
+  {
+    "id": 1976,
+    "name": "PR01976",
+    "state": "approved",
+    "create_date": "2025-07-03 04:52:19",
+    "description": "pengecatan gedung G1,G2,G5,F2"
+  },
+  {
+    "id": 1974,
+    "name": "PR01974",
+    "state": "approved",
+    "create_date": "2025-07-03 04:44:32",
+    "description": "consumabel part (repeat order)"
+  },
+  {
+    "id": 1968,
+    "name": "PR01968",
+    "state": "approved",
+    "create_date": "2025-07-02 02:38:09",
+    "description": "sparepart mesin filling, stiker"
+  },
+  {
+    "id": 1961,
+    "name": "PR01961",
+    "state": "approved",
+    "create_date": "2025-07-01 03:59:49",
+    "description": "kebutuhan maintenance untuk tempat spare part (repeat order)"
+  },
+  {
+    "id": 1960,
+    "name": "PR01960",
+    "state": "approved",
+    "create_date": "2025-07-01 03:55:32",
+    "description": "kebutuhan produksi (repeat order)"
+  },
+  {
+    "id": 1959,
+    "name": "PR01959",
+    "state": "approved",
+    "create_date": "2025-07-01 03:50:09",
+    "description": "part blister perporate (repeat order)"
+  },
+  {
+    "id": 1956,
+    "name": "PR01956",
+    "state": "approved",
+    "create_date": "2025-06-30 04:30:21",
+    "description": "consumable part"
+  },
+  {
+    "id": 1954,
+    "name": "PR01954",
+    "state": "approved",
+    "create_date": "2025-06-30 04:19:21",
+    "description": "pengecatan gedung G1,G2,G5,F2 (repeat order)"
+  },
+  {
+    "id": 1953,
+    "name": "PR01953",
+    "state": "approved",
+    "create_date": "2025-06-30 04:13:44",
+    "description": "pengecatan gedung G1,G2,G5,F2"
+  },
+  {
+    "id": 1950,
+    "name": "PR01950",
+    "state": "approved",
+    "create_date": "2025-06-26 12:33:18",
+    "description": "kebutuhan maintenance"
+  },
+  {
+    "id": 1949,
+    "name": "PR01949",
+    "state": "approved",
+    "create_date": "2025-06-26 12:19:21",
+    "description": "spare part electrikal"
+  },
+  {
+    "id": 1948,
+    "name": "PR01948",
+    "state": "approved",
+    "create_date": "2025-06-26 12:03:37",
+    "description": "spare part mesin capping"
+  },
+  {
+    "id": 1947,
+    "name": "PR01947",
+    "state": "approved",
+    "create_date": "2025-06-26 11:55:40",
+    "description": "sparepart mesin coding"
+  },
+  {
+    "id": 1912,
+    "name": "PR01912",
+    "state": "approved",
+    "create_date": "2025-06-21 15:30:03",
+    "description": "consumable part repeat order (PR00924)"
+  },
+  {
+    "id": 1911,
+    "name": "PR01911",
+    "state": "approved",
+    "create_date": "2025-06-21 15:01:08",
+    "description": "sparepart mesin capping"
+  },
+  {
+    "id": 1910,
+    "name": "PR01910",
+    "state": "approved",
+    "create_date": "2025-06-21 14:49:55",
+    "description": "spare part mesin blister"
+  },
+  {
+    "id": 1886,
+    "name": "PR01886",
+    "state": "approved",
+    "create_date": "2025-06-18 16:45:54",
+    "description": "kebutuhan maintenance"
+  },
+  {
+    "id": 1846,
+    "name": "PR01846",
+    "state": "approved",
+    "create_date": "2025-06-13 04:48:49",
+    "description": "consumable part"
+  },
+  {
+    "id": 1845,
+    "name": "PR01845",
+    "state": "approved",
+    "create_date": "2025-06-13 04:06:20",
+    "description": "electrical Part"
+  },
+  {
+    "id": 1839,
+    "name": "PR01839",
+    "state": "approved",
+    "create_date": "2025-06-12 05:48:57",
+    "description": "kebutuhan produksi tinta cartridge repeat order"
+  },
+  {
+    "id": 1804,
+    "name": "PR01804",
+    "state": "approved",
+    "create_date": "2025-06-07 03:08:56",
+    "description": "electrikal part"
+  },
+  {
+    "id": 1803,
+    "name": "PR01803",
+    "state": "approved",
+    "create_date": "2025-06-07 03:05:37",
+    "description": "kebutuhan maintenance dan consumable part"
+  },
+  {
+    "id": 1802,
+    "name": "PR01802",
+    "state": "approved",
+    "create_date": "2025-06-07 02:46:44",
+    "description": "kebutuhan peumas oil kompresor"
+  },
+  {
+    "id": 1785,
+    "name": "PR01785",
+    "state": "approved",
+    "create_date": "2025-06-04 05:40:26",
+    "description": "kebutuhan maintenance Utility"
+  },
+  {
+    "id": 1784,
+    "name": "PR01784",
+    "state": "approved",
+    "create_date": "2025-06-04 05:37:03",
+    "description": "kebutuhan maintenance IOT (not consumable)"
+  },
+  {
+    "id": 1783,
+    "name": "PR01783",
+    "state": "approved",
+    "create_date": "2025-06-04 05:18:07",
+    "description": "kebutuhan maintenance IOT"
+  },
+  {
+    "id": 1754,
+    "name": "PR01754",
+    "state": "approved",
+    "create_date": "2025-05-30 03:29:32",
+    "description": "KEBUTUHAN untuk area produksi G1 dan G5"
+  },
+  {
+    "id": 1753,
+    "name": "PR01753",
+    "state": "approved",
+    "create_date": "2025-05-30 03:06:05",
+    "description": "kebutuhan untuk gedung F2"
+  },
+  {
+    "id": 1722,
+    "name": "PR01722",
+    "state": "approved",
+    "create_date": "2025-05-24 07:15:04",
+    "description": "kebutuhan produksi untuk mixing"
+  },
+  {
+    "id": 1721,
+    "name": "PR01721",
+    "state": "approved",
+    "create_date": "2025-05-24 03:23:08",
+    "description": "kebutuhan maintenance"
+  },
+  {
+    "id": 1720,
+    "name": "PR01720",
+    "state": "approved",
+    "create_date": "2025-05-24 03:19:27",
+    "description": "kebutuhan produksi untuk tempat botol dan tutup 15ml"
+  },
+  {
+    "id": 1710,
+    "name": "PR01710",
+    "state": "approved",
+    "create_date": "2025-05-21 11:30:39",
+    "description": "spare part belt conveyor bottomless (repeat order)"
+  },
+  {
+    "id": 1709,
+    "name": "PR01709",
+    "state": "approved",
+    "create_date": "2025-05-21 04:36:10",
+    "description": "kebutuhan gedung F2"
+  },
+  {
+    "id": 1703,
+    "name": "PR01703",
+    "state": "approved",
+    "create_date": "2025-05-20 05:48:03",
+    "description": "kebutuhan maintenance"
+  },
+  {
+    "id": 1702,
+    "name": "PR01702",
+    "state": "approved",
+    "create_date": "2025-05-20 05:30:49",
+    "description": "kebutuhan nitrogen untuk gedung F2 dan sewa tabung baru"
+  },
+  {
+    "id": 1685,
+    "name": "PR01685",
+    "state": "approved",
+    "create_date": "2025-05-20 02:58:14",
+    "description": "spare part mesin stiker"
+  },
+  {
+    "id": 1675,
+    "name": "PR01675",
+    "state": "approved",
+    "create_date": "2025-05-17 04:02:44",
+    "description": "kebutuhan produksi"
+  },
+  {
+    "id": 1644,
+    "name": "PR01644",
+    "state": "approved",
+    "create_date": "2025-05-13 08:34:34",
+    "description": "consumabel part"
+  },
+  {
+    "id": 1638,
+    "name": "PR01638",
+    "state": "approved",
+    "create_date": "2025-05-09 06:57:50",
+    "description": "spare part mesin capping"
+  },
+  {
+    "id": 1627,
+    "name": "PR01627",
+    "state": "approved",
+    "create_date": "2025-05-08 04:12:15",
+    "description": "consumabel part"
+  },
+  {
+    "id": 1626,
+    "name": "PR01626",
+    "state": "approved",
+    "create_date": "2025-05-08 04:09:28",
+    "description": "kebutuhan kabel untuk instalasi dryer"
+  },
+  {
+    "id": 1623,
+    "name": "PR01623",
+    "state": "approved",
+    "create_date": "2025-05-07 10:21:09",
+    "description": "KEBUTUHAN CIKUPA (IENDAH GA)"
+  },
+  {
+    "id": 1588,
+    "name": "PR01588",
+    "state": "approved",
+    "create_date": "2025-04-30 05:23:09",
+    "description": "KEBUTUHAN CIKUPA (IENDAH GA)"
+  },
+  {
+    "id": 1582,
+    "name": "PR01582",
+    "state": "approved",
+    "create_date": "2025-04-29 08:15:47",
+    "description": "consumable part"
+  },
+  {
+    "id": 1567,
+    "name": "PR01567",
+    "state": "approved",
+    "create_date": "2025-04-28 04:07:40",
+    "description": "spare part mesin filling, capping, stiker"
+  },
+  {
+    "id": 1566,
+    "name": "PR01566",
+    "state": "approved",
+    "create_date": "2025-04-28 03:26:06",
+    "description": "spare part untuk tabung nitrogen"
+  },
+  {
+    "id": 1560,
+    "name": "PR01560",
+    "state": "approved",
+    "create_date": "2025-04-24 02:57:28",
+    "description": "spare part mesin capping"
+  },
+  {
+    "id": 1557,
+    "name": "PR01557",
+    "state": "approved",
+    "create_date": "2025-04-23 09:11:48",
+    "description": "modifikasi conveyor L sealer"
+  },
+  {
+    "id": 1556,
+    "name": "PR01556",
+    "state": "approved",
+    "create_date": "2025-04-23 03:05:23",
+    "description": "kebutuhan produksi"
+  },
+  {
+    "id": 1555,
+    "name": "PR01555",
+    "state": "approved",
+    "create_date": "2025-04-23 03:04:19",
+    "description": "KEBUTUHAN CIKUPA (IENDAH GA)\n"
+  },
+  {
+    "id": 1554,
+    "name": "PR01554",
+    "state": "approved",
+    "create_date": "2025-04-23 02:53:30",
+    "description": "kebutuhan mixing untuk scanner"
+  },
+  {
+    "id": 1551,
+    "name": "PR01551",
+    "state": "approved",
+    "create_date": "2025-04-22 10:02:00",
+    "description": "sparepart karton sealer"
+  },
+  {
+    "id": 1549,
+    "name": "PR01549",
+    "state": "approved",
+    "create_date": "2025-04-22 06:33:42",
+    "description": "kebutuhan produksi pelumasan mesin all"
+  },
+  {
+    "id": 1548,
+    "name": "PR01548",
+    "state": "approved",
+    "create_date": "2025-04-22 06:21:36",
+    "description": "kebutuhan spare part"
+  },
+  {
+    "id": 1536,
+    "name": "PR01536",
+    "state": "approved",
+    "create_date": "2025-04-21 07:44:09",
+    "description": "kebutuhan mixing nitrogen"
+  },
+  {
+    "id": 1528,
+    "name": "PR01528",
+    "state": "approved",
+    "create_date": "2025-04-21 03:24:42",
+    "description": "kebutuhan produkis untuk area G5 proses fotocopy kertas intrans dan print"
+  },
+  {
+    "id": 1522,
+    "name": "PR01522",
+    "state": "approved",
+    "create_date": "2025-04-17 10:07:16",
+    "description": "kebutuhan mixing"
+  },
+  {
+    "id": 1506,
+    "name": "PR01506",
+    "state": "approved",
+    "create_date": "2025-04-17 05:28:00",
+    "description": "KEBUTUHAN CIKUPA (IENDAH GA)"
+  },
+  {
+    "id": 1497,
+    "name": "PR01497",
+    "state": "approved",
+    "create_date": "2025-04-16 04:33:23",
+    "description": "kebutuhan produksi tinta cartridge"
+  },
+  {
+    "id": 1495,
+    "name": "PR01495",
+    "state": "approved",
+    "create_date": "2025-04-15 11:27:03",
+    "description": "spare part kompresor"
+  },
+  {
+    "id": 1478,
+    "name": "PR01478",
+    "state": "approved",
+    "create_date": "2025-04-12 06:52:35",
+    "description": "KEBUTUHAN CIKUPA BULAN APRIL (IENDAH GA)"
+  },
+  {
+    "id": 1476,
+    "name": "PR01476",
+    "state": "approved",
+    "create_date": "2025-04-11 03:07:03",
+    "description": "KEBUTUHAN CIKUPA CCTV (IENDAH GA)"
+  },
+  {
+    "id": 1465,
+    "name": "PR01465",
+    "state": "approved",
+    "create_date": "2025-04-10 05:11:01",
+    "description": "kebutuhan Spare Part @AIR COMPRESSOR MCY 15PMIP23 8BAR (penggantian oil 500 jam)"
+  },
+  {
+    "id": 1443,
+    "name": "PR01443",
+    "state": "approved",
+    "create_date": "2025-04-04 09:54:30",
+    "description": "sparepart kompresor"
+  },
+  {
+    "id": 1441,
+    "name": "PR01441",
+    "state": "approved",
+    "create_date": "2025-04-04 02:35:19",
+    "description": "KEBUTUHAN CIKUPA BULAN APRIL (IENDAH GA)"
+  },
+  {
+    "id": 1415,
+    "name": "PR01415",
+    "state": "approved",
+    "create_date": "2025-03-24 06:46:37",
+    "description": "KEBUTUHAN CIKUPA (IENDAH GA) Bulan April\n"
+  },
+  {
+    "id": 1397,
+    "name": "PR01397",
+    "state": "approved",
+    "create_date": "2025-03-21 06:22:17",
+    "description": "kebutuhan spare part untuk pelumasan pnuematic"
+  },
+  {
+    "id": 1396,
+    "name": "PR01396",
+    "state": "approved",
+    "create_date": "2025-03-21 06:18:41",
+    "description": "kebutuhan maintenance"
+  },
+  {
+    "id": 1395,
+    "name": "PR01395",
+    "state": "approved",
+    "create_date": "2025-03-21 06:16:13",
+    "description": "penggantian wastafel G1 dan D7 yang sudah rusak"
+  },
+  {
+    "id": 1394,
+    "name": "PR01394",
+    "state": "approved",
+    "create_date": "2025-03-21 06:12:39",
+    "description": "kebutuhan produksi"
+  },
+  {
+    "id": 1387,
+    "name": "PR01387",
+    "state": "approved",
+    "create_date": "2025-03-20 01:58:35",
+    "description": "kebutuhan maintenance"
+  },
+  {
+    "id": 1386,
+    "name": "PR01386",
+    "state": "approved",
+    "create_date": "2025-03-20 01:43:44",
+    "description": "kebutuhan mixing nitrogen dan sewa tabung"
+  },
+  {
+    "id": 1384,
+    "name": "PR01384",
+    "state": "approved",
+    "create_date": "2025-03-19 04:22:11",
+    "description": "KEBUTUHAN GA (IENDAH GA)"
+  },
+  {
+    "id": 1382,
+    "name": "PR01382",
+    "state": "approved",
+    "create_date": "2025-03-19 03:09:18",
+    "description": "spare part kompresor"
+  },
+  {
+    "id": 1381,
+    "name": "PR01381",
+    "state": "approved",
+    "create_date": "2025-03-19 03:01:48",
+    "description": "untuk building G2 karena gedung G2 panas"
+  },
+  {
+    "id": 1370,
+    "name": "PR01370",
+    "state": "approved",
+    "create_date": "2025-03-17 04:07:18",
+    "description": "kebutuhan instalasi mesin G5"
+  },
+  {
+    "id": 1363,
+    "name": "PR01363",
+    "state": "approved",
+    "create_date": "2025-03-13 13:05:19",
+    "description": "sparepart mesin cellophane"
+  },
+  {
+    "id": 1330,
+    "name": "PR01330",
+    "state": "approved",
+    "create_date": "2025-03-07 15:59:05",
+    "description": "KEBUTUHAN CIKUPA (IENDAH GA) baju seragam\n"
+  },
+  {
+    "id": 1328,
+    "name": "PR01328",
+    "state": "approved",
+    "create_date": "2025-03-07 08:44:02",
+    "description": "kebutuhan untuk pengecatan lantai dan tembok G1"
+  },
+  {
+    "id": 1327,
+    "name": "PR01327",
+    "state": "approved",
+    "create_date": "2025-03-07 08:28:09",
+    "description": "kebutuhan instalasi mesin dan pengecatan lantai untuk G5"
+  },
+  {
+    "id": 1326,
+    "name": "PR01326",
+    "state": "approved",
+    "create_date": "2025-03-07 08:26:58",
+    "description": "kebutuhan spare part mesin"
+  },
+  {
+    "id": 1325,
+    "name": "PR01325",
+    "state": "approved",
+    "create_date": "2025-03-07 08:13:16",
+    "description": "part blister perporate"
+  },
+  {
+    "id": 1324,
+    "name": "PR01324",
+    "state": "approved",
+    "create_date": "2025-03-07 08:08:17",
+    "description": "kebutuhan spare part mesin capping"
+  },
+  {
+    "id": 1313,
+    "name": "PR01313",
+    "state": "approved",
+    "create_date": "2025-03-05 03:54:36",
+    "description": "KEBUTUHAN CIKUPA (IENDAH GA)"
+  },
+  {
+    "id": 1292,
+    "name": "PR01292",
+    "state": "approved",
+    "create_date": "2025-02-26 11:40:53",
+    "description": "KEBUTUHAN CIKUPA (IENDAH GA)"
+  },
+  {
+    "id": 1281,
+    "name": "PR01281",
+    "state": "approved",
+    "create_date": "2025-02-25 05:23:58",
+    "description": "kebutuhan kertas intrnas 2 plays"
+  },
+  {
+    "id": 1279,
+    "name": "PR01279",
+    "state": "approved",
+    "create_date": "2025-02-25 03:27:37",
+    "description": "kebutuhan penambahan daya untuk gedung G5"
+  },
+  {
+    "id": 1265,
+    "name": "PR01265",
+    "state": "approved",
+    "create_date": "2025-02-22 08:31:54",
+    "description": "mesin filling manual untuk 15ml produksi"
+  },
+  {
+    "id": 1264,
+    "name": "PR01264",
+    "state": "approved",
+    "create_date": "2025-02-22 03:53:55",
+    "description": "KEBUTUHAN CIKUPA (IENDAH GA)"
+  },
+  {
+    "id": 1246,
+    "name": "PR01246",
+    "state": "approved",
+    "create_date": "2025-02-20 04:34:03",
+    "description": "kebutuhan produksi"
+  },
+  {
+    "id": 1195,
+    "name": "PR01195",
+    "state": "approved",
+    "create_date": "2025-02-14 04:04:37",
+    "description": "KEBUTUHAN CIKUPA (IENDAH GA) Bulan Maret"
+  },
+  {
+    "id": 1192,
+    "name": "PR01192",
+    "state": "approved",
+    "create_date": "2025-02-13 08:53:33",
+    "description": "KEBUTUHAN CIKUPA (IENDAH GA)"
+  },
+  {
+    "id": 1190,
+    "name": "PR01190",
+    "state": "rejected",
+    "create_date": "2025-02-13 04:50:33",
+    "description": "KEBUTUHAN CIKUPA (IENDAH GA)"
+  },
+  {
+    "id": 1163,
+    "name": "PR01163",
+    "state": "approved",
+    "create_date": "2025-02-06 09:48:43",
+    "description": "spare part mesin filling"
+  },
+  {
+    "id": 1157,
+    "name": "PR01157",
+    "state": "approved",
+    "create_date": "2025-02-05 10:16:02",
+    "description": "KEBUTUHAN CIKUPA (IENDAH GA)"
+  },
+  {
+    "id": 1153,
+    "name": "PR01153",
+    "state": "approved",
+    "create_date": "2025-02-05 04:14:13",
+    "description": "kebutuhan produkis untuk area G1 proses fotocopy kertas intrans dan print"
+  },
+  {
+    "id": 1152,
+    "name": "PR01152",
+    "state": "approved",
+    "create_date": "2025-02-05 04:12:22",
+    "description": "untuk kebutuhan mesin check resisten dan mesin scan barcode di D7"
+  },
+  {
+    "id": 1148,
+    "name": "PR01148",
+    "state": "approved",
+    "create_date": "2025-02-04 09:26:40",
+    "description": "kebutuhan produksi tinta cartridge"
+  },
+  {
+    "id": 1082,
+    "name": "PR01082",
+    "state": "approved",
+    "create_date": "2025-01-23 04:31:13",
+    "description": "KEBUTUHAN CIKUPA (IENDAH GA)"
+  },
+  {
+    "id": 1081,
+    "name": "PR01081",
+    "state": "approved",
+    "create_date": "2025-01-23 03:20:02",
+    "description": "KEBUTUHAN CIKUPA (IENDAH GA) Bulan Februari"
+  },
+  {
+    "id": 1076,
+    "name": "PR01076",
+    "state": "approved",
+    "create_date": "2025-01-22 06:44:48",
+    "description": "kebutuhan mixing"
+  },
+  {
+    "id": 1072,
+    "name": "PR01072",
+    "state": "approved",
+    "create_date": "2025-01-21 06:47:20",
+    "description": "kebutuhan sparepart untuk mesin L Sealer di D7"
+  },
+  {
+    "id": 1029,
+    "name": "PR01029",
+    "state": "approved",
+    "create_date": "2025-01-16 07:34:17",
+    "description": "kebutuhan produksi untuk cover mesin filling"
+  },
+  {
+    "id": 1022,
+    "name": "PR01022",
+    "state": "approved",
+    "create_date": "2025-01-14 04:28:08",
+    "description": "kebutuhan untuk pemasangan kabel power AC dan kable mesin blister"
+  },
+  {
+    "id": 1008,
+    "name": "PR01008",
+    "state": "approved",
+    "create_date": "2025-01-13 10:38:22",
+    "description": "KEBUTUHAN CIKUPA (IENDAH GA)"
+  },
+  {
+    "id": 1004,
+    "name": "PR01004",
+    "state": "approved",
+    "create_date": "2025-01-11 06:20:05",
+    "description": "kebutuhan produksi "
+  },
+  {
+    "id": 967,
+    "name": "PR00967",
+    "state": "approved",
+    "create_date": "2025-01-04 02:41:56",
+    "description": "KEBUTUHAN CIKUPA (IENDAH GA)"
+  },
+  {
+    "id": 966,
+    "name": "PR00966",
+    "state": "approved",
+    "create_date": "2025-01-04 02:34:54",
+    "description": "KEBUTUHAN CIKUPA (IENDAH GA)"
+  },
+  {
+    "id": 951,
+    "name": "PR00951",
+    "state": "approved",
+    "create_date": "2025-01-03 09:46:15",
+    "description": "KEBUTUHAN CIKUPA (IENDAH GA)"
+  },
+  {
+    "id": 950,
+    "name": "PR00950",
+    "state": "approved",
+    "create_date": "2025-01-03 09:42:26",
+    "description": "KEBUTUHAN CIKUPA (IENDAH GA)"
+  },
+  {
+    "id": 948,
+    "name": "PR00948",
+    "state": "approved",
+    "create_date": "2025-01-03 02:18:18",
+    "description": "kebutuhan mixing"
+  },
+  {
+    "id": 947,
+    "name": "PR00947",
+    "state": "approved",
+    "create_date": "2025-01-03 02:12:33",
+    "description": "kebutuhan produksi untuk pintu produksi"
+  },
+  {
+    "id": 927,
+    "name": "PR00927",
+    "state": "approved",
+    "create_date": "2024-12-27 05:12:25",
+    "description": "KEBUTUHAN CIKUPA (IENDAH GA)"
+  },
+  {
+    "id": 924,
+    "name": "PR00924",
+    "state": "approved",
+    "create_date": "2024-12-24 03:04:09",
+    "description": "kebutuhan produksi "
+  },
+  {
+    "id": 920,
+    "name": "PR00920",
+    "state": "approved",
+    "create_date": "2024-12-23 06:55:35",
+    "description": "kebutuhan sparepart mesin produksi"
+  },
+  {
+    "id": 916,
+    "name": "PR00916",
+    "state": "approved",
+    "create_date": "2024-12-20 10:12:43",
+    "description": "kebutuhan sparepart mesin produksi"
+  },
+  {
+    "id": 914,
+    "name": "PR00914",
+    "state": "approved",
+    "create_date": "2024-12-20 07:05:33",
+    "description": "kebbutuhan produksi, form penimbangan dan preparasi produksi"
+  },
+  {
+    "id": 873,
+    "name": "PR00873",
+    "state": "approved",
+    "create_date": "2024-12-16 02:15:06",
+    "description": "sparepart kompresor"
+  },
+  {
+    "id": 870,
+    "name": "PR00870",
+    "state": "approved",
+    "create_date": "2024-12-12 11:01:59",
+    "description": "KEBUTUHAN CIKUPA (IENDAH GA)"
+  },
+  {
+    "id": 862,
+    "name": "PR00862",
+    "state": "approved",
+    "create_date": "2024-12-11 04:23:21",
+    "description": "KEBUTUHAN CIKUPA (IENDAH GA)"
+  },
+  {
+    "id": 834,
+    "name": "PR00834",
+    "state": "approved",
+    "create_date": "2024-12-03 07:21:44",
+    "description": "kebutuhan mixing"
+  },
+  {
+    "id": 827,
+    "name": "PR00827",
+    "state": "approved",
+    "create_date": "2024-12-02 10:58:53",
+    "description": "KEBUTUHAN CIKUPA (IENDAH GA)"
+  },
+  {
+    "id": 820,
+    "name": "PR00820",
+    "state": "approved",
+    "create_date": "2024-11-29 10:42:50",
+    "description": "spare part mesin filling"
+  },
+  {
+    "id": 794,
+    "name": "PR00794",
+    "state": "approved",
+    "create_date": "2024-11-28 07:20:32",
+    "description": "KEBUTUHAN CIKUPA (IENDAH GA)"
+  },
+  {
+    "id": 793,
+    "name": "PR00793",
+    "state": "approved",
+    "create_date": "2024-11-28 07:03:13",
+    "description": "KEBUTUHAN CIKUPA (IENDAH GA)"
+  },
+  {
+    "id": 792,
+    "name": "PR00792",
+    "state": "approved",
+    "create_date": "2024-11-28 06:20:37",
+    "description": "KEBUTUHAN CIKUPA (IENDAH GA)"
+  },
+  {
+    "id": 773,
+    "name": "PR00773",
+    "state": "approved",
+    "create_date": "2024-11-21 07:13:26",
+    "description": "kebutuhan produksi tinta cartridge"
+  },
+  {
+    "id": 772,
+    "name": "PR00772",
+    "state": "approved",
+    "create_date": "2024-11-21 07:12:22",
+    "description": "kebutuhan maintenance"
+  },
+  {
+    "id": 766,
+    "name": "PR00766",
+    "state": "approved",
+    "create_date": "2024-11-20 07:56:10",
+    "description": "KEBUTUHAN CIKUPA (GA)"
+  },
+  {
+    "id": 742,
+    "name": "PR00742",
+    "state": "approved",
+    "create_date": "2024-11-13 11:08:58",
+    "description": "kebutuhan produksi"
+  },
+  {
+    "id": 737,
+    "name": "PR00737",
+    "state": "approved",
+    "create_date": "2024-11-13 01:46:54",
+    "description": "kebutuhan produksi pembelian kompresor"
+  },
+  {
+    "id": 736,
+    "name": "PR00736",
+    "state": "approved",
+    "create_date": "2024-11-12 18:53:58",
+    "description": "KEBUTUHAN CIKUPA (GA IENDAH)"
+  },
+  {
+    "id": 730,
+    "name": "PR00730",
+    "state": "approved",
+    "create_date": "2024-11-11 07:41:26",
+    "description": "kebutuhan mixing"
+  },
+  {
+    "id": 709,
+    "name": "PR00709",
+    "state": "approved",
+    "create_date": "2024-11-07 04:54:46",
+    "description": "kebutuhan produksi mixing"
+  },
+  {
+    "id": 691,
+    "name": "PR00691",
+    "state": "approved",
+    "create_date": "2024-11-04 06:51:17",
+    "description": "spare part belt conveyor bottomless"
+  },
+  {
+    "id": 690,
+    "name": "PR00690",
+    "state": "approved",
+    "create_date": "2024-11-04 04:47:07",
+    "description": "kebutuhan spare part capping"
+  },
+  {
+    "id": 677,
+    "name": "PR00677",
+    "state": "approved",
+    "create_date": "2024-10-30 14:23:06",
+    "description": "kebutuhan produksi"
+  },
+  {
+    "id": 673,
+    "name": "PR00673",
+    "state": "approved",
+    "create_date": "2024-10-30 02:32:17",
+    "description": "KEBUTUHAN CIKUPA"
+  },
+  {
+    "id": 640,
+    "name": "PR00640",
+    "state": "approved",
+    "create_date": "2024-10-23 07:00:28",
+    "description": "kebutuhan air WTP G1"
+  },
+  {
+    "id": 620,
+    "name": "PR00620",
+    "state": "approved",
+    "create_date": "2024-10-17 03:42:36",
+    "description": "kebutuhan sperpart produksi"
+  },
+  {
+    "id": 616,
+    "name": "PR00616",
+    "state": "approved",
+    "create_date": "2024-10-14 08:28:30",
+    "description": "kebutuhan produksi"
+  },
+  {
+    "id": 614,
+    "name": "PR00614",
+    "state": "approved",
+    "create_date": "2024-10-12 05:56:01",
+    "description": "KEBUTUHAN CIKUPA (IENDAH GA)"
+  },
+  {
+    "id": 597,
+    "name": "PR00597",
+    "state": "approved",
+    "create_date": "2024-10-07 10:10:57",
+    "description": "kebutuhan produksi"
+  },
+  {
+    "id": 592,
+    "name": "PR00592",
+    "state": "approved",
+    "create_date": "2024-10-04 14:12:45",
+    "description": "spare part mesin stiker"
+  },
+  {
+    "id": 579,
+    "name": "PR00579",
+    "state": "approved",
+    "create_date": "2024-10-02 10:00:05",
+    "description": "KEBUTUHAN CIKUPA (IENDAH GA)"
+  },
+  {
+    "id": 567,
+    "name": "PR00567",
+    "state": "approved",
+    "create_date": "2024-09-27 09:59:38",
+    "description": "KEBUTUHAN CIKUPA (GA IENDAH)"
+  },
+  {
+    "id": 565,
+    "name": "PR00565",
+    "state": "approved",
+    "create_date": "2024-09-27 04:33:53",
+    "description": "kebutuhan maintenance"
+  },
+  {
+    "id": 564,
+    "name": "PR00564",
+    "state": "approved",
+    "create_date": "2024-09-27 02:33:55",
+    "description": "KEBUTUHAN CIKUPA"
+  },
+  {
+    "id": 557,
+    "name": "PR00557",
+    "state": "approved",
+    "create_date": "2024-09-24 10:34:27",
+    "description": "kebutuhan produksi"
+  },
+  {
+    "id": 524,
+    "name": "PR00524",
+    "state": "approved",
+    "create_date": "2024-09-20 10:40:58",
+    "description": "kebutuhan produksi"
+  },
+  {
+    "id": 482,
+    "name": "PR00482",
+    "state": "approved",
+    "create_date": "2024-09-12 04:02:22",
+    "description": "kebutuhan electrikal untuk grounding gedung D2,G1,G2,D7,D8"
+  },
+  {
+    "id": 435,
+    "name": "PR00435",
+    "state": "approved",
+    "create_date": "2024-09-05 03:43:00",
+    "description": "kebutuhan produksi"
+  },
+  {
+    "id": 428,
+    "name": "PR00428",
+    "state": "approved",
+    "create_date": "2024-09-04 05:26:13",
+    "description": "spare part mesin stiker"
+  },
+  {
+    "id": 383,
+    "name": "PR00383",
+    "state": "approved",
+    "create_date": "2024-08-23 04:35:12",
+    "description": "kebutuhan produksi"
+  },
+  {
+    "id": 198,
+    "name": "PR00198",
+    "state": "approved",
+    "create_date": "2024-07-17 09:46:24",
+    "description": "kebutuhan ruangan produksi D7"
+  },
+  {
+    "id": 157,
+    "name": "PR00157",
+    "state": "approved",
+    "create_date": "2024-07-08 08:26:39",
+    "description": "kebutuhan produksi"
+  },
+  {
+    "id": 121,
+    "name": "PR00121",
+    "state": "approved",
+    "create_date": "2024-06-26 03:59:52",
+    "description": "servis timbangan mixing type AND EK-15KL di PT. LIBRA EMAS PERMATA"
+  },
+  {
+    "id": 79,
+    "name": "PR00079",
+    "state": "approved",
+    "create_date": "2024-06-19 12:10:21",
+    "description": "Advan Tab VX Lite - 6GB 128GB (6/128) Tablet New Ori Garansi Resmi - Tablet Only https://www.tokopedia.com/ca-shop/advan-tab-vx-lite-6gb-128gb-6-128-tablet-new-ori-garansi-resmi-tablet-only?extParam=cmp%3D1%26ivf%3Dtrue%26keyword%3Dadvan%26search_id%3D202406191152438CBF70BC7746501086TI%26src%3Dsearch ,kebutuhan produksi sebagai visual management"
+  },
+  {
+    "id": 19,
+    "name": "PR00019",
+    "state": "approved",
+    "create_date": "2024-06-10 03:51:57",
+    "description": "tinta cartridge sewa AJM"
+  }
+]

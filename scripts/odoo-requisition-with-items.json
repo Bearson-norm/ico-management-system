@@ -1,0 +1,2903 @@
+[
+  {
+    "id": 4145,
+    "nomorPrTender": "TE04323",
+    "prAsal": "PR04426",
+    "status": "in_progress",
+    "vendor": "PT HUTAMA SINERGI KARYA",
+    "tanggalDibuat": "2026-06-26 12:02:13",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 4,
+    "items": [
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Kain Lap Majun putih",
+        "qty": 20,
+        "hargaUnit": 29421
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Mini Hot Gun Heat Gun Low Watt 300W Electric Alat Pemanas Multifungsi - Hotgun hitam",
+        "qty": 10,
+        "hargaUnit": 57855
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "Mata batu gurinda gerinda grinda WD poles asah 4x6 tebal 4 inchi ASLI",
+        "qty": 20,
+        "hargaUnit": 10545
+      },
+      {
+        "productId": 7495,
+        "namaBarang": "SPAREPARTS USAGE",
+        "deskripsiBarang": "ISKU Mata Gurinda Batu Gerinda Potong Besi stain less Cutting Wheel - 25pcs",
+        "qty": 4,
+        "hargaUnit": 99756
+      }
+    ]
+  },
+  {
+    "id": 4144,
+    "nomorPrTender": "New",
+    "prAsal": "PR04417",
+    "status": "draft",
+    "vendor": null,
+    "tanggalDibuat": "2026-06-26 11:21:28",
+    "deskripsi": false,
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 9743,
+        "namaBarang": "EQUIPMENT",
+        "deskripsiBarang": "MOTOR RODA TIGA",
+        "qty": 1,
+        "hargaUnit": 0
+      }
+    ]
+  },
+  {
+    "id": 4143,
+    "nomorPrTender": "TE04321",
+    "prAsal": "PR04363",
+    "status": "in_progress",
+    "vendor": "PT HUTAMA SINERGI KARYA",
+    "tanggalDibuat": "2026-06-26 10:53:36",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 9743,
+        "namaBarang": "EQUIPMENT",
+        "deskripsiBarang": "TABUNG FILTER AIR 1054 FRP NANOTEC EUGENTACH Bahan Fiber Kapasitas 1000lt/jam Tinggi 1.5m Diameter 10 inchi Kepala 3 way Strainer Atas dan Bawah Seal Karet - NATURAL",
+        "qty": 3,
+        "hargaUnit": 901597.5
+      }
+    ]
+  },
+  {
+    "id": 4142,
+    "nomorPrTender": "TE04316",
+    "prAsal": "PR04418",
+    "status": "in_progress",
+    "vendor": "PT SUARA KITA SAMA",
+    "tanggalDibuat": "2026-06-26 06:10:54",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 4291,
+        "namaBarang": "MEDIA PLACEMENT",
+        "deskripsiBarang": "Virality Threads & X - PT Suara Kita Sama",
+        "qty": 1,
+        "hargaUnit": 45412500
+      }
+    ]
+  },
+  {
+    "id": 4141,
+    "nomorPrTender": "TE04322",
+    "prAsal": "PR04419",
+    "status": "in_progress",
+    "vendor": "PT SUARA KITA SAMA",
+    "tanggalDibuat": "2026-06-26 04:57:11",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 4291,
+        "namaBarang": "MEDIA PLACEMENT",
+        "deskripsiBarang": "UGC Threads - PT Suara Kita Sama",
+        "qty": 1,
+        "hargaUnit": 1607143
+      }
+    ]
+  },
+  {
+    "id": 4140,
+    "nomorPrTender": "TE04314",
+    "prAsal": "PR04410",
+    "status": "in_progress",
+    "vendor": "PT HUTAMA SINERGI KARYA",
+    "tanggalDibuat": "2026-06-24 10:50:57",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 7,
+    "items": [
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "Kuas 633 Eterna 2\" (2 inch)",
+        "qty": 32,
+        "hargaUnit": 13392
+      },
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "KAIN LAP KANEBO 40X30 CM",
+        "qty": 18,
+        "hargaUnit": 29737
+      },
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "SEMPROTAN PLASTIK 1 LITER",
+        "qty": 6,
+        "hargaUnit": 15041
+      },
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "LAKBAN ANTI BOCOR NO DROP 5 CM X 10 METER",
+        "qty": 30,
+        "hargaUnit": 117050
+      },
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "LAKBAN PERBAN SOLASI ISOLASI KASA 50 MM",
+        "qty": 32,
+        "hargaUnit": 19508
+      },
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "BULU ROLL ADMIRAL 9 INCH",
+        "qty": 72,
+        "hargaUnit": 14710
+      },
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "CAT TEMBOK ARIES PUTIH 20 KG",
+        "qty": 30,
+        "hargaUnit": 257298
+      }
+    ]
+  },
+  {
+    "id": 4139,
+    "nomorPrTender": "TE04313",
+    "prAsal": "PR04345",
+    "status": "in_progress",
+    "vendor": "PT THEA THEO STATIONARY",
+    "tanggalDibuat": "2026-06-24 10:44:46",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 5,
+    "items": [
+      {
+        "productId": 7704,
+        "namaBarang": "LAB CONSUMABLE",
+        "deskripsiBarang": "Tinta Printer HP 119A Original Laser Toner Cartridge (Yellow)",
+        "qty": 1,
+        "hargaUnit": 1048950
+      },
+      {
+        "productId": 7704,
+        "namaBarang": "LAB CONSUMABLE",
+        "deskripsiBarang": "Tinta Printer HP 119A Original Laser Toner Cartridge (Cyan)",
+        "qty": 1,
+        "hargaUnit": 1048950
+      },
+      {
+        "productId": 7704,
+        "namaBarang": "LAB CONSUMABLE",
+        "deskripsiBarang": "Tinta Printer HP 119A Original Laser Toner Cartridge (Black)",
+        "qty": 1,
+        "hargaUnit": 954600
+      },
+      {
+        "productId": 7704,
+        "namaBarang": "LAB CONSUMABLE",
+        "deskripsiBarang": "Tinta Printer HP 119A Original Laser Toner Cartridge (Magenta)",
+        "qty": 1,
+        "hargaUnit": 1048950
+      },
+      {
+        "productId": 7704,
+        "namaBarang": "LAB CONSUMABLE",
+        "deskripsiBarang": "Pipet Plastik 10 ml",
+        "qty": 1000,
+        "hargaUnit": 2400
+      }
+    ]
+  },
+  {
+    "id": 4138,
+    "nomorPrTender": "TE04312",
+    "prAsal": "PR04336",
+    "status": "in_progress",
+    "vendor": "JAYA ABADI LESTARI",
+    "tanggalDibuat": "2026-06-24 10:26:45",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 8,
+    "items": [
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "AQUA",
+        "qty": 60,
+        "hargaUnit": 175000
+      },
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "TEH BOTOL",
+        "qty": 47,
+        "hargaUnit": 67500
+      },
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "SUSU",
+        "qty": 165,
+        "hargaUnit": 175000
+      },
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "SABUN CUCI LANTAI",
+        "qty": 15,
+        "hargaUnit": 70000
+      },
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "SABUN CUCI PIRING",
+        "qty": 25,
+        "hargaUnit": 60000
+      },
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "SABUN CUCI TANGAN",
+        "qty": 15,
+        "hargaUnit": 85000
+      },
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "GLOVE",
+        "qty": 300,
+        "hargaUnit": 64000
+      },
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "MASKER",
+        "qty": 300,
+        "hargaUnit": 26973
+      }
+    ]
+  },
+  {
+    "id": 4137,
+    "nomorPrTender": "TE04311",
+    "prAsal": "PR04409",
+    "status": "done",
+    "vendor": "PT HUTAMA SINERGI KARYA",
+    "tanggalDibuat": "2026-06-24 09:40:58",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 3,
+    "items": [
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "semir ban mobil",
+        "qty": 2,
+        "hargaUnit": 75291
+      },
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "dracco parfum mobil kopi",
+        "qty": 2,
+        "hargaUnit": 50616
+      },
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "KESET KARPET PVC MIE/BIHUN 50X120 HIAJU",
+        "qty": 8,
+        "hargaUnit": 93112
+      }
+    ]
+  },
+  {
+    "id": 4136,
+    "nomorPrTender": "TE04310",
+    "prAsal": "PR04302",
+    "status": "done",
+    "vendor": "PT ANAVARA JAYA ABADI",
+    "tanggalDibuat": "2026-06-24 09:30:08",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 9743,
+        "namaBarang": "EQUIPMENT",
+        "deskripsiBarang": "Alat Pres Hidrolik 20 Ton Serbaguna Hand Press Bearing Kruk As Bongkar Pasang Stang Seher Max Stroke 13cm Diameter 37mm - FULL SET",
+        "qty": 1,
+        "hargaUnit": 2100000
+      }
+    ]
+  },
+  {
+    "id": 4135,
+    "nomorPrTender": "TE04308",
+    "prAsal": "PR04175",
+    "status": "done",
+    "vendor": "PT ANAVARA JAYA ABADI",
+    "tanggalDibuat": "2026-06-24 09:10:16",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 9743,
+        "namaBarang": "EQUIPMENT",
+        "deskripsiBarang": "Bambulab A1 Mini High Speed Silent Driver Auto Calibration 3D Printer Linear Rail - Brand New Stock",
+        "qty": 1,
+        "hargaUnit": 4500000
+      }
+    ]
+  },
+  {
+    "id": 4134,
+    "nomorPrTender": "TE04307",
+    "prAsal": "PR04342",
+    "status": "in_progress",
+    "vendor": "ERICK FREDICK",
+    "tanggalDibuat": "2026-06-24 03:19:45",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7332,
+        "namaBarang": "SPONSORSHIP",
+        "deskripsiBarang": "Sponsorship - Ontahood",
+        "qty": 1,
+        "hargaUnit": 10256410
+      }
+    ]
+  },
+  {
+    "id": 4133,
+    "nomorPrTender": "TE04306",
+    "prAsal": "PR04385",
+    "status": "in_progress",
+    "vendor": "GARASI REKLAME",
+    "tanggalDibuat": "2026-06-23 14:21:18",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 6,
+    "items": [
+      {
+        "productId": 5777,
+        "namaBarang": "ADDITIONAL NEON BOX",
+        "deskripsiBarang": "Ongkir Luar Pulau",
+        "qty": 1,
+        "hargaUnit": 3550000
+      },
+      {
+        "productId": 5777,
+        "namaBarang": "ADDITIONAL NEON BOX",
+        "deskripsiBarang": "Tambahan Tiang",
+        "qty": 3,
+        "hargaUnit": 1000000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: dewata vapor cab lungsiakan",
+        "qty": 1,
+        "hargaUnit": 1550000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: dewata vapor cabang abiansemal",
+        "qty": 1,
+        "hargaUnit": 1550000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: dewata vapor cab kintamani",
+        "qty": 1,
+        "hargaUnit": 1550000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: Ped Vape",
+        "qty": 1,
+        "hargaUnit": 1550000
+      }
+    ]
+  },
+  {
+    "id": 4132,
+    "nomorPrTender": "TE04305",
+    "prAsal": "PR04403",
+    "status": "in_progress",
+    "vendor": "PT SINERGI MITRA INVESTAMA",
+    "tanggalDibuat": "2026-06-23 14:08:54",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7327,
+        "namaBarang": "FOOM RENTAL STORE",
+        "deskripsiBarang": "Pembayaran Sewa FS South Quarter Juni s/d Desember 2026 (Termin 1)",
+        "qty": 1,
+        "hargaUnit": 31635000
+      }
+    ]
+  },
+  {
+    "id": 4131,
+    "nomorPrTender": "TE04304",
+    "prAsal": "PR04402",
+    "status": "in_progress",
+    "vendor": "LKL GROUP",
+    "tanggalDibuat": "2026-06-23 14:05:08",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7332,
+        "namaBarang": "SPONSORSHIP",
+        "deskripsiBarang": "Support Anniversaty 12th LKL Group - GOLD SPONSORHIP",
+        "qty": 1,
+        "hargaUnit": 3450000
+      }
+    ]
+  },
+  {
+    "id": 4130,
+    "nomorPrTender": "TE04303",
+    "prAsal": "PR04399",
+    "status": "done",
+    "vendor": "PT TRINUSA TRAVELINDO (Traveloka)",
+    "tanggalDibuat": "2026-06-23 13:56:47",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 8833,
+        "namaBarang": "DOWNLINE GIFT",
+        "deskripsiBarang": "Voucher Traveloka",
+        "qty": 1,
+        "hargaUnit": 30000000
+      }
+    ]
+  },
+  {
+    "id": 4129,
+    "nomorPrTender": "TE04302",
+    "prAsal": "PR04394",
+    "status": "in_progress",
+    "vendor": "PT WAHANA CIPTA SEJAHTERA",
+    "tanggalDibuat": "2026-06-23 13:53:46",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7327,
+        "namaBarang": "FOOM RENTAL STORE",
+        "deskripsiBarang": "Pembayaran Booking Fee PGC Cililitan (Retail Expansion claim)",
+        "qty": 1,
+        "hargaUnit": 1000000
+      }
+    ]
+  },
+  {
+    "id": 4128,
+    "nomorPrTender": "TE04301",
+    "prAsal": "PR04393",
+    "status": "in_progress",
+    "vendor": "SIMPLE CONTRACTOR",
+    "tanggalDibuat": "2026-06-23 13:47:29",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 2,
+    "items": [
+      {
+        "productId": 9786,
+        "namaBarang": "BUILDING CONSTRUCTION",
+        "deskripsiBarang": "Penarikan Kabel PLN Ergapods SPBU S Parman (Kabel SR 2x10mm)",
+        "qty": 1,
+        "hargaUnit": 3485000
+      },
+      {
+        "productId": 9786,
+        "namaBarang": "BUILDING CONSTRUCTION",
+        "deskripsiBarang": "Penarikan Kabel PLN Ergapods SPBU Gandaria Ps Rebo (Kabel SKTR 4x16mm)",
+        "qty": 1,
+        "hargaUnit": 10850000
+      }
+    ]
+  },
+  {
+    "id": 4127,
+    "nomorPrTender": "TE04300",
+    "prAsal": "PR04392",
+    "status": "in_progress",
+    "vendor": "GRAND MODERN",
+    "tanggalDibuat": "2026-06-23 13:43:47",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 2,
+    "items": [
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: nuwo vapestore 2",
+        "qty": 1,
+        "hargaUnit": 1650000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: HARBOUR VAPE STORE - PANJANG",
+        "qty": 1,
+        "hargaUnit": 1650000
+      }
+    ]
+  },
+  {
+    "id": 4126,
+    "nomorPrTender": "TE04299",
+    "prAsal": "PR04391",
+    "status": "in_progress",
+    "vendor": "UD FIRMAN NEONBOX",
+    "tanggalDibuat": "2026-06-23 13:32:22",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 2,
+    "items": [
+      {
+        "productId": 5777,
+        "namaBarang": "ADDITIONAL NEON BOX",
+        "deskripsiBarang": "Tambahan Tiang",
+        "qty": 6,
+        "hargaUnit": 700000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm Area Jawa Timur",
+        "qty": 14,
+        "hargaUnit": 1850000
+      }
+    ]
+  },
+  {
+    "id": 4125,
+    "nomorPrTender": "TE04298",
+    "prAsal": "PR04390",
+    "status": "in_progress",
+    "vendor": "ROCKY MOUNTANA",
+    "tanggalDibuat": "2026-06-23 13:23:34",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 5,
+    "items": [
+      {
+        "productId": 5777,
+        "namaBarang": "ADDITIONAL NEON BOX",
+        "deskripsiBarang": "Tambahan Tiang",
+        "qty": 1,
+        "hargaUnit": 450000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: LIBERTY VAPE - MALANG SARI",
+        "qty": 1,
+        "hargaUnit": 1800000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: The Biffs Seturan",
+        "qty": 1,
+        "hargaUnit": 1800000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: Holy Vapestore",
+        "qty": 1,
+        "hargaUnit": 1800000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: Holy Vapestore (pusat)",
+        "qty": 1,
+        "hargaUnit": 1800000
+      }
+    ]
+  },
+  {
+    "id": 4124,
+    "nomorPrTender": "TE04297",
+    "prAsal": "PR04386",
+    "status": "in_progress",
+    "vendor": "CV CANCER REKLAME MANDIRI",
+    "tanggalDibuat": "2026-06-23 13:01:38",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 3,
+    "items": [
+      {
+        "productId": 5777,
+        "namaBarang": "ADDITIONAL NEON BOX",
+        "deskripsiBarang": "Tambahan Tiang",
+        "qty": 12,
+        "hargaUnit": 650000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Area Jabodetabek",
+        "qty": 21,
+        "hargaUnit": 1750000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Area Jawa Barat",
+        "qty": 9,
+        "hargaUnit": 1850000
+      }
+    ]
+  },
+  {
+    "id": 4123,
+    "nomorPrTender": "TE04296",
+    "prAsal": "PR04380",
+    "status": "in_progress",
+    "vendor": "WEBSITE PAY",
+    "tanggalDibuat": "2026-06-23 12:49:51",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7289,
+        "namaBarang": "FREE MERCHANDISE",
+        "deskripsiBarang": "Nation Jersey",
+        "qty": 10,
+        "hargaUnit": 1200000
+      }
+    ]
+  },
+  {
+    "id": 4122,
+    "nomorPrTender": "TE04295",
+    "prAsal": "PR04379",
+    "status": "in_progress",
+    "vendor": "CLAREESYA",
+    "tanggalDibuat": "2026-06-23 12:43:48",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7645,
+        "namaBarang": "KOL",
+        "deskripsiBarang": "Payment FOOM Go Prefilled - Clareesya",
+        "qty": 1,
+        "hargaUnit": 1950000
+      }
+    ]
+  },
+  {
+    "id": 4121,
+    "nomorPrTender": "TE04294",
+    "prAsal": "PR04378",
+    "status": "done",
+    "vendor": "PT KITA MITRA INDONESIA",
+    "tanggalDibuat": "2026-06-23 12:38:37",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7404,
+        "namaBarang": "PROFESSIONAL FEES SALES",
+        "deskripsiBarang": "Telemarketing B2B remote Mar 2026",
+        "qty": 1,
+        "hargaUnit": 2021398
+      }
+    ]
+  },
+  {
+    "id": 4120,
+    "nomorPrTender": "TE04293",
+    "prAsal": "PR04376",
+    "status": "done",
+    "vendor": "PT KITA MITRA INDONESIA",
+    "tanggalDibuat": "2026-06-23 12:32:52",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7404,
+        "namaBarang": "PROFESSIONAL FEES SALES",
+        "deskripsiBarang": "Telemarketing B2B Remote Feb 2026",
+        "qty": 1,
+        "hargaUnit": 9103286
+      }
+    ]
+  },
+  {
+    "id": 4119,
+    "nomorPrTender": "TE04292",
+    "prAsal": "PR04375",
+    "status": "done",
+    "vendor": "PT KITA MITRA INDONESIA",
+    "tanggalDibuat": "2026-06-23 12:25:35",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7404,
+        "namaBarang": "PROFESSIONAL FEES SALES",
+        "deskripsiBarang": "Telemarketing B2B Remote Jan 2026",
+        "qty": 1,
+        "hargaUnit": 8091947.73
+      }
+    ]
+  },
+  {
+    "id": 4118,
+    "nomorPrTender": "TE04291",
+    "prAsal": "PR04355",
+    "status": "in_progress",
+    "vendor": "VAPE STREET",
+    "tanggalDibuat": "2026-06-23 12:17:16",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 3,
+    "items": [
+      {
+        "productId": 8097,
+        "namaBarang": "SUPPORT STORE PARTNER",
+        "deskripsiBarang": "ONGKIR",
+        "qty": 1,
+        "hargaUnit": 150000
+      },
+      {
+        "productId": 8097,
+        "namaBarang": "SUPPORT STORE PARTNER",
+        "deskripsiBarang": "Kemeja Lengan Panjang",
+        "qty": 3,
+        "hargaUnit": 270000
+      },
+      {
+        "productId": 8097,
+        "namaBarang": "SUPPORT STORE PARTNER",
+        "deskripsiBarang": "Kemeja Lengan Pendek",
+        "qty": 9,
+        "hargaUnit": 260000
+      }
+    ]
+  },
+  {
+    "id": 4117,
+    "nomorPrTender": "TE04290",
+    "prAsal": "PR04351",
+    "status": "in_progress",
+    "vendor": "PT ONOKABEH CIPTA KREASI",
+    "tanggalDibuat": "2026-06-23 11:39:21",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7288,
+        "namaBarang": "PRINTING TOOLS",
+        "deskripsiBarang": "Car Branding Foom OTW Livery Foom Go",
+        "qty": 1,
+        "hargaUnit": 3500000
+      }
+    ]
+  },
+  {
+    "id": 4116,
+    "nomorPrTender": "TE04289",
+    "prAsal": "PR04332",
+    "status": "in_progress",
+    "vendor": "TRANS NEW CORPORA",
+    "tanggalDibuat": "2026-06-23 11:29:07",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 4291,
+        "namaBarang": "MEDIA PLACEMENT",
+        "deskripsiBarang": "1 post instagram + 1 artikel",
+        "qty": 1,
+        "hargaUnit": 11100000
+      }
+    ]
+  },
+  {
+    "id": 4115,
+    "nomorPrTender": "TE04288",
+    "prAsal": "PR04306",
+    "status": "open",
+    "vendor": "WEBSITE PAY",
+    "tanggalDibuat": "2026-06-23 11:23:17",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 6038,
+        "namaBarang": "SUBSCRIPTION IT FEE",
+        "deskripsiBarang": "Domain Renewal - xperiencefreedom.com (27/06/2026 - 27/06/2027) + ID Protection",
+        "qty": 1,
+        "hargaUnit": 234210
+      }
+    ]
+  },
+  {
+    "id": 4114,
+    "nomorPrTender": "TE04287",
+    "prAsal": "PR04181",
+    "status": "in_progress",
+    "vendor": "CV CANCER REKLAME MANDIRI",
+    "tanggalDibuat": "2026-06-23 11:17:40",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm Galaxy Vapor",
+        "qty": 5,
+        "hargaUnit": 1200000
+      }
+    ]
+  },
+  {
+    "id": 4113,
+    "nomorPrTender": "New",
+    "prAsal": "PR04099",
+    "status": "draft",
+    "vendor": null,
+    "tanggalDibuat": "2026-06-23 04:42:28",
+    "deskripsi": false,
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7705,
+        "namaBarang": "SAMPLE AND PROTOTYPE",
+        "deskripsiBarang": "Sample gold can 250ml",
+        "qty": 5,
+        "hargaUnit": 0
+      }
+    ]
+  },
+  {
+    "id": 4112,
+    "nomorPrTender": "TE04286",
+    "prAsal": "PR04136",
+    "status": "in_progress",
+    "vendor": "SHENZHEN CIXIN DIGITAL INNOVATION E-COMMERCE TECHNOLOGY CO., LTD.",
+    "tanggalDibuat": "2026-06-23 04:34:26",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7500,
+        "namaBarang": "FACTORY RENTAL",
+        "deskripsiBarang": "SZ Apart Rent for Oct 2025-Apr 2026",
+        "qty": 1,
+        "hargaUnit": 96598593.14
+      }
+    ]
+  },
+  {
+    "id": 4111,
+    "nomorPrTender": "TE04285",
+    "prAsal": "PR04384",
+    "status": "in_progress",
+    "vendor": "SHENZHEN CIXIN DIGITAL INNOVATION E-COMMERCE TECHNOLOGY CO., LTD.",
+    "tanggalDibuat": "2026-06-23 03:51:01",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7500,
+        "namaBarang": "FACTORY RENTAL",
+        "deskripsiBarang": "SZ Office Rent",
+        "qty": 1,
+        "hargaUnit": 25209032.27
+      }
+    ]
+  },
+  {
+    "id": 4110,
+    "nomorPrTender": "TE04284",
+    "prAsal": "PR04381",
+    "status": "done",
+    "vendor": "PT WATER LABORATORY NUSANTARA INDONESIA",
+    "tanggalDibuat": "2026-06-23 02:37:13",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7711,
+        "namaBarang": "LAB TEST FEE",
+        "deskripsiBarang": "Hygiene and Sanitation Water Quality Testing",
+        "qty": 1,
+        "hargaUnit": 4773000
+      }
+    ]
+  },
+  {
+    "id": 4109,
+    "nomorPrTender": "TE04283",
+    "prAsal": "PR04397",
+    "status": "in_progress",
+    "vendor": "ENDRI LOST",
+    "tanggalDibuat": "2026-06-23 02:30:29",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7645,
+        "namaBarang": "KOL",
+        "deskripsiBarang": "KOL Switch - Endri Lost",
+        "qty": 1,
+        "hargaUnit": 6153846
+      }
+    ]
+  },
+  {
+    "id": 4108,
+    "nomorPrTender": "TE04282",
+    "prAsal": "PR04389",
+    "status": "in_progress",
+    "vendor": "VAPERSTUFF INDONESIA",
+    "tanggalDibuat": "2026-06-23 02:22:28",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 2,
+    "items": [
+      {
+        "productId": 7645,
+        "namaBarang": "KOL",
+        "deskripsiBarang": "KOL FOOM Switch & Ultra - Vaperstuff",
+        "qty": 1,
+        "hargaUnit": 3061225
+      },
+      {
+        "productId": 7645,
+        "namaBarang": "KOL",
+        "deskripsiBarang": "KOL FOOM Switch & Ultra - Vaperstuff",
+        "qty": 1,
+        "hargaUnit": 3061224
+      }
+    ]
+  },
+  {
+    "id": 4107,
+    "nomorPrTender": "TE04281",
+    "prAsal": "PR04374",
+    "status": "in_progress",
+    "vendor": "SURYA RIWANTO",
+    "tanggalDibuat": "2026-06-22 03:27:59",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 14,
+    "items": [
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "INCENTIVE CITY SERIES",
+        "qty": 1,
+        "hargaUnit": 123236
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "INCENTIVE BUBBLE GUM SERIES",
+        "qty": 1,
+        "hargaUnit": 3243
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "INCENTIVE POD X",
+        "qty": 1,
+        "hargaUnit": 930000
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "INCENTIVE TROPICAL SERIES V2",
+        "qty": 1,
+        "hargaUnit": 3172848
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "INCENTIVE TROPICAL SERIES V1",
+        "qty": 1,
+        "hargaUnit": 3172848
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "INCENTIVE ICE CREAM FLOOID",
+        "qty": 1,
+        "hargaUnit": 1973031
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "INCENTIVE MIDNIGHT SERIES",
+        "qty": 1,
+        "hargaUnit": 3732762
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "INCENTIVE CANDY SERIES",
+        "qty": 1,
+        "hargaUnit": 874533
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "INCENTIVE DRINK SERIES",
+        "qty": 1,
+        "hargaUnit": 1546430
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "INCENTIVE ZODIAC SERIES",
+        "qty": 1,
+        "hargaUnit": 1418450
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "INCENTIVE SOUR SERIES",
+        "qty": 1,
+        "hargaUnit": 2133007
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "INCENTIVE SMOOTHIES SERIES",
+        "qty": 1,
+        "hargaUnit": 2335643
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "INCENTIVE LIQUID FOOM",
+        "qty": 1,
+        "hargaUnit": 11869375
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "INCENTIVE NEW BUBBLE GUM SERIES",
+        "qty": 1,
+        "hargaUnit": 1557095
+      }
+    ]
+  },
+  {
+    "id": 4106,
+    "nomorPrTender": "TE04280",
+    "prAsal": "PR04373",
+    "status": "in_progress",
+    "vendor": "SURYA RIWANTO",
+    "tanggalDibuat": "2026-06-22 03:24:08",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 15,
+    "items": [
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "INCENTIVE CITY SERIES",
+        "qty": 1,
+        "hargaUnit": 295932
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "INCENTIVE POD Y",
+        "qty": 1,
+        "hargaUnit": 4500000
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "INCENTIVE BUBBLE GUM SERIES",
+        "qty": 1,
+        "hargaUnit": 251094
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "INCENTIVE POD X",
+        "qty": 1,
+        "hargaUnit": 148187500
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "INCENTIVE TROPICAL SERIES V2",
+        "qty": 1,
+        "hargaUnit": 79136781
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "INCENTIVE TROPICAL SERIES V1",
+        "qty": 1,
+        "hargaUnit": 79136781
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "INCENTIVE ICE CREAM FLOOID",
+        "qty": 1,
+        "hargaUnit": 69843138
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "INCENTIVE MIDNIGHT SERIES",
+        "qty": 1,
+        "hargaUnit": 82292432
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "INCENTIVE CANDY SERIES",
+        "qty": 1,
+        "hargaUnit": 27137150
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "INCENTIVE DRINK SERIES",
+        "qty": 1,
+        "hargaUnit": 54389838
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "INCENTIVE ZODIAC SERIES",
+        "qty": 1,
+        "hargaUnit": 33592874
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "INCENTIVE SOUR SERIES",
+        "qty": 1,
+        "hargaUnit": 79028464
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "INCENTIVE SMOOTHIES SERIES",
+        "qty": 1,
+        "hargaUnit": 56902805
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "INCENTIVE LIQUID FOOM",
+        "qty": 1,
+        "hargaUnit": 334418000
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "INCENTIVE NEW BUBBLE GUM SERIES",
+        "qty": 1,
+        "hargaUnit": 59054713
+      }
+    ]
+  },
+  {
+    "id": 4105,
+    "nomorPrTender": "TE04279",
+    "prAsal": "PR04371",
+    "status": "done",
+    "vendor": "FAKIR LIQUID",
+    "tanggalDibuat": "2026-06-22 03:21:46",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 2,
+    "items": [
+      {
+        "productId": 7645,
+        "namaBarang": "KOL",
+        "deskripsiBarang": "KOL FOOM Switch and Ultra - Fakir Liquid",
+        "qty": 1,
+        "hargaUnit": 3333333
+      },
+      {
+        "productId": 7645,
+        "namaBarang": "KOL",
+        "deskripsiBarang": "KOL FOOM Switch and Ultra - Fakir Liquid",
+        "qty": 1,
+        "hargaUnit": 3333333
+      }
+    ]
+  },
+  {
+    "id": 4104,
+    "nomorPrTender": "TE04278",
+    "prAsal": "PR04369",
+    "status": "in_progress",
+    "vendor": "VAPORGOD",
+    "tanggalDibuat": "2026-06-22 03:18:13",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7645,
+        "namaBarang": "KOL",
+        "deskripsiBarang": "Contract 3 Month KOL Vape - Vapergod",
+        "qty": 1,
+        "hargaUnit": 36923077
+      }
+    ]
+  },
+  {
+    "id": 4103,
+    "nomorPrTender": "TE04277",
+    "prAsal": "PR04364",
+    "status": "done",
+    "vendor": "PT TASPEN PROPERTI INDONESIA",
+    "tanggalDibuat": "2026-06-22 03:14:50",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 2,
+    "items": [
+      {
+        "productId": 7327,
+        "namaBarang": "FOOM RENTAL STORE",
+        "deskripsiBarang": "Angsuran Sewa",
+        "qty": 6,
+        "hargaUnit": 7832160
+      },
+      {
+        "productId": 7327,
+        "namaBarang": "FOOM RENTAL STORE",
+        "deskripsiBarang": "DP Perpanjangan",
+        "qty": 1,
+        "hargaUnit": 11748240
+      }
+    ]
+  },
+  {
+    "id": 4102,
+    "nomorPrTender": "TE04276",
+    "prAsal": "PR04365",
+    "status": "done",
+    "vendor": "PT. PENGELOLA PUSAT BELANJA",
+    "tanggalDibuat": "2026-06-22 03:11:08",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 2,
+    "items": [
+      {
+        "productId": 7327,
+        "namaBarang": "FOOM RENTAL STORE",
+        "deskripsiBarang": "Service Charge",
+        "qty": 12,
+        "hargaUnit": 874125
+      },
+      {
+        "productId": 7327,
+        "namaBarang": "FOOM RENTAL STORE",
+        "deskripsiBarang": "Promotion Levy",
+        "qty": 1,
+        "hargaUnit": 874125
+      }
+    ]
+  },
+  {
+    "id": 4101,
+    "nomorPrTender": "TE04275",
+    "prAsal": "PR04361",
+    "status": "in_progress",
+    "vendor": "PT OTANI PREMIUM PAPER INDUSTRY",
+    "tanggalDibuat": "2026-06-22 03:04:15",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 2,
+    "items": [
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "Kertas HVS A4 75gr Paper One",
+        "qty": 10,
+        "hargaUnit": 222000
+      },
+      {
+        "productId": 7493,
+        "namaBarang": "SUPPLIES FACTORY RELATED",
+        "deskripsiBarang": "Kertas thermal 100mm x 150mm, isi 500/roll",
+        "qty": 20,
+        "hargaUnit": 1292040
+      }
+    ]
+  },
+  {
+    "id": 4100,
+    "nomorPrTender": "TE04274",
+    "prAsal": "PR04360",
+    "status": "done",
+    "vendor": "JEE VANKA",
+    "tanggalDibuat": "2026-06-22 02:49:55",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7645,
+        "namaBarang": "KOL",
+        "deskripsiBarang": "Contract 3 Month KOL Vape - Jee Vanka",
+        "qty": 1,
+        "hargaUnit": 41025641
+      }
+    ]
+  },
+  {
+    "id": 4099,
+    "nomorPrTender": "TE04273",
+    "prAsal": "PR04359",
+    "status": "done",
+    "vendor": "PT WAHANA CIPTA SEJAHTERA",
+    "tanggalDibuat": "2026-06-22 02:38:56",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 3,
+    "items": [
+      {
+        "productId": 7327,
+        "namaBarang": "FOOM RENTAL STORE",
+        "deskripsiBarang": "Deposit Sewa PGC Cililitan",
+        "qty": 1,
+        "hargaUnit": 5000000
+      },
+      {
+        "productId": 7327,
+        "namaBarang": "FOOM RENTAL STORE",
+        "deskripsiBarang": "Materai",
+        "qty": 1,
+        "hargaUnit": 10000
+      },
+      {
+        "productId": 7327,
+        "namaBarang": "FOOM RENTAL STORE",
+        "deskripsiBarang": "DP1 Sewa PGC Cililitan periode Juli 2026 s/d Juni 2027",
+        "qty": 1,
+        "hargaUnit": 8000000
+      }
+    ]
+  },
+  {
+    "id": 4098,
+    "nomorPrTender": "TE04272",
+    "prAsal": "PR04358",
+    "status": "done",
+    "vendor": "H+ MANAGEMENT",
+    "tanggalDibuat": "2026-06-22 02:15:44",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7645,
+        "namaBarang": "KOL",
+        "deskripsiBarang": "BA Fee for 3 Months - Kartika Wijaksana",
+        "qty": 1,
+        "hargaUnit": 255102041
+      }
+    ]
+  },
+  {
+    "id": 4097,
+    "nomorPrTender": "TE04271",
+    "prAsal": "PR04356",
+    "status": "done",
+    "vendor": "CV VISI GRAFIKA UTAMA",
+    "tanggalDibuat": "2026-06-21 15:10:32",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7288,
+        "namaBarang": "PRINTING TOOLS",
+        "deskripsiBarang": "Set Lucky Box Gebyar Vapeboss 25x20 cmbahan karton board + 500 kupon 10x5 cm",
+        "qty": 118,
+        "hargaUnit": 85000
+      }
+    ]
+  },
+  {
+    "id": 4096,
+    "nomorPrTender": "TE04270",
+    "prAsal": "PR04350",
+    "status": "done",
+    "vendor": "SYNVESTMENT PTE, LTD.",
+    "tanggalDibuat": "2026-06-21 15:05:04",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7279,
+        "namaBarang": "PROGRAMMATIC",
+        "deskripsiBarang": "HyperLocal Marketing period Mar'26-Mei'26",
+        "qty": 1,
+        "hargaUnit": 48980340
+      }
+    ]
+  },
+  {
+    "id": 4095,
+    "nomorPrTender": "TE04269",
+    "prAsal": "PR04349",
+    "status": "done",
+    "vendor": "PT SRI TANAYA MEGATAMA",
+    "tanggalDibuat": "2026-06-21 14:59:58",
+    "deskripsi": "<p><br>    </p>",
+    "totalItems": 2,
+    "items": [
+      {
+        "productId": 7327,
+        "namaBarang": "FOOM RENTAL STORE",
+        "deskripsiBarang": "Sewa FS Kediri 1-30 Juni 2026",
+        "qty": 1,
+        "hargaUnit": 3096900
+      },
+      {
+        "productId": 7327,
+        "namaBarang": "FOOM RENTAL STORE",
+        "deskripsiBarang": "Biaya Administrasi",
+        "qty": 1,
+        "hargaUnit": 25000
+      }
+    ]
+  },
+  {
+    "id": 4094,
+    "nomorPrTender": "TE04268",
+    "prAsal": "PR04348",
+    "status": "done",
+    "vendor": "PT KAMPUNG MARKETERINDO BERDAYA",
+    "tanggalDibuat": "2026-06-21 14:56:28",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 2,
+    "items": [
+      {
+        "productId": 7404,
+        "namaBarang": "PROFESSIONAL FEES SALES",
+        "deskripsiBarang": "Total Biaya Admin",
+        "qty": 1,
+        "hargaUnit": 2500000
+      },
+      {
+        "productId": 7404,
+        "namaBarang": "PROFESSIONAL FEES SALES",
+        "deskripsiBarang": "Total Gaji Talent dan Biaya Lainnya",
+        "qty": 1,
+        "hargaUnit": 1110000
+      }
+    ]
+  },
+  {
+    "id": 4093,
+    "nomorPrTender": "TE04267",
+    "prAsal": "PR04347",
+    "status": "done",
+    "vendor": "PT KAMPUNG MARKETERINDO BERDAYA",
+    "tanggalDibuat": "2026-06-21 14:53:57",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 2,
+    "items": [
+      {
+        "productId": 7404,
+        "namaBarang": "PROFESSIONAL FEES SALES",
+        "deskripsiBarang": "Total Biaya Admin",
+        "qty": 1,
+        "hargaUnit": 5800000
+      },
+      {
+        "productId": 7404,
+        "namaBarang": "PROFESSIONAL FEES SALES",
+        "deskripsiBarang": "Total Gaji Talent dan Biaya Lainnya",
+        "qty": 1,
+        "hargaUnit": 1110000
+      }
+    ]
+  },
+  {
+    "id": 4092,
+    "nomorPrTender": "TE04266",
+    "prAsal": "PR04346",
+    "status": "done",
+    "vendor": "PT KAMPUNG MARKETERINDO BERDAYA",
+    "tanggalDibuat": "2026-06-21 14:50:32",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 2,
+    "items": [
+      {
+        "productId": 7404,
+        "namaBarang": "PROFESSIONAL FEES SALES",
+        "deskripsiBarang": "Total Biaya Admin",
+        "qty": 1,
+        "hargaUnit": 8912500
+      },
+      {
+        "productId": 7404,
+        "namaBarang": "PROFESSIONAL FEES SALES",
+        "deskripsiBarang": "Total Gaji Talent dan Biaya Lainnya",
+        "qty": 1,
+        "hargaUnit": 1665000
+      }
+    ]
+  },
+  {
+    "id": 4091,
+    "nomorPrTender": "TE04265",
+    "prAsal": "PR04341",
+    "status": "done",
+    "vendor": "CV VISI GRAFIKA UTAMA",
+    "tanggalDibuat": "2026-06-21 14:43:05",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 3,
+    "items": [
+      {
+        "productId": 7288,
+        "namaBarang": "PRINTING TOOLS",
+        "deskripsiBarang": "Cetak Greeting Card Hampers Foom Go Capsule",
+        "qty": 100,
+        "hargaUnit": 3000
+      },
+      {
+        "productId": 7288,
+        "namaBarang": "PRINTING TOOLS",
+        "deskripsiBarang": "Cetak Inner Hampers Foom Go Capsule",
+        "qty": 100,
+        "hargaUnit": 13500
+      },
+      {
+        "productId": 7288,
+        "namaBarang": "PRINTING TOOLS",
+        "deskripsiBarang": "Cetak Sleeve Hampers Foom Go Capsule",
+        "qty": 100,
+        "hargaUnit": 13500
+      }
+    ]
+  },
+  {
+    "id": 4090,
+    "nomorPrTender": "TE04264",
+    "prAsal": "PR04334",
+    "status": "done",
+    "vendor": "SURYA RIWANTO",
+    "tanggalDibuat": "2026-06-21 14:36:31",
+    "deskripsi": "<p><br>            </p>",
+    "totalItems": 12,
+    "items": [
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "Incentive City Series",
+        "qty": 1,
+        "hargaUnit": 1651455
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "Incentive Smoothies Series",
+        "qty": 1,
+        "hargaUnit": 1651455
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "Incentive New Bubble Gum Series",
+        "qty": 1,
+        "hargaUnit": 1651455
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "Incentive Sour Series",
+        "qty": 1,
+        "hargaUnit": 1651455
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "Incentive Bubble Gum Series",
+        "qty": 1,
+        "hargaUnit": 1651455
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "Incentive Tropical Series V2",
+        "qty": 1,
+        "hargaUnit": 1651455
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "Incentive Tropical Series V1",
+        "qty": 1,
+        "hargaUnit": 1651455
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "Incentive Zodiac Series",
+        "qty": 1,
+        "hargaUnit": 1651455
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "Incentive Ice Cream Flooid",
+        "qty": 1,
+        "hargaUnit": 1651455
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "Incentive Candy Series",
+        "qty": 1,
+        "hargaUnit": 1651455
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "Incentive Drink Series",
+        "qty": 1,
+        "hargaUnit": 1651455
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "Incentive Midnight Series",
+        "qty": 1,
+        "hargaUnit": 18166000
+      }
+    ]
+  },
+  {
+    "id": 4089,
+    "nomorPrTender": "TE04263",
+    "prAsal": "PR04331",
+    "status": "done",
+    "vendor": "RUMAH TUA VAPE",
+    "tanggalDibuat": "2026-06-21 14:19:41",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7332,
+        "namaBarang": "SPONSORSHIP",
+        "deskripsiBarang": "Support tim Hyrox Rumah Tua Vape",
+        "qty": 1,
+        "hargaUnit": 7600000
+      }
+    ]
+  },
+  {
+    "id": 4088,
+    "nomorPrTender": "TE04262",
+    "prAsal": "PR04330",
+    "status": "done",
+    "vendor": "A.M OKTARINA COUNSELOR AT LAW",
+    "tanggalDibuat": "2026-06-21 14:16:18",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7622,
+        "namaBarang": "PERMISSION AND MEMBERSHIP",
+        "deskripsiBarang": "Reimbursement Fee Biaya Perjalanan Dinas Sdr Ricko, Bapak Alfian, dan Bapak Noverizky ke Surabaya pada tanggal 9 Juni 2026",
+        "qty": 1,
+        "hargaUnit": 8185697
+      }
+    ]
+  },
+  {
+    "id": 4087,
+    "nomorPrTender": "TE04261",
+    "prAsal": "PR04329",
+    "status": "done",
+    "vendor": "VAPORIZER JAKARTA GROUP",
+    "tanggalDibuat": "2026-06-21 14:09:53",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7332,
+        "namaBarang": "SPONSORSHIP",
+        "deskripsiBarang": "Sponsorship Event Sosialisasi Vaporizer Jakarta 13 Juni 2026",
+        "qty": 1,
+        "hargaUnit": 10000000
+      }
+    ]
+  },
+  {
+    "id": 4086,
+    "nomorPrTender": "TE04260",
+    "prAsal": "PR04328",
+    "status": "done",
+    "vendor": "SURYA RIWANTO",
+    "tanggalDibuat": "2026-06-21 14:01:17",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 4,
+    "items": [
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "FLOOID VAGANZA - SOUR SERIES",
+        "qty": 1,
+        "hargaUnit": 31176250
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "FLOOID VAGANZA - NEW BUBBLEGUM",
+        "qty": 1,
+        "hargaUnit": 31176250
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "FLOOID VAGANZA - FRUIT TEA",
+        "qty": 1,
+        "hargaUnit": 31176250
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "FLOOID VAGANZA - SMOOTHIES",
+        "qty": 1,
+        "hargaUnit": 31176250
+      }
+    ]
+  },
+  {
+    "id": 4085,
+    "nomorPrTender": "TE04259",
+    "prAsal": "PR04326",
+    "status": "done",
+    "vendor": "SURYA RIWANTO",
+    "tanggalDibuat": "2026-06-21 13:58:37",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 3,
+    "items": [
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "CASH SUPPORT STORE TYPE C",
+        "qty": 31,
+        "hargaUnit": 10000000
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "CASH SUPPORT STORE TYPE B",
+        "qty": 11,
+        "hargaUnit": 15000000
+      },
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "CASH SUPPORT STORE TYPE A",
+        "qty": 2,
+        "hargaUnit": 25000000
+      }
+    ]
+  },
+  {
+    "id": 4084,
+    "nomorPrTender": "TE04258",
+    "prAsal": "PR04324",
+    "status": "done",
+    "vendor": "SURYA RIWANTO",
+    "tanggalDibuat": "2026-06-21 13:56:04",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7402,
+        "namaBarang": "SALES INCENTIVE/SALES FORCE",
+        "deskripsiBarang": "CASHBACK SELL IN TEA SERIES",
+        "qty": 1,
+        "hargaUnit": 6870000
+      }
+    ]
+  },
+  {
+    "id": 4083,
+    "nomorPrTender": "TE04257",
+    "prAsal": "PR04308",
+    "status": "done",
+    "vendor": "GARASI REKLAME",
+    "tanggalDibuat": "2026-06-21 13:49:30",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: Epic Vape - Tuban",
+        "qty": 1,
+        "hargaUnit": 1550000
+      }
+    ]
+  },
+  {
+    "id": 4082,
+    "nomorPrTender": "TE04256",
+    "prAsal": "PR04320",
+    "status": "in_progress",
+    "vendor": "CV DNA MEDIA CREATIVE",
+    "tanggalDibuat": "2026-06-21 09:12:16",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: SURAIYA VAPESTORE - SELAPARANG",
+        "qty": 1,
+        "hargaUnit": 4551000
+      }
+    ]
+  },
+  {
+    "id": 4081,
+    "nomorPrTender": "TE04255",
+    "prAsal": "PR04319",
+    "status": "done",
+    "vendor": "CV BALI STAR",
+    "tanggalDibuat": "2026-06-21 09:05:18",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: SURAIYA VAPESTORE - SELAPARANG",
+        "qty": 1,
+        "hargaUnit": 3885000
+      }
+    ]
+  },
+  {
+    "id": 4080,
+    "nomorPrTender": "TE04254",
+    "prAsal": "PR04318",
+    "status": "done",
+    "vendor": "GRAND MODERN",
+    "tanggalDibuat": "2026-06-21 09:00:24",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 7,
+    "items": [
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: VAPE YOU - GADING REJO",
+        "qty": 1,
+        "hargaUnit": 1650000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: TRILOGI - GADING REJO",
+        "qty": 1,
+        "hargaUnit": 1650000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: EX VAPE - GISTING",
+        "qty": 1,
+        "hargaUnit": 1650000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: TRILOGI - GISTING",
+        "qty": 1,
+        "hargaUnit": 1650000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: TRILOGI - KALIREJO",
+        "qty": 1,
+        "hargaUnit": 1650000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: VAPE 97 STORE - TULANG BAWANG BARAT",
+        "qty": 1,
+        "hargaUnit": 1650000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: ERAVAPE INDONESIA - KORPRI",
+        "qty": 1,
+        "hargaUnit": 1650000
+      }
+    ]
+  },
+  {
+    "id": 4079,
+    "nomorPrTender": "TE04253",
+    "prAsal": "PR04317",
+    "status": "done",
+    "vendor": "MAHESA PRODUCTION",
+    "tanggalDibuat": "2026-06-21 08:47:38",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 6,
+    "items": [
+      {
+        "productId": 5777,
+        "namaBarang": "ADDITIONAL NEON BOX",
+        "deskripsiBarang": "Ongkir luar kota",
+        "qty": 1,
+        "hargaUnit": 1000000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: Sinilah VapORIZER - Sukodadi",
+        "qty": 1,
+        "hargaUnit": 2250000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: Vape 21 Perumnas",
+        "qty": 1,
+        "hargaUnit": 2250000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: Vape 21 Palembang Cabang Sako",
+        "qty": 1,
+        "hargaUnit": 2250000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: SS Vaping Kayu Agung",
+        "qty": 1,
+        "hargaUnit": 2250000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: SS Vaping Pusri",
+        "qty": 1,
+        "hargaUnit": 2250000
+      }
+    ]
+  },
+  {
+    "id": 4078,
+    "nomorPrTender": "TE04252",
+    "prAsal": "PR04316",
+    "status": "done",
+    "vendor": "CV DNA MEDIA CREATIVE",
+    "tanggalDibuat": "2026-06-21 08:21:36",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 5,
+    "items": [
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: LOCOLA VAPOR - WENANG SELATAN",
+        "qty": 1,
+        "hargaUnit": 4995000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: Vapener vapeshop",
+        "qty": 1,
+        "hargaUnit": 4995000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: Sentral vapeshop",
+        "qty": 1,
+        "hargaUnit": 4995000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: Sentral vapeshop - Padi Unggul",
+        "qty": 1,
+        "hargaUnit": 4995000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: Manasa Vape Store",
+        "qty": 1,
+        "hargaUnit": 4995000
+      }
+    ]
+  },
+  {
+    "id": 4077,
+    "nomorPrTender": "TE04251",
+    "prAsal": "PR04314",
+    "status": "done",
+    "vendor": "M. ZAR'IE",
+    "tanggalDibuat": "2026-06-21 08:16:30",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: PONTIANAK VAPOR SHOP - PONTIANAK KOTA (DR WAHIDIN)",
+        "qty": 1,
+        "hargaUnit": 2850000
+      }
+    ]
+  },
+  {
+    "id": 4076,
+    "nomorPrTender": "TE04250",
+    "prAsal": "PR04313",
+    "status": "done",
+    "vendor": "UD FIRMAN NEONBOX",
+    "tanggalDibuat": "2026-06-21 08:11:26",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 6,
+    "items": [
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: VAPESTASTIC - SANANWETAN",
+        "qty": 1,
+        "hargaUnit": 1850000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: NDOL VAPE STORE - KEPANJEN KIDUL",
+        "qty": 1,
+        "hargaUnit": 1850000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: HOV VAPE STORE - SUKOREJO",
+        "qty": 1,
+        "hargaUnit": 1850000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: SKY VAPE LOUNGE - AIRLANGGA",
+        "qty": 1,
+        "hargaUnit": 1850000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: CLOUD SEEKER",
+        "qty": 1,
+        "hargaUnit": 1850000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: MOTHRA VAPESTORE",
+        "qty": 1,
+        "hargaUnit": 1850000
+      }
+    ]
+  },
+  {
+    "id": 4075,
+    "nomorPrTender": "TE04249",
+    "prAsal": "PR04312",
+    "status": "done",
+    "vendor": "ROCKY MOUNTANA",
+    "tanggalDibuat": "2026-06-21 06:55:18",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: KING STAR VAPE STORE - NGABLAK",
+        "qty": 1,
+        "hargaUnit": 1800000
+      }
+    ]
+  },
+  {
+    "id": 4074,
+    "nomorPrTender": "TE04248",
+    "prAsal": "PR04311",
+    "status": "done",
+    "vendor": "ROCKY MOUNTANA",
+    "tanggalDibuat": "2026-06-21 06:40:26",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 13,
+    "items": [
+      {
+        "productId": 5777,
+        "namaBarang": "ADDITIONAL NEON BOX",
+        "deskripsiBarang": "Tambahan Tiang",
+        "qty": 2,
+        "hargaUnit": 450000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: Uranus Vapestore",
+        "qty": 1,
+        "hargaUnit": 1800000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: VINSTORE VAPESTORE",
+        "qty": 1,
+        "hargaUnit": 1800000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: ASHAVAPOR - PEDURUNGAN",
+        "qty": 1,
+        "hargaUnit": 1800000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: CIRCLE VAPOR - SENDANGGUWO",
+        "qty": 1,
+        "hargaUnit": 1800000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: Vape In - Wirosari",
+        "qty": 1,
+        "hargaUnit": 1800000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: Niki Vapestore",
+        "qty": 1,
+        "hargaUnit": 1800000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: Niki Vapestore Pedan",
+        "qty": 1,
+        "hargaUnit": 1800000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: VAPE IN WIROSARI - WIROSARI",
+        "qty": 1,
+        "hargaUnit": 1800000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: POSITIV VAPE HOUSE - KASONGAN",
+        "qty": 1,
+        "hargaUnit": 1800000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: HIDDEN VAPOR - DEPOK",
+        "qty": 1,
+        "hargaUnit": 1800000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: BARKA VAPESTORE - KLATEN",
+        "qty": 1,
+        "hargaUnit": 1800000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Toko: HOUSE VAPOR - LAWEYAN",
+        "qty": 1,
+        "hargaUnit": 1800000
+      }
+    ]
+  },
+  {
+    "id": 4073,
+    "nomorPrTender": "TE04247",
+    "prAsal": "PR04310",
+    "status": "done",
+    "vendor": "CV CANCER REKLAME MANDIRI",
+    "tanggalDibuat": "2026-06-21 06:35:01",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 3,
+    "items": [
+      {
+        "productId": 5777,
+        "namaBarang": "ADDITIONAL NEON BOX",
+        "deskripsiBarang": "Tambahan Tiang",
+        "qty": 17,
+        "hargaUnit": 650000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Area Jabodetabek",
+        "qty": 52,
+        "hargaUnit": 1750000
+      },
+      {
+        "productId": 9609,
+        "namaBarang": "NEON BOX (80CM)",
+        "deskripsiBarang": "Neon Box Bulat 2 Sisi Diameter 80cm, Area Jawa Barat",
+        "qty": 15,
+        "hargaUnit": 1850000
+      }
+    ]
+  },
+  {
+    "id": 4072,
+    "nomorPrTender": "TE04246",
+    "prAsal": "PR04309",
+    "status": "done",
+    "vendor": "PT BASUKI CAPITAL INDONESIA",
+    "tanggalDibuat": "2026-06-21 06:20:16",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7393,
+        "namaBarang": "ENGAGE AGENCY (EVENTS, PR)",
+        "deskripsiBarang": "FOOM HOP OTW Maret 2026",
+        "qty": 1,
+        "hargaUnit": 15400000
+      }
+    ]
+  },
+  {
+    "id": 4071,
+    "nomorPrTender": "TE04245",
+    "prAsal": "PR04305",
+    "status": "done",
+    "vendor": "VAPEBRAND BANDUNG",
+    "tanggalDibuat": "2026-06-21 06:07:18",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 2,
+    "items": [
+      {
+        "productId": 8097,
+        "namaBarang": "SUPPORT STORE PARTNER",
+        "deskripsiBarang": "FOOM SNAPHOOK STORE",
+        "qty": 250,
+        "hargaUnit": 60000
+      },
+      {
+        "productId": 8097,
+        "namaBarang": "SUPPORT STORE PARTNER",
+        "deskripsiBarang": "FOOM TSHIRT COLLAB STORE",
+        "qty": 250,
+        "hargaUnit": 5000
+      }
+    ]
+  },
+  {
+    "id": 4070,
+    "nomorPrTender": "TE04244",
+    "prAsal": "PR04292",
+    "status": "done",
+    "vendor": "ALFINCO TEKNIK",
+    "tanggalDibuat": "2026-06-21 05:58:15",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 9786,
+        "namaBarang": "BUILDING CONSTRUCTION",
+        "deskripsiBarang": "Jasa Pengerjaan Bongkaran dan Renovasi Lnatai 15",
+        "qty": 1,
+        "hargaUnit": 195840900
+      }
+    ]
+  },
+  {
+    "id": 4069,
+    "nomorPrTender": "TE04243",
+    "prAsal": "PR04304",
+    "status": "done",
+    "vendor": "CV BATAVIA TATA MEDIA",
+    "tanggalDibuat": "2026-06-19 12:42:46",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7620,
+        "namaBarang": "RENTAL OTHERS",
+        "deskripsiBarang": "Sewa Mesin Fotocopy Color Multi Fungsi",
+        "qty": 1,
+        "hargaUnit": 35298000
+      }
+    ]
+  },
+  {
+    "id": 4068,
+    "nomorPrTender": "TE04242",
+    "prAsal": "PR04301",
+    "status": "done",
+    "vendor": "WELLEN",
+    "tanggalDibuat": "2026-06-19 12:32:33",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 3,
+    "items": [
+      {
+        "productId": 7288,
+        "namaBarang": "PRINTING TOOLS",
+        "deskripsiBarang": "Tend card segitiga",
+        "qty": 300,
+        "hargaUnit": 2220
+      },
+      {
+        "productId": 7288,
+        "namaBarang": "PRINTING TOOLS",
+        "deskripsiBarang": "Poster Siree, A3 AC 260 Lam doff",
+        "qty": 150,
+        "hargaUnit": 11100
+      },
+      {
+        "productId": 7288,
+        "namaBarang": "PRINTING TOOLS",
+        "deskripsiBarang": "Tent card soiree party, AC 310 GSM",
+        "qty": 180,
+        "hargaUnit": 8880
+      }
+    ]
+  },
+  {
+    "id": 4067,
+    "nomorPrTender": "TE04241",
+    "prAsal": "PR04300",
+    "status": "done",
+    "vendor": "WELLEN",
+    "tanggalDibuat": "2026-06-19 12:29:29",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7288,
+        "namaBarang": "PRINTING TOOLS",
+        "deskripsiBarang": "Sticker Pack FOOM, Vinyl a3 lam glossy, pot",
+        "qty": 63,
+        "hargaUnit": 26085
+      }
+    ]
+  },
+  {
+    "id": 4066,
+    "nomorPrTender": "TE04240",
+    "prAsal": "PR04294",
+    "status": "done",
+    "vendor": "BNL PATENT",
+    "tanggalDibuat": "2026-06-19 12:22:00",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7622,
+        "namaBarang": "PERMISSION AND MEMBERSHIP",
+        "deskripsiBarang": "Penarikan Kembali Permohonan Merek FOOM GO (34)",
+        "qty": 1,
+        "hargaUnit": 699300
+      }
+    ]
+  },
+  {
+    "id": 4065,
+    "nomorPrTender": "TE04239",
+    "prAsal": "PR04280",
+    "status": "done",
+    "vendor": "ADISSA PUTRI RAMADHANI",
+    "tanggalDibuat": "2026-06-19 12:13:26",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 2,
+    "items": [
+      {
+        "productId": 4596,
+        "namaBarang": "TALENT EVENT",
+        "deskripsiBarang": "1 Content Creator FLOOID",
+        "qty": 1,
+        "hargaUnit": 750000
+      },
+      {
+        "productId": 4596,
+        "namaBarang": "TALENT EVENT",
+        "deskripsiBarang": "1 Content Creator FLOOID",
+        "qty": 1,
+        "hargaUnit": 750000
+      }
+    ]
+  },
+  {
+    "id": 4064,
+    "nomorPrTender": "TE04238",
+    "prAsal": "PR04260",
+    "status": "done",
+    "vendor": "PT KITA MITRA INDONESIA",
+    "tanggalDibuat": "2026-06-19 11:33:14",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7404,
+        "namaBarang": "PROFESSIONAL FEES SALES",
+        "deskripsiBarang": "Staffinc Telemarketing B2B May 2026",
+        "qty": 1,
+        "hargaUnit": 10225131
+      }
+    ]
+  },
+  {
+    "id": 4063,
+    "nomorPrTender": "TE04237",
+    "prAsal": "PR04135",
+    "status": "in_progress",
+    "vendor": "SHENZHEN CIXIN DIGITAL INNOVATION E-COMMERCE TECHNOLOGY CO., LTD.",
+    "tanggalDibuat": "2026-06-19 10:35:31",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7500,
+        "namaBarang": "FACTORY RENTAL",
+        "deskripsiBarang": "SZ Office Rent for June Period 1th - 30th",
+        "qty": 1,
+        "hargaUnit": 24512705.65
+      }
+    ]
+  },
+  {
+    "id": 4062,
+    "nomorPrTender": "TE04318",
+    "prAsal": "PR04370",
+    "status": "in_progress",
+    "vendor": "PT DARA CAHAYA SEMESTA",
+    "tanggalDibuat": "2026-06-19 08:35:19",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7645,
+        "namaBarang": "KOL",
+        "deskripsiBarang": "Payement KOL Strawberry Milk - SKYE Influencer (13)",
+        "qty": 1,
+        "hargaUnit": 63831600
+      }
+    ]
+  },
+  {
+    "id": 4061,
+    "nomorPrTender": "TE04235",
+    "prAsal": "PR04362",
+    "status": "done",
+    "vendor": "PT DARA CAHAYA SEMESTA",
+    "tanggalDibuat": "2026-06-19 08:17:17",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7645,
+        "namaBarang": "KOL",
+        "deskripsiBarang": "Payment KOL Flood Banana Milkshake - Skye Influencer (6)",
+        "qty": 1,
+        "hargaUnit": 12959100
+      }
+    ]
+  },
+  {
+    "id": 4060,
+    "nomorPrTender": "TE04234",
+    "prAsal": "PR04357",
+    "status": "done",
+    "vendor": "GRAND MODERN",
+    "tanggalDibuat": "2026-06-19 08:02:21",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 5777,
+        "namaBarang": "ADDITIONAL NEON BOX",
+        "deskripsiBarang": "Tambahan Tiang",
+        "qty": 1,
+        "hargaUnit": 600000
+      }
+    ]
+  },
+  {
+    "id": 4059,
+    "nomorPrTender": "TE04233",
+    "prAsal": "PR04368",
+    "status": "done",
+    "vendor": "PT ALPHA CIPTA COMPUTINDO",
+    "tanggalDibuat": "2026-06-19 07:58:35",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 4,
+    "items": [
+      {
+        "productId": 8141,
+        "namaBarang": "FREE GIFT CUSTOMER",
+        "deskripsiBarang": "Holyland Mark 2",
+        "qty": 2,
+        "hargaUnit": 1981450
+      },
+      {
+        "productId": 8141,
+        "namaBarang": "FREE GIFT CUSTOMER",
+        "deskripsiBarang": "DJI Osmo Mobile",
+        "qty": 2,
+        "hargaUnit": 1776000
+      },
+      {
+        "productId": 8141,
+        "namaBarang": "FREE GIFT CUSTOMER",
+        "deskripsiBarang": "Camera Sony - Sony ZV -1F",
+        "qty": 1,
+        "hargaUnit": 7492500
+      },
+      {
+        "productId": 8141,
+        "namaBarang": "FREE GIFT CUSTOMER",
+        "deskripsiBarang": "Macbook Neo A18 Pro MHFA4 - Silver",
+        "qty": 1,
+        "hargaUnit": 11655000
+      }
+    ]
+  },
+  {
+    "id": 4058,
+    "nomorPrTender": "TE04232",
+    "prAsal": "PR04367",
+    "status": "in_progress",
+    "vendor": "PT ALPHA CIPTA COMPUTINDO",
+    "tanggalDibuat": "2026-06-19 07:36:35",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 2,
+    "items": [
+      {
+        "productId": 8141,
+        "namaBarang": "FREE GIFT CUSTOMER",
+        "deskripsiBarang": "Corkcicle Tumbler Canteen 16Oz",
+        "qty": 3,
+        "hargaUnit": 500000
+      },
+      {
+        "productId": 8141,
+        "namaBarang": "FREE GIFT CUSTOMER",
+        "deskripsiBarang": "Sony Headphone WH-CH520",
+        "qty": 3,
+        "hargaUnit": 721500
+      }
+    ]
+  },
+  {
+    "id": 4057,
+    "nomorPrTender": "TE04231",
+    "prAsal": "PR04366",
+    "status": "done",
+    "vendor": "CV CITOTRANS BERJAYA",
+    "tanggalDibuat": "2026-06-19 07:33:33",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 8141,
+        "namaBarang": "FREE GIFT CUSTOMER",
+        "deskripsiBarang": "Tiket PP and Tour 3D2N Lombok",
+        "qty": 3,
+        "hargaUnit": 8850000
+      }
+    ]
+  },
+  {
+    "id": 4056,
+    "nomorPrTender": "TE04228",
+    "prAsal": "PR04339",
+    "status": "done",
+    "vendor": "PT SUARA KITA SAMA",
+    "tanggalDibuat": "2026-06-18 13:11:59",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 3,
+    "items": [
+      {
+        "productId": 4291,
+        "namaBarang": "MEDIA PLACEMENT",
+        "deskripsiBarang": "ASF 5%",
+        "qty": 1,
+        "hargaUnit": 2206643
+      },
+      {
+        "productId": 4291,
+        "namaBarang": "MEDIA PLACEMENT",
+        "deskripsiBarang": "UGC 3500 post threads",
+        "qty": 1,
+        "hargaUnit": 26785715
+      },
+      {
+        "productId": 4291,
+        "namaBarang": "MEDIA PLACEMENT",
+        "deskripsiBarang": "Trending topic twitter Foom Switch jun'26",
+        "qty": 1,
+        "hargaUnit": 17346939
+      }
+    ]
+  },
+  {
+    "id": 4055,
+    "nomorPrTender": "TE04227",
+    "prAsal": "PR04299",
+    "status": "done",
+    "vendor": "WELLEN",
+    "tanggalDibuat": "2026-06-18 13:08:04",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7288,
+        "namaBarang": "PRINTING TOOLS",
+        "deskripsiBarang": "Cetak Flyer FOOM at FLEI, Art paper 150 gsm",
+        "qty": 314,
+        "hargaUnit": 6660
+      }
+    ]
+  },
+  {
+    "id": 4054,
+    "nomorPrTender": "TE04226",
+    "prAsal": "PR04298",
+    "status": "done",
+    "vendor": "WELLEN",
+    "tanggalDibuat": "2026-06-18 13:04:08",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7288,
+        "namaBarang": "PRINTING TOOLS",
+        "deskripsiBarang": "Cetak Voucher FOOM Go Capsule, Art paper 150 gsm",
+        "qty": 125,
+        "hargaUnit": 6660
+      }
+    ]
+  },
+  {
+    "id": 4053,
+    "nomorPrTender": "TE04224",
+    "prAsal": "PR04296",
+    "status": "done",
+    "vendor": "PT TECHINDO SOLUSI CEMERLANG",
+    "tanggalDibuat": "2026-06-18 12:58:00",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7617,
+        "namaBarang": "OFFICE SUPPLIES AND TOOLS",
+        "deskripsiBarang": "Printer Iware Thermal Mobile C5813 58mm C-5813 Bluetooth",
+        "qty": 15,
+        "hargaUnit": 382950
+      }
+    ]
+  },
+  {
+    "id": 4052,
+    "nomorPrTender": "TE04223",
+    "prAsal": "PR04291",
+    "status": "done",
+    "vendor": "VAPESTOREPATI",
+    "tanggalDibuat": "2026-06-18 12:50:29",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7332,
+        "namaBarang": "SPONSORSHIP",
+        "deskripsiBarang": "TOTAL SPONSORSHIP",
+        "qty": 1,
+        "hargaUnit": 11750000
+      }
+    ]
+  },
+  {
+    "id": 4051,
+    "nomorPrTender": "TE04222",
+    "prAsal": "PR04290",
+    "status": "done",
+    "vendor": "VAPE BUNNY",
+    "tanggalDibuat": "2026-06-18 12:42:55",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 3,
+    "items": [
+      {
+        "productId": 7290,
+        "namaBarang": "INDOOR BRANDING",
+        "deskripsiBarang": "STICKER ETALASE FOOM",
+        "qty": 1,
+        "hargaUnit": 420000
+      },
+      {
+        "productId": 7290,
+        "namaBarang": "INDOOR BRANDING",
+        "deskripsiBarang": "ETALASE 1x1",
+        "qty": 1,
+        "hargaUnit": 2500000
+      },
+      {
+        "productId": 7290,
+        "namaBarang": "INDOOR BRANDING",
+        "deskripsiBarang": "ETALASE 2x1",
+        "qty": 1,
+        "hargaUnit": 5000000
+      }
+    ]
+  },
+  {
+    "id": 4050,
+    "nomorPrTender": "TE04221",
+    "prAsal": "PR04289",
+    "status": "done",
+    "vendor": "SARANG VAPERS",
+    "tanggalDibuat": "2026-06-18 12:38:57",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7290,
+        "namaBarang": "INDOOR BRANDING",
+        "deskripsiBarang": "Sewa Branding Light Box Sarang Vapers HQ",
+        "qty": 1,
+        "hargaUnit": 2000000
+      }
+    ]
+  },
+  {
+    "id": 4049,
+    "nomorPrTender": "TE04220",
+    "prAsal": "PR04288",
+    "status": "done",
+    "vendor": "VAPORISTA PVS",
+    "tanggalDibuat": "2026-06-18 12:35:28",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7290,
+        "namaBarang": "INDOOR BRANDING",
+        "deskripsiBarang": "Support Sewa Space Neonbox Vaporista PVS Ampera Juni 2026",
+        "qty": 1,
+        "hargaUnit": 5000000
+      }
+    ]
+  },
+  {
+    "id": 4048,
+    "nomorPrTender": "TE04219",
+    "prAsal": "PR04282",
+    "status": "done",
+    "vendor": "PT. ABYAKTA GLOBAL INDONESIA",
+    "tanggalDibuat": "2026-06-18 12:18:57",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 4,
+    "items": [
+      {
+        "productId": 7618,
+        "namaBarang": "OFFICE RENTAL",
+        "deskripsiBarang": "Share tagihan listrik April 2026",
+        "qty": 1,
+        "hargaUnit": 1240763
+      },
+      {
+        "productId": 7618,
+        "namaBarang": "OFFICE RENTAL",
+        "deskripsiBarang": "Sharing profit April 2026",
+        "qty": 1,
+        "hargaUnit": 13674000
+      },
+      {
+        "productId": 7618,
+        "namaBarang": "OFFICE RENTAL",
+        "deskripsiBarang": "Share tagihan listrik Maret 2026",
+        "qty": 1,
+        "hargaUnit": 1242479
+      },
+      {
+        "productId": 7618,
+        "namaBarang": "OFFICE RENTAL",
+        "deskripsiBarang": "Sharing profit Maret 2026",
+        "qty": 1,
+        "hargaUnit": 12336000
+      }
+    ]
+  },
+  {
+    "id": 4047,
+    "nomorPrTender": "TE04218",
+    "prAsal": "PR04281",
+    "status": "done",
+    "vendor": "CV ANAK LANGIT PRODUCTION",
+    "tanggalDibuat": "2026-06-18 12:07:15",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 7645,
+        "namaBarang": "KOL",
+        "deskripsiBarang": "Livestream WG S3 + Clippers",
+        "qty": 1,
+        "hargaUnit": 234271356
+      }
+    ]
+  },
+  {
+    "id": 4046,
+    "nomorPrTender": "TE04217",
+    "prAsal": "PR04267",
+    "status": "done",
+    "vendor": "GRAND MODERN",
+    "tanggalDibuat": "2026-06-18 11:59:13",
+    "deskripsi": "<p><br></p>",
+    "totalItems": 1,
+    "items": [
+      {
+        "productId": 5777,
+        "namaBarang": "ADDITIONAL NEON BOX",
+        "deskripsiBarang": "Tambahan Tiang",
+        "qty": 1,
+        "hargaUnit": 600000
+      }
+    ]
+  }
+]

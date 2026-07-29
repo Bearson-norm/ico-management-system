@@ -232,15 +232,15 @@ export default function GaOpnamePrintPage({ params }: { params: { id: string } }
       {/* Detailed Items Table */}
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10, marginBottom: 30 }}>
         <thead>
-          <tr style={{ background: '#111827', textAlign: 'left' }}>
-            <th style={{ border: '1px solid #374151', padding: 6, width: 24, textAlign: 'center', color: '#fff !important' }}>No</th>
-            <th style={{ border: '1px solid #374151', padding: 6, color: '#fff !important' }}>Kode</th>
-            <th style={{ border: '1px solid #374151', padding: 6, color: '#fff !important' }}>Nama Barang GA</th>
-            <th style={{ border: '1px solid #374151', padding: 6, color: '#fff !important' }}>Lokasi / Gedung</th>
-            <th style={{ border: '1px solid #374151', padding: 6, textAlign: 'right', color: '#fff !important' }}>Qty Sistem</th>
-            <th style={{ border: '1px solid #374151', padding: 6, textAlign: 'right', color: '#fff !important' }}>Qty Fisik</th>
-            <th style={{ border: '1px solid #374151', padding: 6, textAlign: 'right', color: '#fff !important' }}>Selisih</th>
-            <th style={{ border: '1px solid #374151', padding: 6, textAlign: 'center', color: '#fff !important' }}>PIC Hitung</th>
+          <tr style={{ background: '#e5e7eb', textAlign: 'left' }}>
+            <th style={{ border: '1px solid #9ca3af', padding: 6, width: 24, textAlign: 'center', color: '#000 !important', fontWeight: 'bold' }}>No</th>
+            <th style={{ border: '1px solid #9ca3af', padding: 6, color: '#000 !important', fontWeight: 'bold' }}>Kode</th>
+            <th style={{ border: '1px solid #9ca3af', padding: 6, color: '#000 !important', fontWeight: 'bold' }}>Nama Barang GA</th>
+            <th style={{ border: '1px solid #9ca3af', padding: 6, color: '#000 !important', fontWeight: 'bold' }}>Lokasi / Gedung</th>
+            <th style={{ border: '1px solid #9ca3af', padding: 6, textAlign: 'right', color: '#000 !important', fontWeight: 'bold' }}>Qty Sistem</th>
+            <th style={{ border: '1px solid #9ca3af', padding: 6, textAlign: 'right', color: '#000 !important', fontWeight: 'bold' }}>Qty Fisik</th>
+            <th style={{ border: '1px solid #9ca3af', padding: 6, textAlign: 'right', color: '#000 !important', fontWeight: 'bold' }}>Selisih</th>
+            <th style={{ border: '1px solid #9ca3af', padding: 6, textAlign: 'center', color: '#000 !important', fontWeight: 'bold' }}>PIC Hitung</th>
           </tr>
         </thead>
         <tbody>

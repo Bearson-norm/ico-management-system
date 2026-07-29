@@ -1,0 +1,37 @@
+[
+  {
+    "id": 4446,
+    "name": "PR04439",
+    "state": "to_approve",
+    "create_date": "2026-06-26 11:13:55",
+    "description": "Kebutuhan part modikasi cellophane untuk new product (Cartridge Bray) "
+  },
+  {
+    "id": 4439,
+    "name": "PR04432",
+    "state": "to_approve",
+    "create_date": "2026-06-24 15:44:05",
+    "description": "Untuk Part Mesin Blister Pod X Gedung G5"
+  },
+  {
+    "id": 4433,
+    "name": "PR04426",
+    "state": "approved",
+    "create_date": "2026-06-24 05:11:35",
+    "description": "consumabel part repeat order"
+  },
+  {
+    "id": 4427,
+    "name": "PR04420",
+    "state": "approved",
+    "create_date": "2026-06-23 10:24:51",
+    "description": "Untuk Perbaikan mesin coding date line cartridge G5"
+  },
+  {
+    "id": 4370,
+    "name": "PR04363",
+    "state": "approved",
+    "create_date": "2026-06-18 08:30:27",
+    "description": "kebutuhan untuk WTP gedung G2 dan G5"
+  }
+]
