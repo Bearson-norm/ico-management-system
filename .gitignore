@@ -3,3 +3,9 @@ node_modules
 .env
 .env.local
 lib/generated
+.venv
+exports/
+*.sql
+*.log
+*.csv
+odoo_sync_debug.txt
