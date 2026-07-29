@@ -448,7 +448,33 @@ export default function StockOutPage() {
                             >
                               −
                             </button>
-                            <input type="text" className="qty-val" value={sp.qty} readOnly />
+                            <input
+                              type="number"
+                              min={1}
+                              max={sp.stok}
+                              className="qty-val"
+                              value={sp.qty}
+                              onChange={(e) => {
+                                const val = parseInt(e.target.value, 10);
+                                if (!isNaN(val)) {
+                                  const clamped = Math.min(Math.max(1, val), sp.stok);
+                                  setForm((p) => ({
+                                    ...p,
+                                    items: p.items.map((item) =>
+                                      item.sparepartId === sp.sparepartId ? { ...item, qty: clamped } : item
+                                    ),
+                                  }));
+                                } else if (e.target.value === '') {
+                                  setForm((p) => ({
+                                    ...p,
+                                    items: p.items.map((item) =>
+                                      item.sparepartId === sp.sparepartId ? { ...item, qty: 1 } : item
+                                    ),
+                                  }));
+                                }
+                              }}
+                              style={{ width: 55, textAlign: 'center' }}
+                            />
                             <button
                               type="button"
                               className="qty-btn"

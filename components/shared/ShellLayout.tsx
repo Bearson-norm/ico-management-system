@@ -103,7 +103,8 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
               >
                 {BRAND_NAME}
               </div>
-              <div className="sidebar-logo-sub">Modul MTC • v3.0 • PostgreSQL</div>
+              <div className="sidebar-logo-sub">Modul Maintenance</div>
+              <span className="mtc-module-tag" style={{ background: 'var(--pur, #9333ea)', color: '#fff', padding: '2px 6px', fontWeight: '800', borderRadius: '4px', fontSize: 10 }}>MTC</span>
             </div>
             <div className="badge badge-pur hide-on-mobile-badge">{role.toUpperCase()}</div>
           </div>
