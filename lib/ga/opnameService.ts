@@ -190,6 +190,56 @@ export async function getOpnameSession(id: number) {
   };
 }
 
+export async function updateOpnameSessionStatus(
+  sessionId: number,
+  status: 'draft' | 'waiting_approval' | 'posted'
+) {
+  const session = await prismaGa.gaOpnameSession.findUnique({
+    where: { id: sessionId },
+    select: { status: true },
+  });
+  if (!session) throw new Error('Sesi opname tidak ditemukan');
+  if (session.status === 'posted' && status !== 'draft') {
+    throw new Error('Sesi sudah diposting, tidak bisa diubah statusnya secara langsung');
+  }
+
+  await prismaGa.gaOpnameSession.update({
+    where: { id: sessionId },
+    data: { status },
+  });
+
+  return getOpnameSession(sessionId);
+}
+
+export async function unpostOpnameSession(sessionId: number) {
+  const session = await prismaGa.gaOpnameSession.findUnique({
+    where: { id: sessionId },
+    select: { id: true, periodeNama: true, status: true },
+  });
+  if (!session) throw new Error('Sesi opname tidak ditemukan');
+
+  const ketBase = `Opname: ${session.periodeNama}`;
+
+  await prismaGa.$transaction(async (tx) => {
+    await tx.gaStockMovement.deleteMany({
+      where: {
+        keterangan: { startsWith: ketBase },
+      },
+    });
+
+    await tx.gaOpnameSession.update({
+      where: { id: sessionId },
+      data: {
+        status: 'draft',
+        postedAt: null,
+        postMode: null,
+      },
+    });
+  });
+
+  return getOpnameSession(sessionId);
+}
+
 export async function updateOpnameLines(
   sessionId: number,
   updates: { id: number; qtyFisik: number | null; picNama?: string }[]
@@ -199,7 +249,9 @@ export async function updateOpnameLines(
     select: { status: true },
   });
   if (!session) throw new Error('Sesi opname tidak ditemukan');
-  if (session.status === 'posted') throw new Error('Sesi sudah diposting, tidak bisa diubah');
+  if (session.status === 'posted' || session.status === 'waiting_approval') {
+    throw new Error('Sesi dalam status ' + session.status + ', angka hitung fisik terkunci');
+  }
 
   await prismaGa.$transaction(async (tx) => {
     for (const u of updates) {

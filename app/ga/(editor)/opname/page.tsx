@@ -97,7 +97,14 @@ export default function GaOpnameListPage() {
   }
 
   function statusBadge(s: SessionRow) {
-    if (s.status === 'posted') return <span className="badge badge-grn">Selesai</span>;
+    if (s.status === 'posted') return <span className="badge badge-grn">✓ Selesai</span>;
+    if (s.status === 'waiting_approval') {
+      return (
+        <span className="badge badge-ylw" style={{ background: 'rgba(217, 119, 6, 0.15)', color: '#d97706' }}>
+          📤 Menunggu ACC
+        </span>
+      );
+    }
     const pct = s.lineCount ? Math.round((s.countedCount / s.lineCount) * 100) : 0;
     return (
       <span className="badge badge-ylw">
@@ -175,6 +182,14 @@ export default function GaOpnameListPage() {
                       <td>{statusBadge(s)}</td>
                       <td>
                         <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                          <Link
+                            href={`/ga/opname/${s.id}/print`}
+                            target="_blank"
+                            className="btn btn-ghost btn-sm"
+                            title="Cetak Form SO 4 TTD"
+                          >
+                            🖨️ Form SO
+                          </Link>
                           <Link href={`/ga/opname/${s.id}`} className="btn btn-ghost btn-sm">
                             {s.status === 'posted' ? 'Lihat' : 'Lanjutkan'}
                           </Link>

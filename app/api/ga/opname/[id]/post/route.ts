@@ -41,3 +41,21 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     return err(msg, 400);
   }
 }
+
+export async function DELETE(_req: NextRequest, ctx: Ctx) {
+  const session = await requireGaEditor();
+  if (!session) return err('Akses ditolak', 403);
+
+  const { id: raw } = await ctx.params;
+  const id = parseInt(raw, 10);
+  if (!Number.isFinite(id) || id <= 0) return err('ID tidak valid');
+
+  try {
+    const { unpostOpnameSession } = await import('@/lib/ga/opnameService');
+    await unpostOpnameSession(id);
+    return ok({ msg: '✓ Sesi opname berhasil di-reset / dibatalkan ACC-nya! Status kembali ke Draft.' });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Gagal membatalkan posting';
+    return err(msg, 400);
+  }
+}

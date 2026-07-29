@@ -136,17 +136,30 @@ export default function GaOpnameDetailPage() {
     const counted = lines.filter((l) => isLineCounted(l)).length;
     let surplus = 0;
     let shortage = 0;
+    let matching = 0;
+    let totalPlusQty = 0;
+    let totalMinusQty = 0;
+
     for (const l of lines) {
-      const raw = draft[l.id];
+      const raw = isDraft ? draft[l.id] : String(l.qtyFisik ?? '');
       if (raw === '' || raw == null) continue;
       const fisik = parseInt(raw, 10);
       if (!Number.isFinite(fisik)) continue;
       const diff = fisik - l.qtySistem;
-      if (diff > 0) surplus++;
-      if (diff < 0) shortage++;
+      if (diff > 0) {
+        surplus++;
+        totalPlusQty += diff;
+      } else if (diff < 0) {
+        shortage++;
+        totalMinusQty += Math.abs(diff);
+      } else {
+        matching++;
+      }
     }
-    return { counted, surplus, shortage };
-  }, [lines, draft]);
+
+    const accuracyPct = counted > 0 ? Math.round((matching / counted) * 1000) / 10 : 0;
+    return { counted, surplus, shortage, matching, totalPlusQty, totalMinusQty, accuracyPct };
+  }, [lines, draft, isDraft]);
 
   async function saveLines(targetIds?: number[]): Promise<boolean> {
     if (!isDraft) return true;
@@ -280,6 +293,68 @@ export default function GaOpnameDetailPage() {
     );
   }
 
+  async function submitForApproval() {
+    if (!confirm('Apakah Anda yakin telah selesai menghitung fisik dan ingin MENGAJUKAN Sesi Opname ini ke Manager/Supervisor untuk di-ACC?')) return;
+    setSaving(true);
+    setErr(null);
+    try {
+      const res = await fetch(`/api/ga/opname/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'update_status', status: 'waiting_approval' }),
+      });
+      const j = await res.json();
+      if (j.success) {
+        setMsg(j.data.msg || 'Sesi opname berhasil diajukan ke Manager.');
+        await load();
+      } else {
+        setErr(j.error || 'Gagal mengajukan ke Manager');
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function resetToDraft() {
+    if (!confirm('Kembalikan status opname ke DRAFT untuk diedit ulang?')) return;
+    setSaving(true);
+    setErr(null);
+    try {
+      const res = await fetch(`/api/ga/opname/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'update_status', status: 'draft' }),
+      });
+      const j = await res.json();
+      if (j.success) {
+        setMsg('Status dikembalikan ke Draft.');
+        await load();
+      } else {
+        setErr(j.error || 'Gagal mengembalikan ke Draft');
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleUnpostSession() {
+    if (!confirm('Apakah Anda (Manager/Supervisor) yakin ingin BATALKAN ACC / RESET posting opname ini kembali ke DRAFT?\n\nPergerakan stok penyesuaian akan dibatalkan.')) return;
+    setSaving(true);
+    setErr(null);
+    try {
+      const res = await fetch(`/api/ga/opname/${id}/post`, { method: 'DELETE' });
+      const j = await res.json();
+      if (j.success) {
+        setMsg(j.data.msg || 'Sesi opname berhasil dibatalkan ACC-nya.');
+        await load();
+      } else {
+        setErr(j.error || 'Gagal membatalkan ACC');
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <>
       <div className="page-header">
@@ -304,6 +379,14 @@ export default function GaOpnameDetailPage() {
             </div>
           </div>
           <div className="ga-page-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Link
+              href={`/ga/opname/${session.id}/print`}
+              target="_blank"
+              className="btn btn-ghost"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+            >
+              🖨️ Form SO (Cetak)
+            </Link>
             <button
               type="button"
               className="btn btn-ghost"
@@ -314,23 +397,67 @@ export default function GaOpnameDetailPage() {
             </button>
             {isDraft && (
               <>
-              <button type="button" className="btn btn-ghost" onClick={() => saveLines()} disabled={saving}>
-                {saving ? 'Menyimpan…' : 'Simpan draft'}
-              </button>
+                <button type="button" className="btn btn-ghost" onClick={() => saveLines()} disabled={saving}>
+                  {saving ? 'Menyimpan…' : 'Simpan draft'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={submitForApproval}
+                  disabled={saving || !allGedungComplete}
+                  style={{ color: '#d97706', borderColor: 'rgba(217, 119, 6, 0.3)' }}
+                  title={allGedungComplete ? 'Ajukan sesi ke Manager untuk ACC' : 'Selesaikan hitung di semua gedung dulu'}
+                >
+                  📤 Ajukan ke Manager
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => setPostModal(true)}
+                  disabled={!allGedungComplete}
+                  title={
+                    allGedungComplete
+                      ? 'Posting penyesuaian ke stok'
+                      : incompleteMsg || 'Selesaikan hitung di semua gedung'
+                  }
+                >
+                  Posting selisih
+                </button>
+              </>
+            )}
+
+            {session.status === 'waiting_approval' && (
+              <>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={resetToDraft}
+                  disabled={saving}
+                >
+                  ↩️ Kembali ke Draft
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => setPostModal(true)}
+                  disabled={!allGedungComplete}
+                >
+                  ✓ ACC & Posting Selisih
+                </button>
+              </>
+            )}
+
+            {session.status === 'posted' && (
               <button
                 type="button"
-                className="btn btn-primary"
-                onClick={() => setPostModal(true)}
-                disabled={!allGedungComplete}
-                title={
-                  allGedungComplete
-                    ? 'Posting penyesuaian ke stok'
-                    : incompleteMsg || 'Selesaikan hitung di semua gedung'
-                }
+                className="btn btn-ghost"
+                onClick={handleUnpostSession}
+                disabled={saving}
+                style={{ color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+                title="Batal ACC & kembalikan ke Draft"
               >
-                Posting selisih
+                ↩️ Batal ACC (Reset)
               </button>
-              </>
             )}
           </div>
         </div>
@@ -383,30 +510,48 @@ export default function GaOpnameDetailPage() {
           </div>
         )}
 
-        <div className="stats-grid" style={{ marginBottom: 16 }}>
-          <div className="card" style={{ padding: 16 }}>
-            <div style={{ fontSize: 12, color: 'var(--ga-tx2)' }}>Sudah dihitung</div>
-            <strong style={{ fontSize: 22 }}>
-              {isDraft ? stats.counted : session.countedCount} / {session.lineCount}
+        <div className="stats-grid" style={{ marginBottom: 16, display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12 }}>
+          <div className="card" style={{ padding: 14 }}>
+            <div style={{ fontSize: 12, color: 'var(--ga-tx2)' }}>Sudah Dihitung</div>
+            <strong style={{ fontSize: 20 }}>
+              {stats.counted} / {session.lineCount}
             </strong>
+            <div style={{ fontSize: 11, color: 'var(--ga-tx2)', marginTop: 2 }}>Item terhitung</div>
           </div>
-          <div className="card" style={{ padding: 16 }}>
-            <div style={{ fontSize: 12, color: 'var(--ga-tx2)' }}>Lebih (surplus)</div>
-            <strong style={{ fontSize: 22, color: 'var(--ga-ylw)' }}>
-              {isDraft ? stats.surplus : '—'}
+
+          <div className="card" style={{ padding: 14 }}>
+            <div style={{ fontSize: 12, color: 'var(--ga-accent)' }}>🎯 Akurasi Data</div>
+            <strong style={{ fontSize: 20, color: 'var(--ga-accent)' }}>
+              {stats.accuracyPct}%
             </strong>
+            <div style={{ fontSize: 11, color: 'var(--ga-grn)', marginTop: 2 }}>({stats.matching} Sesuai)</div>
           </div>
-          <div className="card" style={{ padding: 16 }}>
-            <div style={{ fontSize: 12, color: 'var(--ga-tx2)' }}>Kurang (shortage)</div>
-            <strong style={{ fontSize: 22, color: 'var(--ga-red)' }}>
-              {isDraft ? stats.shortage : session.varianceCount}
+
+          <div className="card" style={{ padding: 14 }}>
+            <div style={{ fontSize: 12, color: '#2563eb' }}>🔵 Lebih (+Qty)</div>
+            <strong style={{ fontSize: 20, color: '#2563eb' }}>
+              +{stats.totalPlusQty} Pcs
             </strong>
+            <div style={{ fontSize: 11, color: '#2563eb', marginTop: 2 }}>({stats.surplus} item surplus)</div>
           </div>
-          <div className="card" style={{ padding: 16 }}>
-            <div style={{ fontSize: 12, color: 'var(--ga-tx2)' }}>Status</div>
-            <strong>
+
+          <div className="card" style={{ padding: 14 }}>
+            <div style={{ fontSize: 12, color: '#dc2626' }}>🔴 Kurang (-Qty)</div>
+            <strong style={{ fontSize: 20, color: '#dc2626' }}>
+              -{stats.totalMinusQty} Pcs
+            </strong>
+            <div style={{ fontSize: 11, color: '#dc2626', marginTop: 2 }}>({stats.shortage} item shortage)</div>
+          </div>
+
+          <div className="card" style={{ padding: 14 }}>
+            <div style={{ fontSize: 12, color: 'var(--ga-tx2)' }}>Status Sesi</div>
+            <strong style={{ fontSize: 14, display: 'block', marginTop: 4 }}>
               {session.status === 'posted' ? (
-                <span className="badge badge-grn">Selesai</span>
+                <span className="badge badge-grn">✓ Selesai</span>
+              ) : session.status === 'waiting_approval' ? (
+                <span className="badge badge-ylw" style={{ background: 'rgba(217, 119, 6, 0.15)', color: '#d97706' }}>
+                  📤 Menunggu ACC
+                </span>
               ) : (
                 <span className="badge badge-ylw">Draft</span>
               )}

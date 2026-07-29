@@ -100,18 +100,24 @@ export async function buildOpnamePdf(
 
     doc.moveDown(1.2);
     const y = doc.y;
-    const colWidth = pageWidth / 3;
-    const roles = ['Penghitung', 'Supervisor GA', 'Mengetahui'];
+    const colWidth = pageWidth / 4;
+    const roles = [
+      { title: 'Dihitung Oleh,', role: 'Penghitung' },
+      { title: 'Disiapkan Oleh,', role: 'GA Staff' },
+      { title: 'Diketahui Oleh,', role: 'Supervisor GA' },
+      { title: 'Disetujui Oleh,', role: 'Manufacture Manager' },
+    ];
 
-    roles.forEach((role, i) => {
+    roles.forEach((item, i) => {
       const x = doc.page.margins.left + i * colWidth;
-      doc.font('Helvetica').fontSize(8).fillColor('#374151').text('Tanda Tangan:', x + 8, y, {
-        width: colWidth - 16,
+      doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#374151').text(item.title, x + 4, y, {
+        width: colWidth - 8,
+        align: 'center',
         lineBreak: false,
       });
       doc
         .moveTo(x + 8, y + 36)
-        .lineTo(x + colWidth - 16, y + 36)
+        .lineTo(x + colWidth - 8, y + 36)
         .strokeColor('#9ca3af')
         .lineWidth(0.75)
         .stroke();
@@ -119,13 +125,13 @@ export async function buildOpnamePdf(
         .font('Helvetica-Bold')
         .fontSize(8)
         .fillColor('#111827')
-        .text(role, x + 8, y + 44, { width: colWidth - 16, align: 'center', lineBreak: false });
+        .text(item.role, x + 4, y + 44, { width: colWidth - 8, align: 'center', lineBreak: false });
       doc
         .font('Helvetica')
         .fontSize(7)
         .fillColor('#6b7280')
-        .text('Nama: _________________________', x + 8, y + 58, { width: colWidth - 16, lineBreak: false });
-      doc.text('Tanggal: _____________________', x + 8, y + 70, { width: colWidth - 16, lineBreak: false });
+        .text('Nama: _______________________', x + 4, y + 58, { width: colWidth - 8, align: 'center', lineBreak: false });
+      doc.text('Tgl: ________________________', x + 4, y + 70, { width: colWidth - 8, align: 'center', lineBreak: false });
     });
 
     doc.y = y + blockHeight;

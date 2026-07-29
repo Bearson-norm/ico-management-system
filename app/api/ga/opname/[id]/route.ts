@@ -33,11 +33,30 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   const id = parseId(raw);
   if (!id) return err('ID tidak valid');
 
-  let body: unknown;
+  let body: any;
   try {
     body = await req.json();
   } catch {
     return err('Body tidak valid');
+  }
+
+  if (body?.action === 'update_status' || (body?.status && !body?.lines)) {
+    const targetStatus = body.status;
+    if (!['draft', 'waiting_approval', 'posted'].includes(targetStatus)) {
+      return err('Status tidak valid', 400);
+    }
+    try {
+      const { updateOpnameSessionStatus } = await import('@/lib/ga/opnameService');
+      const data = await updateOpnameSessionStatus(id, targetStatus as any);
+      return ok({
+        data,
+        msg: targetStatus === 'waiting_approval'
+          ? '✓ Sesi opname berhasil diajukan ke Manager / Supervisor (Menunggu ACC).'
+          : `Status sesi diperbarui menjadi ${targetStatus}.`
+      });
+    } catch (e: any) {
+      return err(e.message || 'Gagal mengubah status', 400);
+    }
   }
 
   const parsed = GaOpnameUpdateLinesSchema.safeParse(body);
