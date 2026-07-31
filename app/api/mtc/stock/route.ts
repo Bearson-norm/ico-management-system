@@ -19,6 +19,9 @@ export async function GET(req: NextRequest) {
     include: {
       kategori: true,
       mesins: { select: { id: true, nama: true } },
+      procurementTrackings: {
+        select: { nomorPr: true, nomorPo: true, linkReferences: true, statusPr: true, statusPo: true }
+      },
       movements: {
         where: { tipe: { in: ['IN', 'OUT'] } },
         select: { tipe: true, qty: true },
@@ -38,6 +41,17 @@ export async function GET(req: NextRequest) {
       else if (currentStock < sp.minQty) stockStatus = 'low';
       else                               stockStatus = 'safe';
 
+      const tracking = sp.procurementTrackings && sp.procurementTrackings[0];
+      const noPr = sp.purchasingNoPr || tracking?.nomorPr || null;
+      const noPo = sp.purchasingNoPo || tracking?.nomorPo || null;
+      const linkRef = sp.linkReference || tracking?.linkReferences || null;
+
+      let pStatus = sp.purchasingStatus || 'NONE';
+      if (pStatus === 'NONE' || pStatus === 'APPROVED' || pStatus === 'RECEIVED') {
+        if (noPo) pStatus = 'PO';
+        else if (noPr) pStatus = 'PR';
+      }
+
       return {
         id:           sp.id,
         nama:         sp.nama,
@@ -52,7 +66,10 @@ export async function GET(req: NextRequest) {
         totalOut,
         currentStock,
         status:       stockStatus,
-        purchasingStatus: sp.purchasingStatus || 'NONE',
+        purchasingStatus: pStatus,
+        purchasingNoPr: noPr,
+        purchasingNoPo: noPo,
+        linkReference: linkRef,
       };
     })
     .filter((sp) => {

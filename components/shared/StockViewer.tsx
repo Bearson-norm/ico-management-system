@@ -6,7 +6,10 @@ type StockItem = {
   uom: string; harga: number; minQty: number;
   totalIn: number; totalOut: number; currentStock: number;
   status: 'safe' | 'low' | 'habis';
-  purchasingStatus?: 'NONE' | 'PR' | 'PO';
+  purchasingStatus?: string;
+  purchasingNoPr?: string | null;
+  purchasingNoPo?: string | null;
+  linkReference?: string | null;
   mesins?: { id: number, nama: string }[];
   _parsed?: { rak: string; kolom: string; level: string; bin: string; valid: boolean };
 };
@@ -800,8 +803,15 @@ function StockItemTableRow({
           <div className={highlightName ? 'stock-item-name stock-item-name--highlight' : ''} style={{ fontWeight: 600 }}>
             {item.nama}
           </div>
-          {item.purchasingStatus === 'PR' && <span className="badge badge-ylw" style={{ fontSize: 9, padding: '1px 6px', fontWeight: 800 }}>⏳ Sedang PR</span>}
-          {item.purchasingStatus === 'PO' && <span className="badge badge-blu" style={{ fontSize: 9, padding: '1px 6px', fontWeight: 800 }}>📦 Sudah PO</span>}
+          {item.purchasingNoPo ? (
+            <span className="badge badge-blu" style={{ fontSize: 9, padding: '1px 6px', fontWeight: 800 }}>📦 PO: {item.purchasingNoPo}</span>
+          ) : item.purchasingNoPr ? (
+            <span className="badge badge-ylw" style={{ fontSize: 9, padding: '1px 6px', fontWeight: 800 }}>⏳ PR: {item.purchasingNoPr}</span>
+          ) : item.purchasingStatus === 'PR' ? (
+            <span className="badge badge-ylw" style={{ fontSize: 9, padding: '1px 6px', fontWeight: 800 }}>⏳ Sedang PR</span>
+          ) : item.purchasingStatus === 'PO' ? (
+            <span className="badge badge-blu" style={{ fontSize: 9, padding: '1px 6px', fontWeight: 800 }}>📦 Sudah PO</span>
+          ) : null}
         </div>
         <div style={{ fontSize: 10, color: 'var(--tx3)' }}>{item.id}</div>
       </td>
@@ -819,13 +829,15 @@ function StockItemTableRow({
       </td>
       {isEditor && (
         <td style={{ textAlign: 'center' }}>
-          {item.purchasingStatus === 'PR' && (
+          {item.purchasingNoPo ? (
+            <span className="badge badge-blu" style={{ fontSize: 10, padding: '2px 8px', fontWeight: 800 }}>📦 PO: {item.purchasingNoPo}</span>
+          ) : item.purchasingNoPr ? (
+            <span className="badge badge-ylw" style={{ fontSize: 10, padding: '2px 8px', fontWeight: 800 }}>⏳ PR: {item.purchasingNoPr}</span>
+          ) : item.purchasingStatus === 'PR' ? (
             <span className="badge badge-ylw">⏳ Sedang PR</span>
-          )}
-          {item.purchasingStatus === 'PO' && (
+          ) : item.purchasingStatus === 'PO' ? (
             <span className="badge badge-blu">📦 Sudah PO</span>
-          )}
-          {(!item.purchasingStatus || item.purchasingStatus === 'NONE') && (
+          ) : (
             <span className="text-muted">—</span>
           )}
         </td>
