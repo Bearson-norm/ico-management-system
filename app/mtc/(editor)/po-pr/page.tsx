@@ -51,6 +51,29 @@ type TrackingItem = {
   updatedAt?: string;
 };
 
+function parseOdooLinks(item: any) {
+  let prUrl: string | null = null;
+  let poUrl: string | null = null;
+  const grUrl: string | null = item?.linkGr || null;
+
+  if (item?.linkReferences) {
+    const raw = item.linkReferences.trim();
+    if (raw.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(raw);
+        prUrl = parsed.pr || null;
+        poUrl = parsed.po || null;
+      } catch (e) {}
+    } else if (raw.includes('model=purchase.order')) {
+      poUrl = raw;
+    } else if (raw.includes('model=purchase.request') || raw.includes('model=purchase.requisition')) {
+      prUrl = raw;
+    }
+  }
+
+  return { prUrl, poUrl, grUrl };
+}
+
 export default function ProcurementTrackingPage() {
   const [items, setItems] = useState<TrackingItem[]>([]);
   const [spareparts, setSpareparts] = useState<Sparepart[]>([]);
@@ -2663,7 +2686,8 @@ export default function ProcurementTrackingPage() {
                     {/* PR/PO Info */}
                     <div>
                       {(() => {
-                        const groupOdooLink = group.items.find(i => i.linkReferences)?.linkReferences || group.items.find(i => i.linkGr)?.linkGr;
+                        const prUrl = group.items.map(i => parseOdooLinks(i).prUrl).find(Boolean);
+                        const poUrl = group.items.map(i => parseOdooLinks(i).poUrl).find(Boolean);
                         
                         return groupingMode === 'PR' ? (
                           isPrDraft ? (
@@ -2673,15 +2697,15 @@ export default function ProcurementTrackingPage() {
                           ) : (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                               <span style={{ fontSize: 11, color: 'var(--tx3)', fontWeight: 600 }}>NOMOR PR:</span>
-                              {groupOdooLink ? (
+                              {prUrl ? (
                                 <a 
-                                  href={groupOdooLink}
+                                  href={prUrl}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="badge badge-ylw" 
                                   style={{ fontSize: 12, padding: '2px 8px', fontWeight: 800, cursor: 'pointer', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
                                   onClick={(e) => e.stopPropagation()}
-                                  title="Buka Dokumen di Odoo"
+                                  title="Buka Lembar PR di Odoo"
                                 >
                                   {group.nomorPr} ↗
                                 </a>
@@ -2704,15 +2728,15 @@ export default function ProcurementTrackingPage() {
                           ) : (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                               <span style={{ fontSize: 11, color: 'var(--tx3)', fontWeight: 600 }}>NOMOR PO:</span>
-                              {groupOdooLink ? (
+                              {poUrl ? (
                                 <a 
-                                  href={groupOdooLink}
+                                  href={poUrl}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="badge badge-blu" 
                                   style={{ fontSize: 12, padding: '2px 8px', fontWeight: 800, cursor: 'pointer', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
                                   onClick={(e) => e.stopPropagation()}
-                                  title="Buka Dokumen di Odoo"
+                                  title="Buka Lembar PO di Odoo"
                                 >
                                   {group.nomorPo} ↗
                                 </a>
@@ -2741,32 +2765,66 @@ export default function ProcurementTrackingPage() {
                       !isPrDraft && group.poNumbers !== '—' && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <span style={{ fontSize: 9, color: 'var(--tx3)', fontWeight: 600 }}>PO NO:</span>
-                          {group.poNumbers.split(', ').map(po => (
-                            <span 
-                              key={po} 
-                              className="badge badge-blu" 
-                              style={{ fontSize: 11, padding: '2px 8px', fontWeight: 800, cursor: 'text', userSelect: 'text' }}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {po}
-                            </span>
-                          ))}
+                          {group.poNumbers.split(', ').map(po => {
+                            const itemWithPo = group.items.find(i => i.nomorPo === po);
+                            const poUrl = itemWithPo ? parseOdooLinks(itemWithPo).poUrl : null;
+                            return poUrl ? (
+                              <a
+                                key={po}
+                                href={poUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="badge badge-blu"
+                                style={{ fontSize: 11, padding: '2px 8px', fontWeight: 800, cursor: 'pointer', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                                onClick={(e) => e.stopPropagation()}
+                                title="Buka PO di Odoo"
+                              >
+                                {po} ↗
+                              </a>
+                            ) : (
+                              <span 
+                                key={po} 
+                                className="badge badge-blu" 
+                                style={{ fontSize: 11, padding: '2px 8px', fontWeight: 800, cursor: 'text', userSelect: 'text' }}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {po}
+                              </span>
+                            );
+                          })}
                         </div>
                       )
                     ) : (
                       !isPrDraft && group.prNumbers !== '—' && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <span style={{ fontSize: 9, color: 'var(--tx3)', fontWeight: 600 }}>PR NO:</span>
-                          {group.prNumbers.split(', ').map(pr => (
-                            <span 
-                              key={pr} 
-                              className="badge badge-ylw" 
-                              style={{ fontSize: 11, padding: '2px 8px', fontWeight: 800, cursor: 'text', userSelect: 'text' }}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {pr}
-                            </span>
-                          ))}
+                          {group.prNumbers.split(', ').map(pr => {
+                            const itemWithPr = group.items.find(i => i.nomorPr === pr);
+                            const prUrl = itemWithPr ? parseOdooLinks(itemWithPr).prUrl : null;
+                            return prUrl ? (
+                              <a
+                                key={pr}
+                                href={prUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="badge badge-ylw"
+                                style={{ fontSize: 11, padding: '2px 8px', fontWeight: 800, cursor: 'pointer', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                                onClick={(e) => e.stopPropagation()}
+                                title="Buka PR di Odoo"
+                              >
+                                {pr} ↗
+                              </a>
+                            ) : (
+                              <span 
+                                key={pr} 
+                                className="badge badge-ylw" 
+                                style={{ fontSize: 11, padding: '2px 8px', fontWeight: 800, cursor: 'text', userSelect: 'text' }}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {pr}
+                              </span>
+                            );
+                          })}
                         </div>
                       )
                     )}

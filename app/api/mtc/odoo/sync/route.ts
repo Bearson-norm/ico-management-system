@@ -196,7 +196,32 @@ function getBestOdooLineName(line: any): string {
     return lineName;
   }
   
-  return variant || lineName || productLabel || 'Produk Tanpa Nama';
+function combinePrAndPoLinks(existingRef: string | null | undefined, newUrl: string, type: 'pr' | 'po'): string {
+  let pr: string | null = null;
+  let po: string | null = null;
+
+  if (existingRef) {
+    const trimmed = existingRef.trim();
+    if (trimmed.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        pr = parsed.pr || null;
+        po = parsed.po || null;
+      } catch (e) {}
+    } else if (trimmed.includes('model=purchase.order')) {
+      po = trimmed;
+    } else if (trimmed.includes('model=purchase.request') || trimmed.includes('model=purchase.requisition')) {
+      pr = trimmed;
+    }
+  }
+
+  if (type === 'pr') pr = newUrl;
+  if (type === 'po') po = newUrl;
+
+  if (pr && po) {
+    return JSON.stringify({ pr, po });
+  }
+  return pr || po || newUrl;
 }
 
 // Intelligent best match line item helper using name, substring, digits, and quantity scoring
@@ -1328,7 +1353,7 @@ export async function POST(req: NextRequest) {
               'search_read',
               [[['order_id', '=', poId]]],
               {
-                fields: ['name', 'price_unit', 'product_qty', 'qty_received', 'product_id'],
+                fields: ['name', 'price_unit', 'price_subtotal', 'price_total', 'product_qty', 'qty_received', 'product_id'],
                 limit: 50
               },
               odooOptions
@@ -1521,7 +1546,7 @@ export async function POST(req: NextRequest) {
               const updateData: any = {
                 statusPr: localStatusPr,
                 odooNotes: chatterNotes || null,
-                linkReferences: odooPrUrl
+                linkReferences: combinePrAndPoLinks(item.linkReferences, odooPrUrl, 'pr')
               };
               if (matchedLine && isGenericName(item.originalName)) {
                 const specificName = getBestOdooLineName(matchedLine);
@@ -1589,9 +1614,20 @@ export async function POST(req: NextRequest) {
               const grStatus = poGrStatusMap.get(poId) || { isGrDone: false, odooGrDate: null, odooGrLink: null };
               const { isGrDone, odooGrDate, odooGrLink } = grStatus;
 
-              let matchedPrice = matchedLine ? Number(matchedLine.price_unit) || 0 : 0;
+              let matchedPrice = 0;
               let matchedQty = matchedLine ? Number(matchedLine.product_qty) || 0 : 0;
               let qtyReceived = matchedLine ? Number(matchedLine.qty_received) || 0 : 0;
+
+              if (matchedLine) {
+                const priceTotal = Number(matchedLine.price_total) || 0;
+                const priceUnit = Number(matchedLine.price_unit) || 0;
+                if (priceTotal > 0 && matchedQty > 0) {
+                  // Gunakan harga total inkl. PPN 11% dibagi Qty
+                  matchedPrice = priceTotal / matchedQty;
+                } else if (priceUnit > 0) {
+                  matchedPrice = priceUnit * 1.11; // 11% PPN fallback
+                }
+              }
 
               const updateData: any = {
                 statusPr: localStatusPr,
@@ -1610,7 +1646,7 @@ export async function POST(req: NextRequest) {
                 updateData.tanggalList = prCreateDate;
               }
               
-              updateData.linkReferences = odooPoUrl;
+              updateData.linkReferences = combinePrAndPoLinks(item.linkReferences, odooPoUrl, 'po');
 
               if (matchedPrice > 0) {
                 updateData.harga = matchedPrice;
