@@ -7,7 +7,7 @@ on:
 
 concurrency:
   group: deploy-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   ssh-deploy:
@@ -42,7 +42,7 @@ jobs:
               git config --global --add safe.directory "$APP_PATH"
             fi
 
-            rm -f odoo_sync_debug.txt || true
+            rm -f .git/refs/remotes/origin/main.lock .git/index.lock odoo_sync_debug.txt || true
             git fetch origin
             TARGET_BRANCH="${{ github.ref_name }}"
             echo ">>> Deploying branch: $TARGET_BRANCH"
