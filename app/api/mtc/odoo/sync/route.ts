@@ -1573,9 +1573,25 @@ export async function POST(req: NextRequest) {
                 odooNotes: chatterNotes || null,
                 linkReferences: combinePrAndPoLinks(item.linkReferences, odooPrUrl, 'pr')
               };
-              if (matchedLine && isGenericName(item.originalName)) {
-                const specificName = getBestOdooLineName(matchedLine);
-                if (!isGenericName(specificName)) {
+              if (isGenericName(item.originalName)) {
+                const lineToUse = matchedLine || (prLines && prLines[0]);
+                let specificName = lineToUse ? getBestOdooLineName(lineToUse) : null;
+                if (!specificName || isGenericName(specificName)) {
+                  const ket = item.keterangan ? item.keterangan.replace(/<[^>]*>/g, '').trim() : '';
+                  if (ket && !isGenericName(ket) && ket.length > 2) {
+                    specificName = ket;
+                  }
+                }
+                if (!specificName || isGenericName(specificName)) {
+                  if (chatterNotes && chatterNotes.includes('<li><b>')) {
+                    const matches = chatterNotes.match(/<li><b>([^<]+)<\/b>/g);
+                    if (matches && matches.length) {
+                      const names = matches.map((m: string) => m.replace(/<\/?b>/g, '').replace('<li>', '').trim()).filter((x: string) => !isGenericName(x));
+                      if (names.length) specificName = names[0];
+                    }
+                  }
+                }
+                if (specificName && !isGenericName(specificName)) {
                   updateData.originalName = specificName;
                 }
               }
@@ -1659,9 +1675,25 @@ export async function POST(req: NextRequest) {
                 nomorPo: poName,
                 odooNotes: chatterNotes || null,
               };
-              if (matchedLine && isGenericName(item.originalName)) {
-                const specificName = getBestOdooLineName(matchedLine);
-                if (!isGenericName(specificName)) {
+              if (isGenericName(item.originalName)) {
+                const lineToUse = matchedLine || (allPoLines && allPoLines[0]);
+                let specificName = lineToUse ? getBestOdooLineName(lineToUse) : null;
+                if (!specificName || isGenericName(specificName)) {
+                  const ket = item.keterangan ? item.keterangan.replace(/<[^>]*>/g, '').trim() : '';
+                  if (ket && !isGenericName(ket) && ket.length > 2) {
+                    specificName = ket;
+                  }
+                }
+                if (!specificName || isGenericName(specificName)) {
+                  if (chatterNotes && chatterNotes.includes('<li><b>')) {
+                    const matches = chatterNotes.match(/<li><b>([^<]+)<\/b>/g);
+                    if (matches && matches.length) {
+                      const names = matches.map((m: string) => m.replace(/<\/?b>/g, '').replace('<li>', '').trim()).filter((x: string) => !isGenericName(x));
+                      if (names.length) specificName = names[0];
+                    }
+                  }
+                }
+                if (specificName && !isGenericName(specificName)) {
                   updateData.originalName = specificName;
                 }
               }

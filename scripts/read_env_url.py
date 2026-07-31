@@ -8,9 +8,14 @@ ssh = paramiko.SSHClient()
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 ssh.connect(hostname=hostname, username=username, password=password, timeout=30)
 
-cmd = 'curl -X POST "http://localhost:3000/api/mtc/odoo/sync" -H "Content-Type: application/json" -d "{\\"bypassAuth\\": true}"'
-print(f"===> Triggering Odoo Sync on VPS: {cmd}")
+cmd = '''python3 -c "
+with open('/var/www/ico-management-system/.env') as f:
+    for line in f:
+        if 'DATABASE_URL_MTC' in line or 'DATABASE_URL_GA' in line:
+            print(line.strip())
+"'''
 stdin, stdout, stderr = ssh.exec_command(cmd)
 out = stdout.read().decode('utf-8', errors='ignore')
-print("Response:", out[:500])
+print("DB URLs on VPS:")
+print(out)
 ssh.close()
