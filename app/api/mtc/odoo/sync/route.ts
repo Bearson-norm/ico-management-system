@@ -124,7 +124,9 @@ const GENERIC_NAMES = [
   'REPAIR AND MAINTENANCE', 'REPAIR & MAINTENANCE', 'MEDIA PLACEMENT', 'SPONSORSHIP', 'MARKETING SUPPLIES',
   'OVERHEADS', 'OVERHEAD', 'OVERHEAD EXPENSE', 'OVERHEAD EXPENSES', 'UTILITY', 'UTILITIES',
   'DIRECT EXPENSE', 'DIRECT EXPENSES', 'INDIRECT EXPENSE', 'INDIRECT EXPENSES', 'GENERAL EXPENSE', 'GENERAL EXPENSES',
-  'CONSUMABLES', 'CONSUMABLE', 'OTHER EXPENSES', 'OTHER EXPENSE', 'SERVICES', 'SERVICE'
+  'CONSUMABLES', 'CONSUMABLE', 'LAB CONSUMABLE', 'LAB CONSUMABLES', 'LABORATORY CONSUMABLE', 'LABORATORY CONSUMABLES',
+  'LAB SUPPLIES', 'LABORATORY SUPPLIES', 'SAFETY SUPPLIES', 'SAFETY EQUIPMENT', 'OTHER EXPENSES', 'OTHER EXPENSE',
+  'SERVICES', 'SERVICE', 'HARDWARE', 'TOOLS', 'TOOL'
 ];
 const ACCOUNT_NAME_PATTERNS = [
   /^SUPPLIES\s+FACTORY\s+RELATED$/i,
@@ -134,7 +136,9 @@ const ACCOUNT_NAME_PATTERNS = [
   /^GENERAL\s+SUPPLIES$/i,
   /^MAINTENANCE\s+SUPPLIES$/i,
   /^CLEANING\s+SUPPLIES$/i,
-  /^CONSUMABLE/i,
+  /^LAB(ORATORY)?\s+CONSUMABLES?$/i,
+  /^LAB(ORATORY)?\s+SUPPLIES$/i,
+  /^SAFETY\s+(SUPPLIES|EQUIPMENT)$/i,
   /^Barang\s+GA$/i,
   /^MEDIA\s+PLACEMENT$/i,
   /^SPONSORSHIP$/i,
@@ -146,13 +150,31 @@ const ACCOUNT_NAME_PATTERNS = [
 function isGenericName(name: string | null | undefined): boolean {
   if (!name) return true;
   const trimmed = name.trim();
-  if (GENERIC_NAMES.some(g => trimmed.toLowerCase() === g.toLowerCase())) {
+  const lower = trimmed.toLowerCase();
+
+  if (GENERIC_NAMES.some(g => lower === g.toLowerCase())) {
     return true;
   }
   for (const pattern of ACCOUNT_NAME_PATTERNS) {
-    if (pattern.test(trimmed)) return true;
+    if (pattern.test(trimmed)) {
+      const hasNumbers = /\d/.test(trimmed);
+      if (!hasNumbers) return true;
+    }
   }
-  
+
+  // Generic keyword match without specific specs/digits
+  const genericWords = [
+    'consumable', 'consumables', 'supplies', 'overhead', 'overheads',
+    'utility', 'utilities', 'repair and maintenance', 'repair & maintenance',
+    'equipment', 'general expense', 'direct expense', 'indirect expense'
+  ];
+  if (genericWords.some(w => lower.includes(w))) {
+    const hasSpecificSpecs = /\d/.test(trimmed) || /uph|liter|kg|mm|cm|pack|pcs|set|unit|box|cartridge|bottle|jerigen/i.test(trimmed);
+    if (!hasSpecificSpecs) {
+      return true;
+    }
+  }
+
   // All caps + 3+ words + length > 15 = likely analytical account name
   const isAllCaps = trimmed === trimmed.toUpperCase() && /[A-Z]/.test(trimmed);
   const wordCount = trimmed.split(/\s+/).length;
