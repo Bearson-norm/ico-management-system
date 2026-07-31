@@ -119,7 +119,13 @@ function mapOdooStateToLocal(state: string): string {
   }
 }
 
-const GENERIC_NAMES = ['EQUIPMENT', 'SPAREPARTS USAGE', 'SUPPLIES', 'FACTORY SUPPLIES', 'Barang GA', 'Produk Tanpa Nama', 'REPAIR AND MAINTENANCE', 'REPAIR & MAINTENANCE', 'MEDIA PLACEMENT', 'SPONSORSHIP', 'MARKETING SUPPLIES'];
+const GENERIC_NAMES = [
+  'EQUIPMENT', 'SPAREPARTS USAGE', 'SUPPLIES', 'FACTORY SUPPLIES', 'Barang GA', 'Produk Tanpa Nama',
+  'REPAIR AND MAINTENANCE', 'REPAIR & MAINTENANCE', 'MEDIA PLACEMENT', 'SPONSORSHIP', 'MARKETING SUPPLIES',
+  'OVERHEADS', 'OVERHEAD', 'OVERHEAD EXPENSE', 'OVERHEAD EXPENSES', 'UTILITY', 'UTILITIES',
+  'DIRECT EXPENSE', 'DIRECT EXPENSES', 'INDIRECT EXPENSE', 'INDIRECT EXPENSES', 'GENERAL EXPENSE', 'GENERAL EXPENSES',
+  'CONSUMABLES', 'CONSUMABLE', 'OTHER EXPENSES', 'OTHER EXPENSE', 'SERVICES', 'SERVICE'
+];
 const ACCOUNT_NAME_PATTERNS = [
   /^SUPPLIES\s+FACTORY\s+RELATED$/i,
   /^REPAIR\s+AND\s+MAINTENANCE/i,
@@ -132,6 +138,9 @@ const ACCOUNT_NAME_PATTERNS = [
   /^Barang\s+GA$/i,
   /^MEDIA\s+PLACEMENT$/i,
   /^SPONSORSHIP$/i,
+  /^OVERHEADS?$/i,
+  /^OVERHEAD\s+EXPENSES?$/i,
+  /^UTILIT(Y|IES)$/i,
 ];
 
 function isGenericName(name: string | null | undefined): boolean {
@@ -174,16 +183,20 @@ function getBestOdooLineName(line: any): string {
   if (variant && !isGenericName(variant)) {
     return variant;
   }
-  // 2. Gunakan nama Master Product dari product_id[1] jika bukan tag generic
+  // 2. Jika deskripsi lineName ada dan bukan generic, serta productLabel generic (misal "OVERHEADS"), gunakan lineName (misal "Nitrogen UPH")
+  if (lineName && !isGenericName(lineName) && isGenericName(productLabel)) {
+    return lineName;
+  }
+  // 3. Gunakan nama Master Product dari product_id[1] jika bukan tag generic
   if (productLabel && !isGenericName(productLabel)) {
     return productLabel;
   }
-  // 3. Gunakan deskripsi line.name jika bukan tag generic
+  // 4. Gunakan deskripsi line.name jika bukan tag generic
   if (lineName && !isGenericName(lineName)) {
     return lineName;
   }
   
-  return variant || productLabel || lineName || 'Produk Tanpa Nama';
+  return variant || lineName || productLabel || 'Produk Tanpa Nama';
 }
 
 // Intelligent best match line item helper using name, substring, digits, and quantity scoring
@@ -1323,10 +1336,10 @@ export async function POST(req: NextRequest) {
             queryOdoo(
               'good.received',
               'search_read',
-              [[['purchase_id', '=', poId], ['state', '=', 'done']]],
+              [[['purchase_id', '=', poId]]],
               {
                 fields: ['id', 'state', 'write_date', 'name'],
-                order: 'write_date desc',
+                order: 'id desc',
                 limit: 1
               },
               odooOptions
@@ -1678,7 +1691,9 @@ export async function POST(req: NextRequest) {
                 // Revert/keep as PO (not DONE)
                 updateData.statusPo = 'PO';
                 updateData.tanggalTerima = null;
-                updateData.linkGr = null;
+                if (odooGrLink) {
+                  updateData.linkGr = odooGrLink;
+                }
               }
 
               const hasChanges = hasActualChanges(item, updateData);
