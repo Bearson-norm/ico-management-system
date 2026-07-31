@@ -31,7 +31,7 @@ jobs:
               APP_PATH="/var/www/ico-management-system"
             fi
             cd "$APP_PATH"
-            export PATH=$PATH:./node_modules/.bin:/usr/local/bin:/usr/bin
+            export PATH="$APP_PATH/node_modules/.bin:$PATH:/usr/local/bin:/usr/bin"
             export NODE_ENV=production
             export NODE_OPTIONS="--max-old-space-size=2048"
 
@@ -49,15 +49,15 @@ jobs:
             git checkout -f "$TARGET_BRANCH"
             git reset --hard "origin/$TARGET_BRANCH"
 
-            echo ">>> Running npm ci..."
-            npm ci --no-audit --no-fund --prefer-offline --include=dev || npm install --no-audit --no-fund
+            echo ">>> Running npm install..."
+            npm install --include=dev --no-audit --no-fund
 
             echo ">>> Running Prisma Generate..."
-            npx prisma generate --schema=prisma/mtc/schema.prisma
-            npx prisma generate --schema=prisma/ga/schema.prisma
+            ./node_modules/.bin/prisma generate --schema=prisma/mtc/schema.prisma || npx prisma generate --schema=prisma/mtc/schema.prisma
+            ./node_modules/.bin/prisma generate --schema=prisma/ga/schema.prisma || npx prisma generate --schema=prisma/ga/schema.prisma
 
             echo ">>> Building Next.js application..."
-            npm run build
+            ./node_modules/.bin/next build || npm run build
 
             echo ">>> Restarting PM2 inventory service..."
             if pm2 describe inventory >/dev/null 2>&1; then
