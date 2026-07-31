@@ -196,6 +196,9 @@ function getBestOdooLineName(line: any): string {
     return lineName;
   }
   
+  return variant || lineName || productLabel || 'Produk Tanpa Nama';
+}
+
 function combinePrAndPoLinks(existingRef: string | null | undefined, newUrl: string, type: 'pr' | 'po'): string {
   let pr: string | null = null;
   let po: string | null = null;
