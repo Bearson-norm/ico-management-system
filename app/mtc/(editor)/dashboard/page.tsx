@@ -481,11 +481,32 @@ export default async function DashboardPage() {
                         <td className="text-mono text-tiny text-muted">{item.sparepartId || '—'}</td>
                         <td style={{ fontWeight: 600 }}>
                           <div>{item.sparepart?.nama || item.originalName}</div>
-                          {(item.nomorPr || item.nomorPo) && (
-                            <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 4, fontFamily: 'monospace' }}>
-                              {item.nomorPr && <span>PR: {item.nomorPr}</span>}
-                              {item.nomorPr && item.nomorPo && <span style={{ margin: '0 4px' }}>|</span>}
-                              {item.nomorPo && <span>PO: {item.nomorPo}</span>}
+                          {(item.nomorPr || item.nomorPo || item.linkGr) && (
+                            <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 4, fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                              {item.nomorPr && (
+                                item.linkReferences ? (
+                                  <a href={item.linkReferences} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--ylw)', textDecoration: 'none', fontWeight: 700 }} title="Buka PR Odoo">
+                                    PR: {item.nomorPr} ↗
+                                  </a>
+                                ) : (
+                                  <span>PR: {item.nomorPr}</span>
+                                )
+                              )}
+                              {item.nomorPr && item.nomorPo && <span>|</span>}
+                              {item.nomorPo && (
+                                item.linkReferences ? (
+                                  <a href={item.linkReferences} target="_blank" rel="noopener noreferrer" style={{ color: '#60a5fa', textDecoration: 'none', fontWeight: 700 }} title="Buka PO Odoo">
+                                    PO: {item.nomorPo} ↗
+                                  </a>
+                                ) : (
+                                  <span>PO: {item.nomorPo}</span>
+                                )
+                              )}
+                              {item.linkGr && (
+                                <a href={item.linkGr} target="_blank" rel="noopener noreferrer" style={{ color: '#c084fc', textDecoration: 'none', fontWeight: 700, marginLeft: 4 }} title="Buka GR Odoo">
+                                  📦 GR Odoo ↗
+                                </a>
+                              )}
                             </div>
                           )}
                         </td>

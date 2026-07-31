@@ -2662,41 +2662,73 @@ export default function ProcurementTrackingPage() {
 
                     {/* PR/PO Info */}
                     <div>
-                      {groupingMode === 'PR' ? (
-                        isPrDraft ? (
-                          <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--ylw)' }}>
-                            📝 DRAFT PENDING / BELUM ADA NO PR
-                          </div>
+                      {(() => {
+                        const groupOdooLink = group.items.find(i => i.linkReferences)?.linkReferences || group.items.find(i => i.linkGr)?.linkGr;
+                        
+                        return groupingMode === 'PR' ? (
+                          isPrDraft ? (
+                            <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--ylw)' }}>
+                              📝 DRAFT PENDING / BELUM ADA NO PR
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ fontSize: 11, color: 'var(--tx3)', fontWeight: 600 }}>NOMOR PR:</span>
+                              {groupOdooLink ? (
+                                <a 
+                                  href={groupOdooLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="badge badge-ylw" 
+                                  style={{ fontSize: 12, padding: '2px 8px', fontWeight: 800, cursor: 'pointer', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  title="Buka Dokumen di Odoo"
+                                >
+                                  {group.nomorPr} ↗
+                                </a>
+                              ) : (
+                                <span 
+                                  className="badge badge-ylw" 
+                                  style={{ fontSize: 12, padding: '2px 8px', fontWeight: 800, cursor: 'text', userSelect: 'text' }}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {group.nomorPr}
+                                </span>
+                              )}
+                            </div>
+                          )
                         ) : (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{ fontSize: 11, color: 'var(--tx3)', fontWeight: 600 }}>NOMOR PR:</span>
-                            <span 
-                              className="badge badge-ylw" 
-                              style={{ fontSize: 12, padding: '2px 8px', fontWeight: 800, cursor: 'text', userSelect: 'text' }}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {group.nomorPr}
-                            </span>
-                          </div>
-                        )
-                      ) : (
-                        isPrDraft ? (
-                          <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--pur)' }}>
-                            ⏳ TAHAP PR / BELUM TERBIT PO (SCM)
-                          </div>
-                        ) : (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{ fontSize: 11, color: 'var(--tx3)', fontWeight: 600 }}>NOMOR PO:</span>
-                            <span 
-                              className="badge badge-blu" 
-                              style={{ fontSize: 12, padding: '2px 8px', fontWeight: 800, cursor: 'text', userSelect: 'text' }}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {group.nomorPo}
-                            </span>
-                          </div>
-                        )
-                      )}
+                          isPrDraft ? (
+                            <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--pur)' }}>
+                              ⏳ TAHAP PR / BELUM TERBIT PO (SCM)
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ fontSize: 11, color: 'var(--tx3)', fontWeight: 600 }}>NOMOR PO:</span>
+                              {groupOdooLink ? (
+                                <a 
+                                  href={groupOdooLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="badge badge-blu" 
+                                  style={{ fontSize: 12, padding: '2px 8px', fontWeight: 800, cursor: 'pointer', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  title="Buka Dokumen di Odoo"
+                                >
+                                  {group.nomorPo} ↗
+                                </a>
+                              ) : (
+                                <span 
+                                  className="badge badge-blu" 
+                                  style={{ fontSize: 12, padding: '2px 8px', fontWeight: 800, cursor: 'text', userSelect: 'text' }}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {group.nomorPo}
+                                </span>
+                              )}
+                            </div>
+                          )
+                        );
+                      })()}
                       
                       <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 4 }}>
                         {groupingMode === 'PR' ? 'Tanggal Pengajuan: ' : 'Tanggal Pengadaan: ' }
@@ -3266,12 +3298,36 @@ export default function ProcurementTrackingPage() {
                                         href={item.linkGr}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        title="Buka Lembar GR Odoo"
-                                        style={{ fontSize: 15, color: 'var(--pur)', textDecoration: 'none' }}
+                                        title="Buka Lembar GR Odoo di Tab Baru"
+                                        className="btn btn-ghost btn-sm"
+                                        style={{
+                                          padding: '3px 8px',
+                                          fontSize: 11,
+                                          height: 'auto',
+                                          borderRadius: 6,
+                                          color: '#a855f7',
+                                          background: 'rgba(168, 85, 247, 0.12)',
+                                          border: '1px solid rgba(168, 85, 247, 0.3)',
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: 4,
+                                          textDecoration: 'none',
+                                          fontWeight: 700
+                                        }}
                                       >
-                                        🔗
+                                        📦 GR Odoo ↗
                                       </a>
-                                    ) : '—'}
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        className="btn btn-ghost btn-sm"
+                                        onClick={() => openEditModal(item)}
+                                        title="Set / Edit Link GR Odoo"
+                                        style={{ padding: '2px 6px', fontSize: 10, height: 'auto', color: 'var(--tx3)', border: '1px dashed var(--br)', borderRadius: 4 }}
+                                      >
+                                        + Link GR
+                                      </button>
+                                    )}
                                   </td>
 
                                   {/* Receive Action Column */}
