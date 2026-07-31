@@ -51,6 +51,28 @@ export async function GET(req: NextRequest) {
   return ok(data);
 }
 
+async function resolveValidKategoriId(kategoriId: any): Promise<number | null> {
+  if (kategoriId === null || kategoriId === undefined || kategoriId === '' || kategoriId === '0' || kategoriId === 0) {
+    return null;
+  }
+
+  const num = Number(kategoriId);
+  if (!isNaN(num) && num > 0) {
+    const existingById = await prisma.kategori.findUnique({ where: { id: num } });
+    if (existingById) return num;
+  }
+
+  const strName = String(kategoriId).trim();
+  if (strName.length > 0) {
+    const existingByName = await prisma.kategori.findFirst({
+      where: { nama: { equals: strName, mode: 'insensitive' } }
+    });
+    if (existingByName) return existingByName.id;
+  }
+
+  return null;
+}
+
 export async function POST(req: NextRequest) {
   const session = await requireMtcEditor();
   if (!session) return err('Akses ditolak', 403);
@@ -76,7 +98,7 @@ export async function POST(req: NextRequest) {
 
   if (!nama?.trim()) return err('Nama sparepart resmi wajib diisi');
 
-  const kid = kategoriId === '' ? null : (kategoriId === undefined ? null : Number(kategoriId));
+  const kid = await resolveValidKategoriId(kategoriId);
   const mesinIdNums = Array.isArray(mesinIds) ? mesinIds.map((x: string) => Number(x)) : [];
 
   try {
@@ -138,7 +160,7 @@ export async function PUT(req: NextRequest) {
   } = body;
   if (!id) return err('ID wajib');
 
-  const kid = kategoriId === '' ? null : (kategoriId === undefined ? undefined : Number(kategoriId));
+  const kid = kategoriId === undefined ? undefined : await resolveValidKategoriId(kategoriId);
   const mesinIdNums = Array.isArray(mesinIds) ? mesinIds.map((x: string) => Number(x)) : undefined;
 
   await prisma.$transaction(async (tx) => {
