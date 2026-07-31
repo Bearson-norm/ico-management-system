@@ -1502,9 +1502,13 @@ export async function POST(req: NextRequest) {
                 }
               }
 
+              const reqId = matchedPR.id;
+              const odooPrUrl = `https://foomx.odoo.com/web#id=${reqId}&model=${matchedPR.model || 'purchase.request'}&view_type=form`;
+
               const updateData: any = {
                 statusPr: localStatusPr,
-                odooNotes: chatterNotes || null
+                odooNotes: chatterNotes || null,
+                linkReferences: odooPrUrl
               };
               if (matchedLine && isGenericName(item.originalName)) {
                 const specificName = getBestOdooLineName(matchedLine);
@@ -1593,9 +1597,7 @@ export async function POST(req: NextRequest) {
                 updateData.tanggalList = prCreateDate;
               }
               
-              if (!item.linkReferences) {
-                updateData.linkReferences = odooPoUrl;
-              }
+              updateData.linkReferences = odooPoUrl;
 
               if (matchedPrice > 0) {
                 updateData.harga = matchedPrice;
