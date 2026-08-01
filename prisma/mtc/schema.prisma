@@ -43,6 +43,7 @@ model Mesin {
   tipe      String    @default("perbaikan") // "sparepart" | "perbaikan"
   area      String?
   aktif     Boolean   @default(true)
+  vital     Boolean   @default(false) // true = mesin jalur produksi utama, kalau mati produksi ikut turun
   createdAt DateTime  @default(now()) @map("created_at")
 
   reports    MaintenanceReport[]

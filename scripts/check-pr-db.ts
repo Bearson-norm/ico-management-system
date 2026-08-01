@@ -1,9 +1,13 @@
-import { prisma } from '../lib/prisma';
+import { PrismaClient as MtcPrisma } from '../lib/generated/mtc';
+const prisma = new MtcPrisma();
 
 async function main() {
   const items = await prisma.procurementTracking.findMany({
     where: {
-      nomorPr: 'PR04196'
+      OR: [
+        { nomorPr: 'PR04625' },
+        { nomorPo: 'P14544' }
+      ]
     },
     select: {
       id: true,
@@ -12,7 +16,9 @@ async function main() {
       vendor: true,
       qty: true,
       statusPo: true,
-      harga: true
+      harga: true,
+      linkGr: true,
+      tanggalTerima: true
     }
   });
   console.log("PR04196 Items:");

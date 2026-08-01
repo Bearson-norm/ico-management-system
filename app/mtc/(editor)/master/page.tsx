@@ -95,10 +95,9 @@ export default function MasterPage() {
     if (type === 'sparepart') {
       setForm(data ? { ...data, kategoriId: data.kategoriId || '', purchasingStatus: data.purchasingStatus || 'NONE', mesinIds: data.mesins?.map((m: any) => m.id.toString()) || [], currentStock: data.currentStock ?? 0 } : { purchasingStatus: 'NONE', currentStock: 0 });
     } else if (type === 'mesin') {
-      setForm(
-        data
-          ? { ...data, tipe: data.tipe || 'perbaikan' }
-          : { nama: '', area: '', tipe: 'perbaikan', aktif: true }
+      setForm(data
+          ? { ...data, tipe: data.tipe || 'perbaikan', vital: data.vital ?? false }
+          : { nama: '', area: '', tipe: 'perbaikan', aktif: true, vital: false }
       );
     } else if (type === 'teknisi') {
       setForm(data || { nama: '', aktif: true });
@@ -496,6 +495,7 @@ export default function MasterPage() {
                       <th>Tipe</th>
                       <th>Area</th>
                       <th>Spareparts (BOM)</th>
+                      <th>Vital</th>
                       <th>Status</th>
                       <th style={{ textAlign: 'right' }}>Aksi</th>
                     </tr>
@@ -516,6 +516,11 @@ export default function MasterPage() {
                         <td data-label="Spareparts (BOM)">
                           {m.tipe === 'sparepart'
                             ? <span className="badge badge-pur">{m._sparepartCount ?? 0} item</span>
+                            : <span className="text-muted" style={{ fontSize: 13 }}>—</span>}
+                        </td>
+                        <td data-label="Vital">
+                          {m.vital
+                            ? <span className="badge badge-red" style={{ fontSize: 10 }}>⚡ VITAL</span>
                             : <span className="text-muted" style={{ fontSize: 13 }}>—</span>}
                         </td>
                         <td data-label="Status">{m.aktif ? <span className="badge badge-grn">Aktif</span> : <span className="badge badge-red">Nonaktif</span>}</td>
@@ -826,6 +831,20 @@ export default function MasterPage() {
                         </select>
                       </div>
                     )}
+                    <div className="form-group" style={{ gridColumn: '1/-1' }}>
+                      <label style={{ display: 'flex', alignItems: 'flex-start', gap: 12, cursor: 'pointer', padding: '12px 14px', borderRadius: 10, border: `2px solid ${form.vital ? 'var(--red)' : 'var(--br)'}`, background: form.vital ? 'rgba(239,68,68,0.07)' : 'var(--sf2)', transition: 'all .15s' }}>
+                        <input
+                          type="checkbox"
+                          checked={!!form.vital}
+                          onChange={e => setForm({...form, vital: e.target.checked})}
+                          style={{ marginTop: 3, accentColor: 'var(--red)', width: 16, height: 16, flexShrink: 0 }}
+                        />
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: 13, color: form.vital ? 'var(--red)' : 'var(--tx)' }}>⚡ Vital — Mesin ini kalau mati, produksi ikut turun</div>
+                          <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 3 }}>Centang jika mesin ini tidak punya cadangan dan langsung menghentikan output produksi bila rusak atau berhenti.</div>
+                        </div>
+                      </label>
+                    </div>
                   </>
                 )}
 

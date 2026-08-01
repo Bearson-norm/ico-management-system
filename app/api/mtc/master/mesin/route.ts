@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const session = await requireMtcEditor();
   if (!session) return err('Akses ditolak', 403);
-  const { nama, area, tipe, aktif } = await req.json();
+  const { nama, area, tipe, aktif, vital } = await req.json();
   if (!nama?.trim()) return err('Nama wajib');
   try {
     const row = await prisma.mesin.create({
@@ -54,6 +54,7 @@ export async function POST(req: NextRequest) {
         area: area || null,
         tipe: tipe || 'perbaikan',
         aktif: aktif !== false,
+        vital: vital === true,
       },
     });
     return ok(row, 201);
@@ -66,7 +67,7 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   const session = await requireMtcEditor();
   if (!session) return err('Akses ditolak', 403);
-  const { id, nama, area, tipe, aktif } = await req.json();
+  const { id, nama, area, tipe, aktif, vital } = await req.json();
   if (!id) return err('ID wajib');
   const row = await prisma.mesin.update({
     where: { id: Number(id) },
@@ -75,6 +76,7 @@ export async function PUT(req: NextRequest) {
       ...(area !== undefined ? { area: area || null } : {}),
       ...(tipe !== undefined ? { tipe: tipe || 'keduanya' } : {}),
       ...(aktif === undefined ? {} : { aktif: Boolean(aktif) }),
+      ...(vital === undefined ? {} : { vital: Boolean(vital) }),
     },
   });
   return ok(row);
