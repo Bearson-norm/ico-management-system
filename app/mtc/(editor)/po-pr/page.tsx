@@ -1400,8 +1400,8 @@ export default function ProcurementTrackingPage() {
         if (item.nomorPr?.trim()) prsSet.add(item.nomorPr.trim());
         if (item.urgency === 'Urgent') hasUrgent = true;
         
-        // Suatu barang dianggap sudah GR di Odoo jika linkGr terisi
-        const isGrDone = !!(item.linkGr && item.linkGr.trim());
+        // Suatu barang dianggap sudah GR di Odoo jika linkGr terisi dan statusPo Odoo sudah DONE
+        const isGrDone = !!(item.linkGr && item.linkGr.trim()) && item.statusPo === 'DONE';
         // Jika sudah GR di Odoo -> otomatis dianggap sudah diterima fisik.
         // Jika baru dicatat terima fisik di web (tanggalTerima terisi) -> dianggap diterima fisik, tapi BELUM TENTU sudah GR di Odoo.
         const isReceived = !!item.tanggalTerima || isGrDone;
@@ -2890,7 +2890,7 @@ export default function ProcurementTrackingPage() {
                         <tbody>
                           {group.items.map((item) => {
                             const isItemUrgent = item.urgency === 'Urgent';
-                            const isOdooGrDone = !!(item.linkGr && item.linkGr.trim());
+                            const isOdooGrDone = !!(item.linkGr && item.linkGr.trim()) && item.statusPo === 'DONE';
                             const isItemReceived = !!item.tanggalTerima || isOdooGrDone;
                             const hasEtaPassed = item.etaFoom && !isItemReceived && new Date(item.etaFoom).getTime() < new Date().getTime();
 

@@ -95,7 +95,6 @@ export async function POST(req: NextRequest) {
           data: {
             tanggalTerima: tDate,
             isStocked: Boolean(isStocked),
-            statusPo: 'DONE',
             harga: finalHarga,
             vendor: finalVendor,
           },
@@ -165,7 +164,6 @@ export async function POST(req: NextRequest) {
           data: {
             tanggalTerima: tDate,
             isStocked: true,
-            statusPo: 'DONE',
             harga: finalHarga,
             vendor: finalVendor,
           },
@@ -223,7 +221,6 @@ export async function POST(req: NextRequest) {
           data: {
             tanggalTerima: tDate,
             isStocked: false,
-            statusPo: 'DONE',
             harga: finalHarga,
             vendor: finalVendor,
           },
