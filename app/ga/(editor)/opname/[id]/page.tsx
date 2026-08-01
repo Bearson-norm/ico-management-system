@@ -39,6 +39,28 @@ type Session = {
   varianceCount: number;
 };
 
+type BackdateMovement = {
+  id: number;
+  itemId: string;
+  namaBarang: string;
+  tipe: string;
+  qty: number;
+  tanggal: string;
+  createdAt: string;
+};
+
+type RecalcPreview = {
+  backdate: {
+    count: number;
+    itemCount: number;
+    movements: BackdateMovement[];
+  };
+  changedLineCount: number;
+  adjustedCount: number;
+  blockedByNewerOpname: string | null;
+  postMode: 'in_out' | 'adj';
+};
+
 export default function GaOpnameDetailPage() {
   const params = useParams();
   const id = Number(params.id);
@@ -62,6 +84,9 @@ export default function GaOpnameDetailPage() {
   const [postModal, setPostModal] = useState(false);
   const [inputConfirmed, setInputConfirmed] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [recalcPreview, setRecalcPreview] = useState<RecalcPreview | null>(null);
+  const [recalculating, setRecalculating] = useState(false);
+  const [showBackdateDetail, setShowBackdateDetail] = useState(false);
 
   const isDraft = session?.status === 'draft';
 
@@ -101,6 +126,20 @@ export default function GaOpnameDetailPage() {
         }
         setDraft(d);
         setPostForm((f) => ({ ...f, tanggal: j.data.session.tanggal }));
+
+        if (j.data.session.status === 'posted') {
+          try {
+            const pr = await fetch(`/api/ga/opname/${id}/recalculate`);
+            const pj = await pr.json();
+            if (pj.success) setRecalcPreview(pj.data as RecalcPreview);
+            else setRecalcPreview(null);
+          } catch {
+            setRecalcPreview(null);
+          }
+        } else {
+          setRecalcPreview(null);
+          setShowBackdateDetail(false);
+        }
       } else {
         setErr(j.error || 'Gagal memuat');
       }
@@ -355,6 +394,64 @@ export default function GaOpnameDetailPage() {
     }
   }
 
+  async function handleRecalculate() {
+    setErr(null);
+    let preview = recalcPreview;
+    if (!preview) {
+      const pr = await fetch(`/api/ga/opname/${id}/recalculate`);
+      const pj = await pr.json();
+      if (!pj.success) {
+        setErr(pj.error || 'Gagal memuat preview recalculate');
+        return;
+      }
+      preview = pj.data as RecalcPreview;
+      setRecalcPreview(preview);
+    }
+
+    if (preview.blockedByNewerOpname) {
+      setErr(preview.blockedByNewerOpname);
+      return;
+    }
+
+    const bd = preview.backdate;
+    const linesMsg =
+      preview.changedLineCount > 0
+        ? `${preview.changedLineCount} baris qty sistem/ADJ akan berubah`
+        : 'Tidak ada perubahan qty sistem (sudah sesuai)';
+    const bdMsg =
+      bd.count > 0
+        ? `\n\nAda ${bd.count} transaksi backdate pada ${bd.itemCount} barang (dicatat setelah posting, tanggal ≤ tanggal opname).`
+        : '';
+
+    if (
+      !confirm(
+        `Recalculate stock opname?\n\n` +
+          `qtyFisik tetap. qtySistem dihitung ulang as-of tanggal opname (termasuk backdate), lalu ADJ/IN/OUT dibuat ulang.\n\n` +
+          `${linesMsg}.${bdMsg}\n\nLanjutkan?`
+      )
+    ) {
+      return;
+    }
+
+    setRecalculating(true);
+    try {
+      const res = await fetch(`/api/ga/opname/${id}/recalculate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const j = await res.json();
+      if (j.success) {
+        setMsg(j.data.msg || 'Recalculate selesai');
+        await load();
+      } else {
+        setErr(j.error || 'Gagal recalculate');
+      }
+    } finally {
+      setRecalculating(false);
+    }
+  }
+
   return (
     <>
       <div className="page-header">
@@ -448,16 +545,27 @@ export default function GaOpnameDetailPage() {
             )}
 
             {session.status === 'posted' && (
-              <button
-                type="button"
-                className="btn btn-ghost"
-                onClick={handleUnpostSession}
-                disabled={saving}
-                style={{ color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}
-                title="Batal ACC & kembalikan ke Draft"
-              >
-                ↩️ Batal ACC (Reset)
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={handleRecalculate}
+                  disabled={saving || recalculating}
+                  title="Hitung ulang qtySistem & penyesuaian stok (qty fisik tetap)"
+                >
+                  {recalculating ? 'Recalculate…' : '↻ Recalculate'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={handleUnpostSession}
+                  disabled={saving || recalculating}
+                  style={{ color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+                  title="Batal ACC & kembalikan ke Draft"
+                >
+                  ↩️ Batal ACC (Reset)
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -466,6 +574,73 @@ export default function GaOpnameDetailPage() {
       <div className="page-body">
         {msg && <div className="ga-alert-success" style={{ marginBottom: 12 }}>{msg}</div>}
         {err && <div className="ga-alert-error" style={{ marginBottom: 12 }}>{err}</div>}
+
+        {session.status === 'posted' && recalcPreview && recalcPreview.backdate.count > 0 && (
+          <div
+            className="card"
+            style={{
+              padding: 14,
+              marginBottom: 16,
+              borderColor: 'rgba(217, 119, 6, 0.35)',
+              background: 'rgba(217, 119, 6, 0.08)',
+            }}
+          >
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-start', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontWeight: 700, color: '#d97706', marginBottom: 4 }}>
+                  Ada transaksi backdate
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--ga-tx2)' }}>
+                  {recalcPreview.backdate.count} transaksi pada {recalcPreview.backdate.itemCount} barang
+                  dicatat setelah posting, dengan tanggal ≤ tanggal opname. Gunakan Recalculate agar
+                  qtySistem & ADJ memperhitungkan transaksi tersebut (qty fisik tetap).
+                  {recalcPreview.changedLineCount > 0
+                    ? ` Perkiraan ${recalcPreview.changedLineCount} baris akan berubah.`
+                    : ''}
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                style={{ fontSize: 12 }}
+                onClick={() => setShowBackdateDetail((v) => !v)}
+              >
+                {showBackdateDetail ? 'Sembunyikan' : 'Lihat detail'}
+              </button>
+            </div>
+            {showBackdateDetail && (
+              <div style={{ marginTop: 12, overflowX: 'auto' }}>
+                <table className="data-table" style={{ fontSize: 12 }}>
+                  <thead>
+                    <tr>
+                      <th>Tanggal</th>
+                      <th>Dicatat</th>
+                      <th>Barang</th>
+                      <th>Tipe</th>
+                      <th>Qty</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recalcPreview.backdate.movements.map((m) => (
+                      <tr key={m.id}>
+                        <td>{m.tanggal}</td>
+                        <td>{new Date(m.createdAt).toLocaleString('id-ID')}</td>
+                        <td>{m.namaBarang}</td>
+                        <td>{m.tipe}</td>
+                        <td>{m.qty}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {recalcPreview.backdate.count > recalcPreview.backdate.movements.length && (
+                  <div style={{ fontSize: 11, color: 'var(--ga-tx2)', marginTop: 6 }}>
+                    Menampilkan {recalcPreview.backdate.movements.length} dari {recalcPreview.backdate.count} transaksi
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {isDraft && lokasiProgress.length > 0 && (
           <div className="card" style={{ padding: 12, marginBottom: 16 }}>

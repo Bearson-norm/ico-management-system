@@ -24,3 +24,7 @@ export const GaOpnamePostSchema = z.object({
   picNama: z.string().min(1, 'PIC penyesuaian wajib'),
   postMode: GaOpnamePostModeSchema.default('in_out'),
 });
+
+export const GaOpnameRecalculateSchema = z.object({
+  picNama: z.string().min(1).optional(),
+});

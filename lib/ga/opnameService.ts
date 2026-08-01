@@ -1,10 +1,17 @@
 import { prismaGa } from '@/lib/prisma-ga';
-import { getGaCurrentStockMap } from '@/lib/ga/stockQty';
+import { GA_STOCK_MOVEMENT_TIPES, getGaCurrentStockMap, getGaSignedStockAsOf } from '@/lib/ga/stockQty';
 import {
   buildLokasiProgress,
   formatIncompleteLokasiMessage,
   type LokasiProgress,
 } from '@/lib/ga/opnameProgress';
+import type { PrismaClient as GaClient } from '@/lib/generated/ga';
+
+type Tx = Omit<GaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
+
+function opnameKetBase(periodeNama: string) {
+  return `Opname: ${periodeNama}`;
+}
 
 export type { LokasiProgress };
 export { buildLokasiProgress, formatIncompleteLokasiMessage };
@@ -211,21 +218,38 @@ export async function updateOpnameSessionStatus(
   return getOpnameSession(sessionId);
 }
 
+async function deleteOpnameMovementsScoped(
+  tx: Tx,
+  periodeNama: string,
+  itemIds: string[],
+  _tanggal?: Date
+) {
+  if (itemIds.length === 0) return;
+  await tx.gaStockMovement.deleteMany({
+    where: {
+      keterangan: { startsWith: opnameKetBase(periodeNama) },
+      itemId: { in: itemIds },
+    },
+  });
+}
+
 export async function unpostOpnameSession(sessionId: number) {
   const session = await prismaGa.gaOpnameSession.findUnique({
     where: { id: sessionId },
-    select: { id: true, periodeNama: true, status: true },
+    select: {
+      id: true,
+      periodeNama: true,
+      status: true,
+      tanggal: true,
+      lines: { select: { itemId: true } },
+    },
   });
   if (!session) throw new Error('Sesi opname tidak ditemukan');
 
-  const ketBase = `Opname: ${session.periodeNama}`;
+  const itemIds = session.lines.map((l) => l.itemId);
 
   await prismaGa.$transaction(async (tx) => {
-    await tx.gaStockMovement.deleteMany({
-      where: {
-        keterangan: { startsWith: ketBase },
-      },
-    });
+    await deleteOpnameMovementsScoped(tx, session.periodeNama, itemIds, session.tanggal);
 
     await tx.gaOpnameSession.update({
       where: { id: sessionId },
@@ -272,6 +296,109 @@ export async function updateOpnameLines(
   return getOpnameSession(sessionId);
 }
 
+type OpnameLineWithItem = {
+  id: number;
+  itemId: string;
+  qtyFisik: number | null;
+  qtySistem: number;
+  item: { nama: string; harga: unknown };
+};
+
+async function writeOpnameAdjustments(
+  tx: Tx,
+  args: {
+    lines: OpnameLineWithItem[];
+    stockMap: Map<string, number>;
+    postMode: OpnamePostMode;
+    tanggal: Date;
+    picNama: string;
+    ketBase: string;
+  }
+) {
+  let inCount = 0;
+  let outCount = 0;
+  let adjCount = 0;
+
+  const adjustments = args.lines
+    .map((l) => {
+      const bookStock = args.stockMap.get(l.itemId) ?? 0;
+      const qtyFisik = l.qtyFisik ?? 0;
+      return { line: l, bookStock, diff: qtyFisik - bookStock };
+    })
+    .filter((x) => x.diff !== 0);
+
+  for (const adj of adjustments) {
+    if (args.postMode === 'in_out' && adj.diff < 0) {
+      const keluar = Math.abs(adj.diff);
+      if (adj.bookStock < keluar) {
+        throw new Error(
+          `Stok ${adj.line.item.nama} tidak cukup untuk penyesuaian (buku as-of: ${adj.bookStock}, butuh keluar: ${keluar}). Gunakan mode ADJ atau perbaiki transaksi.`
+        );
+      }
+    }
+  }
+
+  for (const adj of adjustments) {
+    const row = adj.line.item;
+    const harga = row.harga ?? 0;
+    if (args.postMode === 'adj') {
+      await tx.gaStockMovement.create({
+        data: {
+          tipe: 'ADJ',
+          item: { connect: { id: adj.line.itemId } },
+          namaBarang: row.nama,
+          qty: adj.diff,
+          harga: harga as never,
+          tanggal: args.tanggal,
+          picNama: args.picNama,
+          keterangan: `${args.ketBase} · penyesuaian ${adj.diff > 0 ? '+' : ''}${adj.diff}`,
+        },
+      });
+      adjCount++;
+    } else if (adj.diff > 0) {
+      await tx.gaStockMovement.create({
+        data: {
+          tipe: 'IN',
+          item: { connect: { id: adj.line.itemId } },
+          namaBarang: row.nama,
+          qty: adj.diff,
+          qtyDiterima: adj.diff,
+          tanggalTerima: args.tanggal,
+          harga: harga as never,
+          tanggal: args.tanggal,
+          picNama: args.picNama,
+          keterangan: `${args.ketBase} · selisih +${adj.diff}`,
+        },
+      });
+      inCount++;
+    } else {
+      const qty = Math.abs(adj.diff);
+      await tx.gaStockMovement.create({
+        data: {
+          tipe: 'OUT',
+          item: { connect: { id: adj.line.itemId } },
+          namaBarang: row.nama,
+          qty,
+          harga: harga as never,
+          tanggal: args.tanggal,
+          tanggalPakai: args.tanggal,
+          picNama: args.picNama,
+          keterangan: `${args.ketBase} · selisih -${qty}`,
+        },
+      });
+      outCount++;
+    }
+  }
+
+  return {
+    inCount,
+    outCount,
+    adjCount,
+    adjusted: adjustments.length,
+    skipped: args.lines.length - adjustments.length,
+  };
+}
+
 export async function postOpnameSession(
   sessionId: number,
   input: { tanggal: string; picNama: string; postMode: OpnamePostMode }
@@ -295,105 +422,335 @@ export async function postOpnameSession(
     );
   }
 
-  const stockMap = await getGaCurrentStockMap(
-    prismaGa,
-    session.lines.map((l) => l.itemId)
-  );
-
-  const adjustments = session.lines
-    .map((l) => {
-      const currentStock = stockMap.get(l.itemId) ?? 0;
-      const qtyFisik = l.qtyFisik ?? 0;
-      return {
-        line: l,
-        currentStock,
-        diff: qtyFisik - currentStock,
-      };
-    })
-    .filter((x) => x.diff !== 0);
-
   const tanggal = new Date(input.tanggal + 'T12:00:00');
-  const ketBase = `Opname: ${session.periodeNama}`;
-
-  for (const adj of adjustments) {
-    if (adj.diff < 0) {
-      const keluar = Math.abs(adj.diff);
-      if (adj.currentStock < keluar) {
-        throw new Error(
-          `Stok ${adj.line.item.nama} tidak cukup untuk penyesuaian (sisa: ${adj.currentStock}, butuh keluar: ${keluar})`
-        );
-      }
-    }
-  }
-
-  let inCount = 0;
-  let outCount = 0;
-  let adjCount = 0;
+  const ketBase = opnameKetBase(session.periodeNama);
+  const itemIds = session.lines.map((l) => l.itemId);
   const postMode = input.postMode;
 
-  await prismaGa.$transaction(async (tx) => {
-    for (const adj of adjustments) {
-      const row = adj.line.item;
-      if (postMode === 'adj') {
-        await tx.gaStockMovement.create({
-          data: {
-            tipe: 'ADJ',
-            item: { connect: { id: adj.line.itemId } },
-            namaBarang: row.nama,
-            qty: adj.diff,
-            harga: row.harga,
-            tanggal,
-            picNama: input.picNama,
-            keterangan: `${ketBase} · penyesuaian ${adj.diff > 0 ? '+' : ''}${adj.diff}`,
-          },
+  const result = await prismaGa.$transaction(async (tx) => {
+    const stockMap = await getGaSignedStockAsOf(tx, itemIds, tanggal);
+
+    for (const l of session.lines) {
+      const qtySistem = stockMap.get(l.itemId) ?? 0;
+      if (l.qtySistem !== qtySistem) {
+        await tx.gaOpnameLine.update({
+          where: { id: l.id },
+          data: { qtySistem },
         });
-        adjCount++;
-      } else if (adj.diff > 0) {
-        await tx.gaStockMovement.create({
-          data: {
-            tipe: 'IN',
-            item: { connect: { id: adj.line.itemId } },
-            namaBarang: row.nama,
-            qty: adj.diff,
-            qtyDiterima: adj.diff,
-            tanggalTerima: tanggal,
-            harga: row.harga,
-            tanggal,
-            picNama: input.picNama,
-            keterangan: `${ketBase} · selisih +${adj.diff}`,
-          },
-        });
-        inCount++;
-      } else {
-        const qty = Math.abs(adj.diff);
-        await tx.gaStockMovement.create({
-          data: {
-            tipe: 'OUT',
-            item: { connect: { id: adj.line.itemId } },
-            namaBarang: row.nama,
-            qty,
-            harga: row.harga,
-            tanggal,
-            tanggalPakai: tanggal,
-            picNama: input.picNama,
-            keterangan: `${ketBase} · selisih -${qty}`,
-          },
-        });
-        outCount++;
       }
     }
+
+    const counts = await writeOpnameAdjustments(tx, {
+      lines: session.lines,
+      stockMap,
+      postMode,
+      tanggal,
+      picNama: input.picNama,
+      ketBase,
+    });
 
     await tx.gaOpnameSession.update({
       where: { id: sessionId },
-      data: { status: 'posted', postedAt: new Date(), postMode },
+      data: { status: 'posted', postedAt: new Date(), postMode, tanggal },
     });
+
+    return counts;
   });
 
   return {
     postMode,
-    inCount,
-    outCount,
-    adjCount,
-    skipped: session.lines.length - adjustments.length,
+    inCount: result.inCount,
+    outCount: result.outCount,
+    adjCount: result.adjCount,
+    skipped: result.skipped,
+  };
+}
+
+export type OpnameBackdateMovementView = {
+  id: number;
+  itemId: string;
+  namaBarang: string;
+  tipe: string;
+  qty: number;
+  tanggal: string;
+  createdAt: string;
+};
+
+export type OpnameBackdateSummary = {
+  count: number;
+  itemCount: number;
+  movements: OpnameBackdateMovementView[];
+};
+
+export async function findBackdateMovementsForOpname(
+  sessionId: number
+): Promise<OpnameBackdateSummary> {
+  const session = await prismaGa.gaOpnameSession.findUnique({
+    where: { id: sessionId },
+    select: {
+      periodeNama: true,
+      tanggal: true,
+      postedAt: true,
+      status: true,
+      lines: { select: { itemId: true } },
+    },
+  });
+  if (!session) throw new Error('Sesi opname tidak ditemukan');
+  if (session.status !== 'posted' || !session.postedAt) {
+    return { count: 0, itemCount: 0, movements: [] };
+  }
+
+  const itemIds = session.lines.map((l) => l.itemId);
+  if (itemIds.length === 0) return { count: 0, itemCount: 0, movements: [] };
+
+  const ketBase = opnameKetBase(session.periodeNama);
+  const where = {
+    itemId: { in: itemIds },
+    tipe: { in: [...GA_STOCK_MOVEMENT_TIPES] },
+    tanggal: { lte: session.tanggal },
+    createdAt: { gt: session.postedAt },
+    NOT: { keterangan: { startsWith: ketBase } },
+  };
+
+  const [totalCount, distinctItems, rows] = await Promise.all([
+    prismaGa.gaStockMovement.count({ where }),
+    prismaGa.gaStockMovement.findMany({
+      where,
+      select: { itemId: true },
+      distinct: ['itemId'],
+    }),
+    prismaGa.gaStockMovement.findMany({
+      where,
+      select: {
+        id: true,
+        itemId: true,
+        namaBarang: true,
+        tipe: true,
+        qty: true,
+        tanggal: true,
+        createdAt: true,
+        item: { select: { nama: true } },
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: 100,
+    }),
+  ]);
+
+  const movements: OpnameBackdateMovementView[] = rows
+    .filter((r): r is typeof r & { itemId: string } => r.itemId != null)
+    .map((r) => ({
+      id: r.id,
+      itemId: r.itemId,
+      namaBarang: r.item?.nama ?? r.namaBarang ?? r.itemId,
+      tipe: r.tipe,
+      qty: r.qty,
+      tanggal: r.tanggal.toISOString().slice(0, 10),
+      createdAt: r.createdAt.toISOString(),
+    }));
+
+  return {
+    count: totalCount,
+    itemCount: distinctItems.filter((r) => r.itemId != null).length,
+    movements,
+  };
+}
+
+export type OpnameRecalculateLinePreview = {
+  lineId: number;
+  itemId: string;
+  nama: string;
+  qtyFisik: number;
+  qtySistemLama: number;
+  qtySistemBaru: number;
+  adjLama: number;
+  adjBaru: number;
+  changed: boolean;
+};
+
+export type OpnameRecalculatePreview = {
+  sessionId: number;
+  periodeNama: string;
+  tanggal: string;
+  postMode: OpnamePostMode;
+  backdate: OpnameBackdateSummary;
+  lines: OpnameRecalculateLinePreview[];
+  changedLineCount: number;
+  adjustedCount: number;
+  blockedByNewerOpname: string | null;
+};
+
+async function assertNoNewerPostedOpname(
+  sessionId: number,
+  tanggal: Date,
+  itemIds: string[]
+): Promise<string | null> {
+  const newer = await prismaGa.gaOpnameSession.findFirst({
+    where: {
+      id: { not: sessionId },
+      status: 'posted',
+      tanggal: { gt: tanggal },
+      lines: { some: { itemId: { in: itemIds } } },
+    },
+    select: { id: true, periodeNama: true, tanggal: true },
+    orderBy: { tanggal: 'desc' },
+  });
+  if (!newer) return null;
+  const tgl = newer.tanggal.toISOString().slice(0, 10);
+  return `Ada opname posted lebih baru (#${newer.id} "${newer.periodeNama}", ${tgl}). Recalculate ditolak agar tidak saling timpa.`;
+}
+
+export async function previewRecalculateOpnameSession(
+  sessionId: number
+): Promise<OpnameRecalculatePreview> {
+  const session = await prismaGa.gaOpnameSession.findUnique({
+    where: { id: sessionId },
+    include: { lines: { include: { item: true } } },
+  });
+  if (!session) throw new Error('Sesi opname tidak ditemukan');
+  if (session.status !== 'posted') {
+    throw new Error('Recalculate hanya untuk sesi yang sudah diposting');
+  }
+
+  const itemIds = session.lines.map((l) => l.itemId);
+  const ketBase = opnameKetBase(session.periodeNama);
+  const postMode: OpnamePostMode =
+    session.postMode === 'adj' || session.postMode === 'in_out' ? session.postMode : 'adj';
+
+  const blockedByNewerOpname = await assertNoNewerPostedOpname(
+    sessionId,
+    session.tanggal,
+    itemIds
+  );
+
+  const stockMap = await getGaSignedStockAsOf(prismaGa, itemIds, session.tanggal, {
+    excludeKeteranganPrefix: ketBase,
+    excludeItemIds: itemIds,
+  });
+
+  const backdate = await findBackdateMovementsForOpname(sessionId);
+
+  const lines: OpnameRecalculateLinePreview[] = session.lines.map((l) => {
+    const qtyFisik = l.qtyFisik ?? 0;
+    const qtySistemLama = l.qtySistem;
+    const qtySistemBaru = stockMap.get(l.itemId) ?? 0;
+    const adjLama = qtyFisik - qtySistemLama;
+    const adjBaru = qtyFisik - qtySistemBaru;
+    return {
+      lineId: l.id,
+      itemId: l.itemId,
+      nama: l.item.nama,
+      qtyFisik,
+      qtySistemLama,
+      qtySistemBaru,
+      adjLama,
+      adjBaru,
+      changed: qtySistemLama !== qtySistemBaru || adjLama !== adjBaru,
+    };
+  });
+
+  const changedLineCount = lines.filter((l) => l.changed).length;
+  const adjustedCount = lines.filter((l) => l.adjBaru !== 0).length;
+
+  return {
+    sessionId: session.id,
+    periodeNama: session.periodeNama,
+    tanggal: session.tanggal.toISOString().slice(0, 10),
+    postMode,
+    backdate,
+    lines,
+    changedLineCount,
+    adjustedCount,
+    blockedByNewerOpname,
+  };
+}
+
+export async function recalculateOpnameSession(
+  sessionId: number,
+  input: { picNama?: string } = {}
+) {
+  const session = await prismaGa.gaOpnameSession.findUnique({
+    where: { id: sessionId },
+    include: { lines: { include: { item: true } } },
+  });
+  if (!session) throw new Error('Sesi opname tidak ditemukan');
+  if (session.status !== 'posted') {
+    throw new Error('Recalculate hanya untuk sesi yang sudah diposting');
+  }
+
+  const uncounted = session.lines.filter((l) => l.qtyFisik == null);
+  if (uncounted.length > 0) {
+    throw new Error(`Masih ada ${uncounted.length} barang tanpa qty fisik`);
+  }
+
+  const itemIds = session.lines.map((l) => l.itemId);
+  const blocked = await assertNoNewerPostedOpname(sessionId, session.tanggal, itemIds);
+  if (blocked) throw new Error(blocked);
+
+  const ketBase = opnameKetBase(session.periodeNama);
+  const postMode: OpnamePostMode =
+    session.postMode === 'adj' || session.postMode === 'in_out' ? session.postMode : 'adj';
+
+  const picFromMovement = await prismaGa.gaStockMovement.findFirst({
+    where: {
+      keterangan: { startsWith: ketBase },
+      itemId: { in: itemIds },
+      picNama: { not: null },
+    },
+    select: { picNama: true },
+    orderBy: { id: 'desc' },
+  });
+  const picNama =
+    (input.picNama && input.picNama.trim()) ||
+    picFromMovement?.picNama ||
+    'Recalculate';
+
+  const backdate = await findBackdateMovementsForOpname(sessionId);
+
+  const result = await prismaGa.$transaction(async (tx) => {
+    await deleteOpnameMovementsScoped(tx, session.periodeNama, itemIds, session.tanggal);
+
+    const stockMap = await getGaSignedStockAsOf(tx, itemIds, session.tanggal, {
+      excludeKeteranganPrefix: ketBase,
+      excludeItemIds: itemIds,
+    });
+
+    for (const l of session.lines) {
+      const qtySistem = stockMap.get(l.itemId) ?? 0;
+      await tx.gaOpnameLine.update({
+        where: { id: l.id },
+        data: { qtySistem },
+      });
+    }
+
+    const counts = await writeOpnameAdjustments(tx, {
+      lines: session.lines.map((l) => ({
+        ...l,
+        qtySistem: stockMap.get(l.itemId) ?? 0,
+      })),
+      stockMap,
+      postMode,
+      tanggal: session.tanggal,
+      picNama,
+      ketBase,
+    });
+
+    await tx.gaOpnameSession.update({
+      where: { id: sessionId },
+      data: { postedAt: new Date(), postMode },
+    });
+
+    return counts;
+  });
+
+  return {
+    postMode,
+    inCount: result.inCount,
+    outCount: result.outCount,
+    adjCount: result.adjCount,
+    adjusted: result.adjusted,
+    skipped: result.skipped,
+    backdateCount: backdate.count,
+    changedLines: result.adjusted,
+    detail: await getOpnameSession(sessionId),
   };
 }
