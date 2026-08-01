@@ -1400,7 +1400,12 @@ export default function ProcurementTrackingPage() {
         if (item.nomorPr?.trim()) prsSet.add(item.nomorPr.trim());
         if (item.urgency === 'Urgent') hasUrgent = true;
         
-        const isReceived = !!item.tanggalTerima;
+        // Suatu barang dianggap sudah GR di Odoo jika linkGr terisi
+        const isGrDone = !!(item.linkGr && item.linkGr.trim());
+        // Jika sudah GR di Odoo -> otomatis dianggap sudah diterima fisik.
+        // Jika baru dicatat terima fisik di web (tanggalTerima terisi) -> dianggap diterima fisik, tapi BELUM TENTU sudah GR di Odoo.
+        const isReceived = !!item.tanggalTerima || isGrDone;
+
         if (isReceived) {
           someDone = true;
         } else {
@@ -1412,12 +1417,8 @@ export default function ProcurementTrackingPage() {
         }
         if (item.nomorPo) {
           poItemsCount++;
-          // Belum GR = punya PO tapi:
-          // (1) belum dicatat terima fisik (tanggalTerima null), atau
-          // (2) sudah diterima fisik tapi GR Odoo belum divalidate (statusPo !== DONE)
-          const isPhysicallyReceived = !!item.tanggalTerima;
-          const isOdooValidated = item.statusPo === 'DONE';
-          if (!isPhysicallyReceived || !isOdooValidated) {
+          // Belum GR = punya PO tapi belum ada link GR / GR Odoo belum tuntas
+          if (!isGrDone) {
             belumGrCount++;
           }
         }
@@ -2889,9 +2890,8 @@ export default function ProcurementTrackingPage() {
                         <tbody>
                           {group.items.map((item) => {
                             const isItemUrgent = item.urgency === 'Urgent';
-                            const isItemReceived = !!item.tanggalTerima;
-                            // isOdooGrDone: status GR di Odoo (statusPo === DONE = receipt divalidate di Odoo)
-                            const isOdooGrDone = item.statusPo === 'DONE';
+                            const isOdooGrDone = !!(item.linkGr && item.linkGr.trim());
+                            const isItemReceived = !!item.tanggalTerima || isOdooGrDone;
                             const hasEtaPassed = item.etaFoom && !isItemReceived && new Date(item.etaFoom).getTime() < new Date().getTime();
 
                             return (
