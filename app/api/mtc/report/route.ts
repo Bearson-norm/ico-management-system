@@ -125,7 +125,7 @@ export async function GET(req: NextRequest) {
 async function getCurrentStock(sparepartId: string): Promise<number> {
   const agg = await prisma.stockMovement.groupBy({
     by: ['tipe'],
-    where: { sparepartId, tipe: { in: ['IN', 'OUT'] } },
+    where: { sparepartId, tipe: { in: ['IN', 'OUT'] }, purchaseType: { not: 'histori-sheets' } },
     _sum: { qty: true },
   });
   const totalIn = agg.find((r) => r.tipe === 'IN')?._sum.qty ?? 0;
