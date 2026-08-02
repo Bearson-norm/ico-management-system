@@ -25,8 +25,7 @@ export async function GET(req: NextRequest) {
       movements: {
         where: {
           tipe: { in: ['IN', 'OUT'] },
-          // Exclude historical import records — tidak mempengaruhi stok real
-          purchaseType: { not: 'histori-sheets' },
+          OR: [{ purchaseType: null }, { purchaseType: { not: 'histori-sheets' } }],
         },
         select: { tipe: true, qty: true },
       },

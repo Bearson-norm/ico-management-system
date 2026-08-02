@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
             movements: {
               where: {
                 tipe: { in: ['IN', 'OUT'] },
-                purchaseType: { not: 'histori-sheets' },
+                OR: [{ purchaseType: null }, { purchaseType: { not: 'histori-sheets' } }],
               },
               select: { tipe: true, qty: true },
             },
@@ -234,7 +234,11 @@ export async function PUT(req: NextRequest) {
     if (body.currentStock !== undefined && body.currentStock !== null && body.currentStock !== '' && !isNaN(Number(body.currentStock))) {
       const targetStock = Number(body.currentStock);
       const spMovements = await tx.stockMovement.findMany({
-        where: { sparepartId: String(id), tipe: { in: ['IN', 'OUT'] }, purchaseType: { not: 'histori-sheets' } },
+        where: {
+          sparepartId: String(id),
+          tipe: { in: ['IN', 'OUT'] },
+          OR: [{ purchaseType: null }, { purchaseType: { not: 'histori-sheets' } }],
+        },
         select: { tipe: true, qty: true },
       });
       const totalIn = spMovements.filter((m) => m.tipe === 'IN').reduce((s, m) => s + m.qty, 0);

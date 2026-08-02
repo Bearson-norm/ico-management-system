@@ -10,8 +10,7 @@ async function getCurrentStock(sparepartId: string): Promise<number> {
     where: {
       sparepartId,
       tipe: { in: ['IN', 'OUT'] },
-      // Exclude historical import records — stok sudah mencerminkan kondisi real 3 bulan terakhir
-      purchaseType: { not: 'histori-sheets' },
+      OR: [{ purchaseType: null }, { purchaseType: { not: 'histori-sheets' } }],
     },
     _sum: { qty: true },
   });

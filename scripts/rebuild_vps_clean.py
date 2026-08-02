@@ -1,4 +1,7 @@
+import sys
 import paramiko
+
+sys.stdout.reconfigure(encoding='utf-8')
 
 hostname = "103.31.39.189"
 username = "foom"

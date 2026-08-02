@@ -10,7 +10,7 @@ async function calculateCurrentStock(sparepartId: string, excludeMovementId?: nu
     where: {
       sparepartId,
       tipe: { in: ['IN', 'OUT'] },
-      purchaseType: { not: 'histori-sheets' },
+      OR: [{ purchaseType: null }, { purchaseType: { not: 'histori-sheets' } }],
       ...(excludeMovementId ? { id: { not: excludeMovementId } } : {}),
     },
     select: { tipe: true, qty: true },

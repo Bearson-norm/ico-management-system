@@ -60,7 +60,10 @@ export default async function DashboardPage() {
       purchasingQty: true,
       harga: true,
       movements: {
-        where: { tipe: { in: ['IN', 'OUT'] }, purchaseType: { not: 'histori-sheets' } },
+        where: {
+          tipe: { in: ['IN', 'OUT'] },
+          OR: [{ purchaseType: null }, { purchaseType: { not: 'histori-sheets' } }],
+        },
         select: { tipe: true, qty: true, tanggal: true },
       },
     },
