@@ -7,7 +7,12 @@ import { ok, err } from '@/lib/utils';
 async function getCurrentStock(sparepartId: string): Promise<number> {
   const agg = await prisma.stockMovement.groupBy({
     by: ['tipe'],
-    where: { sparepartId, tipe: { in: ['IN', 'OUT'] } },
+    where: {
+      sparepartId,
+      tipe: { in: ['IN', 'OUT'] },
+      // Exclude historical import records — stok sudah mencerminkan kondisi real 3 bulan terakhir
+      purchaseType: { not: 'histori-sheets' },
+    },
     _sum: { qty: true },
   });
   const totalIn = agg.find((r) => r.tipe === 'IN')?._sum.qty ?? 0;

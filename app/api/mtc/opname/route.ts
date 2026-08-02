@@ -79,7 +79,11 @@ export async function POST(req: NextRequest) {
     });
 
     // Fetch all stock movements to calculate currentStock
+    // Exclude histori-sheets imports — stok real sudah dicatat 3 bulan terakhir
     const allMovements = await prisma.stockMovement.findMany({
+      where: {
+        purchaseType: { not: 'histori-sheets' },
+      },
       select: {
         sparepartId: true,
         tipe: true,

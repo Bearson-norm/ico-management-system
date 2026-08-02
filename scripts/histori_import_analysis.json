@@ -1,0 +1,4330 @@
+{
+  "total_rows": 490,
+  "importable_rows": 379,
+  "not_importable_rows": 111,
+  "found_skus": {
+    "MTC-SP-001": "Isolasi Tahan Panas",
+    "MTC-SP-003": "Cable Tie 4.8x400",
+    "MTC-SP-004": "Cable Tie 3.6x300",
+    "MTC-SP-005": "Cable Tie 2.5x150",
+    "MTC-SP-007": "Cartridge Ink",
+    "MTC-SP-008": "Iron and Steel Grinding",
+    "MTC-SP-009": "Flap Disc",
+    "MTC-SP-010": "Cutting Sheet",
+    "MTC-SP-011": "Dinabolt M12",
+    "MTC-SP-012": "Dinabolt M8",
+    "MTC-SP-013": "Fisher Kupu - Kupu",
+    "MTC-SP-014": "Fisher S8",
+    "MTC-SP-015": "Fisher S6",
+    "MTC-SP-016": "Bolt Hex M10",
+    "MTC-SP-017": "Nut M10",
+    "MTC-SP-019": "Bolt L M8",
+    "MTC-SP-020": "Bolt Hex M8",
+    "MTC-SP-021": "Nut M8",
+    "MTC-SP-022": "Ring M8",
+    "MTC-SP-024": "Bolt Hex M6",
+    "MTC-SP-025": "Bolt L M6",
+    "MTC-SP-026": "Nut M6",
+    "MTC-SP-027": "Ring M6",
+    "MTC-SP-028": "Ring Per M6",
+    "MTC-SP-029": "Bolt L M5",
+    "MTC-SP-030": "Nut M5",
+    "MTC-SP-031": "Ring M5",
+    "MTC-SP-032": "Fitting Lurus 6 - 6",
+    "MTC-SP-033": "Fitting Lurus 6 - 8",
+    "MTC-SP-034": "Fitting Lurus 8 - 8",
+    "MTC-SP-035": "Fitting Lurus 8 - 12",
+    "MTC-SP-036": "Fitting Lurus 12 - 12",
+    "MTC-SP-038": "Fitting 8 - 1/2\"",
+    "MTC-SP-041": "Fitting Drat Dalam 12 - 1/2\"",
+    "MTC-SP-042": "Fitting Drat Dalam 12 - 3/4\"",
+    "MTC-SP-045": "Fitting L 6 - 3/8\"",
+    "MTC-SP-046": "Fitting L 8 - 3/8\"",
+    "MTC-SP-049": "Naple Speed Control 8 - 3/8\"",
+    "MTC-SP-051": "Naple Speed Control 6 - 3/16\"",
+    "MTC-SP-054": "Fitting Y 6 - 6",
+    "MTC-SP-055": "Fitting Y 6 - 8",
+    "MTC-SP-056": "Fitting Y 8 - 8",
+    "MTC-SP-057": "Fitting Y 8 - 12",
+    "MTC-SP-058": "Fitting Y 12 - 12",
+    "MTC-SP-059": "Fitting T 6 - 8",
+    "MTC-SP-060": "Fitting T 8 - 8",
+    "MTC-SP-061": "Silencer Pneumatic 3/8\"",
+    "MTC-SP-062": "Biaxial Cylinder TN 20 X 40S",
+    "MTC-SP-074": "Kepala Steker",
+    "MTC-SP-077": "Solenoid 4V21008 (AC 220V)",
+    "MTC-SP-079": "Solenoid 4V21008 (DC 24V)",
+    "MTC-SP-080": "Karet Holding",
+    "MTC-SP-081": "Karet Capping",
+    "MTC-SP-082": "Insulation Tape",
+    "MTC-SP-083": "Karet Blister",
+    "MTC-SP-084": "Floating Joint",
+    "MTC-SP-088": "Nikelin",
+    "MTC-SP-091": "Bearing LM25UU",
+    "MTC-SP-097": "Bearing 6001ZZ",
+    "MTC-SP-099": "Micro Gear Pump (Motor Filling)",
+    "MTC-SP-100": "Carbon Brush Shrink",
+    "MTC-SP-101": "Pisau Porforasi",
+    "MTC-SP-109": "Push Button",
+    "MTC-SP-111": "Pilot Lamp Green",
+    "MTC-SP-120": "Selector Switch",
+    "MTC-SP-123": "Sensor BF3RX",
+    "MTC-SP-124": "Sensor BF5R - D1 - N",
+    "MTC-SP-129": "Speed Controller",
+    "MTC-SP-130": "Temperature Controller",
+    "MTC-SP-132": "Timer",
+    "MTC-SP-133": "DC Brushed Motor Speed governor",
+    "MTC-SP-134": "Fork Sensor Sick",
+    "MTC-SP-137": "Switch ON/OFF",
+    "MTC-SP-138": "Relay MKS2P",
+    "MTC-SP-139": "Relay Socket PTF - 08A",
+    "MTC-SP-140": "Relay LY2N DC",
+    "MTC-SP-142": "Contactor 09A",
+    "MTC-SP-190": "Mounting",
+    "MTC-SP-194": "Sliding Bearing LM12LUU (Capping)",
+    "MTC-SP-202": "Kabel Sensor Sick",
+    "MTC-SP-203": "Fiber Optic Omron",
+    "MTC-SP-212": "Sensor Omron EE-SX670-WR (Capping)",
+    "MTC-SP-229": "Bolt L M6 x 65",
+    "MTC-SP-235": "Bolt L M4 X 50",
+    "MTC-SP-237": "Bolt Hex M6 X 60",
+    "MTC-SP-238": "Bolt L M8 X 60",
+    "MTC-SP-241": "Roda 2 inchi PU",
+    "MTC-SP-247": "Bearing 6205 ZZ NTN",
+    "MTC-SP-248": "Bearing 6205 Rs SKF",
+    "MTC-SP-250": "Bolt L Verseng M4 x 25",
+    "MTC-SP-251": "Bolt L Verseng M5 x 25",
+    "MTC-SP-255": "Dioda Bridge MIC KBPC 25A 1K V",
+    "MTC-SP-258": "Cylinder STNC CXSM 20X30 (Piston Cap 2)",
+    "MTC-SP-259": "Bearing 6204 2RS ASB",
+    "MTC-SP-260": "Linear Bearing LM20UU",
+    "MTC-SP-261": "Glass Valve",
+    "MTC-SP-267": "Cam Bearing Blister"
+  },
+  "not_found_skus": [
+    [
+      "MTC-SP-023",
+      "Bolt Hex Galvanish M6x60"
+    ],
+    [
+      "MTC-SP-087",
+      "Check Valve"
+    ],
+    [
+      "MTC-SP-096",
+      "Bearing 6204ZZ"
+    ],
+    [
+      "MTC-SP-098",
+      "Molding Blister"
+    ],
+    [
+      "MTC-SP-105",
+      "Motor Capping  SGU 120 W"
+    ],
+    [
+      "MTC-SP-112",
+      "Kapasitor 5 mF"
+    ],
+    [
+      "MTC-SP-150",
+      "PSU 12V / 5A"
+    ],
+    [
+      "MTC-SP-158",
+      "MCB C16"
+    ],
+    [
+      "MTC-SP-159",
+      "Fitting Lampu"
+    ],
+    [
+      "MTC-SP-167",
+      "MCB C25"
+    ],
+    [
+      "MTC-SP-172",
+      "Stopkontak isi 5"
+    ],
+    [
+      "MTC-SP-173",
+      "Stopkontak isi 4"
+    ],
+    [
+      "MTC-SP-174",
+      "Stopkontak isi 3"
+    ],
+    [
+      "MTC-SP-175",
+      "Stopkontak isi 2"
+    ],
+    [
+      "MTC-SP-184",
+      "Tee Conduit"
+    ],
+    [
+      "MTC-SP-195",
+      "As Caping"
+    ],
+    [
+      "MTC-SP-196",
+      "Roll Caping"
+    ],
+    [
+      "MTC-SP-197",
+      "Cylinder KPF -  02"
+    ],
+    [
+      "MTC-SP-198",
+      "Roda Trolley"
+    ],
+    [
+      "MTC-SP-199",
+      "Bearing AS"
+    ],
+    [
+      "MTC-SP-201",
+      "AS Roll Capp"
+    ],
+    [
+      "MTC-SP-204",
+      "Valve 1/4\""
+    ],
+    [
+      "MTC-SP-205",
+      "Bolt L M3"
+    ],
+    [
+      "MTC-SP-207",
+      "Seal Tape 1/2\""
+    ],
+    [
+      "MTC-SP-210",
+      "Pilok No.200"
+    ],
+    [
+      "MTC-SP-213",
+      "Acryclic"
+    ],
+    [
+      "MTC-SP-214",
+      "Kabel NYMHY 3 X 2.5"
+    ],
+    [
+      "MTC-SP-215",
+      "Kabel NYMHY 3 X 1.5"
+    ],
+    [
+      "MTC-SP-216",
+      "CableTie 4.6 X 400"
+    ],
+    [
+      "MTC-SP-221",
+      "Selang PU Pneumatic 8MM X 5MM"
+    ],
+    [
+      "MTC-SP-224",
+      "Bearing 6902Z"
+    ],
+    [
+      "MTC-SP-225",
+      "Steker AC Panasonic"
+    ],
+    [
+      "MTC-SP-226",
+      "Kabel Listrik Nym 2X1,5 MM Kawat"
+    ],
+    [
+      "MTC-SP-232",
+      "Steker Isi 1"
+    ],
+    [
+      "MTC-SP-240",
+      "Roda 2 inchi PU - Screw hidup"
+    ],
+    [
+      "MTC-SP-242",
+      "Nut  M4"
+    ],
+    [
+      "MTC-SP-245",
+      "Sprocket RS 35 X 10T"
+    ],
+    [
+      "MTC-SP-256",
+      "Ducting Kabel Niso Curve 20 x 70"
+    ],
+    [
+      "MTC-SP-257",
+      "Bearing 6202 ZZ"
+    ],
+    [
+      "MTC-SP-262",
+      "Sekrup 6 X 3\""
+    ],
+    [
+      "MTC-SP-264",
+      "Karet L-Sealer"
+    ],
+    [
+      "MTC-SP-265",
+      "Bearing HK 1816"
+    ],
+    [
+      "MTC-SP-266",
+      "Bearing NK 24/16"
+    ],
+    [
+      "MTC-SP-269",
+      "Selang silicone tube 6mm"
+    ],
+    [
+      "MTC-SP-270",
+      "Plug Socket 3P X 16A"
+    ],
+    [
+      "MTC-SP-271",
+      "Gear Capping"
+    ],
+    [
+      "MTC-SP-273",
+      "AS SS 12MM"
+    ],
+    [
+      "MTC-SP-274",
+      "Sponge belt KP-35 (datar) (Sticker)"
+    ],
+    [
+      "MTC-SP-275",
+      "PSU 24V / 6,25A"
+    ],
+    [
+      "MTC-SP-276",
+      "Fitting L 12 - 3/4\""
+    ],
+    [
+      "MTC-SP-277",
+      "Conveyor belt KP-40 (KP-75)"
+    ],
+    [
+      "MTC-SP-278",
+      "Nozzle Liquid"
+    ],
+    [
+      "MTC-SP-279",
+      "Cartridge Heater Mesin Blister (M10 x 100) 400W"
+    ]
+  ],
+  "decimal_rows": [
+    {
+      "line": 70,
+      "date": "08/10/2025",
+      "sku": "MTC-SP-213",
+      "nama": "Acryclic",
+      "qty_raw": "0.75",
+      "qty_int": 0
+    },
+    {
+      "line": 87,
+      "date": "12/10/2025",
+      "sku": "MTC-SP-213",
+      "nama": "Acryclic",
+      "qty_raw": "0.1",
+      "qty_int": 0
+    },
+    {
+      "line": 129,
+      "date": "29/10/2025",
+      "sku": "MTC-SP-221",
+      "nama": "Selang PU Pneumatic 8MM X 5MM",
+      "qty_raw": "0.3",
+      "qty_int": 0
+    },
+    {
+      "line": 138,
+      "date": "03/11/2025",
+      "sku": "MTC-SP-226",
+      "nama": "Kabel Listrik Nym 2X1,5 MM Kawat",
+      "qty_raw": "45.75",
+      "qty_int": 45
+    },
+    {
+      "line": 140,
+      "date": "03/11/2025",
+      "sku": "MTC-SP-226",
+      "nama": "Kabel Listrik Nym 2X1,5 MM Kawat",
+      "qty_raw": "45.5",
+      "qty_int": 45
+    },
+    {
+      "line": 147,
+      "date": "07/11/2025",
+      "sku": "MTC-SP-214",
+      "nama": "Kabel NYMHY 3 X 2.5",
+      "qty_raw": "5.5",
+      "qty_int": 5
+    },
+    {
+      "line": 194,
+      "date": "19/11/2025",
+      "sku": "MTC-SP-226",
+      "nama": "Kabel Listrik Nym 2X1,5 MM Kawat",
+      "qty_raw": "45.7",
+      "qty_int": 45
+    },
+    {
+      "line": 295,
+      "date": "24/12/2025",
+      "sku": "MTC-SP-269",
+      "nama": "Selang silicone tube 6mm",
+      "qty_raw": "0.025",
+      "qty_int": 0
+    },
+    {
+      "line": 376,
+      "date": "02/02/2026",
+      "sku": "MTC-SP-264",
+      "nama": "Karet L-Sealer",
+      "qty_raw": "1.3",
+      "qty_int": 1
+    },
+    {
+      "line": 406,
+      "date": "13/02/2026",
+      "sku": "MTC-SP-215",
+      "nama": "Kabel NYMHY 3 X 1.5",
+      "qty_raw": "2.3",
+      "qty_int": 2
+    },
+    {
+      "line": 453,
+      "date": "14/03/2026",
+      "sku": "MTC-SP-083",
+      "nama": "Karet Blister",
+      "qty_raw": "0.1",
+      "qty_int": 0
+    }
+  ],
+  "rows": [
+    {
+      "line": 2,
+      "date": "27/08/2025",
+      "sku": "MTC-SP-007",
+      "nama": "Cartridge Ink",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 3,
+      "date": "28/08/2025",
+      "sku": "MTC-SP-007",
+      "nama": "Cartridge Ink",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 4,
+      "date": "29/08/2025",
+      "sku": "MTC-SP-198",
+      "nama": "Roda Trolley",
+      "qty_raw": "3",
+      "qty_float": 3.0
+    },
+    {
+      "line": 5,
+      "date": "30/08/2025",
+      "sku": "MTC-SP-010",
+      "nama": "Cutting Sheet",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 6,
+      "date": "30/08/2025",
+      "sku": "MTC-SP-008",
+      "nama": "Iron and Steel Grinding",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 7,
+      "date": "30/08/2025",
+      "sku": "MTC-SP-134",
+      "nama": "Fork Sensor Sick",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 8,
+      "date": "30/08/2025",
+      "sku": "MTC-SP-202",
+      "nama": "Kabel Sensor Sick",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 9,
+      "date": "31/08/2025",
+      "sku": "MTC-SP-012",
+      "nama": "Dinabolt M8",
+      "qty_raw": "15",
+      "qty_float": 15.0
+    },
+    {
+      "line": 10,
+      "date": "31/08/2025",
+      "sku": "MTC-SP-020",
+      "nama": "Bolt Hex M8",
+      "qty_raw": "5",
+      "qty_float": 5.0
+    },
+    {
+      "line": 11,
+      "date": "31/08/2025",
+      "sku": "MTC-SP-021",
+      "nama": "Nut M8",
+      "qty_raw": "5",
+      "qty_float": 5.0
+    },
+    {
+      "line": 12,
+      "date": "31/08/2025",
+      "sku": "MTC-SP-082",
+      "nama": "Insulation Tape",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 13,
+      "date": "31/08/2025",
+      "sku": "MTC-SP-184",
+      "nama": "Tee Conduit",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 14,
+      "date": "01/09/2025",
+      "sku": "MTC-SP-074",
+      "nama": "Kepala Steker",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 15,
+      "date": "01/09/2025",
+      "sku": "MTC-SP-123",
+      "nama": "Sensor BF3RX",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 16,
+      "date": "01/09/2025",
+      "sku": "MTC-SP-100",
+      "nama": "Carbon Brush Shrink",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 17,
+      "date": "01/09/2025",
+      "sku": "MTC-SP-123",
+      "nama": "Sensor BF3RX",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 18,
+      "date": "02/09/2025",
+      "sku": "MTC-SP-074",
+      "nama": "Kepala Steker",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 19,
+      "date": "02/09/2025",
+      "sku": "MTC-SP-174",
+      "nama": "Stopkontak isi 3",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 20,
+      "date": "02/09/2025",
+      "sku": "MTC-SP-074",
+      "nama": "Kepala Steker",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 21,
+      "date": "03/09/2025",
+      "sku": "MTC-SP-194",
+      "nama": "Sliding Bearing LM12LUU (Capping)",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 22,
+      "date": "03/09/2025",
+      "sku": "MTC-SP-199",
+      "nama": "Bearing AS",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 23,
+      "date": "03/09/2025",
+      "sku": "MTC-SP-201",
+      "nama": "AS Roll Capp",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 24,
+      "date": "04/09/2025",
+      "sku": "MTC-SP-014",
+      "nama": "Fisher S8",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 25,
+      "date": "04/09/2025",
+      "sku": "MTC-SP-194",
+      "nama": "Sliding Bearing LM12LUU (Capping)",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 26,
+      "date": "04/09/2025",
+      "sku": "MTC-SP-097",
+      "nama": "Bearing 6001ZZ",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 27,
+      "date": "07/09/2025",
+      "sku": "MTC-SP-026",
+      "nama": "Nut M6",
+      "qty_raw": "5",
+      "qty_float": 5.0
+    },
+    {
+      "line": 28,
+      "date": "07/09/2025",
+      "sku": "MTC-SP-001",
+      "nama": "Isolasi Tahan Panas",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 29,
+      "date": "07/09/2025",
+      "sku": "MTC-SP-194",
+      "nama": "Sliding Bearing LM12LUU (Capping)",
+      "qty_raw": "6",
+      "qty_float": 6.0
+    },
+    {
+      "line": 30,
+      "date": "07/09/2025",
+      "sku": "MTC-SP-084",
+      "nama": "Floating Joint",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 31,
+      "date": "07/09/2025",
+      "sku": "MTC-SP-195",
+      "nama": "As Caping",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 32,
+      "date": "07/09/2025",
+      "sku": "MTC-SP-196",
+      "nama": "Roll Caping",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 33,
+      "date": "07/09/2025",
+      "sku": "MTC-SP-197",
+      "nama": "Cylinder KPF -  02",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 34,
+      "date": "08/09/2025",
+      "sku": "MTC-SP-013",
+      "nama": "Fisher Kupu - Kupu",
+      "qty_raw": "10",
+      "qty_float": 10.0
+    },
+    {
+      "line": 35,
+      "date": "08/09/2025",
+      "sku": "MTC-SP-032",
+      "nama": "Fitting Lurus 6 - 6",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 36,
+      "date": "09/09/2025",
+      "sku": "MTC-SP-197",
+      "nama": "Cylinder KPF -  02",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 37,
+      "date": "11/09/2025",
+      "sku": "MTC-SP-007",
+      "nama": "Cartridge Ink",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 38,
+      "date": "11/09/2025",
+      "sku": "MTC-SP-080",
+      "nama": "Karet Holding",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 39,
+      "date": "12/09/2025",
+      "sku": "MTC-SP-124",
+      "nama": "Sensor BF5R - D1 - N",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 40,
+      "date": "12/09/2025",
+      "sku": "MTC-SP-203",
+      "nama": "Fiber Optic Omron",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 41,
+      "date": "12/09/2025",
+      "sku": "MTC-SP-204",
+      "nama": "Valve 1/4\"",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 42,
+      "date": "12/09/2025",
+      "sku": "MTC-SP-007",
+      "nama": "Cartridge Ink",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 43,
+      "date": "12/09/2025",
+      "sku": "MTC-SP-007",
+      "nama": "Cartridge Ink",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 44,
+      "date": "13/09/2025",
+      "sku": "MTC-SP-007",
+      "nama": "Cartridge Ink",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 45,
+      "date": "13/09/2025",
+      "sku": "MTC-SP-173",
+      "nama": "Stopkontak isi 4",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 46,
+      "date": "13/09/2025",
+      "sku": "MTC-SP-172",
+      "nama": "Stopkontak isi 5",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 47,
+      "date": "14/09/2025",
+      "sku": "MTC-SP-023",
+      "nama": "Bolt Hex Galvanish M6x60",
+      "qty_raw": "3",
+      "qty_float": 3.0
+    },
+    {
+      "line": 48,
+      "date": "15/09/2025",
+      "sku": "MTC-SP-026",
+      "nama": "Nut M6",
+      "qty_raw": "3",
+      "qty_float": 3.0
+    },
+    {
+      "line": 49,
+      "date": "15/09/2025",
+      "sku": "MTC-SP-101",
+      "nama": "Pisau Porforasi",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 50,
+      "date": "15/09/2025",
+      "sku": "MTC-SP-124",
+      "nama": "Sensor BF5R - D1 - N",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 51,
+      "date": "15/09/2025",
+      "sku": "MTC-SP-203",
+      "nama": "Fiber Optic Omron",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 52,
+      "date": "15/09/2025",
+      "sku": "MTC-SP-205",
+      "nama": "Bolt L M3",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 53,
+      "date": "16/09/2025",
+      "sku": "MTC-SP-021",
+      "nama": "Nut M8",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 54,
+      "date": "16/09/2025",
+      "sku": "MTC-SP-074",
+      "nama": "Kepala Steker",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 55,
+      "date": "16/09/2025",
+      "sku": "MTC-SP-172",
+      "nama": "Stopkontak isi 5",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 56,
+      "date": "16/09/2025",
+      "sku": "MTC-SP-010",
+      "nama": "Cutting Sheet",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 57,
+      "date": "17/09/2025",
+      "sku": "MTC-SP-051",
+      "nama": "Naple Speed Control 6 - 3/16\"",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 58,
+      "date": "18/09/2025",
+      "sku": "MTC-SP-049",
+      "nama": "Naple Speed Control 8 - 3/8\"",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 59,
+      "date": "18/09/2025",
+      "sku": "MTC-SP-159",
+      "nama": "Fitting Lampu",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 60,
+      "date": "18/09/2025",
+      "sku": "MTC-SP-025",
+      "nama": "Bolt L M6",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 61,
+      "date": "18/09/2025",
+      "sku": "MTC-SP-026",
+      "nama": "Nut M6",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 62,
+      "date": "19/09/2025",
+      "sku": "MTC-SP-061",
+      "nama": "Silencer Pneumatic 3/8\"",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 63,
+      "date": "20/09/2025",
+      "sku": "MTC-SP-174",
+      "nama": "Stopkontak isi 3",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 64,
+      "date": "20/09/2025",
+      "sku": "MTC-SP-026",
+      "nama": "Nut M6",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 65,
+      "date": "20/09/2025",
+      "sku": "MTC-SP-014",
+      "nama": "Fisher S8",
+      "qty_raw": "3",
+      "qty_float": 3.0
+    },
+    {
+      "line": 66,
+      "date": "22/09/2025",
+      "sku": "MTC-SP-005",
+      "nama": "Cable Tie 2.5x150",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 67,
+      "date": "02/10/2025",
+      "sku": "MTC-SP-098",
+      "nama": "Molding Blister",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 68,
+      "date": "06/10/2025",
+      "sku": "MTC-SP-007",
+      "nama": "Cartridge Ink",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 69,
+      "date": "08/10/2025",
+      "sku": "MTC-SP-010",
+      "nama": "Cutting Sheet",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 70,
+      "date": "08/10/2025",
+      "sku": "MTC-SP-213",
+      "nama": "Acryclic",
+      "qty_raw": "0.75",
+      "qty_float": 0.75
+    },
+    {
+      "line": 71,
+      "date": "08/10/2025",
+      "sku": "MTC-SP-012",
+      "nama": "Dinabolt M8",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 72,
+      "date": "08/10/2025",
+      "sku": "MTC-SP-013",
+      "nama": "Fisher Kupu - Kupu",
+      "qty_raw": "3",
+      "qty_float": 3.0
+    },
+    {
+      "line": 73,
+      "date": "08/10/2025",
+      "sku": "MTC-SP-007",
+      "nama": "Cartridge Ink",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 74,
+      "date": "08/10/2025",
+      "sku": "MTC-SP-172",
+      "nama": "Stopkontak isi 5",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 75,
+      "date": "08/10/2025",
+      "sku": "MTC-SP-010",
+      "nama": "Cutting Sheet",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 76,
+      "date": "08/10/2025",
+      "sku": "MTC-SP-015",
+      "nama": "Fisher S6",
+      "qty_raw": "11",
+      "qty_float": 11.0
+    },
+    {
+      "line": 77,
+      "date": "08/10/2025",
+      "sku": "MTC-SP-004",
+      "nama": "Cable Tie 3.6x300",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 78,
+      "date": "08/10/2025",
+      "sku": "MTC-SP-096",
+      "nama": "Bearing 6204ZZ",
+      "qty_raw": "7",
+      "qty_float": 7.0
+    },
+    {
+      "line": 79,
+      "date": "10/10/2025",
+      "sku": "MTC-SP-025",
+      "nama": "Bolt L M6",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 80,
+      "date": "10/10/2025",
+      "sku": "MTC-SP-026",
+      "nama": "Nut M6",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 81,
+      "date": "10/10/2025",
+      "sku": "MTC-SP-027",
+      "nama": "Ring M6",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 82,
+      "date": "10/10/2025",
+      "sku": "MTC-SP-028",
+      "nama": "Ring Per M6",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 83,
+      "date": "10/10/2025",
+      "sku": "MTC-SP-022",
+      "nama": "Ring M8",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 84,
+      "date": "10/10/2025",
+      "sku": "MTC-SP-015",
+      "nama": "Fisher S6",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 85,
+      "date": "10/10/2025",
+      "sku": "MTC-SP-173",
+      "nama": "Stopkontak isi 4",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 86,
+      "date": "11/10/2025",
+      "sku": "MTC-SP-212",
+      "nama": "Sensor Omron EE-SX670-WR (Capping)",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 87,
+      "date": "12/10/2025",
+      "sku": "MTC-SP-213",
+      "nama": "Acryclic",
+      "qty_raw": "0.1",
+      "qty_float": 0.1
+    },
+    {
+      "line": 88,
+      "date": "12/10/2025",
+      "sku": "MTC-SP-190",
+      "nama": "Mounting",
+      "qty_raw": "16",
+      "qty_float": 16.0
+    },
+    {
+      "line": 89,
+      "date": "12/10/2025",
+      "sku": "MTC-SP-190",
+      "nama": "Mounting",
+      "qty_raw": "16",
+      "qty_float": 16.0
+    },
+    {
+      "line": 90,
+      "date": "13/10/2025",
+      "sku": "MTC-SP-007",
+      "nama": "Cartridge Ink",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 91,
+      "date": "13/10/2025",
+      "sku": "MTC-SP-015",
+      "nama": "Fisher S6",
+      "qty_raw": "5",
+      "qty_float": 5.0
+    },
+    {
+      "line": 92,
+      "date": "13/10/2025",
+      "sku": "MTC-SP-134",
+      "nama": "Fork Sensor Sick",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 93,
+      "date": "13/10/2025",
+      "sku": "MTC-SP-202",
+      "nama": "Kabel Sensor Sick",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 94,
+      "date": "14/10/2025",
+      "sku": "MTC-SP-087",
+      "nama": "Check Valve",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 95,
+      "date": "15/10/2025",
+      "sku": "MTC-SP-001",
+      "nama": "Isolasi Tahan Panas",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 96,
+      "date": "15/10/2025",
+      "sku": "MTC-SP-100",
+      "nama": "Carbon Brush Shrink",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 97,
+      "date": "15/10/2025",
+      "sku": "MTC-SP-088",
+      "nama": "Nikelin",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 98,
+      "date": "15/10/2025",
+      "sku": "MTC-SP-138",
+      "nama": "Relay MKS2P",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 99,
+      "date": "16/10/2025",
+      "sku": "MTC-SP-130",
+      "nama": "Temperature Controller",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 100,
+      "date": "16/10/2025",
+      "sku": "MTC-SP-010",
+      "nama": "Cutting Sheet",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 101,
+      "date": "16/10/2025",
+      "sku": "MTC-SP-008",
+      "nama": "Iron and Steel Grinding",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 102,
+      "date": "17/10/2025",
+      "sku": "MTC-SP-010",
+      "nama": "Cutting Sheet",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 103,
+      "date": "17/10/2025",
+      "sku": "MTC-SP-012",
+      "nama": "Dinabolt M8",
+      "qty_raw": "7",
+      "qty_float": 7.0
+    },
+    {
+      "line": 104,
+      "date": "17/10/2025",
+      "sku": "MTC-SP-015",
+      "nama": "Fisher S6",
+      "qty_raw": "6",
+      "qty_float": 6.0
+    },
+    {
+      "line": 105,
+      "date": "17/10/2025",
+      "sku": "MTC-SP-013",
+      "nama": "Fisher Kupu - Kupu",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 106,
+      "date": "17/10/2025",
+      "sku": "MTC-SP-226",
+      "nama": "Kabel Listrik Nym 2X1,5 MM Kawat",
+      "qty_raw": "10",
+      "qty_float": 10.0
+    },
+    {
+      "line": 107,
+      "date": "18/10/2025",
+      "sku": "MTC-SP-190",
+      "nama": "Mounting",
+      "qty_raw": "21",
+      "qty_float": 21.0
+    },
+    {
+      "line": 108,
+      "date": "18/10/2025",
+      "sku": "MTC-SP-226",
+      "nama": "Kabel Listrik Nym 2X1,5 MM Kawat",
+      "qty_raw": "20",
+      "qty_float": 20.0
+    },
+    {
+      "line": 109,
+      "date": "18/10/2025",
+      "sku": "MTC-SP-224",
+      "nama": "Bearing 6902Z",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 110,
+      "date": "20/10/2025",
+      "sku": "MTC-SP-225",
+      "nama": "Steker AC Panasonic",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 111,
+      "date": "20/10/2025",
+      "sku": "MTC-SP-175",
+      "nama": "Stopkontak isi 2",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 112,
+      "date": "20/10/2025",
+      "sku": "MTC-SP-207",
+      "nama": "Seal Tape 1/2\"",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 113,
+      "date": "20/10/2025",
+      "sku": "MTC-SP-013",
+      "nama": "Fisher Kupu - Kupu",
+      "qty_raw": "5",
+      "qty_float": 5.0
+    },
+    {
+      "line": 114,
+      "date": "21/10/2025",
+      "sku": "MTC-SP-007",
+      "nama": "Cartridge Ink",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 115,
+      "date": "21/10/2025",
+      "sku": "MTC-SP-013",
+      "nama": "Fisher Kupu - Kupu",
+      "qty_raw": "6",
+      "qty_float": 6.0
+    },
+    {
+      "line": 116,
+      "date": "22/10/2025",
+      "sku": "MTC-SP-035",
+      "nama": "Fitting Lurus 8 - 12",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 117,
+      "date": "22/10/2025",
+      "sku": "MTC-SP-013",
+      "nama": "Fisher Kupu - Kupu",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 118,
+      "date": "23/10/2025",
+      "sku": "MTC-SP-009",
+      "nama": "Flap Disc",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 119,
+      "date": "23/10/2025",
+      "sku": "MTC-SP-210",
+      "nama": "Pilok No.200",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 120,
+      "date": "24/10/2025",
+      "sku": "MTC-SP-007",
+      "nama": "Cartridge Ink",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 121,
+      "date": "25/10/2025",
+      "sku": "MTC-SP-012",
+      "nama": "Dinabolt M8",
+      "qty_raw": "6",
+      "qty_float": 6.0
+    },
+    {
+      "line": 122,
+      "date": "26/10/2025",
+      "sku": "MTC-SP-226",
+      "nama": "Kabel Listrik Nym 2X1,5 MM Kawat",
+      "qty_raw": "30",
+      "qty_float": 30.0
+    },
+    {
+      "line": 123,
+      "date": "26/10/2025",
+      "sku": "MTC-SP-027",
+      "nama": "Ring M6",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 124,
+      "date": "27/10/2025",
+      "sku": "MTC-SP-074",
+      "nama": "Kepala Steker",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 125,
+      "date": "27/10/2025",
+      "sku": "MTC-SP-214",
+      "nama": "Kabel NYMHY 3 X 2.5",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 126,
+      "date": "27/10/2025",
+      "sku": "MTC-SP-007",
+      "nama": "Cartridge Ink",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 127,
+      "date": "29/10/2025",
+      "sku": "MTC-SP-081",
+      "nama": "Karet Capping",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 128,
+      "date": "29/10/2025",
+      "sku": "MTC-SP-194",
+      "nama": "Sliding Bearing LM12LUU (Capping)",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 129,
+      "date": "29/10/2025",
+      "sku": "MTC-SP-221",
+      "nama": "Selang PU Pneumatic 8MM X 5MM",
+      "qty_raw": "0.3",
+      "qty_float": 0.3
+    },
+    {
+      "line": 130,
+      "date": "30/10/2025",
+      "sku": "MTC-SP-011",
+      "nama": "Dinabolt M12",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 131,
+      "date": "30/10/2025",
+      "sku": "MTC-SP-012",
+      "nama": "Dinabolt M8",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 132,
+      "date": "30/10/2025",
+      "sku": "MTC-SP-010",
+      "nama": "Cutting Sheet",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 133,
+      "date": "30/10/2025",
+      "sku": "MTC-SP-009",
+      "nama": "Flap Disc",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 134,
+      "date": "31/10/2025",
+      "sku": "MTC-SP-112",
+      "nama": "Kapasitor 5 mF",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 135,
+      "date": "03/11/2025",
+      "sku": "MTC-SP-203",
+      "nama": "Fiber Optic Omron",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 136,
+      "date": "03/11/2025",
+      "sku": "MTC-SP-142",
+      "nama": "Contactor 09A",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 137,
+      "date": "03/11/2025",
+      "sku": "MTC-SP-012",
+      "nama": "Dinabolt M8",
+      "qty_raw": "9",
+      "qty_float": 9.0
+    },
+    {
+      "line": 138,
+      "date": "03/11/2025",
+      "sku": "MTC-SP-226",
+      "nama": "Kabel Listrik Nym 2X1,5 MM Kawat",
+      "qty_raw": "45.75",
+      "qty_float": 45.75
+    },
+    {
+      "line": 139,
+      "date": "03/11/2025",
+      "sku": "MTC-SP-012",
+      "nama": "Dinabolt M8",
+      "qty_raw": "9",
+      "qty_float": 9.0
+    },
+    {
+      "line": 140,
+      "date": "03/11/2025",
+      "sku": "MTC-SP-226",
+      "nama": "Kabel Listrik Nym 2X1,5 MM Kawat",
+      "qty_raw": "45.5",
+      "qty_float": 45.5
+    },
+    {
+      "line": 141,
+      "date": "04/11/2025",
+      "sku": "MTC-SP-232",
+      "nama": "Steker Isi 1",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 142,
+      "date": "06/11/2025",
+      "sku": "MTC-SP-232",
+      "nama": "Steker Isi 1",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 143,
+      "date": "06/11/2025",
+      "sku": "MTC-SP-210",
+      "nama": "Pilok No.200",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 144,
+      "date": "06/11/2025",
+      "sku": "MTC-SP-241",
+      "nama": "Roda 2 inchi PU",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 145,
+      "date": "07/11/2025",
+      "sku": "MTC-SP-007",
+      "nama": "Cartridge Ink",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 146,
+      "date": "07/11/2025",
+      "sku": "MTC-SP-074",
+      "nama": "Kepala Steker",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 147,
+      "date": "07/11/2025",
+      "sku": "MTC-SP-214",
+      "nama": "Kabel NYMHY 3 X 2.5",
+      "qty_raw": "5.5",
+      "qty_float": 5.5
+    },
+    {
+      "line": 148,
+      "date": "07/11/2025",
+      "sku": "MTC-SP-175",
+      "nama": "Stopkontak isi 2",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 149,
+      "date": "10/11/2025",
+      "sku": "MTC-SP-074",
+      "nama": "Kepala Steker",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 150,
+      "date": "10/11/2025",
+      "sku": "MTC-SP-013",
+      "nama": "Fisher Kupu - Kupu",
+      "qty_raw": "3",
+      "qty_float": 3.0
+    },
+    {
+      "line": 151,
+      "date": "10/11/2025",
+      "sku": "MTC-SP-057",
+      "nama": "Fitting Y 8 - 12",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 152,
+      "date": "10/11/2025",
+      "sku": "MTC-SP-004",
+      "nama": "Cable Tie 3.6x300",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 153,
+      "date": "10/11/2025",
+      "sku": "MTC-SP-245",
+      "nama": "Sprocket RS 35 X 10T",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 154,
+      "date": "10/11/2025",
+      "sku": "MTC-SP-105",
+      "nama": "Motor Capping  SGU 120 W",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 155,
+      "date": "10/11/2025",
+      "sku": "MTC-SP-099",
+      "nama": "Micro Gear Pump (Motor Filling)",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 156,
+      "date": "11/11/2025",
+      "sku": "MTC-SP-001",
+      "nama": "Isolasi Tahan Panas",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 157,
+      "date": "11/11/2025",
+      "sku": "MTC-SP-009",
+      "nama": "Flap Disc",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 158,
+      "date": "11/11/2025",
+      "sku": "MTC-SP-247",
+      "nama": "Bearing 6205 ZZ NTN",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 159,
+      "date": "12/11/2025",
+      "sku": "MTC-SP-105",
+      "nama": "Motor Capping  SGU 120 W",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 160,
+      "date": "12/11/2025",
+      "sku": "MTC-SP-010",
+      "nama": "Cutting Sheet",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 161,
+      "date": "12/11/2025",
+      "sku": "MTC-SP-101",
+      "nama": "Pisau Porforasi",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 162,
+      "date": "12/11/2025",
+      "sku": "MTC-SP-079",
+      "nama": "Solenoid 4V21008 (DC 24V)",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 163,
+      "date": "12/11/2025",
+      "sku": "MTC-SP-111",
+      "nama": "Pilot Lamp Green",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 164,
+      "date": "13/11/2025",
+      "sku": "MTC-SP-001",
+      "nama": "Isolasi Tahan Panas",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 165,
+      "date": "13/11/2025",
+      "sku": "MTC-SP-007",
+      "nama": "Cartridge Ink",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 166,
+      "date": "13/11/2025",
+      "sku": "MTC-SP-250",
+      "nama": "Bolt L Verseng M4 x 25",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 167,
+      "date": "13/11/2025",
+      "sku": "MTC-SP-240",
+      "nama": "Roda 2 inchi PU - Screw hidup",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 168,
+      "date": "14/11/2025",
+      "sku": "MTC-SP-251",
+      "nama": "Bolt L Verseng M5 x 25",
+      "qty_raw": "6",
+      "qty_float": 6.0
+    },
+    {
+      "line": 169,
+      "date": "14/11/2025",
+      "sku": "MTC-SP-030",
+      "nama": "Nut M5",
+      "qty_raw": "6",
+      "qty_float": 6.0
+    },
+    {
+      "line": 170,
+      "date": "14/11/2025",
+      "sku": "MTC-SP-031",
+      "nama": "Ring M5",
+      "qty_raw": "6",
+      "qty_float": 6.0
+    },
+    {
+      "line": 171,
+      "date": "14/11/2025",
+      "sku": "MTC-SP-023",
+      "nama": "Bolt Hex Galvanish M6x60",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 172,
+      "date": "14/11/2025",
+      "sku": "MTC-SP-015",
+      "nama": "Fisher S6",
+      "qty_raw": "5",
+      "qty_float": 5.0
+    },
+    {
+      "line": 173,
+      "date": "14/11/2025",
+      "sku": "MTC-SP-190",
+      "nama": "Mounting",
+      "qty_raw": "16",
+      "qty_float": 16.0
+    },
+    {
+      "line": 174,
+      "date": "14/11/2025",
+      "sku": "MTC-SP-226",
+      "nama": "Kabel Listrik Nym 2X1,5 MM Kawat",
+      "qty_raw": "5",
+      "qty_float": 5.0
+    },
+    {
+      "line": 175,
+      "date": "14/11/2025",
+      "sku": "MTC-SP-029",
+      "nama": "Bolt L M5",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 176,
+      "date": "14/11/2025",
+      "sku": "MTC-SP-007",
+      "nama": "Cartridge Ink",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 177,
+      "date": "15/11/2025",
+      "sku": "MTC-SP-158",
+      "nama": "MCB C16",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 178,
+      "date": "15/11/2025",
+      "sku": "MTC-SP-010",
+      "nama": "Cutting Sheet",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 179,
+      "date": "15/11/2025",
+      "sku": "MTC-SP-207",
+      "nama": "Seal Tape 1/2\"",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 180,
+      "date": "15/11/2025",
+      "sku": "MTC-SP-255",
+      "nama": "Dioda Bridge MIC KBPC 25A 1K V",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 181,
+      "date": "15/11/2025",
+      "sku": "MTC-SP-137",
+      "nama": "Switch ON/OFF",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 182,
+      "date": "17/11/2025",
+      "sku": "MTC-SP-174",
+      "nama": "Stopkontak isi 3",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 183,
+      "date": "17/11/2025",
+      "sku": "MTC-SP-074",
+      "nama": "Kepala Steker",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 184,
+      "date": "17/11/2025",
+      "sku": "MTC-SP-015",
+      "nama": "Fisher S6",
+      "qty_raw": "3",
+      "qty_float": 3.0
+    },
+    {
+      "line": 185,
+      "date": "17/11/2025",
+      "sku": "MTC-SP-226",
+      "nama": "Kabel Listrik Nym 2X1,5 MM Kawat",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 186,
+      "date": "18/11/2025",
+      "sku": "MTC-SP-001",
+      "nama": "Isolasi Tahan Panas",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 187,
+      "date": "18/11/2025",
+      "sku": "MTC-SP-229",
+      "nama": "Bolt L M6 x 65",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 188,
+      "date": "19/11/2025",
+      "sku": "MTC-SP-074",
+      "nama": "Kepala Steker",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 189,
+      "date": "19/11/2025",
+      "sku": "MTC-SP-242",
+      "nama": "Nut  M4",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 190,
+      "date": "19/11/2025",
+      "sku": "MTC-SP-235",
+      "nama": "Bolt L M4 X 50",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 191,
+      "date": "19/11/2025",
+      "sku": "MTC-SP-022",
+      "nama": "Ring M8",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 192,
+      "date": "19/11/2025",
+      "sku": "MTC-SP-017",
+      "nama": "Nut M10",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 193,
+      "date": "19/11/2025",
+      "sku": "MTC-SP-210",
+      "nama": "Pilok No.200",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 194,
+      "date": "19/11/2025",
+      "sku": "MTC-SP-226",
+      "nama": "Kabel Listrik Nym 2X1,5 MM Kawat",
+      "qty_raw": "45.7",
+      "qty_float": 45.7
+    },
+    {
+      "line": 195,
+      "date": "19/11/2025",
+      "sku": "MTC-SP-021",
+      "nama": "Nut M8",
+      "qty_raw": "9",
+      "qty_float": 9.0
+    },
+    {
+      "line": 196,
+      "date": "19/11/2025",
+      "sku": "MTC-SP-256",
+      "nama": "Ducting Kabel Niso Curve 20 x 70",
+      "qty_raw": "8",
+      "qty_float": 8.0
+    },
+    {
+      "line": 197,
+      "date": "19/11/2025",
+      "sku": "MTC-SP-257",
+      "nama": "Bearing 6202 ZZ",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 198,
+      "date": "19/11/2025",
+      "sku": "MTC-SP-195",
+      "nama": "As Caping",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 199,
+      "date": "19/11/2025",
+      "sku": "MTC-SP-081",
+      "nama": "Karet Capping",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 200,
+      "date": "19/11/2025",
+      "sku": "MTC-SP-051",
+      "nama": "Naple Speed Control 6 - 3/16\"",
+      "qty_raw": "9",
+      "qty_float": 9.0
+    },
+    {
+      "line": 201,
+      "date": "19/11/2025",
+      "sku": "MTC-SP-194",
+      "nama": "Sliding Bearing LM12LUU (Capping)",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 202,
+      "date": "19/11/2025",
+      "sku": "MTC-SP-271",
+      "nama": "Gear Capping",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 203,
+      "date": "20/11/2025",
+      "sku": "MTC-SP-256",
+      "nama": "Ducting Kabel Niso Curve 20 x 70",
+      "qty_raw": "3",
+      "qty_float": 3.0
+    },
+    {
+      "line": 204,
+      "date": "20/11/2025",
+      "sku": "MTC-SP-031",
+      "nama": "Ring M5",
+      "qty_raw": "10",
+      "qty_float": 10.0
+    },
+    {
+      "line": 205,
+      "date": "20/11/2025",
+      "sku": "MTC-SP-004",
+      "nama": "Cable Tie 3.6x300",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 206,
+      "date": "20/11/2025",
+      "sku": "MTC-SP-057",
+      "nama": "Fitting Y 8 - 12",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 207,
+      "date": "20/11/2025",
+      "sku": "MTC-SP-019",
+      "nama": "Bolt L M8",
+      "qty_raw": "7",
+      "qty_float": 7.0
+    },
+    {
+      "line": 208,
+      "date": "20/11/2025",
+      "sku": "MTC-SP-021",
+      "nama": "Nut M8",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 209,
+      "date": "20/11/2025",
+      "sku": "MTC-SP-022",
+      "nama": "Ring M8",
+      "qty_raw": "6",
+      "qty_float": 6.0
+    },
+    {
+      "line": 210,
+      "date": "20/11/2025",
+      "sku": "MTC-SP-258",
+      "nama": "Cylinder STNC CXSM 20X30 (Piston Cap 2)",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 211,
+      "date": "20/11/2025",
+      "sku": "MTC-SP-010",
+      "nama": "Cutting Sheet",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 212,
+      "date": "20/11/2025",
+      "sku": "MTC-SP-221",
+      "nama": "Selang PU Pneumatic 8MM X 5MM",
+      "qty_raw": "3",
+      "qty_float": 3.0
+    },
+    {
+      "line": 213,
+      "date": "20/11/2025",
+      "sku": "MTC-SP-038",
+      "nama": "Fitting 8 - 1/2\"",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 214,
+      "date": "20/11/2025",
+      "sku": "MTC-SP-061",
+      "nama": "Silencer Pneumatic 3/8\"",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 215,
+      "date": "20/11/2025",
+      "sku": "MTC-SP-045",
+      "nama": "Fitting L 6 - 3/8\"",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 216,
+      "date": "20/11/2025",
+      "sku": "MTC-SP-060",
+      "nama": "Fitting T 8 - 8",
+      "qty_raw": "3",
+      "qty_float": 3.0
+    },
+    {
+      "line": 217,
+      "date": "20/11/2025",
+      "sku": "MTC-SP-033",
+      "nama": "Fitting Lurus 6 - 8",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 218,
+      "date": "20/11/2025",
+      "sku": "MTC-SP-140",
+      "nama": "Relay LY2N DC",
+      "qty_raw": "5",
+      "qty_float": 5.0
+    },
+    {
+      "line": 219,
+      "date": "20/11/2025",
+      "sku": "MTC-SP-140",
+      "nama": "Relay LY2N DC",
+      "qty_raw": "8",
+      "qty_float": 8.0
+    },
+    {
+      "line": 220,
+      "date": "20/11/2025",
+      "sku": "MTC-SP-054",
+      "nama": "Fitting Y 6 - 6",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 221,
+      "date": "20/11/2025",
+      "sku": "MTC-SP-055",
+      "nama": "Fitting Y 6 - 8",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 222,
+      "date": "21/11/2025",
+      "sku": "MTC-SP-101",
+      "nama": "Pisau Porforasi",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 223,
+      "date": "21/11/2025",
+      "sku": "MTC-SP-015",
+      "nama": "Fisher S6",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 224,
+      "date": "21/11/2025",
+      "sku": "MTC-SP-010",
+      "nama": "Cutting Sheet",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 225,
+      "date": "23/11/2025",
+      "sku": "MTC-SP-214",
+      "nama": "Kabel NYMHY 3 X 2.5",
+      "qty_raw": "7",
+      "qty_float": 7.0
+    },
+    {
+      "line": 226,
+      "date": "23/11/2025",
+      "sku": "MTC-SP-011",
+      "nama": "Dinabolt M12",
+      "qty_raw": "6",
+      "qty_float": 6.0
+    },
+    {
+      "line": 227,
+      "date": "23/11/2025",
+      "sku": "MTC-SP-167",
+      "nama": "MCB C25",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 228,
+      "date": "23/11/2025",
+      "sku": "MTC-SP-256",
+      "nama": "Ducting Kabel Niso Curve 20 x 70",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 229,
+      "date": "24/11/2025",
+      "sku": "MTC-SP-096",
+      "nama": "Bearing 6204ZZ",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 230,
+      "date": "24/11/2025",
+      "sku": "MTC-SP-010",
+      "nama": "Cutting Sheet",
+      "qty_raw": "3",
+      "qty_float": 3.0
+    },
+    {
+      "line": 231,
+      "date": "24/11/2025",
+      "sku": "MTC-SP-009",
+      "nama": "Flap Disc",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 232,
+      "date": "24/11/2025",
+      "sku": "MTC-SP-008",
+      "nama": "Iron and Steel Grinding",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 233,
+      "date": "24/11/2025",
+      "sku": "MTC-SP-190",
+      "nama": "Mounting",
+      "qty_raw": "3",
+      "qty_float": 3.0
+    },
+    {
+      "line": 234,
+      "date": "24/11/2025",
+      "sku": "MTC-SP-174",
+      "nama": "Stopkontak isi 3",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 235,
+      "date": "24/11/2025",
+      "sku": "MTC-SP-074",
+      "nama": "Kepala Steker",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 236,
+      "date": "24/11/2025",
+      "sku": "MTC-SP-215",
+      "nama": "Kabel NYMHY 3 X 1.5",
+      "qty_raw": "5",
+      "qty_float": 5.0
+    },
+    {
+      "line": 237,
+      "date": "25/11/2025",
+      "sku": "MTC-SP-101",
+      "nama": "Pisau Porforasi",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 238,
+      "date": "25/11/2025",
+      "sku": "MTC-SP-133",
+      "nama": "DC Brushed Motor Speed governor",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 239,
+      "date": "25/11/2025",
+      "sku": "MTC-SP-015",
+      "nama": "Fisher S6",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 240,
+      "date": "25/11/2025",
+      "sku": "MTC-SP-175",
+      "nama": "Stopkontak isi 2",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 241,
+      "date": "25/11/2025",
+      "sku": "MTC-SP-074",
+      "nama": "Kepala Steker",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 242,
+      "date": "25/11/2025",
+      "sku": "MTC-SP-215",
+      "nama": "Kabel NYMHY 3 X 1.5",
+      "qty_raw": "3",
+      "qty_float": 3.0
+    },
+    {
+      "line": 243,
+      "date": "25/11/2025",
+      "sku": "MTC-SP-175",
+      "nama": "Stopkontak isi 2",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 244,
+      "date": "26/11/2025",
+      "sku": "MTC-SP-007",
+      "nama": "Cartridge Ink",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 245,
+      "date": "27/11/2025",
+      "sku": "MTC-SP-099",
+      "nama": "Micro Gear Pump (Motor Filling)",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 246,
+      "date": "27/11/2025",
+      "sku": "MTC-SP-091",
+      "nama": "Bearing LM25UU",
+      "qty_raw": "8",
+      "qty_float": 8.0
+    },
+    {
+      "line": 247,
+      "date": "27/11/2025",
+      "sku": "MTC-SP-030",
+      "nama": "Nut M5",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 248,
+      "date": "28/11/2025",
+      "sku": "MTC-SP-016",
+      "nama": "Bolt Hex M10",
+      "qty_raw": "8",
+      "qty_float": 8.0
+    },
+    {
+      "line": 249,
+      "date": "28/11/2025",
+      "sku": "MTC-SP-024",
+      "nama": "Bolt Hex M6",
+      "qty_raw": "8",
+      "qty_float": 8.0
+    },
+    {
+      "line": 250,
+      "date": "28/11/2025",
+      "sku": "MTC-SP-017",
+      "nama": "Nut M10",
+      "qty_raw": "8",
+      "qty_float": 8.0
+    },
+    {
+      "line": 251,
+      "date": "28/11/2025",
+      "sku": "MTC-SP-248",
+      "nama": "Bearing 6205 Rs SKF",
+      "qty_raw": "7",
+      "qty_float": 7.0
+    },
+    {
+      "line": 252,
+      "date": "28/11/2025",
+      "sku": "MTC-SP-091",
+      "nama": "Bearing LM25UU",
+      "qty_raw": "8",
+      "qty_float": 8.0
+    },
+    {
+      "line": 253,
+      "date": "28/11/2025",
+      "sku": "MTC-SP-260",
+      "nama": "Linear Bearing LM20UU",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 254,
+      "date": "28/11/2025",
+      "sku": "MTC-SP-101",
+      "nama": "Pisau Porforasi",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 255,
+      "date": "04/12/2025",
+      "sku": "MTC-SP-007",
+      "nama": "Cartridge Ink",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 256,
+      "date": "10/12/2025",
+      "sku": "MTC-SP-007",
+      "nama": "Cartridge Ink",
+      "qty_raw": "3",
+      "qty_float": 3.0
+    },
+    {
+      "line": 257,
+      "date": "10/12/2025",
+      "sku": "MTC-SP-054",
+      "nama": "Fitting Y 6 - 6",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 258,
+      "date": "10/12/2025",
+      "sku": "MTC-SP-261",
+      "nama": "Glass Valve",
+      "qty_raw": "5",
+      "qty_float": 5.0
+    },
+    {
+      "line": 259,
+      "date": "10/12/2025",
+      "sku": "MTC-SP-010",
+      "nama": "Cutting Sheet",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 260,
+      "date": "13/12/2025",
+      "sku": "MTC-SP-042",
+      "nama": "Fitting Drat Dalam 12 - 3/4\"",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 261,
+      "date": "13/12/2025",
+      "sku": "MTC-SP-041",
+      "nama": "Fitting Drat Dalam 12 - 1/2\"",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 262,
+      "date": "15/12/2025",
+      "sku": "MTC-SP-172",
+      "nama": "Stopkontak isi 5",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 263,
+      "date": "15/12/2025",
+      "sku": "MTC-SP-074",
+      "nama": "Kepala Steker",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 264,
+      "date": "15/12/2025",
+      "sku": "MTC-SP-134",
+      "nama": "Fork Sensor Sick",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 265,
+      "date": "15/12/2025",
+      "sku": "MTC-SP-202",
+      "nama": "Kabel Sensor Sick",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 266,
+      "date": "16/12/2025",
+      "sku": "MTC-SP-214",
+      "nama": "Kabel NYMHY 3 X 2.5",
+      "qty_raw": "5",
+      "qty_float": 5.0
+    },
+    {
+      "line": 267,
+      "date": "16/12/2025",
+      "sku": "MTC-SP-059",
+      "nama": "Fitting T 6 - 8",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 268,
+      "date": "16/12/2025",
+      "sku": "MTC-SP-049",
+      "nama": "Naple Speed Control 8 - 3/8\"",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 269,
+      "date": "16/12/2025",
+      "sku": "MTC-SP-033",
+      "nama": "Fitting Lurus 6 - 8",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 270,
+      "date": "16/12/2025",
+      "sku": "MTC-SP-077",
+      "nama": "Solenoid 4V21008 (AC 220V)",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 271,
+      "date": "17/12/2025",
+      "sku": "MTC-SP-015",
+      "nama": "Fisher S6",
+      "qty_raw": "6",
+      "qty_float": 6.0
+    },
+    {
+      "line": 272,
+      "date": "17/12/2025",
+      "sku": "MTC-SP-074",
+      "nama": "Kepala Steker",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 273,
+      "date": "17/12/2025",
+      "sku": "MTC-SP-174",
+      "nama": "Stopkontak isi 3",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 274,
+      "date": "17/12/2025",
+      "sku": "MTC-SP-214",
+      "nama": "Kabel NYMHY 3 X 2.5",
+      "qty_raw": "5",
+      "qty_float": 5.0
+    },
+    {
+      "line": 275,
+      "date": "17/12/2025",
+      "sku": "MTC-SP-013",
+      "nama": "Fisher Kupu - Kupu",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 276,
+      "date": "17/12/2025",
+      "sku": "MTC-SP-262",
+      "nama": "Sekrup 6 X 3\"",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 277,
+      "date": "17/12/2025",
+      "sku": "MTC-SP-259",
+      "nama": "Bearing 6204 2RS ASB",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 278,
+      "date": "18/12/2025",
+      "sku": "MTC-SP-265",
+      "nama": "Bearing HK 1816",
+      "qty_raw": "3",
+      "qty_float": 3.0
+    },
+    {
+      "line": 279,
+      "date": "19/12/2025",
+      "sku": "MTC-SP-101",
+      "nama": "Pisau Porforasi",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 280,
+      "date": "20/12/2025",
+      "sku": "MTC-SP-010",
+      "nama": "Cutting Sheet",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 281,
+      "date": "20/12/2025",
+      "sku": "MTC-SP-008",
+      "nama": "Iron and Steel Grinding",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 282,
+      "date": "20/12/2025",
+      "sku": "MTC-SP-266",
+      "nama": "Bearing NK 24/16",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 283,
+      "date": "22/12/2025",
+      "sku": "MTC-SP-030",
+      "nama": "Nut M5",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 284,
+      "date": "22/12/2025",
+      "sku": "MTC-SP-031",
+      "nama": "Ring M5",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 285,
+      "date": "22/12/2025",
+      "sku": "MTC-SP-024",
+      "nama": "Bolt Hex M6",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 286,
+      "date": "22/12/2025",
+      "sku": "MTC-SP-026",
+      "nama": "Nut M6",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 287,
+      "date": "22/12/2025",
+      "sku": "MTC-SP-027",
+      "nama": "Ring M6",
+      "qty_raw": "8",
+      "qty_float": 8.0
+    },
+    {
+      "line": 288,
+      "date": "22/12/2025",
+      "sku": "MTC-SP-010",
+      "nama": "Cutting Sheet",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 289,
+      "date": "22/12/2025",
+      "sku": "MTC-SP-008",
+      "nama": "Iron and Steel Grinding",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 290,
+      "date": "22/12/2025",
+      "sku": "MTC-SP-101",
+      "nama": "Pisau Porforasi",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 291,
+      "date": "22/12/2025",
+      "sku": "MTC-SP-020",
+      "nama": "Bolt Hex M8",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 292,
+      "date": "22/12/2025",
+      "sku": "MTC-SP-009",
+      "nama": "Flap Disc",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 293,
+      "date": "23/12/2025",
+      "sku": "MTC-SP-007",
+      "nama": "Cartridge Ink",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 294,
+      "date": "24/12/2025",
+      "sku": "MTC-SP-270",
+      "nama": "Plug Socket 3P X 16A",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 295,
+      "date": "24/12/2025",
+      "sku": "MTC-SP-269",
+      "nama": "Selang silicone tube 6mm",
+      "qty_raw": "0.025",
+      "qty_float": 0.025
+    },
+    {
+      "line": 296,
+      "date": "26/12/2025",
+      "sku": "MTC-SP-027",
+      "nama": "Ring M6",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 297,
+      "date": "26/12/2025",
+      "sku": "MTC-SP-080",
+      "nama": "Karet Holding",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 298,
+      "date": "26/12/2025",
+      "sku": "MTC-SP-099",
+      "nama": "Micro Gear Pump (Motor Filling)",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 299,
+      "date": "26/12/2025",
+      "sku": "MTC-SP-140",
+      "nama": "Relay LY2N DC",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 300,
+      "date": "30/12/2025",
+      "sku": "MTC-SP-020",
+      "nama": "Bolt Hex M8",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 301,
+      "date": "30/12/2025",
+      "sku": "MTC-SP-074",
+      "nama": "Kepala Steker",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 302,
+      "date": "30/12/2025",
+      "sku": "MTC-SP-025",
+      "nama": "Bolt L M6",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 303,
+      "date": "30/12/2025",
+      "sku": "MTC-SP-194",
+      "nama": "Sliding Bearing LM12LUU (Capping)",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 304,
+      "date": "30/12/2025",
+      "sku": "MTC-SP-261",
+      "nama": "Glass Valve",
+      "qty_raw": "5",
+      "qty_float": 5.0
+    },
+    {
+      "line": 305,
+      "date": "30/12/2025",
+      "sku": "MTC-SP-269",
+      "nama": "Selang silicone tube 6mm",
+      "qty_raw": "5",
+      "qty_float": 5.0
+    },
+    {
+      "line": 306,
+      "date": "30/12/2025",
+      "sku": "MTC-SP-273",
+      "nama": "AS SS 12MM",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 307,
+      "date": "30/12/2025",
+      "sku": "MTC-SP-004",
+      "nama": "Cable Tie 3.6x300",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 308,
+      "date": "30/12/2025",
+      "sku": "MTC-SP-274",
+      "nama": "Sponge belt KP-35 (datar) (Sticker)",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 309,
+      "date": "01/01/2026",
+      "sku": "MTC-SP-007",
+      "nama": "Cartridge Ink",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 310,
+      "date": "02/01/2026",
+      "sku": "MTC-SP-010",
+      "nama": "Cutting Sheet",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 311,
+      "date": "05/01/2026",
+      "sku": "MTC-SP-099",
+      "nama": "Micro Gear Pump (Motor Filling)",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 312,
+      "date": "08/01/2026",
+      "sku": "MTC-SP-101",
+      "nama": "Pisau Porforasi",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 313,
+      "date": "08/01/2026",
+      "sku": "MTC-SP-025",
+      "nama": "Bolt L M6",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 314,
+      "date": "08/01/2026",
+      "sku": "MTC-SP-140",
+      "nama": "Relay LY2N DC",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 315,
+      "date": "08/01/2026",
+      "sku": "MTC-SP-139",
+      "nama": "Relay Socket PTF - 08A",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 316,
+      "date": "08/01/2026",
+      "sku": "MTC-SP-129",
+      "nama": "Speed Controller",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 317,
+      "date": "08/01/2026",
+      "sku": "MTC-SP-109",
+      "nama": "Push Button",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 318,
+      "date": "11/01/2026",
+      "sku": "MTC-SP-275",
+      "nama": "PSU 24V / 6,25A",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 319,
+      "date": "11/01/2026",
+      "sku": "MTC-SP-029",
+      "nama": "Bolt L M5",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 320,
+      "date": "11/01/2026",
+      "sku": "MTC-SP-030",
+      "nama": "Nut M5",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 321,
+      "date": "11/01/2026",
+      "sku": "MTC-SP-027",
+      "nama": "Ring M6",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 322,
+      "date": "11/01/2026",
+      "sku": "MTC-SP-175",
+      "nama": "Stopkontak isi 2",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 323,
+      "date": "12/01/2026",
+      "sku": "MTC-SP-029",
+      "nama": "Bolt L M5",
+      "qty_raw": "3",
+      "qty_float": 3.0
+    },
+    {
+      "line": 324,
+      "date": "13/01/2026",
+      "sku": "MTC-SP-275",
+      "nama": "PSU 24V / 6,25A",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 325,
+      "date": "14/01/2026",
+      "sku": "MTC-SP-101",
+      "nama": "Pisau Porforasi",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 326,
+      "date": "14/01/2026",
+      "sku": "MTC-SP-007",
+      "nama": "Cartridge Ink",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 327,
+      "date": "15/01/2026",
+      "sku": "MTC-SP-013",
+      "nama": "Fisher Kupu - Kupu",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 328,
+      "date": "17/01/2026",
+      "sku": "MTC-SP-101",
+      "nama": "Pisau Porforasi",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 329,
+      "date": "17/01/2026",
+      "sku": "MTC-SP-010",
+      "nama": "Cutting Sheet",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 330,
+      "date": "17/01/2026",
+      "sku": "MTC-SP-008",
+      "nama": "Iron and Steel Grinding",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 331,
+      "date": "17/01/2026",
+      "sku": "MTC-SP-013",
+      "nama": "Fisher Kupu - Kupu",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 332,
+      "date": "17/01/2026",
+      "sku": "MTC-SP-262",
+      "nama": "Sekrup 6 X 3\"",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 333,
+      "date": "19/01/2026",
+      "sku": "MTC-SP-062",
+      "nama": "Biaxial Cylinder TN 20 X 40S",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 334,
+      "date": "19/01/2026",
+      "sku": "MTC-SP-049",
+      "nama": "Naple Speed Control 8 - 3/8\"",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 335,
+      "date": "19/01/2026",
+      "sku": "MTC-SP-033",
+      "nama": "Fitting Lurus 6 - 8",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 336,
+      "date": "19/01/2026",
+      "sku": "MTC-SP-036",
+      "nama": "Fitting Lurus 12 - 12",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 337,
+      "date": "19/01/2026",
+      "sku": "MTC-SP-007",
+      "nama": "Cartridge Ink",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 338,
+      "date": "19/01/2026",
+      "sku": "MTC-SP-012",
+      "nama": "Dinabolt M8",
+      "qty_raw": "16",
+      "qty_float": 16.0
+    },
+    {
+      "line": 339,
+      "date": "19/01/2026",
+      "sku": "MTC-SP-015",
+      "nama": "Fisher S6",
+      "qty_raw": "5",
+      "qty_float": 5.0
+    },
+    {
+      "line": 340,
+      "date": "20/01/2026",
+      "sku": "MTC-SP-007",
+      "nama": "Cartridge Ink",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 341,
+      "date": "20/01/2026",
+      "sku": "MTC-SP-099",
+      "nama": "Micro Gear Pump (Motor Filling)",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 342,
+      "date": "20/01/2026",
+      "sku": "MTC-SP-133",
+      "nama": "DC Brushed Motor Speed governor",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 343,
+      "date": "20/01/2026",
+      "sku": "MTC-SP-140",
+      "nama": "Relay LY2N DC",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 344,
+      "date": "20/01/2026",
+      "sku": "MTC-SP-139",
+      "nama": "Relay Socket PTF - 08A",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 345,
+      "date": "20/01/2026",
+      "sku": "MTC-SP-132",
+      "nama": "Timer",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 346,
+      "date": "20/01/2026",
+      "sku": "MTC-SP-013",
+      "nama": "Fisher Kupu - Kupu",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 347,
+      "date": "22/01/2026",
+      "sku": "MTC-SP-007",
+      "nama": "Cartridge Ink",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 348,
+      "date": "22/01/2026",
+      "sku": "MTC-SP-029",
+      "nama": "Bolt L M5",
+      "qty_raw": "5",
+      "qty_float": 5.0
+    },
+    {
+      "line": 349,
+      "date": "23/01/2026",
+      "sku": "MTC-SP-007",
+      "nama": "Cartridge Ink",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 350,
+      "date": "23/01/2026",
+      "sku": "MTC-SP-175",
+      "nama": "Stopkontak isi 2",
+      "qty_raw": "8",
+      "qty_float": 8.0
+    },
+    {
+      "line": 351,
+      "date": "23/01/2026",
+      "sku": "MTC-SP-226",
+      "nama": "Kabel Listrik Nym 2X1,5 MM Kawat",
+      "qty_raw": "50",
+      "qty_float": 50.0
+    },
+    {
+      "line": 352,
+      "date": "23/01/2026",
+      "sku": "MTC-SP-074",
+      "nama": "Kepala Steker",
+      "qty_raw": "5",
+      "qty_float": 5.0
+    },
+    {
+      "line": 353,
+      "date": "25/01/2026",
+      "sku": "MTC-SP-025",
+      "nama": "Bolt L M6",
+      "qty_raw": "5",
+      "qty_float": 5.0
+    },
+    {
+      "line": 354,
+      "date": "25/01/2026",
+      "sku": "MTC-SP-026",
+      "nama": "Nut M6",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 355,
+      "date": "25/01/2026",
+      "sku": "MTC-SP-017",
+      "nama": "Nut M10",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 356,
+      "date": "25/01/2026",
+      "sku": "MTC-SP-021",
+      "nama": "Nut M8",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 357,
+      "date": "25/01/2026",
+      "sku": "MTC-SP-026",
+      "nama": "Nut M6",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 358,
+      "date": "25/01/2026",
+      "sku": "MTC-SP-025",
+      "nama": "Bolt L M6",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 359,
+      "date": "25/01/2026",
+      "sku": "MTC-SP-054",
+      "nama": "Fitting Y 6 - 6",
+      "qty_raw": "6",
+      "qty_float": 6.0
+    },
+    {
+      "line": 360,
+      "date": "25/01/2026",
+      "sku": "MTC-SP-055",
+      "nama": "Fitting Y 6 - 8",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 361,
+      "date": "25/01/2026",
+      "sku": "MTC-SP-033",
+      "nama": "Fitting Lurus 6 - 8",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 362,
+      "date": "25/01/2026",
+      "sku": "MTC-SP-074",
+      "nama": "Kepala Steker",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 363,
+      "date": "25/01/2026",
+      "sku": "MTC-SP-124",
+      "nama": "Sensor BF5R - D1 - N",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 364,
+      "date": "28/01/2026",
+      "sku": "MTC-SP-010",
+      "nama": "Cutting Sheet",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 365,
+      "date": "28/01/2026",
+      "sku": "MTC-SP-259",
+      "nama": "Bearing 6204 2RS ASB",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 366,
+      "date": "28/01/2026",
+      "sku": "MTC-SP-238",
+      "nama": "Bolt L M8 X 60",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 367,
+      "date": "29/01/2026",
+      "sku": "MTC-SP-194",
+      "nama": "Sliding Bearing LM12LUU (Capping)",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 368,
+      "date": "30/01/2026",
+      "sku": "MTC-SP-026",
+      "nama": "Nut M6",
+      "qty_raw": "3",
+      "qty_float": 3.0
+    },
+    {
+      "line": 369,
+      "date": "30/01/2026",
+      "sku": "MTC-SP-032",
+      "nama": "Fitting Lurus 6 - 6",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 370,
+      "date": "30/01/2026",
+      "sku": "MTC-SP-074",
+      "nama": "Kepala Steker",
+      "qty_raw": "3",
+      "qty_float": 3.0
+    },
+    {
+      "line": 371,
+      "date": "30/01/2026",
+      "sku": "MTC-SP-172",
+      "nama": "Stopkontak isi 5",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 372,
+      "date": "30/01/2026",
+      "sku": "MTC-SP-174",
+      "nama": "Stopkontak isi 3",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 373,
+      "date": "30/01/2026",
+      "sku": "MTC-SP-214",
+      "nama": "Kabel NYMHY 3 X 2.5",
+      "qty_raw": "11",
+      "qty_float": 11.0
+    },
+    {
+      "line": 374,
+      "date": "30/01/2026",
+      "sku": "MTC-SP-046",
+      "nama": "Fitting L 8 - 3/8\"",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 375,
+      "date": "01/02/2026",
+      "sku": "MTC-SP-010",
+      "nama": "Cutting Sheet",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 376,
+      "date": "02/02/2026",
+      "sku": "MTC-SP-264",
+      "nama": "Karet L-Sealer",
+      "qty_raw": "1.3",
+      "qty_float": 1.3
+    },
+    {
+      "line": 377,
+      "date": "03/02/2026",
+      "sku": "MTC-SP-120",
+      "nama": "Selector Switch",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 378,
+      "date": "03/02/2026",
+      "sku": "MTC-SP-091",
+      "nama": "Bearing LM25UU",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 379,
+      "date": "03/02/2026",
+      "sku": "MTC-SP-139",
+      "nama": "Relay Socket PTF - 08A",
+      "qty_raw": "3",
+      "qty_float": 3.0
+    },
+    {
+      "line": 380,
+      "date": "03/02/2026",
+      "sku": "MTC-SP-235",
+      "nama": "Bolt L M4 X 50",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 381,
+      "date": "03/02/2026",
+      "sku": "MTC-SP-009",
+      "nama": "Flap Disc",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 382,
+      "date": "04/02/2026",
+      "sku": "MTC-SP-019",
+      "nama": "Bolt L M8",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 383,
+      "date": "04/02/2026",
+      "sku": "MTC-SP-021",
+      "nama": "Nut M8",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 384,
+      "date": "05/02/2026",
+      "sku": "MTC-SP-007",
+      "nama": "Cartridge Ink",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 385,
+      "date": "06/02/2026",
+      "sku": "MTC-SP-009",
+      "nama": "Flap Disc",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 386,
+      "date": "06/02/2026",
+      "sku": "MTC-SP-010",
+      "nama": "Cutting Sheet",
+      "qty_raw": "3",
+      "qty_float": 3.0
+    },
+    {
+      "line": 387,
+      "date": "06/02/2026",
+      "sku": "MTC-SP-008",
+      "nama": "Iron and Steel Grinding",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 388,
+      "date": "06/02/2026",
+      "sku": "MTC-SP-012",
+      "nama": "Dinabolt M8",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 389,
+      "date": "08/02/2026",
+      "sku": "MTC-SP-167",
+      "nama": "MCB C25",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 390,
+      "date": "08/02/2026",
+      "sku": "MTC-SP-248",
+      "nama": "Bearing 6205 Rs SKF",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 391,
+      "date": "08/02/2026",
+      "sku": "MTC-SP-029",
+      "nama": "Bolt L M5",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 392,
+      "date": "08/02/2026",
+      "sku": "MTC-SP-009",
+      "nama": "Flap Disc",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 393,
+      "date": "08/02/2026",
+      "sku": "MTC-SP-008",
+      "nama": "Iron and Steel Grinding",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 394,
+      "date": "09/02/2026",
+      "sku": "MTC-SP-010",
+      "nama": "Cutting Sheet",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 395,
+      "date": "09/02/2026",
+      "sku": "MTC-SP-009",
+      "nama": "Flap Disc",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 396,
+      "date": "10/02/2026",
+      "sku": "MTC-SP-007",
+      "nama": "Cartridge Ink",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 397,
+      "date": "11/02/2026",
+      "sku": "MTC-SP-221",
+      "nama": "Selang PU Pneumatic 8MM X 5MM",
+      "qty_raw": "20",
+      "qty_float": 20.0
+    },
+    {
+      "line": 398,
+      "date": "11/02/2026",
+      "sku": "MTC-SP-056",
+      "nama": "Fitting Y 8 - 8",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 399,
+      "date": "11/02/2026",
+      "sku": "MTC-SP-009",
+      "nama": "Flap Disc",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 400,
+      "date": "12/02/2026",
+      "sku": "MTC-SP-001",
+      "nama": "Isolasi Tahan Panas",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 401,
+      "date": "12/02/2026",
+      "sku": "MTC-SP-259",
+      "nama": "Bearing 6204 2RS ASB",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 402,
+      "date": "12/02/2026",
+      "sku": "MTC-SP-007",
+      "nama": "Cartridge Ink",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 403,
+      "date": "12/02/2026",
+      "sku": "MTC-SP-100",
+      "nama": "Carbon Brush Shrink",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 404,
+      "date": "13/02/2026",
+      "sku": "MTC-SP-009",
+      "nama": "Flap Disc",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 405,
+      "date": "13/02/2026",
+      "sku": "MTC-SP-010",
+      "nama": "Cutting Sheet",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 406,
+      "date": "13/02/2026",
+      "sku": "MTC-SP-215",
+      "nama": "Kabel NYMHY 3 X 1.5",
+      "qty_raw": "2.3",
+      "qty_float": 2.3
+    },
+    {
+      "line": 407,
+      "date": "13/02/2026",
+      "sku": "MTC-SP-074",
+      "nama": "Kepala Steker",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 408,
+      "date": "13/02/2026",
+      "sku": "MTC-SP-172",
+      "nama": "Stopkontak isi 5",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 409,
+      "date": "13/02/2026",
+      "sku": "MTC-SP-058",
+      "nama": "Fitting Y 12 - 12",
+      "qty_raw": "3",
+      "qty_float": 3.0
+    },
+    {
+      "line": 410,
+      "date": "13/02/2026",
+      "sku": "MTC-SP-041",
+      "nama": "Fitting Drat Dalam 12 - 1/2\"",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 411,
+      "date": "13/02/2026",
+      "sku": "MTC-SP-276",
+      "nama": "Fitting L 12 - 3/4\"",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 412,
+      "date": "13/02/2026",
+      "sku": "MTC-SP-035",
+      "nama": "Fitting Lurus 8 - 12",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 413,
+      "date": "13/02/2026",
+      "sku": "MTC-SP-033",
+      "nama": "Fitting Lurus 6 - 8",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 414,
+      "date": "14/02/2026",
+      "sku": "MTC-SP-255",
+      "nama": "Dioda Bridge MIC KBPC 25A 1K V",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 415,
+      "date": "16/02/2026",
+      "sku": "MTC-SP-010",
+      "nama": "Cutting Sheet",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 416,
+      "date": "18/02/2026",
+      "sku": "MTC-SP-196",
+      "nama": "Roll Caping",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 417,
+      "date": "20/02/2026",
+      "sku": "MTC-SP-009",
+      "nama": "Flap Disc",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 418,
+      "date": "23/02/2026",
+      "sku": "MTC-SP-007",
+      "nama": "Cartridge Ink",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 419,
+      "date": "25/02/2026",
+      "sku": "MTC-SP-012",
+      "nama": "Dinabolt M8",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 420,
+      "date": "25/02/2026",
+      "sku": "MTC-SP-014",
+      "nama": "Fisher S8",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 421,
+      "date": "25/02/2026",
+      "sku": "MTC-SP-226",
+      "nama": "Kabel Listrik Nym 2X1,5 MM Kawat",
+      "qty_raw": "5",
+      "qty_float": 5.0
+    },
+    {
+      "line": 422,
+      "date": "25/02/2026",
+      "sku": "MTC-SP-074",
+      "nama": "Kepala Steker",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 423,
+      "date": "26/02/2026",
+      "sku": "MTC-SP-013",
+      "nama": "Fisher Kupu - Kupu",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 424,
+      "date": "26/02/2026",
+      "sku": "MTC-SP-074",
+      "nama": "Kepala Steker",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 425,
+      "date": "26/02/2026",
+      "sku": "MTC-SP-259",
+      "nama": "Bearing 6204 2RS ASB",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 426,
+      "date": "26/02/2026",
+      "sku": "MTC-SP-003",
+      "nama": "Cable Tie 4.8x400",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 427,
+      "date": "28/02/2026",
+      "sku": "MTC-SP-013",
+      "nama": "Fisher Kupu - Kupu",
+      "qty_raw": "16",
+      "qty_float": 16.0
+    },
+    {
+      "line": 428,
+      "date": "28/02/2026",
+      "sku": "MTC-SP-015",
+      "nama": "Fisher S6",
+      "qty_raw": "8",
+      "qty_float": 8.0
+    },
+    {
+      "line": 429,
+      "date": "02/03/2026",
+      "sku": "MTC-SP-277",
+      "nama": "Conveyor belt KP-40 (KP-75)",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 430,
+      "date": "02/03/2026",
+      "sku": "MTC-SP-003",
+      "nama": "Cable Tie 4.8x400",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 431,
+      "date": "03/03/2026",
+      "sku": "MTC-SP-175",
+      "nama": "Stopkontak isi 2",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 432,
+      "date": "03/03/2026",
+      "sku": "MTC-SP-256",
+      "nama": "Ducting Kabel Niso Curve 20 x 70",
+      "qty_raw": "6",
+      "qty_float": 6.0
+    },
+    {
+      "line": 433,
+      "date": "03/03/2026",
+      "sku": "MTC-SP-194",
+      "nama": "Sliding Bearing LM12LUU (Capping)",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 434,
+      "date": "03/03/2026",
+      "sku": "MTC-SP-237",
+      "nama": "Bolt Hex M6 X 60",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 435,
+      "date": "03/03/2026",
+      "sku": "MTC-SP-026",
+      "nama": "Nut M6",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 436,
+      "date": "04/03/2026",
+      "sku": "MTC-SP-026",
+      "nama": "Nut M6",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 437,
+      "date": "04/03/2026",
+      "sku": "MTC-SP-056",
+      "nama": "Fitting Y 8 - 8",
+      "qty_raw": "5",
+      "qty_float": 5.0
+    },
+    {
+      "line": 438,
+      "date": "04/03/2026",
+      "sku": "MTC-SP-034",
+      "nama": "Fitting Lurus 8 - 8",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 439,
+      "date": "04/03/2026",
+      "sku": "MTC-SP-256",
+      "nama": "Ducting Kabel Niso Curve 20 x 70",
+      "qty_raw": "3",
+      "qty_float": 3.0
+    },
+    {
+      "line": 440,
+      "date": "04/03/2026",
+      "sku": "MTC-SP-221",
+      "nama": "Selang PU Pneumatic 8MM X 5MM",
+      "qty_raw": "20",
+      "qty_float": 20.0
+    },
+    {
+      "line": 441,
+      "date": "04/03/2026",
+      "sku": "MTC-SP-248",
+      "nama": "Bearing 6205 Rs SKF",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 442,
+      "date": "05/03/2026",
+      "sku": "MTC-SP-278",
+      "nama": "Nozzle Liquid",
+      "qty_raw": "5",
+      "qty_float": 5.0
+    },
+    {
+      "line": 443,
+      "date": "05/03/2026",
+      "sku": "MTC-SP-100",
+      "nama": "Carbon Brush Shrink",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 444,
+      "date": "06/03/2026",
+      "sku": "MTC-SP-015",
+      "nama": "Fisher S6",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 445,
+      "date": "06/03/2026",
+      "sku": "MTC-SP-013",
+      "nama": "Fisher Kupu - Kupu",
+      "qty_raw": "16",
+      "qty_float": 16.0
+    },
+    {
+      "line": 446,
+      "date": "06/03/2026",
+      "sku": "MTC-SP-009",
+      "nama": "Flap Disc",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 447,
+      "date": "09/03/2026",
+      "sku": "MTC-SP-007",
+      "nama": "Cartridge Ink",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 448,
+      "date": "11/03/2026",
+      "sku": "MTC-SP-007",
+      "nama": "Cartridge Ink",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 449,
+      "date": "11/03/2026",
+      "sku": "MTC-SP-014",
+      "nama": "Fisher S8",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 450,
+      "date": "12/03/2026",
+      "sku": "MTC-SP-007",
+      "nama": "Cartridge Ink",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 451,
+      "date": "12/03/2026",
+      "sku": "MTC-SP-029",
+      "nama": "Bolt L M5",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 452,
+      "date": "13/03/2026",
+      "sku": "MTC-SP-101",
+      "nama": "Pisau Porforasi",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 453,
+      "date": "14/03/2026",
+      "sku": "MTC-SP-083",
+      "nama": "Karet Blister",
+      "qty_raw": "0.1",
+      "qty_float": 0.1
+    },
+    {
+      "line": 454,
+      "date": "14/03/2026",
+      "sku": "MTC-SP-279",
+      "nama": "Cartridge Heater Mesin Blister (M10 x 100) 400W",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 455,
+      "date": "14/03/2026",
+      "sku": "MTC-SP-174",
+      "nama": "Stopkontak isi 3",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 456,
+      "date": "14/03/2026",
+      "sku": "MTC-SP-074",
+      "nama": "Kepala Steker",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 457,
+      "date": "16/03/2026",
+      "sku": "MTC-SP-267",
+      "nama": "Cam Bearing Blister",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 458,
+      "date": "17/03/2026",
+      "sku": "MTC-SP-267",
+      "nama": "Cam Bearing Blister",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 459,
+      "date": "17/03/2026",
+      "sku": "MTC-SP-255",
+      "nama": "Dioda Bridge MIC KBPC 25A 1K V",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 460,
+      "date": "17/03/2026",
+      "sku": "MTC-SP-049",
+      "nama": "Naple Speed Control 8 - 3/8\"",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 461,
+      "date": "18/03/2026",
+      "sku": "MTC-SP-260",
+      "nama": "Linear Bearing LM20UU",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 462,
+      "date": "18/03/2026",
+      "sku": "MTC-SP-267",
+      "nama": "Cam Bearing Blister",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 463,
+      "date": "18/03/2026",
+      "sku": "MTC-SP-216",
+      "nama": "CableTie 4.6 X 400",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 464,
+      "date": "28/03/2026",
+      "sku": "MTC-SP-079",
+      "nama": "Solenoid 4V21008 (DC 24V)",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 465,
+      "date": "28/03/2026",
+      "sku": "MTC-SP-140",
+      "nama": "Relay LY2N DC",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 466,
+      "date": "28/03/2026",
+      "sku": "MTC-SP-010",
+      "nama": "Cutting Sheet",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 467,
+      "date": "28/03/2026",
+      "sku": "MTC-SP-009",
+      "nama": "Flap Disc",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 468,
+      "date": "25/03/2026",
+      "sku": "MTC-SP-167",
+      "nama": "MCB C25",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 469,
+      "date": "31/03/2026",
+      "sku": "MTC-SP-010",
+      "nama": "Cutting Sheet",
+      "qty_raw": "3",
+      "qty_float": 3.0
+    },
+    {
+      "line": 470,
+      "date": "31/03/2026",
+      "sku": "MTC-SP-008",
+      "nama": "Iron and Steel Grinding",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 471,
+      "date": "01/04/2026",
+      "sku": "MTC-SP-012",
+      "nama": "Dinabolt M8",
+      "qty_raw": "17",
+      "qty_float": 17.0
+    },
+    {
+      "line": 472,
+      "date": "27/03/2026",
+      "sku": "MTC-SP-150",
+      "nama": "PSU 12V / 5A",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 473,
+      "date": "25/04/2026",
+      "sku": "MTC-SP-025",
+      "nama": "Bolt L M6",
+      "qty_raw": "5",
+      "qty_float": 5.0
+    },
+    {
+      "line": 474,
+      "date": "25/04/2026",
+      "sku": "MTC-SP-026",
+      "nama": "Nut M6",
+      "qty_raw": "5",
+      "qty_float": 5.0
+    },
+    {
+      "line": 475,
+      "date": "28/04/2026",
+      "sku": "MTC-SP-019",
+      "nama": "Bolt L M8",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 476,
+      "date": "28/04/2026",
+      "sku": "MTC-SP-021",
+      "nama": "Nut M8",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 477,
+      "date": "28/04/2026",
+      "sku": "MTC-SP-029",
+      "nama": "Bolt L M5",
+      "qty_raw": "8",
+      "qty_float": 8.0
+    },
+    {
+      "line": 478,
+      "date": "07/04/2026",
+      "sku": "MTC-SP-007",
+      "nama": "Cartridge Ink",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 479,
+      "date": "01/04/2026",
+      "sku": "MTC-SP-216",
+      "nama": "CableTie 4.6 X 400",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 480,
+      "date": "05/04/2026",
+      "sku": "MTC-SP-012",
+      "nama": "Dinabolt M8",
+      "qty_raw": "8",
+      "qty_float": 8.0
+    },
+    {
+      "line": 481,
+      "date": "04/04/2026",
+      "sku": "MTC-SP-194",
+      "nama": "Sliding Bearing LM12LUU (Capping)",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 482,
+      "date": "06/04/2026",
+      "sku": "MTC-SP-013",
+      "nama": "Fisher Kupu - Kupu",
+      "qty_raw": "63",
+      "qty_float": 63.0
+    },
+    {
+      "line": 483,
+      "date": "08/04/2026",
+      "sku": "MTC-SP-051",
+      "nama": "Naple Speed Control 6 - 3/16\"",
+      "qty_raw": "2",
+      "qty_float": 2.0
+    },
+    {
+      "line": 484,
+      "date": "08/04/2026",
+      "sku": "MTC-SP-062",
+      "nama": "Biaxial Cylinder TN 20 X 40S",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 485,
+      "date": "08/04/2026",
+      "sku": "MTC-SP-203",
+      "nama": "Fiber Optic Omron",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 486,
+      "date": "26/03/2026",
+      "sku": "MTC-SP-007",
+      "nama": "Cartridge Ink",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 487,
+      "date": "10/04/2026",
+      "sku": "MTC-SP-007",
+      "nama": "Cartridge Ink",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 488,
+      "date": "12/04/2026",
+      "sku": "MTC-SP-012",
+      "nama": "Dinabolt M8",
+      "qty_raw": "4",
+      "qty_float": 4.0
+    },
+    {
+      "line": 489,
+      "date": "24/04/2026",
+      "sku": "MTC-SP-077",
+      "nama": "Solenoid 4V21008 (AC 220V)",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 490,
+      "date": "24/04/2026",
+      "sku": "MTC-SP-061",
+      "nama": "Silencer Pneumatic 3/8\"",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    },
+    {
+      "line": 491,
+      "date": "21/04/2026",
+      "sku": "MTC-SP-101",
+      "nama": "Pisau Porforasi",
+      "qty_raw": "1",
+      "qty_float": 1.0
+    }
+  ]
+}

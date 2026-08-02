@@ -23,7 +23,11 @@ export async function GET(req: NextRequest) {
         select: { nomorPr: true, nomorPo: true, linkReferences: true, statusPr: true, statusPo: true }
       },
       movements: {
-        where: { tipe: { in: ['IN', 'OUT'] } },
+        where: {
+          tipe: { in: ['IN', 'OUT'] },
+          // Exclude historical import records — tidak mempengaruhi stok real
+          purchaseType: { not: 'histori-sheets' },
+        },
         select: { tipe: true, qty: true },
       },
     },
