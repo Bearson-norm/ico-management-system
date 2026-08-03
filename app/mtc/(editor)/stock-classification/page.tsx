@@ -124,7 +124,7 @@ export default function StockClassificationPage() {
                 />
               </div>
               <div className="form-group" style={{ marginBottom: 0, minWidth: 200 }}>
-                <label className="form-label" style={{ fontSize: 11 }}>📊 Ambang "Sering" (min. transaksi OUT)</label>
+                <label className="form-label" style={{ fontSize: 11 }}>📊 Ambang &quot;Sering&quot; (min. transaksi OUT)</label>
                 <input
                   type="number"
                   className="form-input"
