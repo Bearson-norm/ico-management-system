@@ -18,7 +18,10 @@ export default async function ValuationBreakdownPage() {
       uom: true,
       lokasi: true,
       movements: {
-        where: { tipe: { in: ['IN', 'OUT'] } },
+        where: {
+          tipe: { in: ['IN', 'OUT'] },
+          OR: [{ purchaseType: null }, { purchaseType: { not: 'histori-sheets' } }],
+        },
         select: { tipe: true, qty: true },
       },
     },
