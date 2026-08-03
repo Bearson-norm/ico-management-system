@@ -9,6 +9,8 @@
     "start": "next start",
     "start:prod": "next start --hostname 127.0.0.1 --port 1325",
     "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "audit:ci": "npm audit --audit-level=high",
     "prisma:generate": "npx prisma generate --schema=prisma/mtc/schema.prisma && npx prisma generate --schema=prisma/ga/schema.prisma",
     "migrate:mtc": "npx prisma migrate deploy --schema=prisma/mtc/schema.prisma",
     "migrate:ga": "npx prisma migrate deploy --schema=prisma/ga/schema.prisma",
