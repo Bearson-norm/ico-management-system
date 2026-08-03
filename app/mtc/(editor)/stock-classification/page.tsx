@@ -450,9 +450,13 @@ export default function StockClassificationPage() {
                       </td>
 
                       <td data-label="Klasifikasi Dampak">
-                        {sp.isVital ? (
+                        {sp.dampakDowntime === 'STOP_TOTAL' ? (
                           <span className="badge badge-red" style={{ fontSize: 10, fontWeight: 700 }}>
                             ⚡ STOP_TOTAL
+                          </span>
+                        ) : sp.dampakDowntime === 'CONSUMABLE' ? (
+                          <span className="badge" style={{ fontSize: 10, background: 'rgba(168,85,247,0.12)', color: '#c084fc', border: '1px solid rgba(168,85,247,0.3)', fontWeight: 600 }}>
+                            🛠️ CONSUMABLE
                           </span>
                         ) : (
                           <span className="badge" style={{ fontSize: 10, background: 'var(--sf2)', color: 'var(--tx3)', border: '1px solid var(--br)' }}>

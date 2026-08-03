@@ -83,11 +83,26 @@ export async function GET(req: NextRequest) {
     const leadTime = sp.avgLeadTime > 0 ? Math.round(sp.avgLeadTime * 10) / 10 : 7;
 
     // 5. Machine Vitality / Downtime Impact
+    const isMesinProduksi = sp.mesins.length > 0;
     const vitalMesins = sp.mesins.filter((m) => m.vital);
-    const isVital = vitalMesins.length > 0;
-    const dampakDowntime = isVital ? 'STOP_TOTAL' : 'KURANGI_PRODUKTIVITAS';
+    const isVital = isMesinProduksi && vitalMesins.length > 0;
+
+    let dampakDowntime: 'STOP_TOTAL' | 'KURANGI_PRODUKTIVITAS' | 'CONSUMABLE';
+    let tipePeruntukan: string;
+
+    if (!isMesinProduksi) {
+      dampakDowntime = 'CONSUMABLE';
+      tipePeruntukan = 'Consumable (Bukan Mesin)';
+    } else if (isVital) {
+      dampakDowntime = 'STOP_TOTAL';
+      tipePeruntukan = 'Mesin Vital (Produksi)';
+    } else {
+      dampakDowntime = 'KURANGI_PRODUKTIVITAS';
+      tipePeruntukan = 'Mesin Non-Vital';
+    }
 
     // 6. Pathway Logic: Jalur A (Normal) vs Jalur B (Kritis-Jaranger Keluar)
+    // Jalur B khusus untuk Mesin Vital (STOP_TOTAL) dengan pemakaian per bulan rendah
     const isJalurB = isVital && avgMonthlyUsage < slowThreshold;
 
     let jalur: 'Jalur A (Normal)' | 'Jalur B (Kritis-Slow)';
@@ -115,14 +130,6 @@ export async function GET(req: NextRequest) {
 
     // 7. Reorder Alert Trigger: Stock <= ROP
     const isWajibPr = currentStock <= rop;
-
-    // 8. Tipe Peruntukan: Mesin Produksi vs Bukan Mesin (Umum)
-    const isMesinProduksi = sp.mesins.length > 0;
-    const tipePeruntukan = isMesinProduksi
-      ? isVital
-        ? 'Mesin Vital (Produksi)'
-        : 'Mesin Non-Vital'
-      : 'Bukan Mesin (Umum)';
 
     return {
       id: sp.id,
