@@ -81,6 +81,35 @@ export async function GET(req: NextRequest) {
     const avgMonthly6m  = Math.round((totalOut6m / 6) * 100) / 100;
     const avgMonthly3m  = Math.round((totalOut3m / 3) * 100) / 100;
 
+    // 2b. Build 12-month month-by-month usage breakdown
+    const monthNamesIndo = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agus', 'Sep', 'Okt', 'Nov', 'Des'];
+    const monthlyMap = new Map<string, { monthKey: string; monthLabel: string; year: number; qty: number }>();
+
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const year = d.getFullYear();
+      const monthIdx = d.getMonth();
+      const monthKey = `${year}-${String(monthIdx + 1).padStart(2, '0')}`;
+      const monthLabel = `${monthNamesIndo[monthIdx]} '${String(year).slice(-2)}`;
+      monthlyMap.set(monthKey, { monthKey, monthLabel, year, qty: 0 });
+    }
+
+    outMovements.forEach((m) => {
+      const dt = new Date(m.tanggal);
+      const mKey = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+      if (monthlyMap.has(mKey)) {
+        const item = monthlyMap.get(mKey)!;
+        item.qty += m.qty;
+      }
+    });
+
+    const monthlyBreakdown = Array.from(monthlyMap.values());
+    let maxMonth = monthlyBreakdown[0];
+    monthlyBreakdown.forEach((mb) => {
+      if (mb.qty > maxMonth.qty) maxMonth = mb;
+    });
+    const peakMonthInfo = maxMonth && maxMonth.qty > 0 ? `${maxMonth.monthLabel} (${maxMonth.qty} ${sp.uom})` : '—';
+
     // 3. Spike & Trend Detection (Comparing 3m trend to 12m baseline)
     let spikeTrend: 'SPIKE_UP' | 'TREND_DOWN' | 'STABLE' = 'STABLE';
     let spikePercentage: string = '0%';
@@ -185,6 +214,8 @@ export async function GET(req: NextRequest) {
       avgMonthly3m,
       spikeTrend,
       spikePercentage,
+      monthlyBreakdown,
+      peakMonthInfo,
       avgMonthlyUsage: Math.round(avgMonthlyUsage * 100) / 100,
       dailyUsage: Math.round(dailyUsage * 1000) / 1000,
       leadTime,

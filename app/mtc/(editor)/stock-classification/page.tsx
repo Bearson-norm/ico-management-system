@@ -1,6 +1,13 @@
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
 
+interface MonthlyBreakdownItem {
+  monthKey: string;
+  monthLabel: string;
+  year: number;
+  qty: number;
+}
+
 interface SpClassification {
   id: string;
   nama: string;
@@ -22,6 +29,8 @@ interface SpClassification {
   avgMonthly3m: number;
   spikeTrend: 'SPIKE_UP' | 'TREND_DOWN' | 'STABLE';
   spikePercentage: string;
+  monthlyBreakdown: MonthlyBreakdownItem[];
+  peakMonthInfo: string;
   avgMonthlyUsage: number;
   dailyUsage: number;
   leadTime: number;
@@ -45,6 +54,10 @@ export default function StockClassificationPage() {
   const [onlyWajibPr, setOnlyWajibPr] = useState(false);
   const [search, setSearch] = useState('');
 
+  // Expandable row state for month-by-month breakdown
+  const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
+  const [expandAllMonths, setExpandAllMonths] = useState(false);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
@@ -59,6 +72,22 @@ export default function StockClassificationPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const toggleRow = (id: string) => {
+    setExpandedRows((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const toggleExpandAll = () => {
+    const nextState = !expandAllMonths;
+    setExpandAllMonths(nextState);
+    const newExpanded: Record<string, boolean> = {};
+    if (nextState) {
+      data.forEach((d) => {
+        newExpanded[d.id] = true;
+      });
+    }
+    setExpandedRows(newExpanded);
+  };
 
   // Summary Metrics
   const totalMesin = data.filter((d) => d.isMesinProduksi).length;
@@ -92,9 +121,9 @@ export default function StockClassificationPage() {
       <div className="page-header">
         <div className="flex-between page-header-row">
           <div>
-            <div className="page-title">⚡ Analisis Tren Pemakaian Multi-Periode &amp; Deteksi Lonjakan (Spike)</div>
+            <div className="page-title">⚡ Analisis Pemakaian Bulanan &amp; Deteksi Lonjakan (Spike &amp; Noise)</div>
             <div className="page-sub">
-              Perbandingan pola pemakaian <strong>12 Bulan</strong>, <strong>6 Bulan</strong>, dan <strong>3 Bulan Terkini</strong> untuk mendeteksi lonjakan &amp; otomatisasi ROP
+              Rincian per-bulan (12 bulan terakhir) untuk mengidentifikasi bulan mana yang mengalami spike pemakaian &amp; perbandingan rekomendasi ROP
             </div>
           </div>
         </div>
@@ -207,7 +236,16 @@ export default function StockClassificationPage() {
 
               {/* Right: Slow threshold & refresh */}
               <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
-                <div className="form-group" style={{ marginBottom: 0, minWidth: 160 }}>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={toggleExpandAll}
+                  style={{ height: 32 }}
+                >
+                  {expandAllMonths ? '📂 Sembunyikan Rincian Bulanan' : '📅 Tampilkan Rincian Bulanan (Semua)'}
+                </button>
+
+                <div className="form-group" style={{ marginBottom: 0, minWidth: 150 }}>
                   <label className="form-label" style={{ fontSize: 11 }}>Ambangan Slow (Jalur B)</label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <span style={{ fontSize: 12, color: 'var(--tx3)' }}>&lt;</span>
@@ -390,7 +428,8 @@ export default function StockClassificationPage() {
                   <th>Peruntukan / Mesin</th>
                   <th>Klasifikasi Dampak</th>
                   <th style={{ textAlign: 'center' }}>Pemakaian 12M vs 6M vs 3M</th>
-                  <th style={{ textAlign: 'center' }}>Deteksi Lonjakan (Spike)</th>
+                  <th style={{ textAlign: 'center' }}>Deteksi Lonjakan</th>
+                  <th style={{ textAlign: 'center' }}>Rincian Bulanan</th>
                   <th style={{ textAlign: 'center' }}>Lead Time</th>
                   <th style={{ textAlign: 'center' }}>Jalur Rumus</th>
                   <th style={{ textAlign: 'right' }}>Min</th>
@@ -403,179 +442,247 @@ export default function StockClassificationPage() {
               <tbody>
                 {filtered.length === 0 && !loading && (
                   <tr>
-                    <td colSpan={13} style={{ textAlign: 'center', padding: 48, color: 'var(--tx3)' }}>
+                    <td colSpan={14} style={{ textAlign: 'center', padding: 48, color: 'var(--tx3)' }}>
                       {data.length === 0 ? '⏳ Memuat data perbandingan...' : 'Tidak ada sparepart yang cocok dengan filter.'}
                     </td>
                   </tr>
                 )}
                 {filtered.map((sp) => {
                   const isJalurB = sp.jalur.includes('B');
+                  const isExpanded = !!expandedRows[sp.id];
+
                   return (
-                    <tr
-                      key={sp.id}
-                      style={{
-                        background: sp.isWajibPr ? 'rgba(239,68,68,0.04)' : 'transparent',
-                      }}
-                    >
-                      <td data-label="Item ID" className="text-mono text-tiny text-muted">{sp.id}</td>
+                    <React.Fragment key={sp.id}>
+                      <tr
+                        style={{
+                          background: sp.isWajibPr ? 'rgba(239,68,68,0.04)' : 'transparent',
+                        }}
+                      >
+                        <td data-label="Item ID" className="text-mono text-tiny text-muted">{sp.id}</td>
 
-                      <td data-label="Nama Sparepart">
-                        <div style={{ fontWeight: 700, color: 'var(--tx)' }}>{sp.nama}</div>
-                      </td>
+                        <td data-label="Nama Sparepart">
+                          <div style={{ fontWeight: 700, color: 'var(--tx)' }}>{sp.nama}</div>
+                        </td>
 
-                      <td data-label="Peruntukan / Mesin">
-                        {sp.isMesinProduksi ? (
-                          <div>
-                            <span className="badge" style={{ fontSize: 10, background: sp.isVital ? 'rgba(239,68,68,0.12)' : 'rgba(59,130,246,0.12)', color: sp.isVital ? '#ef4444' : '#60a5fa', border: sp.isVital ? '1px solid rgba(239,68,68,0.3)' : '1px solid rgba(59,130,246,0.3)', fontWeight: 700 }}>
-                              🏭 Mesin Produksi
-                            </span>
-                            <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 3 }}>
-                              {sp.vitalMesins.length > 0 ? sp.vitalMesins.join(', ') : sp.mesins.map(m => m.nama).join(', ')}
+                        <td data-label="Peruntukan / Mesin">
+                          {sp.isMesinProduksi ? (
+                            <div>
+                              <span className="badge" style={{ fontSize: 10, background: sp.isVital ? 'rgba(239,68,68,0.12)' : 'rgba(59,130,246,0.12)', color: sp.isVital ? '#ef4444' : '#60a5fa', border: sp.isVital ? '1px solid rgba(239,68,68,0.3)' : '1px solid rgba(59,130,246,0.3)', fontWeight: 700 }}>
+                                🏭 Mesin Produksi
+                              </span>
+                              <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 3 }}>
+                                {sp.vitalMesins.length > 0 ? sp.vitalMesins.join(', ') : sp.mesins.map(m => m.nama).join(', ')}
+                              </div>
                             </div>
+                          ) : (
+                            <span className="badge" style={{ fontSize: 10, background: 'var(--sf2)', color: 'var(--tx3)', border: '1px solid var(--br)' }}>
+                              🛠️ CONSUMABLE
+                            </span>
+                          )}
+                        </td>
+
+                        <td data-label="Klasifikasi Dampak">
+                          {sp.dampakDowntime === 'STOP_TOTAL' ? (
+                            <span className="badge badge-red" style={{ fontSize: 10, fontWeight: 700 }}>
+                              ⚡ STOP_TOTAL
+                            </span>
+                          ) : sp.dampakDowntime === 'CONSUMABLE' ? (
+                            <span className="badge" style={{ fontSize: 10, background: 'rgba(168,85,247,0.12)', color: '#c084fc', border: '1px solid rgba(168,85,247,0.3)', fontWeight: 600 }}>
+                              🛠️ CONSUMABLE
+                            </span>
+                          ) : (
+                            <span className="badge" style={{ fontSize: 10, background: 'var(--sf2)', color: 'var(--tx3)', border: '1px solid var(--br)' }}>
+                              KURANGI_PRODUKTIVITAS
+                            </span>
+                          )}
+                        </td>
+
+                        <td data-label="Pemakaian 12M vs 6M vs 3M" style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: 11, display: 'flex', gap: 6, justifyContent: 'center', fontFamily: 'monospace' }}>
+                            <span title="Rata-rata 12 Bulan" style={{ color: 'var(--tx3)' }}>12M: <strong>{sp.avgMonthly12m}</strong></span>
+                            <span>|</span>
+                            <span title="Rata-rata 6 Bulan" style={{ color: 'var(--tx2)' }}>6M: <strong>{sp.avgMonthly6m}</strong></span>
+                            <span>|</span>
+                            <span title="Rata-rata 3 Bulan" style={{ color: sp.spikeTrend === 'SPIKE_UP' ? '#f97316' : 'var(--tx)', fontWeight: 700 }}>
+                              3M: {sp.avgMonthly3m}
+                            </span>
                           </div>
-                        ) : (
-                          <span className="badge" style={{ fontSize: 10, background: 'var(--sf2)', color: 'var(--tx3)', border: '1px solid var(--br)' }}>
-                            🛠️ CONSUMABLE
+                          <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 2 }}>
+                            Kalkulasi ROP: <strong>{sp.avgMonthlyUsage} {sp.uom}/bln</strong>
+                          </div>
+                        </td>
+
+                        <td data-label="Deteksi Lonjakan" style={{ textAlign: 'center' }}>
+                          {sp.spikeTrend === 'SPIKE_UP' ? (
+                            <span className="badge" style={{ background: 'rgba(249,115,22,0.15)', color: '#f97316', border: '1px solid rgba(249,115,22,0.4)', fontSize: 10, fontWeight: 800 }}>
+                              ⚡ LONJAKAN ({sp.spikePercentage})
+                            </span>
+                          ) : sp.spikeTrend === 'TREND_DOWN' ? (
+                            <span className="badge" style={{ background: 'rgba(59,130,246,0.12)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.3)', fontSize: 10 }}>
+                              📉 TURUN ({sp.spikePercentage})
+                            </span>
+                          ) : (
+                            <span className="text-muted" style={{ fontSize: 11 }}>
+                              ✓ Stabil
+                            </span>
+                          )}
+                        </td>
+
+                        <td data-label="Rincian Bulanan" style={{ textAlign: 'center' }}>
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-sm"
+                            style={{ height: 26, fontSize: 10, padding: '2px 8px' }}
+                            onClick={() => toggleRow(sp.id)}
+                          >
+                            {isExpanded ? '▲ Tutup' : '📅 12 Bln'}
+                          </button>
+                        </td>
+
+                        <td data-label="Lead Time" style={{ textAlign: 'center' }}>
+                          <span className="badge badge-gray" style={{ fontSize: 11 }}>
+                            {sp.leadTime} Hari
                           </span>
-                        )}
-                      </td>
+                        </td>
 
-                      <td data-label="Klasifikasi Dampak">
-                        {sp.dampakDowntime === 'STOP_TOTAL' ? (
-                          <span className="badge badge-red" style={{ fontSize: 10, fontWeight: 700 }}>
-                            ⚡ STOP_TOTAL
+                        <td data-label="Jalur Rumus" style={{ textAlign: 'center' }}>
+                          <span
+                            className="badge"
+                            style={{
+                              fontSize: 10,
+                              fontWeight: 700,
+                              background: isJalurB ? 'rgba(234,179,8,0.12)' : 'var(--sf2)',
+                              color: isJalurB ? '#ca8a04' : 'var(--tx2)',
+                              border: isJalurB ? '1px solid rgba(234,179,8,0.3)' : '1px solid var(--br)',
+                            }}
+                          >
+                            {isJalurB ? '⚡ Jalur B (Kritis-Slow)' : '🚢 Jalur A (Normal)'}
                           </span>
-                        ) : sp.dampakDowntime === 'CONSUMABLE' ? (
-                          <span className="badge" style={{ fontSize: 10, background: 'rgba(168,85,247,0.12)', color: '#c084fc', border: '1px solid rgba(168,85,247,0.3)', fontWeight: 600 }}>
-                            🛠️ CONSUMABLE
+                        </td>
+
+                        <td data-label="Min" style={{ textAlign: 'right', fontWeight: 600, color: 'var(--tx2)' }}>
+                          {sp.min} {sp.uom}
+                        </td>
+
+                        <td data-label="Max" style={{ textAlign: 'right', fontWeight: 600, color: 'var(--tx2)' }}>
+                          {sp.max} {sp.uom}
+                        </td>
+
+                        <td data-label="ROP" style={{ textAlign: 'right' }}>
+                          <span
+                            style={{
+                              fontWeight: 800,
+                              fontSize: 14,
+                              color: sp.isWajibPr ? '#ef4444' : 'var(--pur)',
+                              background: sp.isWajibPr ? 'rgba(239,68,68,0.12)' : 'rgba(168,85,247,0.1)',
+                              padding: '2px 8px',
+                              borderRadius: 6,
+                            }}
+                          >
+                            {sp.rop} {sp.uom}
                           </span>
-                        ) : (
-                          <span className="badge" style={{ fontSize: 10, background: 'var(--sf2)', color: 'var(--tx3)', border: '1px solid var(--br)' }}>
-                            KURANGI_PRODUKTIVITAS
-                          </span>
-                        )}
-                      </td>
+                        </td>
 
-                      <td data-label="Pemakaian 12M vs 6M vs 3M" style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: 11, display: 'flex', gap: 6, justifyContent: 'center', fontFamily: 'monospace' }}>
-                          <span title="Rata-rata 12 Bulan" style={{ color: 'var(--tx3)' }}>12M: <strong>{sp.avgMonthly12m}</strong></span>
-                          <span>|</span>
-                          <span title="Rata-rata 6 Bulan" style={{ color: 'var(--tx2)' }}>6M: <strong>{sp.avgMonthly6m}</strong></span>
-                          <span>|</span>
-                          <span title="Rata-rata 3 Bulan" style={{ color: sp.spikeTrend === 'SPIKE_UP' ? '#f97316' : 'var(--tx)', fontWeight: 700 }}>
-                            3M: {sp.avgMonthly3m}
-                          </span>
-                        </div>
-                        <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 2 }}>
-                          Dipakai kalkulasi ROP: <strong>{sp.avgMonthlyUsage} {sp.uom}/bln</strong>
-                        </div>
-                      </td>
+                        <td data-label="Stok Saat Ini" style={{ textAlign: 'right' }}>
+                          <div
+                            style={{
+                              fontWeight: 800,
+                              fontSize: 14,
+                              color: sp.isWajibPr ? '#ef4444' : 'var(--grn)',
+                            }}
+                          >
+                            {sp.currentStock} {sp.uom}
+                          </div>
+                        </td>
 
-                      <td data-label="Deteksi Lonjakan" style={{ textAlign: 'center' }}>
-                        {sp.spikeTrend === 'SPIKE_UP' ? (
-                          <span className="badge" style={{ background: 'rgba(249,115,22,0.15)', color: '#f97316', border: '1px solid rgba(249,115,22,0.4)', fontSize: 10, fontWeight: 800 }}>
-                            ⚡ LONJAKAN ({sp.spikePercentage})
-                          </span>
-                        ) : sp.spikeTrend === 'TREND_DOWN' ? (
-                          <span className="badge" style={{ background: 'rgba(59,130,246,0.12)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.3)', fontSize: 10 }}>
-                            📉 TURUN ({sp.spikePercentage})
-                          </span>
-                        ) : (
-                          <span className="text-muted" style={{ fontSize: 11 }}>
-                            ✓ Stabil
-                          </span>
-                        )}
-                      </td>
+                        <td data-label="Status &amp; Rekomendasi PR">
+                          {sp.isWajibPr ? (
+                            <div>
+                              <span
+                                className="badge"
+                                style={{
+                                  background: '#ef4444',
+                                  color: '#fff',
+                                  fontSize: 10,
+                                  fontWeight: 800,
+                                  padding: '3px 8px',
+                                  boxShadow: '0 1px 4px rgba(239,68,68,0.4)',
+                                }}
+                              >
+                                🚨 WAJIB PR/PO! (Stok &le; ROP)
+                              </span>
+                              {sp.catatan && (
+                                <div style={{ fontSize: 10, color: '#f97316', marginTop: 4, fontWeight: 600 }}>
+                                  💡 {sp.catatan}
+                                </div>
+                              )}
+                            </div>
+                          ) : sp.catatan ? (
+                            <div style={{ fontSize: 10, color: '#f97316', fontWeight: 600 }}>
+                              💡 {sp.catatan}
+                            </div>
+                          ) : (
+                            <span style={{ fontSize: 12, color: 'var(--grn)', fontWeight: 600 }}>
+                              ✓ Stok Aman
+                            </span>
+                          )}
+                        </td>
+                      </tr>
 
-                      <td data-label="Lead Time" style={{ textAlign: 'center' }}>
-                        <span className="badge badge-gray" style={{ fontSize: 11 }}>
-                          {sp.leadTime} Hari
-                        </span>
-                      </td>
-
-                      <td data-label="Jalur Rumus" style={{ textAlign: 'center' }}>
-                        <span
-                          className="badge"
-                          style={{
-                            fontSize: 10,
-                            fontWeight: 700,
-                            background: isJalurB ? 'rgba(234,179,8,0.12)' : 'var(--sf2)',
-                            color: isJalurB ? '#ca8a04' : 'var(--tx2)',
-                            border: isJalurB ? '1px solid rgba(234,179,8,0.3)' : '1px solid var(--br)',
-                          }}
-                        >
-                          {isJalurB ? '⚡ Jalur B (Kritis-Slow)' : '🚢 Jalur A (Normal)'}
-                        </span>
-                      </td>
-
-                      <td data-label="Min" style={{ textAlign: 'right', fontWeight: 600, color: 'var(--tx2)' }}>
-                        {sp.min} {sp.uom}
-                      </td>
-
-                      <td data-label="Max" style={{ textAlign: 'right', fontWeight: 600, color: 'var(--tx2)' }}>
-                        {sp.max} {sp.uom}
-                      </td>
-
-                      <td data-label="ROP" style={{ textAlign: 'right' }}>
-                        <span
-                          style={{
-                            fontWeight: 800,
-                            fontSize: 14,
-                            color: sp.isWajibPr ? '#ef4444' : 'var(--pur)',
-                            background: sp.isWajibPr ? 'rgba(239,68,68,0.12)' : 'rgba(168,85,247,0.1)',
-                            padding: '2px 8px',
-                            borderRadius: 6,
-                          }}
-                        >
-                          {sp.rop} {sp.uom}
-                        </span>
-                      </td>
-
-                      <td data-label="Stok Saat Ini" style={{ textAlign: 'right' }}>
-                        <div
-                          style={{
-                            fontWeight: 800,
-                            fontSize: 14,
-                            color: sp.isWajibPr ? '#ef4444' : 'var(--grn)',
-                          }}
-                        >
-                          {sp.currentStock} {sp.uom}
-                        </div>
-                      </td>
-
-                      <td data-label="Status &amp; Rekomendasi PR">
-                        {sp.isWajibPr ? (
-                          <div>
-                            <span
-                              className="badge"
+                      {/* Expanded Month-by-Month Matrix Row */}
+                      {isExpanded && (
+                        <tr style={{ background: 'rgba(255,255,255,0.02)' }}>
+                          <td colSpan={14} style={{ padding: '12px 16px', borderBottom: '1px solid var(--br)' }}>
+                            <div
                               style={{
-                                background: '#ef4444',
-                                color: '#fff',
-                                fontSize: 10,
-                                fontWeight: 800,
-                                padding: '3px 8px',
-                                boxShadow: '0 1px 4px rgba(239,68,68,0.4)',
+                                background: 'var(--sf2)',
+                                border: '1px solid var(--br)',
+                                borderRadius: 8,
+                                padding: 12,
                               }}
                             >
-                              🚨 WAJIB PR/PO! (Stok &le; ROP)
-                            </span>
-                            {sp.catatan && (
-                              <div style={{ fontSize: 10, color: '#f97316', marginTop: 4, fontWeight: 600 }}>
-                                💡 {sp.catatan}
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--tx)' }}>
+                                  📅 Rincian Pemakaian Bulanan (12 Bulan Terakhir) — <span style={{ color: 'var(--pur)' }}>{sp.nama}</span>
+                                </div>
+                                <div style={{ fontSize: 11, color: 'var(--tx3)' }}>
+                                  Puncak Pemakaian: <strong style={{ color: '#f97316' }}>{sp.peakMonthInfo}</strong>
+                                </div>
                               </div>
-                            )}
-                          </div>
-                        ) : sp.catatan ? (
-                          <div style={{ fontSize: 10, color: '#f97316', fontWeight: 600 }}>
-                            💡 {sp.catatan}
-                          </div>
-                        ) : (
-                          <span style={{ fontSize: 12, color: 'var(--grn)', fontWeight: 600 }}>
-                            ✓ Stok Aman
-                          </span>
-                        )}
-                      </td>
-                    </tr>
+
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: 6, textAlign: 'center' }}>
+                                {sp.monthlyBreakdown?.map((mb) => {
+                                  const isPeak = sp.peakMonthInfo.includes(mb.monthLabel) && mb.qty > 0;
+                                  return (
+                                    <div
+                                      key={mb.monthKey}
+                                      style={{
+                                        background: mb.qty > 0 ? (isPeak ? 'rgba(249,115,22,0.15)' : 'var(--sf3)') : 'rgba(0,0,0,0.15)',
+                                        border: isPeak ? '1px solid #f97316' : '1px solid var(--br)',
+                                        borderRadius: 6,
+                                        padding: '6px 4px',
+                                      }}
+                                    >
+                                      <div style={{ fontSize: 10, color: 'var(--tx3)', fontWeight: 600 }}>{mb.monthLabel}</div>
+                                      <div
+                                        style={{
+                                          fontSize: 13,
+                                          fontWeight: mb.qty > 0 ? 800 : 400,
+                                          color: mb.qty > 0 ? (isPeak ? '#f97316' : 'var(--tx)') : 'var(--tx3)',
+                                          marginTop: 2,
+                                        }}
+                                      >
+                                        {mb.qty} <span style={{ fontSize: 9 }}>{sp.uom}</span>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   );
                 })}
               </tbody>
