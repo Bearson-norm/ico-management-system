@@ -348,34 +348,54 @@ export async function PATCH(req: NextRequest) {
       },
     });
 
-    // Sync StockMovement if changed after receipt
-    if (existing.tanggalTerima && isStocked !== undefined && Boolean(isStocked) !== existing.isStocked) {
-      const targetTipe = Boolean(isStocked) ? 'IN' : 'LOG';
-      const sourceTipe = existing.isStocked ? 'IN' : 'LOG';
-      
-      const movement = await prisma.stockMovement.findFirst({
+    // Sync StockMovement if changed after receipt or if sparepart was newly linked
+    const isReceivedItem = !!(updated.tanggalTerima || updated.statusPo === 'DONE' || updated.linkGr);
+    if (isReceivedItem && updated.sparepartId && (updated.isStocked || isStocked === undefined)) {
+      const existingMov = await prisma.stockMovement.findFirst({
         where: {
-          tipe: sourceTipe,
-          sparepartId: existing.sparepartId || null,
-          tanggal: existing.tanggalTerima,
-          keterangan: {
-            contains: existing.nomorPo ? `PO: ${existing.nomorPo}` : 'Penerimaan',
-          },
-        },
+          sparepartId: updated.sparepartId,
+          tipe: 'IN',
+          OR: [
+            { keterangan: { contains: updated.nomorPo ? `PO: ${updated.nomorPo}` : 'Penerimaan' } },
+            { keterangan: { contains: updated.nomorPr ? `PR: ${updated.nomorPr}` : 'Penerimaan' } }
+          ]
+        }
       });
 
-      if (movement) {
+      if (!existingMov) {
+        const sp = await prisma.sparepart.findUnique({
+          where: { id: updated.sparepartId }
+        });
+        if (sp) {
+          const tDate = updated.tanggalTerima || new Date();
+          await prisma.stockMovement.create({
+            data: {
+              tipe: 'IN',
+              sparepartId: sp.id,
+              namaItem: sp.nama,
+              qty: updated.qty,
+              harga: Number(updated.harga) || Number(sp.harga) || 0,
+              lokasi: sp.lokasi,
+              purchaseType: 'PO',
+              vendor: updated.vendor || null,
+              keterangan: `[Penerimaan Pengadaan PR: ${updated.nomorPr || '—'} / PO: ${updated.nomorPo || '—'}]`,
+              tanggal: tDate,
+            }
+          });
+        }
+      } else if (isStocked !== undefined && Boolean(isStocked) !== existing.isStocked) {
+        const targetTipe = Boolean(isStocked) ? 'IN' : 'LOG';
         let lokasiVal = null;
-        if (targetTipe === 'IN' && existing.sparepartId) {
+        if (targetTipe === 'IN' && updated.sparepartId) {
           const sp = await prisma.sparepart.findUnique({
-            where: { id: existing.sparepartId },
+            where: { id: updated.sparepartId },
             select: { lokasi: true },
           });
           lokasiVal = sp?.lokasi || null;
         }
 
         await prisma.stockMovement.update({
-          where: { id: movement.id },
+          where: { id: existingMov.id },
           data: {
             tipe: targetTipe,
             lokasi: lokasiVal,

@@ -113,7 +113,7 @@ function mapOdooStateToLocal(state: string): string {
     case 'sent': return 'RFQ';
     case 'to approve': return 'TO_APPROVE';
     case 'purchase': return 'PO';
-    case 'done': return 'RECEIVED';
+    case 'done': return 'PO';
     case 'cancel': return 'CANCELLED';
     default: return 'DRAFT';
   }
@@ -1772,9 +1772,7 @@ export async function POST(req: NextRequest) {
               } else if (newReceiptQty >= item.qty || (newReceiptQty > 0 && isGrDone && !isPartialOdooGr)) {
                 // Porsi pending saat ini sudah terisi penuh atau PO secara keseluruhan selesai
                 updateData.statusPo = 'DONE';
-                if (odooGrDate) {
-                  updateData.tanggalTerima = odooGrDate;
-                }
+                updateData.tanggalTerima = odooGrDate || item.tanggalTerima || new Date();
                 if (odooGrLink) {
                   updateData.linkGr = odooGrLink;
                 }
@@ -1808,20 +1806,60 @@ export async function POST(req: NextRequest) {
                     ...(matchedPrice > 0 ? { harga: matchedPrice } : {})
                   };
 
-                  if (finalIsGrDone && odooGrDate) {
+                  if (finalIsGrDone) {
                     const sp = await tx.sparepart.findUnique({ where: { id: updatedItem.sparepartId } });
                     if (sp) {
-                      const elapsedMs = odooGrDate.getTime() - new Date(updatedItem.tanggalList).getTime();
-                      const elapsedDays = Math.max(1, elapsedMs / (1000 * 60 * 60 * 24));
-                      const calculatedAvgLeadTime = sp.avgLeadTime === 0
-                        ? elapsedDays
-                        : Number((sp.avgLeadTime * 0.8 + elapsedDays * 0.2).toFixed(2));
-                      const calculatedMaxLeadTime = Math.max(sp.maxLeadTime, Math.round(elapsedDays));
-                      
-                      spUpdate.avgLeadTime = calculatedAvgLeadTime;
-                      spUpdate.maxLeadTime = calculatedMaxLeadTime;
-                      spUpdate.prDate = null;
-                      spUpdate.poDate = null;
+                      if (odooGrDate) {
+                        const elapsedMs = odooGrDate.getTime() - new Date(updatedItem.tanggalList).getTime();
+                        const elapsedDays = Math.max(1, elapsedMs / (1000 * 60 * 60 * 24));
+                        const calculatedAvgLeadTime = sp.avgLeadTime === 0
+                          ? elapsedDays
+                          : Number((sp.avgLeadTime * 0.8 + elapsedDays * 0.2).toFixed(2));
+                        const calculatedMaxLeadTime = Math.max(sp.maxLeadTime, Math.round(elapsedDays));
+                        
+                        spUpdate.avgLeadTime = calculatedAvgLeadTime;
+                        spUpdate.maxLeadTime = calculatedMaxLeadTime;
+                        spUpdate.prDate = null;
+                        spUpdate.poDate = null;
+                      }
+
+                      // Auto-create StockMovement IN if GR is done in Odoo and no StockMovement IN exists yet
+                      const existingMov = await tx.stockMovement.findFirst({
+                        where: {
+                          sparepartId: sp.id,
+                          tipe: 'IN',
+                          OR: [
+                            { keterangan: { contains: updatedItem.nomorPo ? `PO: ${updatedItem.nomorPo}` : 'Penerimaan' } },
+                            { keterangan: { contains: updatedItem.nomorPr ? `PR: ${updatedItem.nomorPr}` : 'Penerimaan' } }
+                          ]
+                        }
+                      });
+
+                      if (!existingMov) {
+                        const tDate = odooGrDate || updatedItem.tanggalTerima || new Date();
+                        const movHarga = matchedPrice > 0 ? matchedPrice : (Number(updatedItem.harga) || Number(sp.harga) || 0);
+                        await tx.stockMovement.create({
+                          data: {
+                            tipe: 'IN',
+                            sparepartId: sp.id,
+                            namaItem: sp.nama,
+                            qty: updatedItem.qty,
+                            harga: movHarga,
+                            lokasi: sp.lokasi,
+                            purchaseType: 'PO',
+                            vendor: vendorName || updatedItem.vendor || null,
+                            keterangan: `[Odoo Sync Penerimaan PR: ${updatedItem.nomorPr || '—'} / PO: ${updatedItem.nomorPo || '—'}]`,
+                            tanggal: tDate,
+                          }
+                        });
+
+                        if (!updatedItem.isStocked) {
+                          await tx.procurementTracking.update({
+                            where: { id: updatedItem.id },
+                            data: { isStocked: true }
+                          });
+                        }
+                      }
                     }
                   }
 

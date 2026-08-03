@@ -1230,7 +1230,7 @@ export default function ProcurementTrackingPage() {
   const filteredItems = useMemo(() => {
     return scopedItems.filter(item => {
       // Tab or Card filter
-      const isItemReceived = !!item.tanggalTerima;
+      const isItemReceived = !!item.tanggalTerima || item.statusPo === 'DONE' || item.statusPr === 'RECEIVED';
       const spStatus = (item.statusPr || 'DRAFT').toUpperCase();
       const poStatus = (item.statusPo || '').toUpperCase();
 
@@ -1400,8 +1400,8 @@ export default function ProcurementTrackingPage() {
         if (item.nomorPr?.trim()) prsSet.add(item.nomorPr.trim());
         if (item.urgency === 'Urgent') hasUrgent = true;
         
-        // Suatu barang dianggap sudah GR di Odoo jika linkGr terisi dan statusPo Odoo sudah DONE
-        const isGrDone = !!(item.linkGr && item.linkGr.trim()) && item.statusPo === 'DONE';
+        // Suatu barang dianggap sudah GR di Odoo jika statusPo Odoo sudah DONE
+        const isGrDone = item.statusPo === 'DONE';
         // Jika sudah GR di Odoo -> otomatis dianggap sudah diterima fisik.
         // Jika baru dicatat terima fisik di web (tanggalTerima terisi) -> dianggap diterima fisik, tapi BELUM TENTU sudah GR di Odoo.
         const isReceived = !!item.tanggalTerima || isGrDone;
@@ -1525,12 +1525,14 @@ export default function ProcurementTrackingPage() {
 
   // Lead time stats & overdue counts
   const stats = useMemo(() => {
-    const active = scopedItems.filter(i => !i.tanggalTerima);
-    const received = scopedItems.filter(i => !!i.tanggalTerima && i.tanggalList);
+    const isReceivedCheck = (i: any) => !!i.tanggalTerima || i.statusPo === 'DONE' || i.statusPr === 'RECEIVED';
+    const active = scopedItems.filter(i => !isReceivedCheck(i));
+    const received = scopedItems.filter(i => isReceivedCheck(i) && i.tanggalList);
     
     let totalDays = 0;
     received.forEach(item => {
-      const diff = new Date(item.tanggalTerima!).getTime() - new Date(item.tanggalList).getTime();
+      const rxTime = item.tanggalTerima ? new Date(item.tanggalTerima).getTime() : new Date().getTime();
+      const diff = rxTime - new Date(item.tanggalList).getTime();
       totalDays += Math.max(1, diff / (1000 * 60 * 60 * 24));
     });
     const avgLeadTime = received.length > 0 ? (totalDays / received.length).toFixed(1) : '—';
@@ -1549,7 +1551,7 @@ export default function ProcurementTrackingPage() {
     const prPendingCount = active.filter(i => i.nomorPr && !i.nomorPo).length;
 
     // 3. PO Sudah Di-GR (Selesai)
-    const poReceivedCount = scopedItems.filter(i => i.nomorPo && i.tanggalTerima).length;
+    const poReceivedCount = scopedItems.filter(i => i.nomorPo && isReceivedCheck(i)).length;
 
     // 4. PO Belum Di-GR (Belum Selesai)
     const poPendingGrCount = active.filter(i => i.nomorPo).length;
@@ -2474,14 +2476,14 @@ export default function ProcurementTrackingPage() {
             {/* Custom Premium Odoo-style Tab Switcher */}
             <div style={{ gridColumn: 'span 6', display: 'flex', background: 'var(--sf2)', padding: 3, borderRadius: 8, height: '36px', border: '1px solid var(--br)', overflowX: 'auto', gap: 4 }}>
               {[
-                { id: 'ACTIVE', label: '⏳ Semua Aktif', count: scopedItems.filter(i => !i.tanggalTerima && checkMonthYear(i, false)).length },
-                { id: 'DRAFT_PR', label: '⚙️ Draft PR', count: scopedItems.filter(i => !i.tanggalTerima && checkMonthYear(i, false) && (!i.statusPr || i.statusPr === 'DRAFT' || i.statusPr === 'WAITING_PRICE' || i.statusPr === 'CONTINUE') && (!i.nomorPr || i.nomorPr.trim() === '')).length },
-                { id: 'READY_ODOO', label: '🚀 Siap Odoo', count: scopedItems.filter(i => !i.tanggalTerima && checkMonthYear(i, false) && i.statusPr === 'READY_ODOO').length },
-                { id: 'TO_APPROVE', label: '⏳ Tunggu Approve', count: scopedItems.filter(i => !i.tanggalTerima && checkMonthYear(i, false) && i.statusPr === 'TO_APPROVE').length },
-                { id: 'APPROVED', label: '✓ Disetujui', count: scopedItems.filter(i => !i.tanggalTerima && checkMonthYear(i, false) && i.statusPr === 'APPROVED').length },
-                { id: 'PO_RFQ', label: '🚢 Dalam Proses PO', count: scopedItems.filter(i => !i.tanggalTerima && checkMonthYear(i, false) && (i.statusPr === 'PO' || i.statusPr === 'RFQ' || i.statusPo === 'PO' || i.statusPo === 'RFQ' || (i.nomorPo && i.nomorPo.trim() !== ''))).length },
-                { id: 'RECEIVED', label: '📦 Diterima', count: scopedItems.filter(i => !!i.tanggalTerima && checkMonthYear(i, true)).length },
-                { id: 'ALL', label: '🌐 Semua Dokumen', count: scopedItems.filter(i => !!i.tanggalTerima ? checkMonthYear(i, true) : checkMonthYear(i, false)).length }
+                { id: 'ACTIVE', label: '⏳ Semua Aktif', count: scopedItems.filter(i => (!i.tanggalTerima && i.statusPo !== 'DONE' && i.statusPr !== 'RECEIVED') && checkMonthYear(i, false)).length },
+                { id: 'DRAFT_PR', label: '⚙️ Draft PR', count: scopedItems.filter(i => (!i.tanggalTerima && i.statusPo !== 'DONE' && i.statusPr !== 'RECEIVED') && checkMonthYear(i, false) && (!i.statusPr || i.statusPr === 'DRAFT' || i.statusPr === 'WAITING_PRICE' || i.statusPr === 'CONTINUE') && (!i.nomorPr || i.nomorPr.trim() === '')).length },
+                { id: 'READY_ODOO', label: '🚀 Siap Odoo', count: scopedItems.filter(i => (!i.tanggalTerima && i.statusPo !== 'DONE' && i.statusPr !== 'RECEIVED') && checkMonthYear(i, false) && i.statusPr === 'READY_ODOO').length },
+                { id: 'TO_APPROVE', label: '⏳ Tunggu Approve', count: scopedItems.filter(i => (!i.tanggalTerima && i.statusPo !== 'DONE' && i.statusPr !== 'RECEIVED') && checkMonthYear(i, false) && i.statusPr === 'TO_APPROVE').length },
+                { id: 'APPROVED', label: '✓ Disetujui', count: scopedItems.filter(i => (!i.tanggalTerima && i.statusPo !== 'DONE' && i.statusPr !== 'RECEIVED') && checkMonthYear(i, false) && i.statusPr === 'APPROVED').length },
+                { id: 'PO_RFQ', label: '🚢 Dalam Proses PO', count: scopedItems.filter(i => (!i.tanggalTerima && i.statusPo !== 'DONE' && i.statusPr !== 'RECEIVED') && checkMonthYear(i, false) && (i.statusPr === 'PO' || i.statusPr === 'RFQ' || i.statusPo === 'PO' || i.statusPo === 'RFQ' || (i.nomorPo && i.nomorPo.trim() !== ''))).length },
+                { id: 'RECEIVED', label: '📦 Diterima', count: scopedItems.filter(i => (!!i.tanggalTerima || i.statusPo === 'DONE' || i.statusPr === 'RECEIVED') && checkMonthYear(i, true)).length },
+                { id: 'ALL', label: '🌐 Semua Dokumen', count: scopedItems.filter(i => (!!i.tanggalTerima || i.statusPo === 'DONE' || i.statusPr === 'RECEIVED') ? checkMonthYear(i, true) : checkMonthYear(i, false)).length }
               ].map(tab => (
                 <button
                   key={tab.id}
@@ -2890,7 +2892,7 @@ export default function ProcurementTrackingPage() {
                         <tbody>
                           {group.items.map((item) => {
                             const isItemUrgent = item.urgency === 'Urgent';
-                            const isOdooGrDone = !!(item.linkGr && item.linkGr.trim()) && item.statusPo === 'DONE';
+                            const isOdooGrDone = item.statusPo === 'DONE';
                             const isItemReceived = !!item.tanggalTerima || isOdooGrDone;
                             const hasEtaPassed = item.etaFoom && !isItemReceived && new Date(item.etaFoom).getTime() < new Date().getTime();
 
