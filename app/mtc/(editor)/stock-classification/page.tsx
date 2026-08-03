@@ -1,11 +1,18 @@
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
 
+interface TransactionItem {
+  tanggal: string;
+  qty: number;
+  keterangan: string | null;
+}
+
 interface MonthlyBreakdownItem {
   monthKey: string;
   monthLabel: string;
   year: number;
   qty: number;
+  transactions: TransactionItem[];
 }
 
 interface SpClassification {
@@ -54,6 +61,11 @@ export default function StockClassificationPage() {
   const [onlyWajibPr, setOnlyWajibPr] = useState(false);
   const [search, setSearch] = useState('');
 
+  // Specific Month & Year Filter
+  const [selectedMonth, setSelectedMonth] = useState<string>('ALL'); // '01'..'12' or 'ALL'
+  const [selectedYear, setSelectedYear] = useState<string>('ALL'); // '2026', '2025', '2024' or 'ALL'
+  const [onlyWithUsageInSelectedMonth, setOnlyWithUsageInSelectedMonth] = useState(false);
+
   // Expandable row state for month-by-month breakdown
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
   const [expandAllMonths, setExpandAllMonths] = useState(false);
@@ -89,6 +101,9 @@ export default function StockClassificationPage() {
     setExpandedRows(newExpanded);
   };
 
+  // Build target key for selected month & year filter (e.g. "2026-08")
+  const hasSpecificMonthYearFilter = selectedMonth !== 'ALL' || selectedYear !== 'ALL';
+
   // Summary Metrics
   const totalMesin = data.filter((d) => d.isMesinProduksi).length;
   const totalBukanMesin = data.filter((d) => !d.isMesinProduksi).length;
@@ -98,7 +113,6 @@ export default function StockClassificationPage() {
   const totalWajibPr = data.filter((d) => d.isWajibPr).length;
   const totalSpikeUp = data.filter((d) => d.spikeTrend === 'SPIKE_UP').length;
   const totalJalurB = data.filter((d) => d.jalur.includes('B')).length;
-  const totalJalurA = data.filter((d) => d.jalur.includes('A')).length;
 
   const filtered = data.filter((d) => {
     if (onlyWajibPr && !d.isWajibPr) return false;
@@ -106,6 +120,18 @@ export default function StockClassificationPage() {
     if (filterJalur && !d.jalur.includes(filterJalur)) return false;
     if (filterPeruntukan === 'MESIN' && !d.isMesinProduksi) return false;
     if (filterPeruntukan === 'BUKAN_MESIN' && d.isMesinProduksi) return false;
+
+    // Filter by specific Month and/or Year
+    if (hasSpecificMonthYearFilter && onlyWithUsageInSelectedMonth) {
+      const matchMonth = d.monthlyBreakdown?.some((mb) => {
+        const [year, month] = mb.monthKey.split('-');
+        if (selectedYear !== 'ALL' && year !== selectedYear) return false;
+        if (selectedMonth !== 'ALL' && month !== selectedMonth) return false;
+        return mb.qty > 0;
+      });
+      if (!matchMonth) return false;
+    }
+
     if (search) {
       const q = search.toLowerCase();
       const matchName = d.nama.toLowerCase().includes(q);
@@ -123,7 +149,7 @@ export default function StockClassificationPage() {
           <div>
             <div className="page-title">⚡ Analisis Pemakaian Bulanan &amp; Deteksi Lonjakan (Spike &amp; Noise)</div>
             <div className="page-sub">
-              Rincian per-bulan (12 bulan terakhir) untuk mengidentifikasi bulan mana yang mengalami spike pemakaian &amp; perbandingan rekomendasi ROP
+              Filter pemakaian per-bulan &amp; per-tahun untuk mendeteksi transaksi lonjakan pemakaian pada bulan spesifik
             </div>
           </div>
         </div>
@@ -234,33 +260,55 @@ export default function StockClassificationPage() {
                 </div>
               </div>
 
-              {/* Right: Slow threshold & refresh */}
-              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
+              {/* Right: Specific Month & Year Filter */}
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label" style={{ fontSize: 11 }}>📅 Filter Bulan</label>
+                  <select
+                    className="form-select"
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    style={{ height: 32, fontSize: 11 }}
+                  >
+                    <option value="ALL">Semua Bulan</option>
+                    <option value="01">Januari</option>
+                    <option value="02">Februari</option>
+                    <option value="03">Maret</option>
+                    <option value="04">April</option>
+                    <option value="05">Mei</option>
+                    <option value="06">Juni</option>
+                    <option value="07">Juli</option>
+                    <option value="08">Agustus</option>
+                    <option value="09">September</option>
+                    <option value="10">Oktober</option>
+                    <option value="11">November</option>
+                    <option value="12">Desember</option>
+                  </select>
+                </div>
+
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label" style={{ fontSize: 11 }}>🗓️ Filter Tahun</label>
+                  <select
+                    className="form-select"
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(e.target.value)}
+                    style={{ height: 32, fontSize: 11 }}
+                  >
+                    <option value="ALL">Semua Tahun</option>
+                    <option value="2026">2026</option>
+                    <option value="2025">2025</option>
+                    <option value="2024">2024</option>
+                  </select>
+                </div>
+
                 <button
                   type="button"
                   className="btn btn-ghost btn-sm"
                   onClick={toggleExpandAll}
                   style={{ height: 32 }}
                 >
-                  {expandAllMonths ? '📂 Sembunyikan Rincian Bulanan' : '📅 Tampilkan Rincian Bulanan (Semua)'}
+                  {expandAllMonths ? '📂 Sembunyikan Rincian' : '📅 Tampilkan Rincian Bulanan'}
                 </button>
-
-                <div className="form-group" style={{ marginBottom: 0, minWidth: 150 }}>
-                  <label className="form-label" style={{ fontSize: 11 }}>Ambangan Slow (Jalur B)</label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <span style={{ fontSize: 12, color: 'var(--tx3)' }}>&lt;</span>
-                    <input
-                      type="number"
-                      step="0.1"
-                      className="form-input"
-                      min={0.1}
-                      value={slowThreshold}
-                      onChange={(e) => setSlowThreshold(Math.max(0.1, parseFloat(e.target.value) || 1.0))}
-                      style={{ height: 32 }}
-                    />
-                    <span style={{ fontSize: 11, color: 'var(--tx3)' }}>/bln</span>
-                  </div>
-                </div>
 
                 <button
                   type="button"
@@ -273,6 +321,37 @@ export default function StockClassificationPage() {
                 </button>
               </div>
             </div>
+
+            {/* Filter Toggle Bar */}
+            {hasSpecificMonthYearFilter && (
+              <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--br)', display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span className="badge" style={{ background: 'rgba(168,85,247,0.2)', color: '#c084fc', fontSize: 11, fontWeight: 700 }}>
+                  🔍 Filter Aktif: {selectedMonth !== 'ALL' ? `Bulan ${selectedMonth}` : 'Semua Bulan'} {selectedYear !== 'ALL' ? `Tahun ${selectedYear}` : ''}
+                </span>
+
+                <label style={{ fontSize: 12, color: 'var(--tx2)', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={onlyWithUsageInSelectedMonth}
+                    onChange={(e) => setOnlyWithUsageInSelectedMonth(e.target.checked)}
+                  />
+                  Hanya tampilkan sparepart yang ADA PEMAKAIAN di periode filter ini
+                </label>
+
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-xs"
+                  onClick={() => {
+                    setSelectedMonth('ALL');
+                    setSelectedYear('ALL');
+                    setOnlyWithUsageInSelectedMonth(false);
+                  }}
+                  style={{ fontSize: 10, marginLeft: 'auto' }}
+                >
+                  ✕ Clear Filter Periode
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -367,6 +446,8 @@ export default function StockClassificationPage() {
               setFilterPeruntukan('ALL');
               setOnlyWajibPr(false);
               setFilterSpike(false);
+              setSelectedMonth('ALL');
+              setSelectedYear('ALL');
             }}
             style={{
               cursor: 'pointer',
@@ -397,7 +478,7 @@ export default function StockClassificationPage() {
                 />
               </div>
 
-              {(onlyWajibPr || filterSpike || filterJalur || filterPeruntukan !== 'ALL' || search) && (
+              {(onlyWajibPr || filterSpike || filterJalur || filterPeruntukan !== 'ALL' || search || hasSpecificMonthYearFilter) && (
                 <button
                   type="button"
                   className="btn btn-ghost btn-sm"
@@ -406,6 +487,9 @@ export default function StockClassificationPage() {
                     setFilterSpike(false);
                     setFilterJalur('');
                     setFilterPeruntukan('ALL');
+                    setSelectedMonth('ALL');
+                    setSelectedYear('ALL');
+                    setOnlyWithUsageInSelectedMonth(false);
                     setSearch('');
                   }}
                 >
@@ -451,6 +535,16 @@ export default function StockClassificationPage() {
                   const isJalurB = sp.jalur.includes('B');
                   const isExpanded = !!expandedRows[sp.id];
 
+                  // Find matching breakdown for selected month/year
+                  const matchingMonths = sp.monthlyBreakdown?.filter((mb) => {
+                    const [year, month] = mb.monthKey.split('-');
+                    if (selectedYear !== 'ALL' && year !== selectedYear) return false;
+                    if (selectedMonth !== 'ALL' && month !== selectedMonth) return false;
+                    return true;
+                  }) || [];
+
+                  const selectedQty = matchingMonths.reduce((sum, mb) => sum + mb.qty, 0);
+
                   return (
                     <React.Fragment key={sp.id}>
                       <tr
@@ -462,6 +556,11 @@ export default function StockClassificationPage() {
 
                         <td data-label="Nama Sparepart">
                           <div style={{ fontWeight: 700, color: 'var(--tx)' }}>{sp.nama}</div>
+                          {hasSpecificMonthYearFilter && selectedQty > 0 && (
+                            <div style={{ fontSize: 10, color: '#f97316', marginTop: 2, fontWeight: 700 }}>
+                              📌 Pemakaian Periode Ini: {selectedQty} {sp.uom}
+                            </div>
+                          )}
                         </td>
 
                         <td data-label="Peruntukan / Mesin">
@@ -535,7 +634,7 @@ export default function StockClassificationPage() {
                             style={{ height: 26, fontSize: 10, padding: '2px 8px' }}
                             onClick={() => toggleRow(sp.id)}
                           >
-                            {isExpanded ? '▲ Tutup' : '📅 12 Bln'}
+                            {isExpanded ? '▲ Tutup' : '📅 Rincian'}
                           </button>
                         </td>
 
@@ -650,20 +749,30 @@ export default function StockClassificationPage() {
                                 </div>
                               </div>
 
-                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: 6, textAlign: 'center' }}>
+                              {/* Monthly Bar Cards */}
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: 6, textAlign: 'center', marginBottom: 12 }}>
                                 {sp.monthlyBreakdown?.map((mb) => {
+                                  const [y, m] = mb.monthKey.split('-');
+                                  const isSelected = (selectedYear === 'ALL' || selectedYear === y) && (selectedMonth === 'ALL' || selectedMonth === m);
                                   const isPeak = sp.peakMonthInfo.includes(mb.monthLabel) && mb.qty > 0;
+
                                   return (
                                     <div
                                       key={mb.monthKey}
                                       style={{
-                                        background: mb.qty > 0 ? (isPeak ? 'rgba(249,115,22,0.15)' : 'var(--sf3)') : 'rgba(0,0,0,0.15)',
-                                        border: isPeak ? '1px solid #f97316' : '1px solid var(--br)',
+                                        background: isSelected
+                                          ? (mb.qty > 0 ? 'rgba(168,85,247,0.2)' : 'var(--sf3)')
+                                          : (mb.qty > 0 ? (isPeak ? 'rgba(249,115,22,0.15)' : 'var(--sf3)') : 'rgba(0,0,0,0.15)'),
+                                        border: isSelected
+                                          ? '2px solid var(--pur)'
+                                          : (isPeak ? '1px solid #f97316' : '1px solid var(--br)'),
                                         borderRadius: 6,
                                         padding: '6px 4px',
                                       }}
                                     >
-                                      <div style={{ fontSize: 10, color: 'var(--tx3)', fontWeight: 600 }}>{mb.monthLabel}</div>
+                                      <div style={{ fontSize: 10, color: isSelected ? 'var(--pur)' : 'var(--tx3)', fontWeight: isSelected ? 700 : 600 }}>
+                                        {mb.monthLabel}
+                                      </div>
                                       <div
                                         style={{
                                           fontSize: 13,
@@ -678,6 +787,45 @@ export default function StockClassificationPage() {
                                   );
                                 })}
                               </div>
+
+                              {/* Specific Transactions Log */}
+                              {sp.monthlyBreakdown?.some((mb) => mb.transactions?.length > 0) && (
+                                <div style={{ borderTop: '1px solid var(--br)', paddingTop: 8, marginTop: 8 }}>
+                                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--tx2)', marginBottom: 6 }}>
+                                    📝 Transaksi Keluar Pada Periode Ini:
+                                  </div>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    {sp.monthlyBreakdown
+                                      .filter((mb) => {
+                                        const [y, m] = mb.monthKey.split('-');
+                                        if (selectedYear !== 'ALL' && selectedYear !== y) return false;
+                                        if (selectedMonth !== 'ALL' && selectedMonth !== m) return false;
+                                        return mb.transactions.length > 0;
+                                      })
+                                      .flatMap((mb) => mb.transactions)
+                                      .map((tx, idx) => (
+                                        <div
+                                          key={idx}
+                                          style={{
+                                            fontSize: 11,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justify: 'space-between',
+                                            background: 'var(--sf3)',
+                                            padding: '4px 10px',
+                                            borderRadius: 4,
+                                          }}
+                                        >
+                                          <span>📅 {tx.tanggal}</span>
+                                          <span style={{ fontWeight: 700, color: '#f97316' }}>{tx.qty} {sp.uom}</span>
+                                          <span style={{ color: 'var(--tx3)', flex: 1, marginLeft: 16, textAlign: 'right' }}>
+                                            {tx.keterangan || 'Tanpa Catatan'}
+                                          </span>
+                                        </div>
+                                      ))}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </td>
                         </tr>

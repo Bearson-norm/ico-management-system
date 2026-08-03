@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
           tipe: { in: ['IN', 'OUT'] },
           OR: [{ purchaseType: null }, { purchaseType: { not: 'histori-sheets' } }],
         },
-        select: { tipe: true, qty: true, tanggal: true },
+        select: { tipe: true, qty: true, tanggal: true, keterangan: true },
       },
     },
     orderBy: { nama: 'asc' },
@@ -83,7 +83,7 @@ export async function GET(req: NextRequest) {
 
     // 2b. Build 12-month month-by-month usage breakdown
     const monthNamesIndo = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agus', 'Sep', 'Okt', 'Nov', 'Des'];
-    const monthlyMap = new Map<string, { monthKey: string; monthLabel: string; year: number; qty: number }>();
+    const monthlyMap = new Map<string, { monthKey: string; monthLabel: string; year: number; qty: number; transactions: { tanggal: string; qty: number; keterangan: string | null }[] }>();
 
     for (let i = 11; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -91,7 +91,7 @@ export async function GET(req: NextRequest) {
       const monthIdx = d.getMonth();
       const monthKey = `${year}-${String(monthIdx + 1).padStart(2, '0')}`;
       const monthLabel = `${monthNamesIndo[monthIdx]} '${String(year).slice(-2)}`;
-      monthlyMap.set(monthKey, { monthKey, monthLabel, year, qty: 0 });
+      monthlyMap.set(monthKey, { monthKey, monthLabel, year, qty: 0, transactions: [] });
     }
 
     outMovements.forEach((m) => {
@@ -100,6 +100,11 @@ export async function GET(req: NextRequest) {
       if (monthlyMap.has(mKey)) {
         const item = monthlyMap.get(mKey)!;
         item.qty += m.qty;
+        item.transactions.push({
+          tanggal: dt.toISOString().split('T')[0],
+          qty: m.qty,
+          keterangan: m.keterangan || null,
+        });
       }
     });
 
