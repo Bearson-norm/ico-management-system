@@ -8,6 +8,8 @@ interface SpClassification {
   lokasi: string;
   harga: number;
   currentStock: number;
+  isMesinProduksi: boolean;
+  tipePeruntukan: 'Mesin Vital (Produksi)' | 'Mesin Non-Vital' | 'Bukan Mesin (Umum)';
   mesins: { id: number; nama: string; vital: boolean }[];
   isVital: boolean;
   vitalMesins: string[];
@@ -32,6 +34,7 @@ export default function StockClassificationPage() {
   const [bulan, setBulan] = useState(12);
   const [slowThreshold, setSlowThreshold] = useState(1.0);
   const [filterJalur, setFilterJalur] = useState<string>('');
+  const [filterPeruntukan, setFilterPeruntukan] = useState<'ALL' | 'MESIN' | 'BUKAN_MESIN'>('ALL');
   const [onlyWajibPr, setOnlyWajibPr] = useState(false);
   const [search, setSearch] = useState('');
 
@@ -50,7 +53,12 @@ export default function StockClassificationPage() {
     fetchData();
   }, [fetchData]);
 
-  // Counts for summary cards
+  // Comparison Statistics: Mesin Produksi vs Bukan Mesin
+  const totalMesin = data.filter((d) => d.isMesinProduksi).length;
+  const totalBukanMesin = data.filter((d) => !d.isMesinProduksi).length;
+  const mesinWajibPr = data.filter((d) => d.isMesinProduksi && d.isWajibPr).length;
+  const bukanMesinWajibPr = data.filter((d) => !d.isMesinProduksi && d.isWajibPr).length;
+
   const totalWajibPr = data.filter((d) => d.isWajibPr).length;
   const totalJalurB = data.filter((d) => d.jalur.includes('B')).length;
   const totalJalurA = data.filter((d) => d.jalur.includes('A')).length;
@@ -58,6 +66,8 @@ export default function StockClassificationPage() {
   const filtered = data.filter((d) => {
     if (onlyWajibPr && !d.isWajibPr) return false;
     if (filterJalur && !d.jalur.includes(filterJalur)) return false;
+    if (filterPeruntukan === 'MESIN' && !d.isMesinProduksi) return false;
+    if (filterPeruntukan === 'BUKAN_MESIN' && d.isMesinProduksi) return false;
     if (search) {
       const q = search.toLowerCase();
       const matchName = d.nama.toLowerCase().includes(q);
@@ -75,13 +85,81 @@ export default function StockClassificationPage() {
           <div>
             <div className="page-title">📊 Perhitungan Min, Max &amp; ROP (Reorder Point)</div>
             <div className="page-sub">
-              Rekomendasi stok otomatis berdasarkan rata-rata pemakaian 12 bulan terakhir, lead time &amp; kritikalitas mesin (Jalur A vs Jalur B)
+              Perbandingan rekomendasi stok untuk <strong>Mesin Produksi</strong> vs <strong>Bukan Mesin (Umum/Fasilitas)</strong> berdasarkan pemakaian &amp; kritikalitas
             </div>
           </div>
         </div>
       </div>
 
       <div className="page-body">
+        {/* Comparison Overview Bar */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: 16,
+            marginBottom: 16,
+          }}
+        >
+          {/* Box 1: Mesin Produksi */}
+          <div
+            className="card"
+            style={{
+              background: 'linear-gradient(135deg, rgba(59,130,246,0.08) 0%, rgba(19,19,26,0.65) 100%)',
+              border: filterPeruntukan === 'MESIN' ? '2px solid #3b82f6' : '1px solid rgba(59,130,246,0.3)',
+              padding: '16px 20px',
+              borderRadius: 'var(--r)',
+              cursor: 'pointer',
+            }}
+            onClick={() => setFilterPeruntukan(filterPeruntukan === 'MESIN' ? 'ALL' : 'MESIN')}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span className="badge" style={{ background: 'rgba(59,130,246,0.2)', color: '#60a5fa', fontWeight: 700, fontSize: 11 }}>
+                🏭 KHUSUS MESIN PRODUKSI
+              </span>
+              <span style={{ fontSize: 12, color: 'var(--tx3)', fontWeight: 600 }}>
+                {totalMesin > 0 ? Math.round((totalMesin / data.length) * 100) : 0}% dari total
+              </span>
+            </div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--tx)', marginTop: 8 }}>
+              {totalMesin} <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--tx3)' }}>Item Sparepart</span>
+            </div>
+            <div style={{ display: 'flex', gap: 12, marginTop: 8, fontSize: 12, color: 'var(--tx2)' }}>
+              <span>🚨 Wajib PR: <strong style={{ color: '#ef4444' }}>{mesinWajibPr} Item</strong></span>
+              <span>⚡ Kritis (Jalur B): <strong style={{ color: '#f97316' }}>{totalJalurB} Item</strong></span>
+            </div>
+          </div>
+
+          {/* Box 2: Bukan Mesin (Umum / Fasilitas) */}
+          <div
+            className="card"
+            style={{
+              background: 'linear-gradient(135deg, rgba(168,85,247,0.08) 0%, rgba(19,19,26,0.65) 100%)',
+              border: filterPeruntukan === 'BUKAN_MESIN' ? '2px solid var(--pur)' : '1px solid rgba(168,85,247,0.3)',
+              padding: '16px 20px',
+              borderRadius: 'var(--r)',
+              cursor: 'pointer',
+            }}
+            onClick={() => setFilterPeruntukan(filterPeruntukan === 'BUKAN_MESIN' ? 'ALL' : 'BUKAN_MESIN')}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span className="badge" style={{ background: 'rgba(168,85,247,0.2)', color: '#c084fc', fontWeight: 700, fontSize: 11 }}>
+                🛠️ BUKAN UNTUK MESIN (UMUM / UTILITY)
+              </span>
+              <span style={{ fontSize: 12, color: 'var(--tx3)', fontWeight: 600 }}>
+                {totalBukanMesin > 0 ? Math.round((totalBukanMesin / data.length) * 100) : 0}% dari total
+              </span>
+            </div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--tx)', marginTop: 8 }}>
+              {totalBukanMesin} <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--tx3)' }}>Item Suku Cadang</span>
+            </div>
+            <div style={{ display: 'flex', gap: 12, marginTop: 8, fontSize: 12, color: 'var(--tx2)' }}>
+              <span>🚨 Wajib PR: <strong style={{ color: '#ef4444' }}>{bukanMesinWajibPr} Item</strong></span>
+              <span>🚢 Normal (Jalur A): <strong style={{ color: 'var(--tx)' }}>{data.filter(d => !d.isMesinProduksi && d.jalur.includes('A')).length} Item</strong></span>
+            </div>
+          </div>
+        </div>
+
         {/* Controls Card */}
         <div className="card" style={{ marginBottom: 16 }}>
           <div className="card-header">
@@ -129,8 +207,8 @@ export default function StockClassificationPage() {
           </div>
         </div>
 
-        {/* Summary Dashboard Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 16 }}>
+        {/* Summary Metric Badges / Quick Filters */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 16 }}>
           {/* Card 1: Wajib PR */}
           <div
             className="card"
@@ -217,6 +295,7 @@ export default function StockClassificationPage() {
             className="card"
             onClick={() => {
               setFilterJalur('');
+              setFilterPeruntukan('ALL');
               setOnlyWajibPr(false);
             }}
             style={{
@@ -238,23 +317,67 @@ export default function StockClassificationPage() {
         <div className="card">
           <div className="card-header">
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-              <div className="search-bar" style={{ flex: 1, minWidth: 220, marginBottom: 0 }}>
+              {/* Tab Selector Peruntukan */}
+              <div style={{ display: 'flex', gap: 4, background: 'var(--sf2)', padding: 3, borderRadius: 8, border: '1px solid var(--br)' }}>
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  style={{
+                    height: 30,
+                    fontSize: 11,
+                    background: filterPeruntukan === 'ALL' ? 'var(--sf3)' : 'transparent',
+                    color: filterPeruntukan === 'ALL' ? 'var(--pur)' : 'var(--tx3)',
+                  }}
+                  onClick={() => setFilterPeruntukan('ALL')}
+                >
+                  🌐 Semua Peruntukan ({data.length})
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  style={{
+                    height: 30,
+                    fontSize: 11,
+                    background: filterPeruntukan === 'MESIN' ? 'var(--sf3)' : 'transparent',
+                    color: filterPeruntukan === 'MESIN' ? '#3b82f6' : 'var(--tx3)',
+                  }}
+                  onClick={() => setFilterPeruntukan('MESIN')}
+                >
+                  🏭 Khusus Mesin Produksi ({totalMesin})
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  style={{
+                    height: 30,
+                    fontSize: 11,
+                    background: filterPeruntukan === 'BUKAN_MESIN' ? 'var(--sf3)' : 'transparent',
+                    color: filterPeruntukan === 'BUKAN_MESIN' ? '#a855f7' : 'var(--tx3)',
+                  }}
+                  onClick={() => setFilterPeruntukan('BUKAN_MESIN')}
+                >
+                  🛠️ Bukan Untuk Mesin ({totalBukanMesin})
+                </button>
+              </div>
+
+              <div className="search-bar" style={{ flex: 1, minWidth: 200, marginBottom: 0 }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 <input
                   type="text"
-                  placeholder="Cari item ID / nama sparepart / mesin..."
+                  placeholder="Cari item ID / nama / mesin..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
               </div>
 
-              {(onlyWajibPr || filterJalur || search) && (
+              {(onlyWajibPr || filterJalur || filterPeruntukan !== 'ALL' || search) && (
                 <button
                   type="button"
                   className="btn btn-ghost btn-sm"
                   onClick={() => {
                     setOnlyWajibPr(false);
                     setFilterJalur('');
+                    setFilterPeruntukan('ALL');
                     setSearch('');
                   }}
                 >
@@ -274,6 +397,7 @@ export default function StockClassificationPage() {
                 <tr>
                   <th>Item ID</th>
                   <th>Nama Sparepart</th>
+                  <th>Peruntukan / Mesin</th>
                   <th>Klasifikasi Dampak</th>
                   <th style={{ textAlign: 'right' }}>Rata-rata Pemakaian</th>
                   <th style={{ textAlign: 'center' }}>Lead Time</th>
@@ -288,7 +412,7 @@ export default function StockClassificationPage() {
               <tbody>
                 {filtered.length === 0 && !loading && (
                   <tr>
-                    <td colSpan={11} style={{ textAlign: 'center', padding: 48, color: 'var(--tx3)' }}>
+                    <td colSpan={12} style={{ textAlign: 'center', padding: 48, color: 'var(--tx3)' }}>
                       {data.length === 0 ? '⏳ Memuat data kalkulasi ROP...' : 'Tidak ada sparepart yang cocok dengan filter.'}
                     </td>
                   </tr>
@@ -306,10 +430,22 @@ export default function StockClassificationPage() {
 
                       <td data-label="Nama Sparepart">
                         <div style={{ fontWeight: 700, color: 'var(--tx)' }}>{sp.nama}</div>
-                        {sp.vitalMesins.length > 0 && (
-                          <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 2 }}>
-                            ⚡ Mesin: {sp.vitalMesins.join(', ')}
+                      </td>
+
+                      <td data-label="Peruntukan / Mesin">
+                        {sp.isMesinProduksi ? (
+                          <div>
+                            <span className="badge" style={{ fontSize: 10, background: sp.isVital ? 'rgba(239,68,68,0.12)' : 'rgba(59,130,246,0.12)', color: sp.isVital ? '#ef4444' : '#60a5fa', border: sp.isVital ? '1px solid rgba(239,68,68,0.3)' : '1px solid rgba(59,130,246,0.3)', fontWeight: 700 }}>
+                              🏭 Mesin Produksi
+                            </span>
+                            <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 3 }}>
+                              {sp.vitalMesins.length > 0 ? sp.vitalMesins.join(', ') : sp.mesins.map(m => m.nama).join(', ')}
+                            </div>
                           </div>
+                        ) : (
+                          <span className="badge" style={{ fontSize: 10, background: 'var(--sf2)', color: 'var(--tx3)', border: '1px solid var(--br)' }}>
+                            🛠️ Bukan Mesin (Umum)
+                          </span>
                         )}
                       </td>
 

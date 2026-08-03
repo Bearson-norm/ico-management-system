@@ -116,6 +116,14 @@ export async function GET(req: NextRequest) {
     // 7. Reorder Alert Trigger: Stock <= ROP
     const isWajibPr = currentStock <= rop;
 
+    // 8. Tipe Peruntukan: Mesin Produksi vs Bukan Mesin (Umum)
+    const isMesinProduksi = sp.mesins.length > 0;
+    const tipePeruntukan = isMesinProduksi
+      ? isVital
+        ? 'Mesin Vital (Produksi)'
+        : 'Mesin Non-Vital'
+      : 'Bukan Mesin (Umum)';
+
     return {
       id: sp.id,
       nama: sp.nama,
@@ -123,6 +131,8 @@ export async function GET(req: NextRequest) {
       lokasi: sp.lokasi || '-',
       harga: Number(sp.harga || 0),
       currentStock,
+      isMesinProduksi,
+      tipePeruntukan,
       mesins: sp.mesins.map((m) => ({ id: m.id, nama: m.nama, vital: m.vital })),
       isVital,
       vitalMesins: vitalMesins.map((m) => m.nama),
