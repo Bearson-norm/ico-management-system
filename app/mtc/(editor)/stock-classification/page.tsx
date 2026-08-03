@@ -9,13 +9,19 @@ interface SpClassification {
   harga: number;
   currentStock: number;
   isMesinProduksi: boolean;
-  tipePeruntukan: 'Mesin Vital (Produksi)' | 'Mesin Non-Vital' | 'Bukan Mesin (Umum)';
+  tipePeruntukan: string;
   mesins: { id: number; nama: string; vital: boolean }[];
   isVital: boolean;
   vitalMesins: string[];
-  dampakDowntime: 'STOP_TOTAL' | 'KURANGI_PRODUKTIVITAS';
-  freqOutPeriod: number;
-  totalOutPeriod: number;
+  dampakDowntime: 'STOP_TOTAL' | 'KURANGI_PRODUKTIVITAS' | 'CONSUMABLE';
+  totalOut12m: number;
+  totalOut6m: number;
+  totalOut3m: number;
+  avgMonthly12m: number;
+  avgMonthly6m: number;
+  avgMonthly3m: number;
+  spikeTrend: 'SPIKE_UP' | 'TREND_DOWN' | 'STABLE';
+  spikePercentage: string;
   avgMonthlyUsage: number;
   dailyUsage: number;
   leadTime: number;
@@ -31,40 +37,43 @@ interface SpClassification {
 export default function StockClassificationPage() {
   const [data, setData] = useState<SpClassification[]>([]);
   const [loading, setLoading] = useState(false);
-  const [bulan, setBulan] = useState(12);
+  const [mode, setMode] = useState<'AUTO' | '12M' | '6M' | '3M'>('AUTO');
   const [slowThreshold, setSlowThreshold] = useState(1.0);
   const [filterJalur, setFilterJalur] = useState<string>('');
   const [filterPeruntukan, setFilterPeruntukan] = useState<'ALL' | 'MESIN' | 'BUKAN_MESIN'>('ALL');
+  const [filterSpike, setFilterSpike] = useState(false);
   const [onlyWajibPr, setOnlyWajibPr] = useState(false);
   const [search, setSearch] = useState('');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/mtc/stock-classification?bulan=${bulan}&slowThreshold=${slowThreshold}`);
+      const res = await fetch(`/api/mtc/stock-classification?mode=${mode}&slowThreshold=${slowThreshold}`);
       const json = await res.json();
       if (json.success) setData(json.data);
     } finally {
       setLoading(false);
     }
-  }, [bulan, slowThreshold]);
+  }, [mode, slowThreshold]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  // Comparison Statistics: Mesin Produksi vs Bukan Mesin
+  // Summary Metrics
   const totalMesin = data.filter((d) => d.isMesinProduksi).length;
   const totalBukanMesin = data.filter((d) => !d.isMesinProduksi).length;
   const mesinWajibPr = data.filter((d) => d.isMesinProduksi && d.isWajibPr).length;
   const bukanMesinWajibPr = data.filter((d) => !d.isMesinProduksi && d.isWajibPr).length;
 
   const totalWajibPr = data.filter((d) => d.isWajibPr).length;
+  const totalSpikeUp = data.filter((d) => d.spikeTrend === 'SPIKE_UP').length;
   const totalJalurB = data.filter((d) => d.jalur.includes('B')).length;
   const totalJalurA = data.filter((d) => d.jalur.includes('A')).length;
 
   const filtered = data.filter((d) => {
     if (onlyWajibPr && !d.isWajibPr) return false;
+    if (filterSpike && d.spikeTrend !== 'SPIKE_UP') return false;
     if (filterJalur && !d.jalur.includes(filterJalur)) return false;
     if (filterPeruntukan === 'MESIN' && !d.isMesinProduksi) return false;
     if (filterPeruntukan === 'BUKAN_MESIN' && d.isMesinProduksi) return false;
@@ -83,16 +92,16 @@ export default function StockClassificationPage() {
       <div className="page-header">
         <div className="flex-between page-header-row">
           <div>
-            <div className="page-title">📊 Perhitungan Min, Max &amp; ROP (Reorder Point)</div>
+            <div className="page-title">⚡ Analisis Tren Pemakaian Multi-Periode &amp; Deteksi Lonjakan (Spike)</div>
             <div className="page-sub">
-              Perbandingan rekomendasi stok untuk <strong>Mesin Produksi</strong> vs <strong>Bukan Mesin (Umum/Fasilitas)</strong> berdasarkan pemakaian &amp; kritikalitas
+              Perbandingan pola pemakaian <strong>12 Bulan</strong>, <strong>6 Bulan</strong>, dan <strong>3 Bulan Terkini</strong> untuk mendeteksi lonjakan &amp; otomatisasi ROP
             </div>
           </div>
         </div>
       </div>
 
       <div className="page-body">
-        {/* Comparison Overview Bar */}
+        {/* Peruntukan Comparison Banner */}
         <div
           style={{
             display: 'grid',
@@ -101,7 +110,7 @@ export default function StockClassificationPage() {
             marginBottom: 16,
           }}
         >
-          {/* Box 1: Mesin Produksi */}
+          {/* Mesin Produksi */}
           <div
             className="card"
             style={{
@@ -115,14 +124,14 @@ export default function StockClassificationPage() {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span className="badge" style={{ background: 'rgba(59,130,246,0.2)', color: '#60a5fa', fontWeight: 700, fontSize: 11 }}>
-                🏭 KHUSUS MESIN PRODUKSI
+                🏭 MESIN PRODUKSI (PART VITAL / PRODUKSI)
               </span>
               <span style={{ fontSize: 12, color: 'var(--tx3)', fontWeight: 600 }}>
                 {totalMesin > 0 ? Math.round((totalMesin / data.length) * 100) : 0}% dari total
               </span>
             </div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--tx)', marginTop: 8 }}>
-              {totalMesin} <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--tx3)' }}>Item Sparepart</span>
+            <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--tx)', marginTop: 8 }}>
+              {totalMesin} <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--tx3)' }}>Item</span>
             </div>
             <div style={{ display: 'flex', gap: 12, marginTop: 8, fontSize: 12, color: 'var(--tx2)' }}>
               <span>🚨 Wajib PR: <strong style={{ color: '#ef4444' }}>{mesinWajibPr} Item</strong></span>
@@ -130,7 +139,7 @@ export default function StockClassificationPage() {
             </div>
           </div>
 
-          {/* Box 2: Bukan Mesin (Umum / Fasilitas) */}
+          {/* Consumables (Bukan Mesin) */}
           <div
             className="card"
             style={{
@@ -144,14 +153,14 @@ export default function StockClassificationPage() {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span className="badge" style={{ background: 'rgba(168,85,247,0.2)', color: '#c084fc', fontWeight: 700, fontSize: 11 }}>
-                🛠️ BUKAN UNTUK MESIN (UMUM / UTILITY)
+                🛠️ CONSUMABLE (BUKAN UNTUK MESIN)
               </span>
               <span style={{ fontSize: 12, color: 'var(--tx3)', fontWeight: 600 }}>
                 {totalBukanMesin > 0 ? Math.round((totalBukanMesin / data.length) * 100) : 0}% dari total
               </span>
             </div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--tx)', marginTop: 8 }}>
-              {totalBukanMesin} <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--tx3)' }}>Item Suku Cadang</span>
+            <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--tx)', marginTop: 8 }}>
+              {totalBukanMesin} <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--tx3)' }}>Item</span>
             </div>
             <div style={{ display: 'flex', gap: 12, marginTop: 8, fontSize: 12, color: 'var(--tx2)' }}>
               <span>🚨 Wajib PR: <strong style={{ color: '#ef4444' }}>{bukanMesinWajibPr} Item</strong></span>
@@ -160,61 +169,83 @@ export default function StockClassificationPage() {
           </div>
         </div>
 
-        {/* Controls Card */}
+        {/* Controls & Mode Switcher Card */}
         <div className="card" style={{ marginBottom: 16 }}>
           <div className="card-header">
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-end' }}>
-              <div className="form-group" style={{ marginBottom: 0, minWidth: 160 }}>
-                <label className="form-label" style={{ fontSize: 11 }}>📅 Periode Analisis (Bulan)</label>
-                <input
-                  type="number"
-                  className="form-input"
-                  min={1}
-                  max={60}
-                  value={bulan}
-                  onChange={(e) => setBulan(Math.max(1, parseInt(e.target.value) || 12))}
-                  style={{ height: 36 }}
-                />
-              </div>
-
-              <div className="form-group" style={{ marginBottom: 0, minWidth: 200 }}>
-                <label className="form-label" style={{ fontSize: 11 }}>⚙️ Ambang Jarang Keluar (Jalur B)</label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 12, color: 'var(--tx3)' }}>&lt;</span>
-                  <input
-                    type="number"
-                    step="0.1"
-                    className="form-input"
-                    min={0.1}
-                    value={slowThreshold}
-                    onChange={(e) => setSlowThreshold(Math.max(0.1, parseFloat(e.target.value) || 1.0))}
-                    style={{ height: 36 }}
-                  />
-                  <span style={{ fontSize: 12, color: 'var(--tx3)', whiteSpace: 'nowrap' }}>x / bulan</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center', justifyContent: 'space-between' }}>
+              {/* Left: Mode Selection */}
+              <div>
+                <label className="form-label" style={{ fontSize: 11, marginBottom: 6 }}>
+                  ⚙️ Metode Dasar Kalkulasi ROP:
+                </label>
+                <div style={{ display: 'flex', gap: 4, background: 'var(--sf2)', padding: 4, borderRadius: 8, border: '1px solid var(--br)' }}>
+                  {[
+                    { id: 'AUTO', label: '⚡ Otomatis (Anti-Spike / Safety)' },
+                    { id: '3M', label: '📊 3 Bulan (Tren Terkini)' },
+                    { id: '6M', label: '📊 6 Bulan (Menengah)' },
+                    { id: '12M', label: '📊 12 Bulan (Baseline)' },
+                  ].map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      className="btn btn-sm"
+                      style={{
+                        height: 32,
+                        fontSize: 11,
+                        fontWeight: mode === m.id ? 700 : 500,
+                        background: mode === m.id ? 'var(--sf3)' : 'transparent',
+                        color: mode === m.id ? 'var(--pur)' : 'var(--tx3)',
+                        boxShadow: mode === m.id ? '0 1px 4px rgba(0,0,0,0.2)' : 'none',
+                      }}
+                      onClick={() => setMode(m.id as any)}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={fetchData}
-                disabled={loading}
-                style={{ height: 36, alignSelf: 'flex-end' }}
-              >
-                {loading ? '⏳ Hitung Ulang...' : '🔄 Hitung Ulang &amp; Update ROP'}
-              </button>
+              {/* Right: Slow threshold & refresh */}
+              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
+                <div className="form-group" style={{ marginBottom: 0, minWidth: 160 }}>
+                  <label className="form-label" style={{ fontSize: 11 }}>Ambangan Slow (Jalur B)</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ fontSize: 12, color: 'var(--tx3)' }}>&lt;</span>
+                    <input
+                      type="number"
+                      step="0.1"
+                      className="form-input"
+                      min={0.1}
+                      value={slowThreshold}
+                      onChange={(e) => setSlowThreshold(Math.max(0.1, parseFloat(e.target.value) || 1.0))}
+                      style={{ height: 32 }}
+                    />
+                    <span style={{ fontSize: 11, color: 'var(--tx3)' }}>/bln</span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={fetchData}
+                  disabled={loading}
+                  style={{ height: 32 }}
+                >
+                  {loading ? '⏳ Hitung Ulang...' : '🔄 Hitung Ulang'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Summary Metric Badges / Quick Filters */}
+        {/* Quick Metric Cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 16 }}>
           {/* Card 1: Wajib PR */}
           <div
             className="card"
             onClick={() => {
               setOnlyWajibPr(!onlyWajibPr);
-              setFilterJalur('');
+              setFilterSpike(false);
             }}
             style={{
               cursor: 'pointer',
@@ -232,11 +263,38 @@ export default function StockClassificationPage() {
               </span>
             </div>
             <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--tx)', marginTop: 6 }}>
-              Stok &le; ROP (Perlu Segera Dibeli)
+              Stok &le; ROP (Perlu Pemesanan)
             </div>
           </div>
 
-          {/* Card 2: Jalur B */}
+          {/* Card 2: Spike Up */}
+          <div
+            className="card"
+            onClick={() => {
+              setFilterSpike(!filterSpike);
+              setOnlyWajibPr(false);
+            }}
+            style={{
+              cursor: 'pointer',
+              border: filterSpike ? '2px solid #f97316' : '1px solid rgba(249,115,22,0.3)',
+              background: 'rgba(249,115,22,0.06)',
+              padding: '14px 16px',
+              borderRadius: 'var(--r)',
+              transition: 'all .15s',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#f97316' }}>{totalSpikeUp}</div>
+              <span className="badge" style={{ background: 'rgba(249,115,22,0.2)', color: '#f97316', fontSize: 11, fontWeight: 700 }}>
+                ⚡ LONJAKAN (SPIKE)
+              </span>
+            </div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--tx)', marginTop: 6 }}>
+              Pemakaian 3 Bln Melonjak Tinggi
+            </div>
+          </div>
+
+          {/* Card 3: Jalur B */}
           <div
             className="card"
             onClick={() => {
@@ -245,16 +303,16 @@ export default function StockClassificationPage() {
             }}
             style={{
               cursor: 'pointer',
-              border: filterJalur === 'B' ? '2px solid #f97316' : '1px solid rgba(249,115,22,0.3)',
-              background: 'rgba(249,115,22,0.06)',
+              border: filterJalur === 'B' ? '2px solid #eab308' : '1px solid rgba(234,179,8,0.3)',
+              background: 'rgba(234,179,8,0.06)',
               padding: '14px 16px',
               borderRadius: 'var(--r)',
               transition: 'all .15s',
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontSize: 24, fontWeight: 800, color: '#f97316' }}>{totalJalurB}</div>
-              <span className="badge" style={{ background: 'rgba(249,115,22,0.2)', color: '#f97316', fontSize: 11, fontWeight: 700 }}>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#ca8a04' }}>{totalJalurB}</div>
+              <span className="badge" style={{ background: 'rgba(234,179,8,0.2)', color: '#ca8a04', fontSize: 11, fontWeight: 700 }}>
                 ⚡ JALUR B
               </span>
             </div>
@@ -263,40 +321,14 @@ export default function StockClassificationPage() {
             </div>
           </div>
 
-          {/* Card 3: Jalur A */}
-          <div
-            className="card"
-            onClick={() => {
-              setFilterJalur(filterJalur === 'A' ? '' : 'A');
-              setOnlyWajibPr(false);
-            }}
-            style={{
-              cursor: 'pointer',
-              border: filterJalur === 'A' ? '2px solid var(--pur)' : '1px solid var(--br)',
-              background: 'var(--sf2)',
-              padding: '14px 16px',
-              borderRadius: 'var(--r)',
-              transition: 'all .15s',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--tx)' }}>{totalJalurA}</div>
-              <span className="badge" style={{ background: 'var(--sf3)', color: 'var(--tx2)', fontSize: 11, fontWeight: 600 }}>
-                🚢 JALUR A
-              </span>
-            </div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--tx)', marginTop: 6 }}>
-              Sparepart Normal / High Turnover
-            </div>
-          </div>
-
-          {/* Card 4: Total Spareparts */}
+          {/* Card 4: Total Active */}
           <div
             className="card"
             onClick={() => {
               setFilterJalur('');
               setFilterPeruntukan('ALL');
               setOnlyWajibPr(false);
+              setFilterSpike(false);
             }}
             style={{
               cursor: 'pointer',
@@ -317,50 +349,7 @@ export default function StockClassificationPage() {
         <div className="card">
           <div className="card-header">
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-              {/* Tab Selector Peruntukan */}
-              <div style={{ display: 'flex', gap: 4, background: 'var(--sf2)', padding: 3, borderRadius: 8, border: '1px solid var(--br)' }}>
-                <button
-                  type="button"
-                  className="btn btn-sm"
-                  style={{
-                    height: 30,
-                    fontSize: 11,
-                    background: filterPeruntukan === 'ALL' ? 'var(--sf3)' : 'transparent',
-                    color: filterPeruntukan === 'ALL' ? 'var(--pur)' : 'var(--tx3)',
-                  }}
-                  onClick={() => setFilterPeruntukan('ALL')}
-                >
-                  🌐 Semua Peruntukan ({data.length})
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-sm"
-                  style={{
-                    height: 30,
-                    fontSize: 11,
-                    background: filterPeruntukan === 'MESIN' ? 'var(--sf3)' : 'transparent',
-                    color: filterPeruntukan === 'MESIN' ? '#3b82f6' : 'var(--tx3)',
-                  }}
-                  onClick={() => setFilterPeruntukan('MESIN')}
-                >
-                  🏭 Khusus Mesin Produksi ({totalMesin})
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-sm"
-                  style={{
-                    height: 30,
-                    fontSize: 11,
-                    background: filterPeruntukan === 'BUKAN_MESIN' ? 'var(--sf3)' : 'transparent',
-                    color: filterPeruntukan === 'BUKAN_MESIN' ? '#a855f7' : 'var(--tx3)',
-                  }}
-                  onClick={() => setFilterPeruntukan('BUKAN_MESIN')}
-                >
-                  🛠️ Bukan Untuk Mesin ({totalBukanMesin})
-                </button>
-              </div>
-
-              <div className="search-bar" style={{ flex: 1, minWidth: 200, marginBottom: 0 }}>
+              <div className="search-bar" style={{ flex: 1, minWidth: 220, marginBottom: 0 }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 <input
                   type="text"
@@ -370,12 +359,13 @@ export default function StockClassificationPage() {
                 />
               </div>
 
-              {(onlyWajibPr || filterJalur || filterPeruntukan !== 'ALL' || search) && (
+              {(onlyWajibPr || filterSpike || filterJalur || filterPeruntukan !== 'ALL' || search) && (
                 <button
                   type="button"
                   className="btn btn-ghost btn-sm"
                   onClick={() => {
                     setOnlyWajibPr(false);
+                    setFilterSpike(false);
                     setFilterJalur('');
                     setFilterPeruntukan('ALL');
                     setSearch('');
@@ -399,21 +389,22 @@ export default function StockClassificationPage() {
                   <th>Nama Sparepart</th>
                   <th>Peruntukan / Mesin</th>
                   <th>Klasifikasi Dampak</th>
-                  <th style={{ textAlign: 'right' }}>Rata-rata Pemakaian</th>
+                  <th style={{ textAlign: 'center' }}>Pemakaian 12M vs 6M vs 3M</th>
+                  <th style={{ textAlign: 'center' }}>Deteksi Lonjakan (Spike)</th>
                   <th style={{ textAlign: 'center' }}>Lead Time</th>
                   <th style={{ textAlign: 'center' }}>Jalur Rumus</th>
                   <th style={{ textAlign: 'right' }}>Min</th>
                   <th style={{ textAlign: 'right' }}>Max</th>
                   <th style={{ textAlign: 'right' }}>ROP</th>
                   <th style={{ textAlign: 'right' }}>Stok Saat Ini</th>
-                  <th>Keterangan / Aksi PR</th>
+                  <th>Status &amp; Rekomendasi PR</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 && !loading && (
                   <tr>
-                    <td colSpan={12} style={{ textAlign: 'center', padding: 48, color: 'var(--tx3)' }}>
-                      {data.length === 0 ? '⏳ Memuat data kalkulasi ROP...' : 'Tidak ada sparepart yang cocok dengan filter.'}
+                    <td colSpan={13} style={{ textAlign: 'center', padding: 48, color: 'var(--tx3)' }}>
+                      {data.length === 0 ? '⏳ Memuat data perbandingan...' : 'Tidak ada sparepart yang cocok dengan filter.'}
                     </td>
                   </tr>
                 )}
@@ -444,7 +435,7 @@ export default function StockClassificationPage() {
                           </div>
                         ) : (
                           <span className="badge" style={{ fontSize: 10, background: 'var(--sf2)', color: 'var(--tx3)', border: '1px solid var(--br)' }}>
-                            🛠️ Bukan Mesin (Umum)
+                            🛠️ CONSUMABLE
                           </span>
                         )}
                       </td>
@@ -465,13 +456,35 @@ export default function StockClassificationPage() {
                         )}
                       </td>
 
-                      <td data-label="Rata-rata Pemakaian" style={{ textAlign: 'right' }}>
-                        <div style={{ fontWeight: 700, fontSize: 13, color: sp.avgMonthlyUsage > 0 ? 'var(--tx)' : 'var(--tx3)' }}>
-                          {sp.avgMonthlyUsage} {sp.uom}/bln
+                      <td data-label="Pemakaian 12M vs 6M vs 3M" style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: 11, display: 'flex', gap: 6, justifyContent: 'center', fontFamily: 'monospace' }}>
+                          <span title="Rata-rata 12 Bulan" style={{ color: 'var(--tx3)' }}>12M: <strong>{sp.avgMonthly12m}</strong></span>
+                          <span>|</span>
+                          <span title="Rata-rata 6 Bulan" style={{ color: 'var(--tx2)' }}>6M: <strong>{sp.avgMonthly6m}</strong></span>
+                          <span>|</span>
+                          <span title="Rata-rata 3 Bulan" style={{ color: sp.spikeTrend === 'SPIKE_UP' ? '#f97316' : 'var(--tx)', fontWeight: 700 }}>
+                            3M: {sp.avgMonthly3m}
+                          </span>
                         </div>
-                        <div style={{ fontSize: 10, color: 'var(--tx3)' }}>
-                          ({sp.dailyUsage}/hari) • Total: {sp.totalOutPeriod} {sp.uom}
+                        <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 2 }}>
+                          Dipakai kalkulasi ROP: <strong>{sp.avgMonthlyUsage} {sp.uom}/bln</strong>
                         </div>
+                      </td>
+
+                      <td data-label="Deteksi Lonjakan" style={{ textAlign: 'center' }}>
+                        {sp.spikeTrend === 'SPIKE_UP' ? (
+                          <span className="badge" style={{ background: 'rgba(249,115,22,0.15)', color: '#f97316', border: '1px solid rgba(249,115,22,0.4)', fontSize: 10, fontWeight: 800 }}>
+                            ⚡ LONJAKAN ({sp.spikePercentage})
+                          </span>
+                        ) : sp.spikeTrend === 'TREND_DOWN' ? (
+                          <span className="badge" style={{ background: 'rgba(59,130,246,0.12)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.3)', fontSize: 10 }}>
+                            📉 TURUN ({sp.spikePercentage})
+                          </span>
+                        ) : (
+                          <span className="text-muted" style={{ fontSize: 11 }}>
+                            ✓ Stabil
+                          </span>
+                        )}
                       </td>
 
                       <td data-label="Lead Time" style={{ textAlign: 'center' }}>
@@ -486,9 +499,9 @@ export default function StockClassificationPage() {
                           style={{
                             fontSize: 10,
                             fontWeight: 700,
-                            background: isJalurB ? 'rgba(249,115,22,0.12)' : 'var(--sf2)',
-                            color: isJalurB ? '#f97316' : 'var(--tx2)',
-                            border: isJalurB ? '1px solid rgba(249,115,22,0.3)' : '1px solid var(--br)',
+                            background: isJalurB ? 'rgba(234,179,8,0.12)' : 'var(--sf2)',
+                            color: isJalurB ? '#ca8a04' : 'var(--tx2)',
+                            border: isJalurB ? '1px solid rgba(234,179,8,0.3)' : '1px solid var(--br)',
                           }}
                         >
                           {isJalurB ? '⚡ Jalur B (Kritis-Slow)' : '🚢 Jalur A (Normal)'}
@@ -530,7 +543,7 @@ export default function StockClassificationPage() {
                         </div>
                       </td>
 
-                      <td data-label="Keterangan / Aksi PR">
+                      <td data-label="Status &amp; Rekomendasi PR">
                         {sp.isWajibPr ? (
                           <div>
                             <span

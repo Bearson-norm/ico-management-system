@@ -26,11 +26,13 @@ export async function GET(req: NextRequest) {
   if (!session) return err('Akses ditolak', 403);
 
   const { searchParams } = new URL(req.url);
-  const bulan = Math.max(1, parseInt(searchParams.get('bulan') || '12', 10));
+  const mode = (searchParams.get('mode') || 'AUTO').toUpperCase(); // 12M | 6M | 3M | AUTO
   const slowThreshold = parseFloat(searchParams.get('slowThreshold') || '1.0');
 
-  const startDate = new Date();
-  startDate.setMonth(startDate.getMonth() - bulan);
+  const now = new Date();
+  const startDate12m = new Date(now); startDate12m.setMonth(now.getMonth() - 12);
+  const startDate6m  = new Date(now); startDate6m.setMonth(now.getMonth() - 6);
+  const startDate3m  = new Date(now); startDate3m.setMonth(now.getMonth() - 3);
 
   const spareparts = await prisma.sparepart.findMany({
     where: { aktif: true },
@@ -68,21 +70,53 @@ export async function GET(req: NextRequest) {
     const totalOut = sp.movements.filter((m) => m.tipe === 'OUT').reduce((sum, m) => sum + m.qty, 0);
     const currentStock = totalIn - totalOut;
 
-    // 2. Movements OUT within analysis period (last N months)
-    const periodOutMovements = sp.movements.filter(
-      (m) => m.tipe === 'OUT' && new Date(m.tanggal) >= startDate
-    );
-    const totalOutPeriod = periodOutMovements.reduce((sum, m) => sum + m.qty, 0);
-    const freqOutPeriod = periodOutMovements.length;
+    // 2. Multi-period OUT movements (12m, 6m, 3m)
+    const outMovements = sp.movements.filter((m) => m.tipe === 'OUT');
+    
+    const totalOut12m = outMovements.filter((m) => new Date(m.tanggal) >= startDate12m).reduce((s, m) => s + m.qty, 0);
+    const totalOut6m  = outMovements.filter((m) => new Date(m.tanggal) >= startDate6m).reduce((s, m) => s + m.qty, 0);
+    const totalOut3m  = outMovements.filter((m) => new Date(m.tanggal) >= startDate3m).reduce((s, m) => s + m.qty, 0);
 
-    // 3. Avg Monthly & Daily Usage
-    const avgMonthlyUsage = totalOutPeriod / bulan;
+    const avgMonthly12m = Math.round((totalOut12m / 12) * 100) / 100;
+    const avgMonthly6m  = Math.round((totalOut6m / 6) * 100) / 100;
+    const avgMonthly3m  = Math.round((totalOut3m / 3) * 100) / 100;
+
+    // 3. Spike & Trend Detection (Comparing 3m trend to 12m baseline)
+    let spikeTrend: 'SPIKE_UP' | 'TREND_DOWN' | 'STABLE' = 'STABLE';
+    let spikePercentage: string = '0%';
+
+    if (avgMonthly12m > 0) {
+      const ratio = avgMonthly3m / avgMonthly12m;
+      if (ratio >= 1.4 && avgMonthly3m >= 0.5) {
+        spikeTrend = 'SPIKE_UP';
+        spikePercentage = `+${Math.round((ratio - 1) * 100)}%`;
+      } else if (ratio <= 0.6) {
+        spikeTrend = 'TREND_DOWN';
+        spikePercentage = `-${Math.round((1 - ratio) * 100)}%`;
+      }
+    } else if (avgMonthly3m > 0) {
+      spikeTrend = 'SPIKE_UP';
+      spikePercentage = 'Baru Lonjak';
+    }
+
+    // 4. Select Effective Monthly Usage Based on Mode
+    let avgMonthlyUsage: number;
+    if (mode === '3M') {
+      avgMonthlyUsage = avgMonthly3m;
+    } else if (mode === '6M') {
+      avgMonthlyUsage = avgMonthly6m;
+    } else if (mode === '12M') {
+      avgMonthlyUsage = avgMonthly12m;
+    } else {
+      // AUTO (Safety Anti-Spike): Pick the highest average among 12m, 6m, 3m
+      avgMonthlyUsage = Math.max(avgMonthly12m, avgMonthly6m, avgMonthly3m);
+    }
     const dailyUsage = avgMonthlyUsage / 30;
 
-    // 4. Lead time (default 7 days if avgLeadTime <= 0)
+    // 5. Lead time (default 7 days if avgLeadTime <= 0)
     const leadTime = sp.avgLeadTime > 0 ? Math.round(sp.avgLeadTime * 10) / 10 : 7;
 
-    // 5. Machine Vitality / Downtime Impact
+    // 6. Machine Vitality / Downtime Impact
     const isMesinProduksi = sp.mesins.length > 0;
     const vitalMesins = sp.mesins.filter((m) => m.vital);
     const isVital = isMesinProduksi && vitalMesins.length > 0;
@@ -101,8 +135,7 @@ export async function GET(req: NextRequest) {
       tipePeruntukan = 'Mesin Non-Vital';
     }
 
-    // 6. Pathway Logic: Jalur A (Normal) vs Jalur B (Kritis-Jaranger Keluar)
-    // Jalur B khusus untuk Mesin Vital (STOP_TOTAL) dengan pemakaian per bulan rendah
+    // 7. Pathway Logic: Jalur A (Normal) vs Jalur B (Kritis-Jaranger Keluar)
     const isJalurB = isVital && avgMonthlyUsage < slowThreshold;
 
     let jalur: 'Jalur A (Normal)' | 'Jalur B (Kritis-Slow)';
@@ -128,7 +161,7 @@ export async function GET(req: NextRequest) {
       max = Math.max(rop + 1, Math.ceil(rop + (avgMonthlyUsage * 2)));
     }
 
-    // 7. Reorder Alert Trigger: Stock <= ROP
+    // 8. Reorder Alert Trigger: Stock <= ROP
     const isWajibPr = currentStock <= rop;
 
     return {
@@ -144,8 +177,14 @@ export async function GET(req: NextRequest) {
       isVital,
       vitalMesins: vitalMesins.map((m) => m.nama),
       dampakDowntime,
-      freqOutPeriod,
-      totalOutPeriod,
+      totalOut12m,
+      totalOut6m,
+      totalOut3m,
+      avgMonthly12m,
+      avgMonthly6m,
+      avgMonthly3m,
+      spikeTrend,
+      spikePercentage,
       avgMonthlyUsage: Math.round(avgMonthlyUsage * 100) / 100,
       dailyUsage: Math.round(dailyUsage * 1000) / 1000,
       leadTime,
