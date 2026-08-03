@@ -21,6 +21,20 @@ const ALASAN: Record<string, string> = {
     'Tidak di mesin vital dan jarang keluar. Tidak perlu distok — cukup jalur PR atau petty cash saat dibutuhkan.',
 };
 
+function isOpnameAdjustment(m: { keterangan?: string | null; purchaseType?: string | null }): boolean {
+  if (m.purchaseType === 'opname_adjustment' || m.purchaseType === 'opname' || m.purchaseType === 'adjustment') {
+    return true;
+  }
+  if (!m.keterangan) return false;
+  const lower = m.keterangan.toLowerCase();
+  return (
+    lower.includes('[opname]') ||
+    lower.includes('opname adjustment') ||
+    lower.includes('hasil audit sesi') ||
+    lower.includes('[adjust')
+  );
+}
+
 export async function GET(req: NextRequest) {
   const session = await requireMtcEditor();
   if (!session) return err('Akses ditolak', 403);
@@ -58,20 +72,20 @@ export async function GET(req: NextRequest) {
           tipe: { in: ['IN', 'OUT'] },
           OR: [{ purchaseType: null }, { purchaseType: { not: 'histori-sheets' } }],
         },
-        select: { tipe: true, qty: true, tanggal: true, keterangan: true },
+        select: { tipe: true, qty: true, tanggal: true, keterangan: true, purchaseType: true },
       },
     },
     orderBy: { nama: 'asc' },
   });
 
   const result = spareparts.map((sp) => {
-    // 1. Current physical stock
+    // 1. Current physical stock (includes all movements, including adjustments)
     const totalIn = sp.movements.filter((m) => m.tipe === 'IN').reduce((sum, m) => sum + m.qty, 0);
     const totalOut = sp.movements.filter((m) => m.tipe === 'OUT').reduce((sum, m) => sum + m.qty, 0);
     const currentStock = totalIn - totalOut;
 
-    // 2. Multi-period OUT movements (12m, 6m, 3m)
-    const outMovements = sp.movements.filter((m) => m.tipe === 'OUT');
+    // 2. Multi-period OUT movements (12m, 6m, 3m) - Exclude Opname Adjustments
+    const outMovements = sp.movements.filter((m) => m.tipe === 'OUT' && !isOpnameAdjustment(m));
     
     const totalOut12m = outMovements.filter((m) => new Date(m.tanggal) >= startDate12m).reduce((s, m) => s + m.qty, 0);
     const totalOut6m  = outMovements.filter((m) => new Date(m.tanggal) >= startDate6m).reduce((s, m) => s + m.qty, 0);
