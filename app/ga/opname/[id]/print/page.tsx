@@ -83,6 +83,11 @@ export default function GaOpnamePrintPage({ params }: { params: { id: string } }
           color: #2563eb !important;
         }
 
+        @page {
+          size: A4 portrait;
+          margin: 12mm;
+        }
+
         @media print {
           body {
             background: #fff !important;
@@ -93,6 +98,11 @@ export default function GaOpnamePrintPage({ params }: { params: { id: string } }
           }
           .page-break {
             page-break-before: always;
+          }
+          .ga-print-container {
+            max-width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
           }
         }
       `}</style>
@@ -290,50 +300,41 @@ export default function GaOpnamePrintPage({ params }: { params: { id: string } }
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(4, 1fr)',
-        gap: 12,
+        gap: 8,
         textAlign: 'center',
         marginTop: 40,
         pageBreakInside: 'avoid'
       }}>
-        {/* Column 1: Penghitung */}
-        <div style={{ border: '1px solid #e5e7eb', borderRadius: 6, padding: '10px 6px', background: '#fff' }}>
-          <div style={{ fontSize: 11, fontWeight: 'bold', color: '#000 !important', marginBottom: 2 }}>Dihitung Oleh,</div>
-          <div style={{ fontSize: 10, color: '#000 !important', marginBottom: 40 }}>Penghitung (Staff Audit)</div>
-          <div style={{ borderBottom: '1px solid #000', margin: '0 12px', paddingBottom: 4 }}>
-            ( ......................................... )
+        {[
+          { title: 'Dihitung Oleh,', role: 'Penghitung (Staff Audit)' },
+          { title: 'Disiapkan Oleh,', role: 'GA (Staff General Affairs)' },
+          { title: 'Diketahui Oleh,', role: 'Supervisor GA' },
+          { title: 'Disetujui Oleh,', role: 'Manufacture Manager' },
+        ].map((col) => (
+          <div key={col.title} style={{ border: '1px solid #e5e7eb', borderRadius: 6, padding: '10px 6px', background: '#fff' }}>
+            <div style={{ fontSize: 11, fontWeight: 'bold', color: '#000 !important', marginBottom: 2 }}>{col.title}</div>
+            <div style={{ fontSize: 10, color: '#000 !important', marginBottom: 40 }}>{col.role}</div>
+            {/* Flex signature line keeps ( ____ ) on one row in narrow A4 portrait columns */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'flex-end',
+              justifyContent: 'center',
+              gap: 3,
+              margin: '0 4px',
+              whiteSpace: 'nowrap',
+            }}>
+              <span style={{ fontSize: 11, lineHeight: 1, flexShrink: 0 }}>(</span>
+              <span style={{
+                flex: 1,
+                minWidth: 24,
+                borderBottom: '1px solid #000',
+                height: 14,
+              }} />
+              <span style={{ fontSize: 11, lineHeight: 1, flexShrink: 0 }}>)</span>
+            </div>
+            <div style={{ fontSize: 9, color: '#000 !important', marginTop: 4 }}>Nama & Tanggal</div>
           </div>
-          <div style={{ fontSize: 9, color: '#000 !important', marginTop: 4 }}>Nama & Tanggal</div>
-        </div>
-
-        {/* Column 2: GA */}
-        <div style={{ border: '1px solid #e5e7eb', borderRadius: 6, padding: '10px 6px', background: '#fff' }}>
-          <div style={{ fontSize: 11, fontWeight: 'bold', color: '#000 !important', marginBottom: 2 }}>Disiapkan Oleh,</div>
-          <div style={{ fontSize: 10, color: '#000 !important', marginBottom: 40 }}>GA (Staff General Affairs)</div>
-          <div style={{ borderBottom: '1px solid #000', margin: '0 12px', paddingBottom: 4 }}>
-            ( ......................................... )
-          </div>
-          <div style={{ fontSize: 9, color: '#000 !important', marginTop: 4 }}>Nama & Tanggal</div>
-        </div>
-
-        {/* Column 3: Supervisor GA */}
-        <div style={{ border: '1px solid #e5e7eb', borderRadius: 6, padding: '10px 6px', background: '#fff' }}>
-          <div style={{ fontSize: 11, fontWeight: 'bold', color: '#000 !important', marginBottom: 2 }}>Diketahui Oleh,</div>
-          <div style={{ fontSize: 10, color: '#000 !important', marginBottom: 40 }}>Supervisor GA</div>
-          <div style={{ borderBottom: '1px solid #000', margin: '0 12px', paddingBottom: 4 }}>
-            ( ......................................... )
-          </div>
-          <div style={{ fontSize: 9, color: '#000 !important', marginTop: 4 }}>Nama & Tanggal</div>
-        </div>
-
-        {/* Column 4: Manufacture Manager */}
-        <div style={{ border: '1px solid #e5e7eb', borderRadius: 6, padding: '10px 6px', background: '#fff' }}>
-          <div style={{ fontSize: 11, fontWeight: 'bold', color: '#000 !important', marginBottom: 2 }}>Disetujui Oleh,</div>
-          <div style={{ fontSize: 10, color: '#000 !important', marginBottom: 40 }}>Manufacture Manager</div>
-          <div style={{ borderBottom: '1px solid #000', margin: '0 12px', paddingBottom: 4 }}>
-            ( ......................................... )
-          </div>
-          <div style={{ fontSize: 9, color: '#000 !important', marginTop: 4 }}>Nama & Tanggal</div>
-        </div>
+        ))}
       </div>
     </div>
   );
