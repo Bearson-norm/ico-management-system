@@ -1783,9 +1783,9 @@ export async function POST(req: NextRequest) {
                 finalIsGrDone = true;
               } else {
                 // If newReceiptQty <= 0, it means it is not received in Odoo (either because it is pending or because total PO qty has been fully allocated to other items).
-                // Revert/keep as PO (not DONE)
+                // Revert/keep as PO (not DONE), but preserve physical receipt date if already recorded in MTC
                 updateData.statusPo = 'PO';
-                updateData.tanggalTerima = null;
+                updateData.tanggalTerima = item.tanggalTerima || null;
                 if (odooGrLink) {
                   updateData.linkGr = odooGrLink;
                 }

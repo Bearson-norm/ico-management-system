@@ -516,10 +516,10 @@ export async function POST(req: NextRequest) {
             }
             vendorUpdatedCount++;
           } else {
-            // If none match, revert to ORDERED / not RECEIVED
+            // If none match, revert to ORDERED / not RECEIVED, but preserve physical receipt date
             updateData.status = 'ORDERED';
             updateData.grDone = false;
-            updateData.tanggalTerima = null;
+            updateData.tanggalTerima = item.tanggalTerima || null;
           }
 
           await tx.gaProcurementTracking.update({

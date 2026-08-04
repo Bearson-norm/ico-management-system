@@ -453,10 +453,9 @@ async function main() {
           }
           finalIsGrDone = true;
         } else {
-          // If none match, revert to PO / not DONE
+          // If none match, revert to PO / not DONE, but preserve physical receipt date
           updateData.statusPo = 'PO';
-          updateData.tanggalTerima = null;
-          updateData.linkGr = null;
+          updateData.tanggalTerima = item.tanggalTerima || null;
         }
 
         const hasChanges = hasActualChanges(item, updateData);

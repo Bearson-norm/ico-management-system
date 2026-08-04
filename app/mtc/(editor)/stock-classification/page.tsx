@@ -810,7 +810,7 @@ export default function StockClassificationPage() {
                                             fontSize: 11,
                                             display: 'flex',
                                             alignItems: 'center',
-                                            justify: 'space-between',
+                                            justifyContent: 'space-between',
                                             background: 'var(--sf3)',
                                             padding: '4px 10px',
                                             borderRadius: 4,
