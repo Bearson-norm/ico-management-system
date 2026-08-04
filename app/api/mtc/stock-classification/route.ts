@@ -70,7 +70,6 @@ export async function GET(req: NextRequest) {
       movements: {
         where: {
           tipe: { in: ['IN', 'OUT'] },
-          OR: [{ purchaseType: null }, { purchaseType: { not: 'histori-sheets' } }],
         },
         select: { tipe: true, qty: true, tanggal: true, keterangan: true, purchaseType: true },
       },
