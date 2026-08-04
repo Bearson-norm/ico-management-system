@@ -2,26 +2,56 @@ name: CI
 
 on:
   pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.gitignore'
   push:
     branches: [main, master]
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # Schema env() for prisma validate / generate — DB need not be reachable.
+  DATABASE_URL_MTC: postgresql://ci:ci@127.0.0.1:5432/mtc_db
+  DATABASE_URL_GA: postgresql://ci:ci@127.0.0.1:5432/ga_db
+
 jobs:
-  lint-and-build:
+  # --- Instant gates (seconds) ---
+  secrets-scan:
+    name: Secrets scan
     runs-on: ubuntu-latest
-    env:
-      # Diperlukan oleh schema (env()) untuk prisma validate & prisma generate — DB tidak harus bisa dijangkau.
-      DATABASE_URL_MTC: postgresql://ci:ci@127.0.0.1:5432/mtc_db
-      DATABASE_URL_GA: postgresql://ci:ci@127.0.0.1:5432/ga_db
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install gitleaks
+        env:
+          GITLEAKS_VERSION: 8.24.3
+        run: |
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar -xz gitleaks
+          sudo mv gitleaks /usr/local/bin/gitleaks
+          gitleaks version
+
+      - name: Scan for secrets
+        run: gitleaks detect --source . --verbose --redact --config .gitleaks.toml
+
+  # --- Static analysis (parallel) ---
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version-file: .nvmrc
           cache: npm
           cache-dependency-path: package-lock.json
 
@@ -31,11 +61,147 @@ jobs:
       - name: Lint
         run: npm run lint
 
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      # postinstall already generates clients; explicit step keeps types in sync if hooks are skipped
+      - name: Generate Prisma clients
+        run: npm run prisma:generate
+
+      - name: Typecheck
+        run: npm run typecheck
+
+  prisma:
+    name: Prisma validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install
+        run: npm ci
+
       - name: Validate Prisma schemas
-        run: npx prisma validate --schema=prisma/mtc/schema.prisma && npx prisma validate --schema=prisma/ga/schema.prisma
+        run: |
+          npx prisma validate --schema=prisma/mtc/schema.prisma
+          npx prisma validate --schema=prisma/ga/schema.prisma
+
+  # SCA always runs for visibility. Not a hard gate yet: lockfile has known
+  # high/critical findings (xlsx has no fix; Next 14 / postcss transitive).
+  # Revisit when upgrading Next or replacing xlsx — then add audit to the
+  # required list in the aggregate job below.
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: npm audit (high+)
+        id: audit
+        continue-on-error: true
+        run: npm run audit:ci
+
+      - name: Publish audit summary
+        if: always()
+        run: |
+          {
+            echo "## npm audit"
+            echo ""
+            if [ "${{ steps.audit.outcome }}" = "success" ]; then
+              echo "No high+ vulnerabilities reported."
+            else
+              echo "Audit reported high+ issues (soft-fail; see job log)."
+              echo ""
+              echo "Accepted risk until Next/xlsx upgrades: see workflow comment on job \`audit\`."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # --- Build (after static gates) ---
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck, prisma]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install
+        run: npm ci
 
       - name: Build
         env:
           NEXTAUTH_SECRET: ci-build-secret-min-32-chars-long-xx
           NEXTAUTH_URL: http://localhost:3000
         run: npm run build
+
+  # --- Required aggregate (branch protection → require job "CI") ---
+  # audit is waited on for visibility but is not a hard fail (see audit job comment).
+  ci:
+    name: CI
+    runs-on: ubuntu-latest
+    needs: [secrets-scan, lint, typecheck, prisma, audit, build]
+    if: always()
+    steps:
+      - name: Check required jobs
+        run: |
+          echo "secrets-scan=${{ needs.secrets-scan.result }}"
+          echo "lint=${{ needs.lint.result }}"
+          echo "typecheck=${{ needs.typecheck.result }}"
+          echo "prisma=${{ needs.prisma.result }}"
+          echo "audit=${{ needs.audit.result }}"
+          echo "build=${{ needs.build.result }}"
+
+          failed=0
+          for r in \
+            "${{ needs.secrets-scan.result }}" \
+            "${{ needs.lint.result }}" \
+            "${{ needs.typecheck.result }}" \
+            "${{ needs.prisma.result }}" \
+            "${{ needs.build.result }}"
+          do
+            if [ "$r" != "success" ]; then
+              failed=1
+            fi
+          done
+
+          if [ "$failed" -ne 0 ]; then
+            echo "One or more required CI jobs failed."
+            exit 1
+          fi
+
+          if [ "${{ needs.audit.result }}" != "success" ]; then
+            echo "Warning: audit job did not succeed (soft gate)."
+          fi
+
+          echo "All required CI checks passed."

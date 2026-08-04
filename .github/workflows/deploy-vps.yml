@@ -1,21 +1,27 @@
 name: Deploy VPS
 
+# Deploy only after CI succeeds on main/master (fail-fast: no deploy on red CI).
+# Manual runs still allowed via workflow_dispatch.
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main, master]
   workflow_dispatch:
 
 concurrency:
-  group: deploy-${{ github.ref }}
+  group: deploy-${{ github.event.workflow_run.head_branch || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
   ssh-deploy:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       (github.event.workflow_run.head_branch == 'main' ||
+        github.event.workflow_run.head_branch == 'master'))
     steps:
-      - uses: actions/checkout@v4
-
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
         with:
@@ -44,10 +50,23 @@ jobs:
 
             rm -f .git/refs/remotes/origin/main.lock .git/index.lock odoo_sync_debug.txt || true
             git fetch origin
-            TARGET_BRANCH="${{ github.ref_name }}"
-            echo ">>> Deploying branch: $TARGET_BRANCH"
+
+            if [ "${{ github.event_name }}" = "workflow_run" ]; then
+              TARGET_BRANCH="${{ github.event.workflow_run.head_branch }}"
+              TARGET_SHA="${{ github.event.workflow_run.head_sha }}"
+            else
+              TARGET_BRANCH="${{ github.ref_name }}"
+              TARGET_SHA=""
+            fi
+
+            echo ">>> Deploying branch: $TARGET_BRANCH${TARGET_SHA:+ @ $TARGET_SHA}"
             git checkout -f "$TARGET_BRANCH"
             git reset --hard "origin/$TARGET_BRANCH"
+
+            if [ -n "$TARGET_SHA" ]; then
+              # Pin to the exact commit CI verified (avoids race with a newer push).
+              git checkout -f "$TARGET_SHA"
+            fi
 
             echo ">>> Running npm install..."
             npm install --include=dev --no-audit --no-fund

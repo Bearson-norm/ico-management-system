@@ -185,6 +185,7 @@ export default function StockClassificationPage() {
                 {totalMesin > 0 ? Math.round((totalMesin / data.length) * 100) : 0}% dari total
               </span>
             </div>
+            </div>
             <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--tx)', marginTop: 8 }}>
               {totalMesin} <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--tx3)' }}>Item</span>
             </div>

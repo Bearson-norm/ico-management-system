@@ -1,0 +1,9 @@
+# Allowlist for placeholder / example secrets that are not real credentials.
+title = "ico-management-system"
+
+[allowlist]
+description = "Example env and docs"
+paths = [
+  '''^\.env\.example$''',
+  '''(^|/)README\.md$''',
+]
