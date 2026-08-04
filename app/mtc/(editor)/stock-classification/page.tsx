@@ -181,10 +181,6 @@ export default function StockClassificationPage() {
               <span className="badge" style={{ background: 'rgba(59,130,246,0.2)', color: '#60a5fa', fontWeight: 700, fontSize: 11 }}>
                 🏭 MESIN PRODUKSI (PART VITAL / PRODUKSI)
               </span>
-              <span style={{ fontSize: 12, color: 'var(--tx3)', fontWeight: 600 }}>
-                {totalMesin > 0 ? Math.round((totalMesin / data.length) * 100) : 0}% dari total
-              </span>
-            </div>
             </div>
             <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--tx)', marginTop: 8 }}>
               {totalMesin} <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--tx3)' }}>Item</span>
