@@ -78,9 +78,10 @@ export async function GET(req: NextRequest) {
   });
 
   const result = spareparts.map((sp) => {
-    // 1. Current physical stock (includes all movements, including adjustments)
-    const totalIn = sp.movements.filter((m) => m.tipe === 'IN').reduce((sum, m) => sum + m.qty, 0);
-    const totalOut = sp.movements.filter((m) => m.tipe === 'OUT').reduce((sum, m) => sum + m.qty, 0);
+    // 1. Current physical stock (identical to Inventory Master & Stock List)
+    const stockMovements = sp.movements.filter((m) => m.purchaseType !== 'histori-sheets');
+    const totalIn = stockMovements.filter((m) => m.tipe === 'IN').reduce((sum, m) => sum + m.qty, 0);
+    const totalOut = stockMovements.filter((m) => m.tipe === 'OUT').reduce((sum, m) => sum + m.qty, 0);
     const currentStock = totalIn - totalOut;
 
     // 2. Multi-period OUT movements (12m, 6m, 3m) - Exclude Opname Adjustments
