@@ -250,14 +250,17 @@ function combinePrAndPoLinks(existingRef: string | null | undefined, newUrl: str
 }
 
 const MATCH_STOP_WORDS = new Set(['per', 'isi', 'sak', 'untuk', 'kg', 'pcs', 'dan', 'atau', 'dengan', 'filter', 'air', 'gedung', 'sumur', 'kotor', 'pam', 'repeat', 'order', 'kebutuhan']);
-const getMatchTokens = (str: string) => str.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !MATCH_STOP_WORDS.has(w));
+const getMatchTokens = (str: any) => {
+  if (!str || typeof str !== 'string') return [];
+  return str.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !MATCH_STOP_WORDS.has(w));
+};
 
 // Intelligent best match line item helper using name, substring, token overlap, digits, and quantity scoring
 function findBestMatchedLine(lines: any[], item: any): any {
   if (!lines || lines.length === 0) return null;
 
-  const odooItemName = item.sparepart?.nama?.toLowerCase()?.trim() || '';
-  const originalName = item.originalName?.toLowerCase()?.trim() || '';
+  const odooItemName = (typeof item.sparepart?.nama === 'string') ? item.sparepart.nama.toLowerCase().trim() : '';
+  const originalName = (typeof item.originalName === 'string') ? item.originalName.toLowerCase().trim() : '';
   const targetQty = Number(item.qty) || 0;
 
   // Extract all digits from originalName for sequence/specs matching (e.g. "isi 2" -> ["2"])
@@ -267,8 +270,9 @@ function findBestMatchedLine(lines: any[], item: any): any {
   let bestScore = -1;
 
   for (const line of lines) {
-    const prodName = Array.isArray(line.product_id) ? line.product_id[1]?.toLowerCase()?.trim() : '';
-    const lineName = line.name?.toLowerCase()?.trim() || '';
+    const rawProdName = Array.isArray(line.product_id) ? line.product_id[1] : '';
+    const prodName = (typeof rawProdName === 'string') ? rawProdName.toLowerCase().trim() : '';
+    const lineName = (typeof line.name === 'string') ? line.name.toLowerCase().trim() : '';
     const lineQty = Number(line.product_qty) || 0;
 
     let score = 0;
