@@ -398,7 +398,7 @@ export default function ProcurementTrackingPage() {
       setTempOdooSessionId(currentOdooSessionId);
 
       // Trigger background sync with the resolved config
-      if (currentSheetUrl && (currentOdooPassword || currentOdooSessionId)) {
+      if (currentSheetUrl || currentOdooPassword || currentOdooSessionId) {
         fetch('/api/mtc/odoo/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
