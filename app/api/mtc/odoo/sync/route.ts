@@ -1701,6 +1701,9 @@ export async function POST(req: NextRequest) {
                   unlinkedUpdate.nomorPo = null;
                   unlinkedUpdate.statusPo = null;
                   unlinkedUpdate.linkGr = null;
+                  if (item.statusPr === 'RECEIVED' && !item.tanggalTerima) {
+                    unlinkedUpdate.statusPr = 'APPROVED';
+                  }
                 }
                 if (hasActualChanges(item, unlinkedUpdate)) {
                   await tx.procurementTracking.update({
