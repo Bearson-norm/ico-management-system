@@ -338,15 +338,16 @@ function findBestMatchedLine(lines: any[], item: any): any {
       score += digitMatchCount * 12;
     }
 
-    // 5. Quantity Match (only if score > 0 or single generic item fallback)
+    // 5. Quantity Match (only if score > 0 or line description is generic)
+    const isLineDescriptionGeneric = isGenericName(lineName) || (!lineName && isGenericName(prodName));
     if (targetQty > 0 && targetQty === lineQty) {
-      if (score > 0 || (lines.length === 1 && (isGenericName(originalName) || isGenericName(prodName)))) {
+      if (score > 0 || (lines.length === 1 && isLineDescriptionGeneric && isGenericName(originalName))) {
         score += 8;
       }
     }
 
-    // 6. Single Item Generic Fallback: if PR has 1 item and PO has 1 line, and item is generic
-    if (score === 0 && lines.length === 1 && (isGenericName(originalName) || isGenericName(prodName))) {
+    // 6. Single Item Generic Fallback: ONLY if line description itself is generic AND original item is generic
+    if (score === 0 && lines.length === 1 && isLineDescriptionGeneric && isGenericName(originalName)) {
       score += 15;
     }
 
@@ -454,7 +455,8 @@ async function queryOdoo(
       throw new Error('Kredensial Odoo tidak lengkap (Password/API Key atau Cookie Session ID diperlukan)');
     }
     const odooDb = options.odooDb || 'foom-production-5808833';
-    const odooUid = options.odooUid || 34;
+    const parsedUid = typeof options.odooUid === 'number' ? options.odooUid : parseInt(String(options.odooUid || ''));
+    const odooUid = (!isNaN(parsedUid) && parsedUid > 0) ? parsedUid : 34;
 
     const payload = {
       jsonrpc: '2.0',
