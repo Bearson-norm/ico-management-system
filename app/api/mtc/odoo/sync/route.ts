@@ -148,7 +148,7 @@ const ACCOUNT_NAME_PATTERNS = [
 ];
 
 function isGenericName(name: string | null | undefined): boolean {
-  if (!name) return true;
+  if (!name || !name.trim()) return false;
   const trimmed = name.trim();
   const lower = trimmed.toLowerCase();
 
@@ -338,15 +338,15 @@ function findBestMatchedLine(lines: any[], item: any): any {
       score += digitMatchCount * 12;
     }
 
-    // 5. Quantity Match (only if score > 0 or single item fallback)
+    // 5. Quantity Match (only if score > 0 or single generic item fallback)
     if (targetQty > 0 && targetQty === lineQty) {
-      if (score > 0 || (lines.length === 1 && (isGenericName(originalName) || isGenericName(odooItemName)))) {
+      if (score > 0 || (lines.length === 1 && (isGenericName(originalName) || isGenericName(prodName)))) {
         score += 8;
       }
     }
 
     // 6. Single Item Generic Fallback: if PR has 1 item and PO has 1 line, and item is generic
-    if (score === 0 && lines.length === 1 && (isGenericName(originalName) || isGenericName(odooItemName))) {
+    if (score === 0 && lines.length === 1 && (isGenericName(originalName) || isGenericName(prodName))) {
       score += 15;
     }
 
