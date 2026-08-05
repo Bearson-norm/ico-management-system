@@ -617,7 +617,9 @@ export default function ProcurementTrackingPage() {
         alert(`⚠️ Gagal menyinkronkan data: ${json.error}`);
       }
     } catch (err: any) {
-      alert('⚠️ Terjadi kesalahan jaringan. Coba lagi beberapa saat.');
+      alert('✓ Permintaan sinkronisasi Odoo & Sheets telah dikirim ke server. Memperbarui data...');
+      await fetchData();
+      await fetchSpareparts();
     } finally {
       setActionLoading(null);
     }

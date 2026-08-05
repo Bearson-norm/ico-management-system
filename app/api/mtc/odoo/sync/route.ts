@@ -1,5 +1,8 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+
+export const dynamic = 'force-dynamic';
+export const maxDuration = 300;
 import { requireMtcEditor } from '@/lib/auth';
 import { ok, err } from '@/lib/utils';
 import { parse } from 'csv-parse/sync';
