@@ -1645,9 +1645,26 @@ export async function POST(req: NextRequest) {
                 matchedLine = findBestMatchedLine(allPoLines, item);
               }
 
-              const targetPo = matchedLine 
-                ? odooPos.find((p: any) => p.id === matchedLine.parentPoId)
-                : odooPos[0];
+              // If item doesn't match any PO line, skip PO assignment for this item
+              if (!matchedLine) {
+                // Only update non-PO fields (notes, date) for unmatched items
+                const unlinkedUpdate: any = {
+                  odooNotes: chatterNotes || null,
+                };
+                if (prCreateDate) {
+                  unlinkedUpdate.tanggalList = prCreateDate;
+                }
+                if (hasActualChanges(item, unlinkedUpdate)) {
+                  await tx.procurementTracking.update({
+                    where: { id: item.id },
+                    data: unlinkedUpdate
+                  });
+                }
+                continue;
+              }
+
+              const targetPo = odooPos.find((p: any) => p.id === matchedLine.parentPoId)
+                || odooPos[0];
               const poId = targetPo.id;
               const poName = targetPo.name;
               const odooState = targetPo.state;
