@@ -249,7 +249,10 @@ function combinePrAndPoLinks(existingRef: string | null | undefined, newUrl: str
   return pr || po || newUrl;
 }
 
-// Intelligent best match line item helper using name, substring, digits, and quantity scoring
+const MATCH_STOP_WORDS = new Set(['per', 'isi', 'sak', 'untuk', 'kg', 'pcs', 'dan', 'atau', 'dengan', 'filter', 'air', 'gedung', 'sumur', 'kotor', 'pam', 'repeat', 'order', 'kebutuhan']);
+const getMatchTokens = (str: string) => str.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !MATCH_STOP_WORDS.has(w));
+
+// Intelligent best match line item helper using name, substring, token overlap, digits, and quantity scoring
 function findBestMatchedLine(lines: any[], item: any): any {
   if (!lines || lines.length === 0) return null;
 
@@ -297,8 +300,30 @@ function findBestMatchedLine(lines: any[], item: any): any {
       }
     }
 
-    // 3. Digit/Number Sequence Match (crucial tie-breaker for multi-spec things)
-    if (originalDigits.length > 0) {
+    // 3. Word Token Overlap Match (handles variation in packaging specs e.g. 25kg vs 50kg)
+    const origTokens = getMatchTokens(originalName);
+    const itemTokens = getMatchTokens(odooItemName);
+    const lineTokens = getMatchTokens(lineName);
+    const prodTokens = getMatchTokens(prodName);
+
+    let maxCommonWords = 0;
+    for (const targetTokens of [origTokens, itemTokens]) {
+      if (targetTokens.length === 0) continue;
+      for (const refTokens of [lineTokens, prodTokens]) {
+        if (refTokens.length === 0) continue;
+        const common = targetTokens.filter(t => refTokens.includes(t));
+        if (common.length > maxCommonWords) {
+          maxCommonWords = common.length;
+        }
+      }
+    }
+
+    if (maxCommonWords >= 1) {
+      score += Math.min(maxCommonWords * 10, 40);
+    }
+
+    // 4. Digit/Number Sequence Match (crucial tie-breaker ONLY when names/tokens overlap)
+    if (score > 0 && originalDigits.length > 0) {
       let digitMatchCount = 0;
       for (const d of originalDigits) {
         const regex = new RegExp('\\b' + d + '\\b');
@@ -309,9 +334,16 @@ function findBestMatchedLine(lines: any[], item: any): any {
       score += digitMatchCount * 12;
     }
 
-    // 4. Quantity Match (excellent tie-breaker)
+    // 5. Quantity Match (only if score > 0 or single item fallback)
     if (targetQty > 0 && targetQty === lineQty) {
-      score += 8;
+      if (score > 0 || (lines.length === 1 && (isGenericName(originalName) || isGenericName(odooItemName)))) {
+        score += 8;
+      }
+    }
+
+    // 6. Single Item Generic Fallback: if PR has 1 item and PO has 1 line, and item is generic
+    if (score === 0 && lines.length === 1 && (isGenericName(originalName) || isGenericName(odooItemName))) {
+      score += 15;
     }
 
     // Update best matched line candidate
@@ -321,7 +353,7 @@ function findBestMatchedLine(lines: any[], item: any): any {
     }
   }
 
-  return bestLine;
+  return (bestLine && bestScore >= 15) ? bestLine : null;
 }
 
 // Helper to fetch and format Chatter logs for a specific document model
