@@ -1654,6 +1654,12 @@ export async function POST(req: NextRequest) {
                 if (prCreateDate) {
                   unlinkedUpdate.tanggalList = prCreateDate;
                 }
+                // Clear wrongly-assigned PO if it was set to one of the POs for this PR
+                const odooPoNames = odooPos.map((p: any) => p.name);
+                if (item.nomorPo && odooPoNames.includes(item.nomorPo)) {
+                  unlinkedUpdate.nomorPo = null;
+                  unlinkedUpdate.statusPo = null;
+                }
                 if (hasActualChanges(item, unlinkedUpdate)) {
                   await tx.procurementTracking.update({
                     where: { id: item.id },
