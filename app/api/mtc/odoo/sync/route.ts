@@ -1807,7 +1807,10 @@ export async function POST(req: NextRequest) {
                 updateData.qty = Math.round(matchedQty);
               }
 
-              if (newReceiptQty > 0 && newReceiptQty < item.qty) {
+              if (odooState === 'cancel') {
+                updateData.statusPr = 'CANCELLED';
+                updateData.statusPo = 'CANCELLED';
+              } else if (newReceiptQty > 0 && newReceiptQty < item.qty) {
                 // SPLIT GR HANDLING: Baru diterima sebagian dari porsi pending saat ini
                 updateData.qty = newReceiptQty;
                 updateData.statusPo = 'DONE';
