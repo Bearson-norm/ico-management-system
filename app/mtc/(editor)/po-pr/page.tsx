@@ -1402,22 +1402,23 @@ export default function ProcurementTrackingPage() {
         if (item.nomorPr?.trim()) prsSet.add(item.nomorPr.trim());
         if (item.urgency === 'Urgent') hasUrgent = true;
         
+        const isCancelled = item.statusPr === 'CANCELLED' || item.statusPo === 'CANCELLED';
         // Suatu barang dianggap sudah GR di Odoo jika statusPo Odoo sudah DONE
-        const isGrDone = item.statusPo === 'DONE';
+        const isGrDone = !isCancelled && item.statusPo === 'DONE';
         // Jika sudah GR di Odoo -> otomatis dianggap sudah diterima fisik.
         // Jika baru dicatat terima fisik di web (tanggalTerima terisi) -> dianggap diterima fisik, tapi BELUM TENTU sudah GR di Odoo.
-        const isReceived = !!item.tanggalTerima || isGrDone;
+        const isReceived = !isCancelled && (!!item.tanggalTerima || isGrDone);
 
         if (isReceived) {
           someDone = true;
-        } else {
+        } else if (!isCancelled) {
           allDone = false;
         }
 
-        if (item.nomorPo && !isReceived) {
+        if (item.nomorPo && !isReceived && !isCancelled) {
           hasPoActive = true;
         }
-        if (item.nomorPo) {
+        if (item.nomorPo && !isCancelled) {
           poItemsCount++;
           // Belum GR = punya PO tapi belum ada link GR / GR Odoo belum tuntas
           if (!isGrDone) {
@@ -1438,8 +1439,11 @@ export default function ProcurementTrackingPage() {
         }
       }
 
-      let overallStatus: 'DRAFT' | 'PR_PROCESS' | 'PO_ACTIVE' | 'PARTIAL' | 'DONE' = 'PR_PROCESS';
-      if (groupingMode === 'PR') {
+      const allCancelled = itemsInGroup.length > 0 && itemsInGroup.every(i => i.statusPr === 'CANCELLED' || i.statusPo === 'CANCELLED');
+      let overallStatus: 'DRAFT' | 'PR_PROCESS' | 'PO_ACTIVE' | 'PARTIAL' | 'DONE' | 'CANCELLED' = 'PR_PROCESS';
+      if (allCancelled) {
+        overallStatus = 'CANCELLED';
+      } else if (groupingMode === 'PR') {
         if (key === 'DRAFT') {
           overallStatus = 'DRAFT';
         } else if (allDone) {
@@ -2634,6 +2638,8 @@ export default function ProcurementTrackingPage() {
             if (groupingMode === 'PR') {
               if (isPrDraft) {
                 statusBadge = <span className="badge badge-ylw" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700 }}>📋 Draft / Pending PR</span>;
+              } else if (group.overallStatus === 'CANCELLED') {
+                statusBadge = <span className="badge badge-red" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700, background: 'rgba(239, 68, 68, 0.2)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.4)' }}>🚫 Dibatalkan (Cancel)</span>;
               } else if (group.overallStatus === 'DONE') {
                 statusBadge = <span className="badge badge-grn" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700 }}>✓ Diterima Lengkap</span>;
               } else if (group.overallStatus === 'PARTIAL') {
@@ -2646,6 +2652,8 @@ export default function ProcurementTrackingPage() {
             } else {
               if (isPrDraft) {
                 statusBadge = <span className="badge badge-ylw" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700 }}>⏳ Tahap PR / SCM</span>;
+              } else if (group.overallStatus === 'CANCELLED') {
+                statusBadge = <span className="badge badge-red" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700, background: 'rgba(239, 68, 68, 0.2)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.4)' }}>🚫 Dibatalkan (Cancel)</span>;
               } else if (group.overallStatus === 'DONE') {
                 statusBadge = <span className="badge badge-grn" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700 }}>✓ Diterima Lengkap</span>;
               } else if (group.overallStatus === 'PARTIAL') {
@@ -3045,23 +3053,41 @@ export default function ProcurementTrackingPage() {
                                                   </span>
                                                 )}
                                                 {item.nomorPo && (
-                                                  <span
-                                                    className="badge"
-                                                    style={{
-                                                      fontSize: 8,
-                                                      padding: '2px 6px',
-                                                      fontWeight: 800,
-                                                      background: isOdooGrDone ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                                                      color: isOdooGrDone ? '#22c55e' : '#f87171',
-                                                      border: isOdooGrDone ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)',
-                                                      marginLeft: 4
-                                                    }}
-                                                    title={isOdooGrDone ? "Status Odoo: Receipt sudah divalidate" : "Status Odoo: Receipt belum divalidate"}
-                                                  >
-                                                    {isOdooGrDone ? `✓ PO Odoo: ${item.nomorPo}` : `⚠️ PO Odoo: ${item.nomorPo}`}
-                                                  </span>
+                                                  (item.statusPr === 'CANCELLED' || item.statusPo === 'CANCELLED') ? (
+                                                    <span
+                                                      className="badge"
+                                                      style={{
+                                                        fontSize: 8,
+                                                        padding: '2px 6px',
+                                                        fontWeight: 800,
+                                                        background: 'rgba(239, 68, 68, 0.2)',
+                                                        color: '#f87171',
+                                                        border: '1px solid rgba(239, 68, 68, 0.4)',
+                                                        marginLeft: 4
+                                                      }}
+                                                      title="PO ini telah dibatalkan (CANCELLED) di Odoo Cloud"
+                                                    >
+                                                      ❌ PO Cancelled: {item.nomorPo}
+                                                    </span>
+                                                  ) : (
+                                                    <span
+                                                      className="badge"
+                                                      style={{
+                                                        fontSize: 8,
+                                                        padding: '2px 6px',
+                                                        fontWeight: 800,
+                                                        background: isOdooGrDone ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                                        color: isOdooGrDone ? '#22c55e' : '#f87171',
+                                                        border: isOdooGrDone ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)',
+                                                        marginLeft: 4
+                                                      }}
+                                                      title={isOdooGrDone ? "Status Odoo: Receipt sudah divalidate" : "Status Odoo: Receipt belum divalidate"}
+                                                    >
+                                                      {isOdooGrDone ? `✓ PO Odoo: ${item.nomorPo}` : `⚠️ PO Odoo: ${item.nomorPo}`}
+                                                    </span>
+                                                  )
                                                 )}
-                                                {item.nomorPo && !isItemReceived && (
+                                                {item.nomorPo && !isItemReceived && !(item.statusPr === 'CANCELLED' || item.statusPo === 'CANCELLED') && (
                                                   <span
                                                     className="badge"
                                                     style={{
