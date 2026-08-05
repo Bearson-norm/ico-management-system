@@ -1694,9 +1694,10 @@ export async function POST(req: NextRequest) {
                 }
                 // Clear wrongly-assigned PO if it was set to one of the POs for this PR
                 const odooPoNames = odooPos.map((p: any) => p.name);
-                if (item.nomorPo && odooPoNames.includes(item.nomorPo)) {
+                if ((item.nomorPo && odooPoNames.includes(item.nomorPo)) || !item.nomorPo) {
                   unlinkedUpdate.nomorPo = null;
                   unlinkedUpdate.statusPo = null;
+                  unlinkedUpdate.linkGr = null;
                 }
                 if (hasActualChanges(item, unlinkedUpdate)) {
                   await tx.procurementTracking.update({
