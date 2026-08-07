@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
+import DashboardCriticalSection from '@/components/mtc/DashboardCriticalSection';
 
 
 function fmtRupiah(value: number): string {
@@ -58,7 +59,11 @@ export default async function DashboardPage() {
       lokasi: true,
       purchasingStatus: true,
       purchasingQty: true,
+      purchasingNoPr: true,
+      purchasingNoPo: true,
       harga: true,
+      kategori: { select: { id: true, nama: true } },
+      mesins: { select: { id: true, nama: true, vital: true } },
       movements: {
         where: {
           tipe: { in: ['IN', 'OUT'] },
@@ -110,7 +115,11 @@ export default async function DashboardPage() {
       currentStock,
       purchasingStatus: sp.purchasingStatus,
       purchasingQty: sp.purchasingQty,
+      purchasingNoPr: sp.purchasingNoPr,
+      purchasingNoPo: sp.purchasingNoPo,
       harga: Number(sp.harga || 0),
+      kategori: sp.kategori,
+      mesins: sp.mesins,
     };
   });
 
@@ -143,12 +152,20 @@ export default async function DashboardPage() {
   const totalPrEstimasi = prItems.reduce((sum, item) => sum + (item.harga * (item.purchasingQty || 1)), 0);
   const totalPoEstimasi = poItems.reduce((sum, item) => sum + (item.harga * (item.purchasingQty || 1)), 0);
 
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
   const topUsedMovements = await prisma.stockMovement.groupBy({
     by: ['sparepartId', 'namaItem'],
-    where: { tipe: 'OUT', NOT: { sparepartId: null } },
+    where: {
+      tipe: 'OUT',
+      NOT: { sparepartId: null },
+      tanggal: { gte: thirtyDaysAgo },
+    },
     _sum: { qty: true },
+    _count: { id: true },
     orderBy: { _sum: { qty: 'desc' } },
-    take: 5,
+    take: 10,
   });
 
   return (
@@ -272,147 +289,7 @@ export default async function DashboardPage() {
           </Link>
         </div>
 
-        <div className="form-grid-2" style={{ marginBottom: 24, gap: 20 }}>
-          <div className="card" style={{ height: '100%' }}>
-            <div className="card-header" style={{ marginBottom: 16 }}>
-              <div className="card-title" style={{ color: 'var(--red)' }}>
-                🚨 Barang Perlu Restock (Kritis)
-              </div>
-              <div className="gap-8" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
-                <span className="badge badge-red">{totalKritisCount} Item</span>
-                {totalKritisCount > 0 && (
-                  <Link href="/mtc/inventory?status=kritis" className="btn btn-ghost btn-sm">
-                    Lihat Semua
-                  </Link>
-                )}
-              </div>
-            </div>
-            <div style={{ padding: '0 20px 20px 20px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {lowStockItems.map((sp) => {
-                  const isOut = sp.currentStock === 0;
-                  return (
-                    <div key={sp.id} style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '12px 16px',
-                      borderRadius: 10,
-                      background: 'var(--sf2)',
-                      border: '1px solid var(--br)',
-                      transition: 'all 0.2s ease',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-                        <div style={{
-                          width: 32,
-                          height: 32,
-                          borderRadius: '50%',
-                          background: isOut ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.1)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: 14,
-                          flexShrink: 0
-                        }}>
-                          {isOut ? '🔴' : '🟡'}
-                        </div>
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--tx)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sp.nama}</div>
-                          <div style={{ fontSize: 10, color: 'var(--tx3)', fontFamily: 'monospace', marginTop: 2 }}>{sp.id}</div>
-                        </div>
-                      </div>
-                      <div style={{
-                        padding: '6px 12px',
-                        borderRadius: 20,
-                        fontSize: 11,
-                        fontWeight: 800,
-                        background: isOut ? 'rgba(239, 68, 68, 0.12)' : 'rgba(245, 158, 11, 0.12)',
-                        color: isOut ? 'var(--red)' : 'var(--ylw)',
-                        border: `1px solid ${isOut ? 'rgba(239, 68, 68, 0.25)' : 'rgba(245, 158, 11, 0.25)'}`,
-                        flexShrink: 0
-                      }}>
-                        {sp.currentStock} {sp.uom}
-                      </div>
-                    </div>
-                  );
-                })}
-                {lowStockItems.length === 0 && (
-                  <div style={{ textAlign: 'center', padding: '36px 0', color: 'var(--tx3)' }}>
-                    <div style={{ fontSize: 32, marginBottom: 8 }}>🟢</div>
-                    <div style={{ fontSize: 13 }}>Stok aman! Tidak ada barang kritis.</div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="card" style={{ height: '100%' }}>
-            <div className="card-header" style={{ marginBottom: 16 }}>
-              <div className="card-title" style={{ color: 'var(--pur)' }}>
-                🔥 Pemakaian Tertinggi (Top 5)
-              </div>
-            </div>
-            <div style={{ padding: '0 20px 20px 20px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {topUsedMovements.map((m, idx) => {
-                  const rankIcons = ['🥇', '🥈', '🥉', '🔥', '🔥'];
-                  return (
-                    <div key={m.sparepartId} style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '12px 16px',
-                      borderRadius: 10,
-                      background: 'var(--sf2)',
-                      border: '1px solid var(--br)',
-                      transition: 'all 0.2s ease',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-                        <div style={{
-                          width: 32,
-                          height: 32,
-                          borderRadius: '50%',
-                          background: 'rgba(139, 92, 246, 0.1)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: 14,
-                          flexShrink: 0
-                        }}>
-                          {rankIcons[idx] || '🔥'}
-                        </div>
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--tx)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.namaItem}</div>
-                          <div style={{ fontSize: 10, color: 'var(--tx3)', fontFamily: 'monospace', marginTop: 2 }}>{m.sparepartId}</div>
-                        </div>
-                      </div>
-                      <div style={{
-                        padding: '6px 12px',
-                        borderRadius: 20,
-                        fontSize: 11,
-                        fontWeight: 800,
-                        background: 'rgba(139, 92, 246, 0.12)',
-                        color: 'var(--pur)',
-                        border: '1px solid rgba(139, 92, 246, 0.25)',
-                        flexShrink: 0
-                      }}>
-                        {m._sum.qty} Pcs
-                      </div>
-                    </div>
-                  );
-                })}
-                {topUsedMovements.length === 0 && (
-                  <div style={{ textAlign: 'center', padding: '36px 0', color: 'var(--tx3)' }}>
-                    <div style={{ fontSize: 32, marginBottom: 8 }}>📦</div>
-                    <div style={{ fontSize: 13 }}>Belum ada data pemakaian barang.</div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
+        <DashboardCriticalSection sparepartsWithStock={sparepartsWithStock} topUsedMovements={topUsedMovements} />
 
         <div className="card" style={{ marginBottom: 24 }}>
           <div className="card-header">

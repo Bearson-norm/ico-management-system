@@ -42,6 +42,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const mode = (searchParams.get('mode') || 'AUTO').toUpperCase(); // 12M | 6M | 3M | AUTO
   const slowThreshold = parseFloat(searchParams.get('slowThreshold') || '1.0');
+  const minUnitDiff = parseFloat(searchParams.get('minUnitDiff') || '3.0');
 
   const now = new Date();
   const startDate12m = new Date(now); startDate12m.setMonth(now.getMonth() - 12);
@@ -129,22 +130,34 @@ export async function GET(req: NextRequest) {
     });
     const peakMonthInfo = maxMonth && maxMonth.qty > 0 ? `${maxMonth.monthLabel} (${maxMonth.qty} ${sp.uom})` : '—';
 
-    // 3. Spike & Trend Detection (Comparing 3m trend to 12m baseline)
-    let spikeTrend: 'SPIKE_UP' | 'TREND_DOWN' | 'STABLE' = 'STABLE';
+    // 3. Spike & Trend Detection (Comparing 3m trend to 12m baseline with Min Unit Diff threshold)
+    let spikeTrend: 'SPIKE_UP' | 'NEW_USAGE' | 'TREND_DOWN' | 'STABLE' = 'STABLE';
     let spikePercentage: string = '0%';
+    const absDiff = Math.round((avgMonthly3m - avgMonthly12m) * 100) / 100;
 
     if (avgMonthly12m > 0) {
       const ratio = avgMonthly3m / avgMonthly12m;
-      if (ratio >= 1.4 && avgMonthly3m >= 0.5) {
-        spikeTrend = 'SPIKE_UP';
-        spikePercentage = `+${Math.round((ratio - 1) * 100)}%`;
+      const pctIncrease = (ratio - 1) * 100;
+      if (ratio >= 1.4 && pctIncrease >= 40) {
+        if (absDiff >= minUnitDiff) {
+          spikeTrend = 'SPIKE_UP';
+          spikePercentage = `+${Math.round(pctIncrease)}%`;
+        } else {
+          spikeTrend = 'NEW_USAGE';
+          spikePercentage = `+${Math.round(pctIncrease)}% (+${absDiff.toFixed(1)}/bln)`;
+        }
       } else if (ratio <= 0.6) {
         spikeTrend = 'TREND_DOWN';
         spikePercentage = `-${Math.round((1 - ratio) * 100)}%`;
       }
     } else if (avgMonthly3m > 0) {
-      spikeTrend = 'SPIKE_UP';
-      spikePercentage = 'Baru Lonjak';
+      if (avgMonthly3m >= minUnitDiff) {
+        spikeTrend = 'SPIKE_UP';
+        spikePercentage = `Baru Lonjak (+${avgMonthly3m.toFixed(1)}/bln)`;
+      } else {
+        spikeTrend = 'NEW_USAGE';
+        spikePercentage = `Baru Mulai Terpakai (+${avgMonthly3m.toFixed(1)}/bln)`;
+      }
     }
 
     // 4. Select Effective Monthly Usage Based on Mode
@@ -183,7 +196,7 @@ export async function GET(req: NextRequest) {
       tipePeruntukan = 'Mesin Non-Vital';
     }
 
-    // 7. Pathway Logic: Jalur A (Normal) vs Jalur B (Kritis-Jaranger Keluar)
+    // 7. Pathway Logic: Jalur A (Normal) vs Jalur B (Kritis-Jarang Keluar)
     const isJalurB = isVital && avgMonthlyUsage < slowThreshold;
 
     let jalur: 'Jalur A (Normal)' | 'Jalur B (Kritis-Slow)';
@@ -192,12 +205,32 @@ export async function GET(req: NextRequest) {
     let rop: number;
     let safetyStock: number = 0;
     let catatan: string | null = null;
+    let alasanMax: string = '';
+
+    const numMesins = sp.mesins.length;
+    const intervalDays = totalOut12m > 0 ? (365 / totalOut12m) : 999;
+    const isLongLeadTime = leadTime >= 30 || (intervalDays < 365 && leadTime > (intervalDays / 4));
+    const isMultiMesin = numMesins > 1;
 
     if (isJalurB) {
       jalur = 'Jalur B (Kritis-Slow)';
-      min = sp.minQty > 0 ? sp.minQty : 1;
-      max = min + 1;
-      rop = min; // Begitu terpakai 1 unit, langsung reorder
+      if (isMultiMesin) {
+        min = Math.max(sp.minQty > 0 ? sp.minQty : 1, numMesins);
+        max = min + 1;
+        rop = min; // Begitu terpakai 1 unit, langsung reorder
+        alasanMax = `Max ${max} karena dipakai di ${numMesins} mesin (${sp.mesins.map((m) => m.nama).join(', ')}) sekaligus`;
+      } else if (isLongLeadTime) {
+        min = sp.minQty > 0 ? sp.minQty : 1;
+        max = min + 1;
+        rop = min;
+        alasanMax = `Max ${max} karena lead time ${leadTime} hari cukup panjang dibanding perkiraan interval kerusakan (~${Math.round(intervalDays)} hari)`;
+      } else {
+        min = sp.minQty > 0 ? sp.minQty : 1;
+        max = min; // Tanpa buffer tambahan — Min = Max = ROP = 1
+        rop = min;
+        alasanMax = `Max ${max} (Tanpa buffer tambahan — unit tunggal mencukupi)`;
+      }
+
       if (leadTime >= 14) {
         catatan = 'Pertimbangkan kontrak/blanket PO ke vendor';
       }
@@ -207,6 +240,7 @@ export async function GET(req: NextRequest) {
       rop = Math.ceil((dailyUsage * leadTime) + safetyStock);
       min = rop;
       max = Math.max(rop + 1, Math.ceil(rop + (avgMonthlyUsage * 2)));
+      alasanMax = `Max ${max} dihitung dari ROP (${rop}) + siklus pemakaian 2 bulan`;
     }
 
     // 8. Reorder Alert Trigger: Stock <= ROP
@@ -243,8 +277,9 @@ export async function GET(req: NextRequest) {
       max,
       rop,
       safetyStock: Math.round(safetyStock * 100) / 100,
-      isWajibPr,
       catatan,
+      alasanMax,
+      isWajibPr,
     };
   });
 

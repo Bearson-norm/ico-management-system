@@ -34,7 +34,7 @@ interface SpClassification {
   avgMonthly12m: number;
   avgMonthly6m: number;
   avgMonthly3m: number;
-  spikeTrend: 'SPIKE_UP' | 'TREND_DOWN' | 'STABLE';
+  spikeTrend: 'SPIKE_UP' | 'NEW_USAGE' | 'TREND_DOWN' | 'STABLE';
   spikePercentage: string;
   monthlyBreakdown: MonthlyBreakdownItem[];
   peakMonthInfo: string;
@@ -48,6 +48,7 @@ interface SpClassification {
   safetyStock: number;
   isWajibPr: boolean;
   catatan: string | null;
+  alasanMax?: string;
 }
 
 export default function StockClassificationPage() {
@@ -613,6 +614,10 @@ export default function StockClassificationPage() {
                             <span className="badge" style={{ background: 'rgba(249,115,22,0.15)', color: '#f97316', border: '1px solid rgba(249,115,22,0.4)', fontSize: 10, fontWeight: 800 }}>
                               ⚡ LONJAKAN ({sp.spikePercentage})
                             </span>
+                          ) : sp.spikeTrend === 'NEW_USAGE' ? (
+                            <span className="badge" style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.4)', fontSize: 10, fontWeight: 700 }}>
+                              🌱 BARU MULAI TERPAKAI ({sp.spikePercentage})
+                            </span>
                           ) : sp.spikeTrend === 'TREND_DOWN' ? (
                             <span className="badge" style={{ background: 'rgba(59,130,246,0.12)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.3)', fontSize: 10 }}>
                               📉 TURUN ({sp.spikePercentage})
@@ -660,8 +665,13 @@ export default function StockClassificationPage() {
                           {sp.min} {sp.uom}
                         </td>
 
-                        <td data-label="Max" style={{ textAlign: 'right', fontWeight: 600, color: 'var(--tx2)' }}>
-                          {sp.max} {sp.uom}
+                        <td data-label="Max" style={{ textAlign: 'right', fontWeight: 600, color: 'var(--tx2)' }} title={sp.alasanMax}>
+                          <div>{sp.max} {sp.uom}</div>
+                          {sp.alasanMax && (
+                            <div style={{ fontSize: 9, color: 'var(--tx3)', fontWeight: 400, marginTop: 2, whiteSpace: 'normal', maxWidth: 160 }}>
+                              {sp.alasanMax}
+                            </div>
+                          )}
                         </td>
 
                         <td data-label="ROP" style={{ textAlign: 'right' }}>
