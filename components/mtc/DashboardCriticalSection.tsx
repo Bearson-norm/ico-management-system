@@ -21,7 +21,7 @@ export type DashboardSparepart = {
   purchasingNoPo?: string | null;
   harga: number;
   kategori?: { id: number; nama: string } | null;
-  mesins?: { id: number; nama: string; vital?: boolean }[];
+  mesins?: { id: number; nama: string; vital?: boolean; area?: string | null }[];
 };
 
 export type TopMovement = {
@@ -47,12 +47,21 @@ export default function DashboardCriticalSection({ sparepartsWithStock, topUsedM
 
   // Helper logic to classify item as Part Critical vs Consumable/Utilitas
   const classifyItem = (sp: DashboardSparepart) => {
-    // Part Critical = ONLY items attached to Vital Production Machines (vital = true) or explicitly tagged critical
-    const isVitalMachine = (sp.mesins && sp.mesins.some((m) => m.vital === true)) || false;
+    // Part Critical = ONLY items attached to Vital Machines in Area Produksi (vital = true & area = Produksi)
+    const isVitalProductionMachine =
+      (sp.mesins &&
+        sp.mesins.some((m) => {
+          const isVital = m.vital === true;
+          const areaName = (m.area || '').toLowerCase();
+          const isProduksi = areaName ? areaName.includes('produksi') : true;
+          return isVital && isProduksi;
+        })) ||
+      false;
+
     const katNama = (sp.kategori?.nama || '').toLowerCase();
     const isExplicitCriticalKat = katNama.includes('kritis') || katNama.includes('vital');
 
-    const isCriticalPart = isVitalMachine || isExplicitCriticalKat;
+    const isCriticalPart = isVitalProductionMachine || isExplicitCriticalKat;
 
     if (!isCriticalPart) {
       return {

@@ -63,7 +63,7 @@ export default async function DashboardPage() {
       purchasingNoPo: true,
       harga: true,
       kategori: { select: { id: true, nama: true } },
-      mesins: { select: { id: true, nama: true, vital: true } },
+      mesins: { select: { id: true, nama: true, vital: true, area: true } },
       movements: {
         where: {
           tipe: { in: ['IN', 'OUT'] },
