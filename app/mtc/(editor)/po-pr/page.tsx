@@ -1267,13 +1267,22 @@ export default function ProcurementTrackingPage() {
         }
       }
 
-      // Search query filter
+      // Search query filter (with smart normalization for PRO vs PR0 and letter O vs digit 0)
       if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const matchName = item.originalName.toLowerCase().includes(q);
-        const matchPr = item.nomorPr?.toLowerCase().includes(q);
-        const matchPo = item.nomorPo?.toLowerCase().includes(q);
-        const matchOdoo = item.sparepart?.nama.toLowerCase().includes(q);
+        const q = searchQuery.toLowerCase().trim();
+        const qNorm = q.replace(/^pro/, 'pr0').replace(/o/g, '0');
+        const qDigitsOnly = q.replace(/[^0-9]/g, '');
+
+        const origName = item.originalName.toLowerCase();
+        const prNo = (item.nomorPr || '').toLowerCase();
+        const poNo = (item.nomorPo || '').toLowerCase();
+        const spName = (item.sparepart?.nama || '').toLowerCase();
+
+        const matchName = origName.includes(q) || origName.includes(qNorm);
+        const matchPr = prNo.includes(q) || prNo.includes(qNorm) || (qDigitsOnly.length >= 3 && prNo.replace(/[^0-9]/g, '').includes(qDigitsOnly));
+        const matchPo = poNo.includes(q) || poNo.includes(qNorm) || (qDigitsOnly.length >= 3 && poNo.replace(/[^0-9]/g, '').includes(qDigitsOnly));
+        const matchOdoo = spName.includes(q) || spName.includes(qNorm);
+
         if (!matchName && !matchPr && !matchPo && !matchOdoo) return false;
       }
       
