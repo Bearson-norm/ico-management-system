@@ -155,18 +155,68 @@ export default async function DashboardPage() {
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-  const topUsedMovements = await prisma.stockMovement.groupBy({
-    by: ['sparepartId', 'namaItem'],
+  const rawOutMovements = await prisma.stockMovement.findMany({
     where: {
       tipe: 'OUT',
       NOT: { sparepartId: null },
       tanggal: { gte: thirtyDaysAgo },
+      OR: [
+        { purchaseType: null },
+        { purchaseType: { notIn: ['histori-sheets', 'opname_adjustment', 'opname', 'adjustment'] } },
+      ],
     },
-    _sum: { qty: true },
-    _count: { id: true },
-    orderBy: { _sum: { qty: 'desc' } },
-    take: 10,
+    select: {
+      id: true,
+      sparepartId: true,
+      namaItem: true,
+      qty: true,
+      purchaseType: true,
+      keterangan: true,
+    },
   });
+
+  const realOutMovements = rawOutMovements.filter((m) => {
+    if (!m.sparepartId) return false;
+    const pType = (m.purchaseType || '').toLowerCase();
+    if (pType.includes('histori') || pType.includes('opname') || pType.includes('adjust')) return false;
+
+    const ket = (m.keterangan || '').toLowerCase();
+    if (
+      ket.includes('[opname]') ||
+      ket.includes('opname adjustment') ||
+      ket.includes('hasil audit') ||
+      ket.includes('[adjust') ||
+      ket.includes('histori-sheets')
+    ) {
+      return false;
+    }
+    return true;
+  });
+
+  const aggregatedMap = new Map<string, { sparepartId: string; namaItem: string; totalQty: number; txCount: number }>();
+
+  realOutMovements.forEach((m) => {
+    const spId = m.sparepartId!;
+    const existing = aggregatedMap.get(spId) || {
+      sparepartId: spId,
+      namaItem: m.namaItem || spId,
+      totalQty: 0,
+      txCount: 0,
+    };
+    existing.totalQty += m.qty;
+    existing.txCount += 1;
+    aggregatedMap.set(spId, existing);
+  });
+
+  const topUsedMovements = Array.from(aggregatedMap.values())
+    .sort((a, b) => b.totalQty - a.totalQty)
+    .slice(0, 10)
+    .map((item) => ({
+      sparepartId: item.sparepartId,
+      namaItem: item.namaItem,
+      _sum: { qty: item.totalQty },
+      _count: { id: item.txCount },
+    }));
 
   return (
     <>
