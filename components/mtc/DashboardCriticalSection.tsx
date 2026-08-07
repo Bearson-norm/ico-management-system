@@ -37,7 +37,7 @@ type Props = {
 };
 
 export default function DashboardCriticalSection({ sparepartsWithStock, topUsedMovements }: Props) {
-  const [criticalTab, setCriticalTab] = useState<'ALL' | 'URGENT_PR' | 'ACTIVE_PR_PO' | 'PETTY_CASH'>('ALL');
+  const [criticalTab, setCriticalTab] = useState<'ALL' | 'EMPTY' | 'ACTIVE_PROCUREMENT'>('ALL');
   const [topTab, setTopTab] = useState<'ALL' | 'CRITICAL' | 'CONSUMABLE'>('ALL');
 
   // Filter items needing restock (currentStock <= limitStock)
@@ -45,9 +45,8 @@ export default function DashboardCriticalSection({ sparepartsWithStock, topUsedM
     .filter((sp) => sp.currentStock <= sp.limitStock)
     .sort((a, b) => a.currentStock - b.currentStock);
 
-  // Helper logic to classify item as Part Critical vs Consumable/Utilitas
+  // Pure informational classification without forced PR vs Petty Cash decisions
   const classifyItem = (sp: DashboardSparepart) => {
-    // Part Critical = ONLY items attached to Vital Machines in Area Produksi (vital = true & area = Produksi)
     const isVitalProductionMachine =
       (sp.mesins &&
         sp.mesins.some((m) => {
@@ -60,66 +59,47 @@ export default function DashboardCriticalSection({ sparepartsWithStock, topUsedM
 
     const katNama = (sp.kategori?.nama || '').toLowerCase();
     const isExplicitCriticalKat = katNama.includes('kritis') || katNama.includes('vital');
-
     const isCriticalPart = isVitalProductionMachine || isExplicitCriticalKat;
 
-    if (!isCriticalPart) {
-      return {
-        type: 'PETTY_CASH' as const,
-        label: '💵 Petty Cash',
-        color: '#10b981',
-        bg: 'rgba(16,185,129,0.12)',
-        border: 'rgba(16,185,129,0.25)',
-        isCriticalPart: false,
-        typeLabel: '🛒 Consumable / Utilitas',
-        typeColor: '#10b981',
-        typeBg: 'rgba(16,185,129,0.12)',
-        typeBorder: 'rgba(16,185,129,0.3)',
-      };
-    }
+    const isOut = sp.currentStock === 0;
 
-    let prLabel = '🚨 Wajib Segera PR';
-    let color = '#ef4444';
-    let bg = 'rgba(239,68,68,0.15)';
-    let border = 'rgba(239,68,68,0.35)';
-    let type: 'URGENT_PR' | 'ACTIVE_PR_PO' | 'PETTY_CASH' = 'URGENT_PR';
+    let procLabel = isOut ? '🔴 Stok Habis' : '🟡 Stok Kritis';
+    let procColor = isOut ? '#ef4444' : '#eab308';
+    let procBg = isOut ? 'rgba(239,68,68,0.12)' : 'rgba(234,179,8,0.12)';
+    let procBorder = isOut ? 'rgba(239,68,68,0.3)' : 'rgba(234,179,8,0.3)';
 
     if (sp.purchasingStatus === 'PR') {
-      type = 'ACTIVE_PR_PO' as const;
-      prLabel = `⏳ PR ${sp.purchasingNoPr ? `(${sp.purchasingNoPr})` : ''}`;
-      color = '#eab308';
-      bg = 'rgba(234,179,8,0.12)';
-      border = 'rgba(234,179,8,0.3)';
+      procLabel = `⏳ PR ${sp.purchasingNoPr ? `(${sp.purchasingNoPr})` : ''}`;
+      procColor = '#eab308';
+      procBg = 'rgba(234,179,8,0.15)';
+      procBorder = 'rgba(234,179,8,0.4)';
     } else if (sp.purchasingStatus === 'PO') {
-      type = 'ACTIVE_PR_PO' as const;
-      prLabel = `🚢 PO ${sp.purchasingNoPo ? `(${sp.purchasingNoPo})` : ''}`;
-      color = '#60a5fa';
-      bg = 'rgba(59,130,246,0.12)';
-      border = 'rgba(59,130,246,0.3)';
+      procLabel = `🚢 PO ${sp.purchasingNoPo ? `(${sp.purchasingNoPo})` : ''}`;
+      procColor = '#60a5fa';
+      procBg = 'rgba(59,130,246,0.15)';
+      procBorder = 'rgba(59,130,246,0.4)';
     }
 
     return {
-      type,
-      label: prLabel,
-      color,
-      bg,
-      border,
-      isCriticalPart: true,
-      typeLabel: '🔴 Part Critical',
-      typeColor: '#ef4444',
-      typeBg: 'rgba(239,68,68,0.12)',
-      typeBorder: 'rgba(239,68,68,0.3)',
+      procLabel,
+      procColor,
+      procBg,
+      procBorder,
+      isCriticalPart,
+      typeLabel: isCriticalPart ? '🔴 Part Critical' : '📦 Sparepart / Utilitas',
+      typeColor: isCriticalPart ? '#ef4444' : '#10b981',
+      typeBg: isCriticalPart ? 'rgba(239,68,68,0.12)' : 'rgba(16,185,129,0.12)',
+      typeBorder: isCriticalPart ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.3)',
     };
   };
 
-  const urgentPrCount = lowStockItems.filter((sp) => classifyItem(sp).type === 'URGENT_PR').length;
-  const activeProcurementCount = lowStockItems.filter((sp) => classifyItem(sp).type === 'ACTIVE_PR_PO').length;
-  const pettyCashCount = lowStockItems.filter((sp) => classifyItem(sp).type === 'PETTY_CASH').length;
+  const emptyCount = lowStockItems.filter((sp) => sp.currentStock === 0).length;
+  const activeProcCount = lowStockItems.filter((sp) => sp.purchasingStatus === 'PR' || sp.purchasingStatus === 'PO').length;
 
   const filteredCriticalItems = lowStockItems.filter((sp) => {
-    if (criticalTab === 'ALL') return true;
-    const c = classifyItem(sp);
-    return c.type === criticalTab;
+    if (criticalTab === 'EMPTY') return sp.currentStock === 0;
+    if (criticalTab === 'ACTIVE_PROCUREMENT') return sp.purchasingStatus === 'PR' || sp.purchasingStatus === 'PO';
+    return true;
   }).slice(0, 6);
 
   const stockMap = new Map(sparepartsWithStock.map((sp) => [sp.id, sp]));
@@ -143,10 +123,10 @@ export default function DashboardCriticalSection({ sparepartsWithStock, topUsedM
           <div className="card-header" style={{ marginBottom: 12, flexWrap: 'wrap', gap: 10 }}>
             <div>
               <div className="card-title" style={{ color: 'var(--red)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span>🚨</span> Barang Perlu Restock (ROP System)
+                <span>🚨</span> Pemantauan Stok Kritis (ROP System)
               </div>
               <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 2 }}>
-                Prioritas pengadaan berdasarkan ROP &amp; status pengadaan
+                Informasi sisa stok di bawah ROP &amp; status pengadaan aktif
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -181,7 +161,7 @@ export default function DashboardCriticalSection({ sparepartsWithStock, topUsedM
 
               <button
                 type="button"
-                onClick={() => setCriticalTab('URGENT_PR')}
+                onClick={() => setCriticalTab('EMPTY')}
                 style={{
                   padding: '5px 10px',
                   borderRadius: 6,
@@ -189,18 +169,18 @@ export default function DashboardCriticalSection({ sparepartsWithStock, topUsedM
                   fontWeight: 700,
                   border: '1px solid',
                   cursor: 'pointer',
-                  background: criticalTab === 'URGENT_PR' ? 'rgba(239,68,68,0.15)' : 'transparent',
-                  color: criticalTab === 'URGENT_PR' ? '#ef4444' : 'var(--tx3)',
-                  borderColor: criticalTab === 'URGENT_PR' ? 'rgba(239,68,68,0.4)' : 'transparent',
+                  background: criticalTab === 'EMPTY' ? 'rgba(239,68,68,0.15)' : 'transparent',
+                  color: criticalTab === 'EMPTY' ? '#ef4444' : 'var(--tx3)',
+                  borderColor: criticalTab === 'EMPTY' ? 'rgba(239,68,68,0.4)' : 'transparent',
                   whiteSpace: 'nowrap',
                 }}
               >
-                🚨 Segera PR ({urgentPrCount})
+                🔴 Stok Habis ({emptyCount})
               </button>
 
               <button
                 type="button"
-                onClick={() => setCriticalTab('ACTIVE_PR_PO')}
+                onClick={() => setCriticalTab('ACTIVE_PROCUREMENT')}
                 style={{
                   padding: '5px 10px',
                   borderRadius: 6,
@@ -208,37 +188,18 @@ export default function DashboardCriticalSection({ sparepartsWithStock, topUsedM
                   fontWeight: 700,
                   border: '1px solid',
                   cursor: 'pointer',
-                  background: criticalTab === 'ACTIVE_PR_PO' ? 'rgba(234,179,8,0.15)' : 'transparent',
-                  color: criticalTab === 'ACTIVE_PR_PO' ? '#eab308' : 'var(--tx3)',
-                  borderColor: criticalTab === 'ACTIVE_PR_PO' ? 'rgba(234,179,8,0.4)' : 'transparent',
+                  background: criticalTab === 'ACTIVE_PROCUREMENT' ? 'rgba(234,179,8,0.15)' : 'transparent',
+                  color: criticalTab === 'ACTIVE_PROCUREMENT' ? '#eab308' : 'var(--tx3)',
+                  borderColor: criticalTab === 'ACTIVE_PROCUREMENT' ? 'rgba(234,179,8,0.4)' : 'transparent',
                   whiteSpace: 'nowrap',
                 }}
               >
-                ⏳ PR/PO Jalan ({activeProcurementCount})
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setCriticalTab('PETTY_CASH')}
-                style={{
-                  padding: '5px 10px',
-                  borderRadius: 6,
-                  fontSize: 11,
-                  fontWeight: 700,
-                  border: '1px solid',
-                  cursor: 'pointer',
-                  background: criticalTab === 'PETTY_CASH' ? 'rgba(16,185,129,0.15)' : 'transparent',
-                  color: criticalTab === 'PETTY_CASH' ? '#10b981' : 'var(--tx3)',
-                  borderColor: criticalTab === 'PETTY_CASH' ? 'rgba(16,185,129,0.4)' : 'transparent',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                💵 Petty Cash ({pettyCashCount})
+                ⏳ PR / PO Jalan ({activeProcCount})
               </button>
             </div>
           </div>
 
-          {/* CRITICAL ITEM LIST WITH 2 DISTINCT BADGES */}
+          {/* CRITICAL ITEM LIST */}
           <div style={{ padding: '0 20px 20px 20px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {filteredCriticalItems.map((sp) => {
@@ -282,7 +243,7 @@ export default function DashboardCriticalSection({ sparepartsWithStock, topUsedM
                           {sp.nama}
                         </div>
 
-                        {/* BADGE 1: Part Critical vs Consumable */}
+                        {/* BADGE TIPE BARANG */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
                           <span style={{ fontSize: 10, color: 'var(--tx3)', fontFamily: 'monospace' }}>{sp.id}</span>
                           <span
@@ -302,7 +263,7 @@ export default function DashboardCriticalSection({ sparepartsWithStock, topUsedM
                       </div>
                     </div>
 
-                    {/* BADGE 2: Status Pengadaan & Sisa Stok */}
+                    {/* STATUS PENGADAAN & SISA STOK */}
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0, marginLeft: 8 }}>
                       <span
                         style={{
@@ -310,12 +271,12 @@ export default function DashboardCriticalSection({ sparepartsWithStock, topUsedM
                           borderRadius: 6,
                           fontSize: 10,
                           fontWeight: 800,
-                          background: info.bg,
-                          color: info.color,
-                          border: `1px solid ${info.border}`,
+                          background: info.procBg,
+                          color: info.procColor,
+                          border: `1px solid ${info.procBorder}`,
                         }}
                       >
-                        {info.label}
+                        {info.procLabel}
                       </span>
                       <span style={{ fontSize: 11, fontWeight: 800, color: isOut ? 'var(--red)' : 'var(--ylw)' }}>
                         {sp.currentStock} / ROP {sp.limitStock} {sp.uom}
@@ -460,7 +421,7 @@ export default function DashboardCriticalSection({ sparepartsWithStock, topUsedM
                           {m.namaItem}
                         </div>
 
-                        {/* BADGE: Part Critical vs Consumable */}
+                        {/* BADGE TIPE BARANG */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
                           <span style={{ fontSize: 10, color: 'var(--tx3)', fontFamily: 'monospace' }}>{m.sparepartId}</span>
 
