@@ -45,23 +45,14 @@ export default function DashboardCriticalSection({ sparepartsWithStock, topUsedM
     .filter((sp) => sp.currentStock <= sp.limitStock)
     .sort((a, b) => a.currentStock - b.currentStock);
 
-  // Helper logic to classify item as Part Critical vs Consumable
+  // Helper logic to classify item as Part Critical vs Consumable/Utilitas
   const classifyItem = (sp: DashboardSparepart) => {
-    const isVital = (sp.mesins && sp.mesins.some((m) => m.vital)) || false;
-    const isForMachine = sp.mesins && sp.mesins.length > 0;
+    // Part Critical = ONLY items attached to Vital Production Machines (vital = true) or explicitly tagged critical
+    const isVitalMachine = (sp.mesins && sp.mesins.some((m) => m.vital === true)) || false;
     const katNama = (sp.kategori?.nama || '').toLowerCase();
-    const isMachineCategory =
-      katNama.includes('mesin') ||
-      katNama.includes('mechanical') ||
-      katNama.includes('electrical') ||
-      katNama.includes('sparepart') ||
-      katNama.includes('kritis') ||
-      katNama.includes('vital');
-    const isConsumable =
-      katNama.includes('consumable') || katNama.includes('umum') || katNama.includes('sipil') || katNama.includes('fast');
+    const isExplicitCriticalKat = katNama.includes('kritis') || katNama.includes('vital');
 
-    // Part Critical = Vital machine part or critical sparepart (Requires PR)
-    const isCriticalPart = isVital || isForMachine || isMachineCategory || !isConsumable;
+    const isCriticalPart = isVitalMachine || isExplicitCriticalKat;
 
     if (!isCriticalPart) {
       return {
@@ -71,7 +62,7 @@ export default function DashboardCriticalSection({ sparepartsWithStock, topUsedM
         bg: 'rgba(16,185,129,0.12)',
         border: 'rgba(16,185,129,0.25)',
         isCriticalPart: false,
-        typeLabel: '🛒 Consumable',
+        typeLabel: '🛒 Consumable / Utilitas',
         typeColor: '#10b981',
         typeBg: 'rgba(16,185,129,0.12)',
         typeBorder: 'rgba(16,185,129,0.3)',
@@ -105,7 +96,7 @@ export default function DashboardCriticalSection({ sparepartsWithStock, topUsedM
       bg,
       border,
       isCriticalPart: true,
-      typeLabel: isVital ? '🚨 Part Critical (Vital)' : '🔴 Part Critical',
+      typeLabel: '🔴 Part Critical',
       typeColor: '#ef4444',
       typeBg: 'rgba(239,68,68,0.12)',
       typeBorder: 'rgba(239,68,68,0.3)',
