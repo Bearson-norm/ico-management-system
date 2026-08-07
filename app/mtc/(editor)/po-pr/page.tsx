@@ -3382,49 +3382,50 @@ export default function ProcurementTrackingPage() {
                                   <td>
                                     <div style={{ fontWeight: 700 }}>{fmtRupiah(item.harga)}</div>
                                     <div style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 2 }}>
-                                      Kat: {item.productCategory || 'Sparepart'} · Tipe: {item.keterangan || 'consumable'}
+                                      Kat: {item.productCategory || 'Sparepart'} · Tipe: {(item.keterangan || '').replace(/<[^>]*>/g, '').trim() || 'consumable'}
                                     </div>
                                   </td>
 
-
-
                                   {/* Link GR Odoo */}
                                   <td style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
-                                    {item.linkGr ? (
-                                      <a
-                                        href={item.linkGr}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        title="Buka Lembar GR Odoo di Tab Baru"
-                                        className="btn btn-ghost btn-sm"
-                                        style={{
-                                          padding: '3px 8px',
-                                          fontSize: 11,
-                                          height: 'auto',
-                                          borderRadius: 6,
-                                          color: '#a855f7',
-                                          background: 'rgba(168, 85, 247, 0.12)',
-                                          border: '1px solid rgba(168, 85, 247, 0.3)',
-                                          display: 'inline-flex',
-                                          alignItems: 'center',
-                                          gap: 4,
-                                          textDecoration: 'none',
-                                          fontWeight: 700
-                                        }}
-                                      >
-                                        📦 GR Odoo ↗
-                                      </a>
-                                    ) : (
-                                      <button
-                                        type="button"
-                                        className="btn btn-ghost btn-sm"
-                                        onClick={() => openEditModal(item)}
-                                        title="Set / Edit Link GR Odoo"
-                                        style={{ padding: '2px 6px', fontSize: 10, height: 'auto', color: 'var(--tx3)', border: '1px dashed var(--br)', borderRadius: 4 }}
-                                      >
-                                        + Link GR
-                                      </button>
-                                    )}
+                                    {(() => {
+                                      const effectiveGrLink = item.linkGr || group.items.find((gi: any) => gi.linkGr)?.linkGr || null;
+                                      return effectiveGrLink ? (
+                                        <a
+                                          href={effectiveGrLink}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          title="Buka Lembar GR Odoo di Tab Baru"
+                                          className="btn btn-ghost btn-sm"
+                                          style={{
+                                            padding: '3px 8px',
+                                            fontSize: 11,
+                                            height: 'auto',
+                                            borderRadius: 6,
+                                            color: '#a855f7',
+                                            background: 'rgba(168, 85, 247, 0.12)',
+                                            border: '1px solid rgba(168, 85, 247, 0.3)',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: 4,
+                                            textDecoration: 'none',
+                                            fontWeight: 700
+                                          }}
+                                        >
+                                          📦 GR Odoo ↗
+                                        </a>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          className="btn btn-ghost btn-sm"
+                                          onClick={() => openEditModal(item)}
+                                          title="Set / Edit Link GR Odoo"
+                                          style={{ padding: '2px 6px', fontSize: 10, height: 'auto', color: 'var(--tx3)', border: '1px dashed var(--br)', borderRadius: 4 }}
+                                        >
+                                          + Link GR
+                                        </button>
+                                      );
+                                    })()}
                                   </td>
 
                                   {/* Receive Action Column */}
