@@ -1414,7 +1414,7 @@ export default function ProcurementTrackingPage() {
       for (const item of itemsInGroup) {
         totalQty += item.qty;
         totalCost += (Number(item.harga) || 0) * item.qty;
-        if (item.vendor?.trim()) vendorsSet.add(item.vendor.trim());
+        if (item.vendor?.trim() && (item.nomorPo || groupingMode === 'PO')) vendorsSet.add(item.vendor.trim());
         if (item.nomorPo?.trim()) posSet.add(item.nomorPo.trim());
         if (item.nomorPr?.trim()) prsSet.add(item.nomorPr.trim());
         if (item.urgency === 'Urgent') hasUrgent = true;
@@ -2748,6 +2748,18 @@ export default function ProcurementTrackingPage() {
                                   {group.nomorPr}
                                 </span>
                               )}
+                              {(() => {
+                                const teNo = group.items.map(i => i.nomorTe).find(Boolean);
+                                return teNo ? (
+                                  <span 
+                                    className="badge" 
+                                    style={{ fontSize: 11, padding: '2px 8px', fontWeight: 800, background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', border: '1px solid rgba(168, 85, 247, 0.3)' }}
+                                    title="Nomor Tiket TE (Request Odoo)"
+                                  >
+                                    TE: {teNo}
+                                  </span>
+                                ) : null;
+                              })()}
                             </div>
                           )
                         ) : (
