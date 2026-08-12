@@ -1285,25 +1285,14 @@ export async function POST(req: NextRequest) {
       // and are not yet complete (or missing vendor/notes).
       const trackingItems = await prisma.procurementTracking.findMany({
         where: {
-          AND: [
-            {
-              OR: [
-                { nomorPr: { not: null } },
-                { nomorPo: { not: null } },
-              ],
-            },
-            {
-              tanggalList: { gte: checkDaysAgo }
-            },
-            {
-              OR: [
-                { statusPo: null },
-                { NOT: { statusPo: 'DONE' } },
-                { vendor: null },
-                { odooNotes: null },
-              ],
-            }
-          ]
+          OR: [
+            { nomorPr: { not: null } },
+            { nomorPo: { not: null } },
+          ],
+          tanggalList: { gte: checkDaysAgo },
+          NOT: {
+            statusPr: 'CANCELLED'
+          }
         },
         include: {
           sparepart: true
