@@ -80,6 +80,7 @@ export async function POST(req: NextRequest) {
     scriptUrl,
     isStocked,
     nomorPr,
+    nomorTe,
     isPengadaanBaru,
     namaAlias,
     alasan,
@@ -268,6 +269,7 @@ export async function PATCH(req: NextRequest) {
     id,
     nomorPr,
     nomorPo,
+    nomorTe,
     vendor,
     harga,
     etaFoom,
@@ -330,6 +332,7 @@ export async function PATCH(req: NextRequest) {
       data: {
         nomorPr: nomorPr !== undefined ? (nomorPr?.trim() || null) : undefined,
         nomorPo: nomorPo !== undefined ? (nomorPo?.trim() || null) : undefined,
+        nomorTe: nomorTe !== undefined ? (nomorTe?.trim() || null) : undefined,
         vendor: vendor !== undefined ? finalVendor : (sparepartId && sparepartId !== existing.sparepartId ? finalVendor : undefined),
         harga: harga !== undefined ? finalHarga : (sparepartId && sparepartId !== existing.sparepartId ? finalHarga : undefined),
         etaFoom: etaFoom !== undefined ? (etaFoom ? new Date(etaFoom) : null) : undefined,

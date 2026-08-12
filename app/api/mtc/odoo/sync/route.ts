@@ -671,10 +671,12 @@ export async function POST(req: NextRequest) {
   let sheetsErrorStr = '';
   let odooErrorStr = '';
 
+  const skipSheets = body?.skipSheets || body?.odooOnly || dbSettings['mtc_sync_odoo_only'] === 'true';
+
   // -------------------------------------------------------------
   // STEP 1: SINKRONISASI GOOGLE SHEETS
   // -------------------------------------------------------------
-  if (sheetUrl && sheetUrl.trim()) {
+  if (!skipSheets && sheetUrl && sheetUrl.trim()) {
     try {
       let sheetId = sheetUrl.trim();
       const match = sheetId.match(/\/d\/([a-zA-Z0-9-_]+)/);
@@ -1206,15 +1208,12 @@ export async function POST(req: NextRequest) {
 
                 const sparepartId = await findMtcSparepartMatch(tx, prodName);
 
-                const isMatchValid = bestMatchIndex !== -1 && (
-                  bestScore >= 20 ||
-                  (bestScore >= 10 && isGenericName(localItems[bestMatchIndex].originalName))
-                );
+                const targetIndex = bestMatchIndex !== -1 ? bestMatchIndex : (localItems.length > 0 ? 0 : -1);
 
-                if (isMatchValid) {
-                  // MATCH FOUND: update existing local item
-                  const matchedItem = localItems[bestMatchIndex];
-                  localItems.splice(bestMatchIndex, 1);
+                if (targetIndex !== -1) {
+                  // MATCH / REUSE FOUND: update existing local item in-place (no duplicates!)
+                  const matchedItem = localItems[targetIndex];
+                  localItems.splice(targetIndex, 1);
 
                   const resolvedSpId = sparepartId || matchedItem.sparepartId;
                   const updateData: any = {

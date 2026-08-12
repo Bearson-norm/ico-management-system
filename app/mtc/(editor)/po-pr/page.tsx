@@ -37,6 +37,7 @@ type TrackingItem = {
   statusPa: string | null;
   statusPo: string | null;
   nomorPo: string | null;
+  nomorTe?: string | null;
   poApproved: boolean;
   etaFoom: string | null;
   linkGr: string | null;
@@ -299,6 +300,7 @@ export default function ProcurementTrackingPage() {
   const [editingItem, setEditingItem] = useState<TrackingItem | null>(null);
   const [editPrNo, setEditPrNo] = useState('');
   const [editPoNo, setEditPoNo] = useState('');
+  const [editTeNo, setEditTeNo] = useState('');
   const [editStatusPr, setEditStatusPr] = useState('');
   const [editVendor, setEditVendor] = useState('');
   const [editPrice, setEditPrice] = useState(0);
@@ -1125,6 +1127,7 @@ export default function ProcurementTrackingPage() {
     setEditingItem(item);
     setEditPrNo(item.nomorPr || '');
     setEditPoNo(item.nomorPo || '');
+    setEditTeNo(item.nomorTe || '');
     setEditStatusPr(item.statusPr || 'DRAFT');
     setEditVendor(item.vendor || '');
     setEditPrice(Number(item.harga) || 0);
@@ -1151,6 +1154,7 @@ export default function ProcurementTrackingPage() {
           id: editingItem.id,
           nomorPr: editPrNo,
           nomorPo: editPoNo,
+          nomorTe: editTeNo,
           statusPr: editStatusPr,
           vendor: editVendor,
           harga: editPrice,
@@ -3096,6 +3100,23 @@ export default function ProcurementTrackingPage() {
                                                     </span>
                                                   )
                                                 )}
+                                                {item.nomorTe && (
+                                                  <span
+                                                    className="badge"
+                                                    style={{
+                                                      fontSize: 8,
+                                                      padding: '2px 6px',
+                                                      fontWeight: 800,
+                                                      background: 'rgba(168, 85, 247, 0.15)',
+                                                      color: '#c084fc',
+                                                      border: '1px solid rgba(168, 85, 247, 0.3)',
+                                                      marginLeft: 4
+                                                    }}
+                                                    title="Referensi Tiket TE"
+                                                  >
+                                                    TE: {item.nomorTe}
+                                                  </span>
+                                                )}
                                                 {item.nomorPo && !isItemReceived && !(item.statusPr === 'CANCELLED' || item.statusPo === 'CANCELLED') && (
                                                   <span
                                                     className="badge"
@@ -4462,7 +4483,7 @@ export default function ProcurementTrackingPage() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 14 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 14, marginBottom: 14 }}>
                   <div>
                     <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Status PR</label>
                     <select
@@ -4499,6 +4520,16 @@ export default function ProcurementTrackingPage() {
                       placeholder="Contoh: PO09123"
                       value={editPoNo}
                       onChange={(e) => setEditPoNo(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>Nomor TE</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Contoh: TE-001"
+                      value={editTeNo}
+                      onChange={(e) => setEditTeNo(e.target.value)}
                     />
                   </div>
                 </div>

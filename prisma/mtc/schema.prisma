@@ -186,6 +186,7 @@ model ProcurementTracking {
   statusPa         String?   @map("status_pa")
   statusPo         String?   @map("status_po")
   nomorPo          String?   @map("nomor_po")
+  nomorTe          String?   @map("nomor_te")
   poApproved       Boolean   @default(false) @map("po_approved")
   etaFoom          DateTime? @map("eta_foom")
   linkGr           String?   @map("link_gr")
