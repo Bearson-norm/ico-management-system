@@ -1072,6 +1072,7 @@ export async function POST(req: NextRequest) {
                   const resolvedSpId = sparepartId || matchedItem.sparepartId;
                   const updateData: any = {
                     statusPr: localStatusPr,
+                    ...(localStatusPr === 'CANCELLED' ? { statusPo: 'CANCELLED' } : {}),
                     harga: price > 0 ? price : undefined,
                     qty: Math.round(qty),
                     sparepartId: resolvedSpId,
@@ -1099,6 +1100,7 @@ export async function POST(req: NextRequest) {
                       nomorPr: prName,
                       nomorTe: teNumber,
                       statusPr: localStatusPr,
+                      statusPo: localStatusPr === 'CANCELLED' ? 'CANCELLED' : null,
                       tanggalList: prDate,
                       keterangan: req.description || null,
                       sparepartId,
@@ -1402,6 +1404,16 @@ export async function POST(req: NextRequest) {
             console.error(`Gagal mencari PR fallback Odoo untuk ${docName}:`, errPR);
           }
           return null;
+        }
+
+        if (odooPos && odooPos.length > 0) {
+          // Sort POs: active non-cancelled POs (purchase, done) FIRST, cancelled POs LAST
+          odooPos.sort((a: any, b: any) => {
+            const aCancel = a.state === 'cancel' ? 1 : 0;
+            const bCancel = b.state === 'cancel' ? 1 : 0;
+            if (aCancel !== bCancel) return aCancel - bCancel;
+            return b.id - a.id;
+          });
         }
 
         // We found POs! Gather all PO lines and logs
