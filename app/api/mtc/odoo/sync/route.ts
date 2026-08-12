@@ -1105,7 +1105,7 @@ export async function POST(req: NextRequest) {
                   importedPrCount++;
                 }
               }
-            });
+            }, { timeout: 60000, maxWait: 10000 });
           }
         }
       } catch (errReqImport) {
@@ -1264,7 +1264,7 @@ export async function POST(req: NextRequest) {
                   importedPrCount++;
                 }
               }
-            });
+            }, { timeout: 60000, maxWait: 10000 });
           }
         }
       } catch (errReqImport) {
@@ -1682,7 +1682,7 @@ export async function POST(req: NextRequest) {
                 }
               }
             }
-          });
+          }, { timeout: 60000, maxWait: 10000 });
           updatedOdooCount += items.length;
         } else {
           // PO update
@@ -1954,7 +1954,7 @@ export async function POST(req: NextRequest) {
                 }
               }
             }
-          });
+          }, { timeout: 60000, maxWait: 10000 });
           updatedOdooCount += items.length;
         }
       }
