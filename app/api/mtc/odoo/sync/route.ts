@@ -597,6 +597,13 @@ async function findOdooPR(
 }
 
 
+function sanitizeSessionId(raw: string | undefined | null): string {
+  if (!raw) return '';
+  const trimmed = raw.trim().replace(/^["']|["']$/g, '');
+  const match = trimmed.match(/session_id=([a-f0-9]+)/i) || trimmed.match(/([a-f0-9]{32,40})/i);
+  return match ? match[1] : trimmed;
+}
+
 // POST /api/mtc/odoo/sync
 export async function POST(req: NextRequest) {
   // Check CRON_TOKEN bypass
@@ -651,7 +658,7 @@ export async function POST(req: NextRequest) {
 
   const sheetUrl = bodySheetUrl?.trim() || dbSettings['mtc_procurement_sheet_url']?.trim() || process.env.SCM_SHEET_URL?.trim() || '';
   const odooPassword = bodyOdooPassword || dbSettings['mtc_odoo_password'] || process.env.ODOO_PASSWORD || '';
-  const odooSessionId = bodyOdooSessionId || dbSettings['mtc_odoo_session_id'] || process.env.ODOO_SESSION_ID || '';
+  const odooSessionId = sanitizeSessionId(bodyOdooSessionId || dbSettings['mtc_odoo_session_id'] || process.env.ODOO_SESSION_ID || '');
   const odooDb = bodyOdooDb || dbSettings['mtc_odoo_db'] || process.env.ODOO_DB || 'foom-production-5808833';
   
   let odooUid = 34;
@@ -1048,6 +1055,7 @@ export async function POST(req: NextRequest) {
                 }
 
                 const sparepartId = await findMtcSparepartMatch(tx, prodName);
+                const teNumber = (req.name && String(req.name).trim()) ? String(req.name).trim() : null;
 
                 const targetIndex = bestMatchIndex !== -1 ? bestMatchIndex : (localItems.length > 0 ? 0 : -1);
 
@@ -1063,6 +1071,7 @@ export async function POST(req: NextRequest) {
                     qty: Math.round(qty),
                     sparepartId: resolvedSpId,
                     isStocked: resolvedSpId ? true : undefined,
+                    ...(teNumber ? { nomorTe: teNumber } : {}),
                   };
 
                   if (isGenericName(matchedItem.originalName) && !isGenericName(prodName)) {
@@ -1083,6 +1092,7 @@ export async function POST(req: NextRequest) {
                       qty: Math.round(qty),
                       harga: price,
                       nomorPr: prName,
+                      nomorTe: teNumber,
                       statusPr: localStatusPr,
                       tanggalList: prDate,
                       keterangan: req.description || null,
