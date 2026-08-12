@@ -1860,8 +1860,8 @@ export async function POST(req: NextRequest) {
                   }
                 });
                 logDebug(`Split GR untuk Item ID ${item.id}: ${newReceiptQty} diterima baru (updated), ${remainingQty} sisa pending (created)`);
-              } else if (newReceiptQty >= item.qty || (newReceiptQty > 0 && isGrDone && !isPartialOdooGr)) {
-                // Porsi pending saat ini sudah terisi penuh atau PO secara keseluruhan selesai
+              } else if (newReceiptQty >= item.qty || (newReceiptQty > 0 && isGrDone && !isPartialOdooGr) || (matchedLine && matchedLine.qty_received >= matchedLine.product_qty && matchedLine.product_qty > 0)) {
+                // Porsi pending saat ini sudah terisi penuh, PO overall selesai, atau qty_received >= product_qty di Odoo
                 updateData.statusPo = 'DONE';
                 updateData.tanggalTerima = odooGrDate || item.tanggalTerima || new Date();
                 if (odooGrLink) {
