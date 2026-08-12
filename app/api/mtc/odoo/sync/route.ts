@@ -1021,7 +1021,7 @@ export async function POST(req: NextRequest) {
             if (reqState === 'in_progress') localStatusPr = 'TO_APPROVE';
             else if (reqState === 'open') localStatusPr = 'RFQ';
             else if (reqState === 'done') localStatusPr = 'RECEIVED';
-            else if (reqState === 'cancel') localStatusPr = 'CANCELLED';
+            else if (reqState === 'cancel' || reqState === 'rejected' || reqState === 'close') localStatusPr = 'CANCELLED';
 
             const prDate = req.create_date ? new Date(req.create_date) : new Date();
 
