@@ -224,9 +224,10 @@ function getBestOdooLineName(line: any): string {
   return variant || lineName || productLabel || 'Produk Tanpa Nama';
 }
 
-function combinePrAndPoLinks(existingRef: string | null | undefined, newUrl: string, type: 'pr' | 'po'): string {
+function combinePrAndPoLinks(existingRef: string | null | undefined, newUrl: string, type: 'pr' | 'po' | 'gr'): string {
   let pr: string | null = null;
   let po: string | null = null;
+  let gr: string | null = null;
 
   if (existingRef) {
     const trimmed = existingRef.trim();
@@ -235,7 +236,10 @@ function combinePrAndPoLinks(existingRef: string | null | undefined, newUrl: str
         const parsed = JSON.parse(trimmed);
         pr = parsed.pr || null;
         po = parsed.po || null;
+        gr = parsed.gr || null;
       } catch (e) {}
+    } else if (trimmed.includes('model=good.received')) {
+      gr = trimmed;
     } else if (trimmed.includes('model=purchase.order')) {
       po = trimmed;
     } else if (trimmed.includes('model=purchase.request') || trimmed.includes('model=purchase.requisition')) {
@@ -245,11 +249,12 @@ function combinePrAndPoLinks(existingRef: string | null | undefined, newUrl: str
 
   if (type === 'pr') pr = newUrl;
   if (type === 'po') po = newUrl;
+  if (type === 'gr') gr = newUrl;
 
-  if (pr && po) {
-    return JSON.stringify({ pr, po });
+  if (pr || po || gr) {
+    return JSON.stringify({ pr, po, gr });
   }
-  return pr || po || newUrl;
+  return newUrl;
 }
 
 const MATCH_STOP_WORDS = new Set(['per', 'isi', 'sak', 'untuk', 'kg', 'pcs', 'dan', 'atau', 'dengan', 'filter', 'air', 'gedung', 'sumur', 'kotor', 'pam', 'repeat', 'order', 'kebutuhan']);
@@ -1859,15 +1864,16 @@ export async function POST(req: NextRequest) {
                 updateData.tanggalTerima = odooGrDate || item.tanggalTerima || new Date();
                 if (odooGrLink) {
                   updateData.linkGr = odooGrLink;
+                  updateData.linkReferences = combinePrAndPoLinks(updateData.linkReferences || item.linkReferences, odooGrLink, 'gr');
                 }
                 finalIsGrDone = true;
               } else {
-                // If newReceiptQty <= 0, it means it is not received in Odoo (either because it is pending or because total PO qty has been fully allocated to other items).
-                // Revert/keep as PO (not DONE), but preserve physical receipt date if already recorded in MTC
-                updateData.statusPo = 'PO';
+                // If newReceiptQty <= 0, keep statusPo as PO unless physical receipt date is already recorded in MTC
+                updateData.statusPo = item.tanggalTerima ? 'DONE' : 'PO';
                 updateData.tanggalTerima = item.tanggalTerima || null;
                 if (odooGrLink) {
                   updateData.linkGr = odooGrLink;
+                  updateData.linkReferences = combinePrAndPoLinks(updateData.linkReferences || item.linkReferences, odooGrLink, 'gr');
                 }
               }
 

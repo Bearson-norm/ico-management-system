@@ -16,10 +16,10 @@ def run_cmd(cmd):
     if out:
         print(out)
     if err:
-        print("ERR:", err)
+        print("STDERR:", err)
     return out
 
-print("--- PR04637, PR04569, PR04566 DATA ON VPS ---")
-run_cmd('''PGPASSWORD=Admin123 psql -h 127.0.0.1 -p 5433 -U admin -d mtc_db -c "SELECT id, original_name, nomor_pr, nomor_po, status_pr, status_po FROM procurement_tracking WHERE nomor_pr IN ('PR04637', 'PR04569', 'PR04566');" ''')
+run_cmd('''pm2 jlist''')
+run_cmd('''grep -rn "proxy_pass" /etc/nginx/''')
 
 ssh.close()

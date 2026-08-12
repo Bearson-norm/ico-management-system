@@ -1,0 +1,31 @@
+import sys
+import paramiko
+import json
+
+sys.stdout.reconfigure(encoding='utf-8')
+
+HOST = '103.31.39.189'
+USER = 'foom'
+PASS = 'FoomIOT2025!'
+
+ssh = paramiko.SSHClient()
+ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+ssh.connect(HOST, username=USER, password=PASS, timeout=30)
+
+cmd = "curl -s 'http://127.0.0.1:1325/api/mtc/stock?search=MTC-SP-284'"
+_, stdout, _ = ssh.exec_command(cmd)
+res_raw = stdout.read().decode('utf-8', errors='ignore')
+
+try:
+    data = json.loads(res_raw)
+    if data.get('success'):
+        items = data['data']
+        print(f"Total spareparts returned by API: {len(items)}")
+        for it in items:
+            print(f"  {it['id']} | {it['nama']} | totalIn={it.get('totalIn')} | totalOut={it.get('totalOut')} | currentStock={it.get('currentStock')}")
+    else:
+        print("API error response:", data)
+except Exception as e:
+    print("Could not parse JSON:", res_raw[:500])
+
+ssh.close()

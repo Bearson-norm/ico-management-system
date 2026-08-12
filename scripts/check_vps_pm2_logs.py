@@ -9,14 +9,14 @@ PASS = 'FoomIOT2025!'
 
 ssh = paramiko.SSHClient()
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-ssh.connect(HOST, username=USER, password=PASS)
+ssh.connect(HOST, username=USER, password=PASS, timeout=60)
 
-stdin, stdout, stderr = ssh.exec_command('ls -l ~/.pm2/logs/')
-print("=== PM2 LOG FILES ===")
-print(stdout.read().decode('utf-8', errors='ignore'))
+cmd = "pm2 logs inventory --lines 20 --nostream"
+_, stdout, stderr = ssh.exec_command(cmd, timeout=30)
+out = stdout.read().decode('utf-8', errors='ignore')
+err = stderr.read().decode('utf-8', errors='ignore')
 
-stdin, stdout, stderr = ssh.exec_command('pm2 logs inventory --lines 30 --nostream')
-print("=== PM2 LOGS INVENTORY ===")
-print(stdout.read().decode('utf-8', errors='ignore'))
+print("OUT:\n", out)
+if err: print("ERR:\n", err)
 
 ssh.close()

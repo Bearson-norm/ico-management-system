@@ -55,7 +55,7 @@ type TrackingItem = {
 function parseOdooLinks(item: any) {
   let prUrl: string | null = null;
   let poUrl: string | null = null;
-  const grUrl: string | null = item?.linkGr || null;
+  let grUrl: string | null = item?.linkGr || null;
 
   if (item?.linkReferences) {
     const raw = item.linkReferences.trim();
@@ -64,7 +64,10 @@ function parseOdooLinks(item: any) {
         const parsed = JSON.parse(raw);
         prUrl = parsed.pr || null;
         poUrl = parsed.po || null;
+        if (!grUrl && parsed.gr) grUrl = parsed.gr;
       } catch (e) {}
+    } else if (raw.includes('model=good.received')) {
+      if (!grUrl) grUrl = raw;
     } else if (raw.includes('model=purchase.order')) {
       poUrl = raw;
     } else if (raw.includes('model=purchase.request') || raw.includes('model=purchase.requisition')) {

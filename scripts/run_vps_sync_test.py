@@ -16,10 +16,12 @@ def run_cmd(cmd):
     if out:
         print(out)
     if err:
-        print("ERR:", err)
+        print("STDERR:", err)
     return out
 
-print("--- PR04637, PR04569, PR04566 DATA ON VPS ---")
-run_cmd('''PGPASSWORD=Admin123 psql -h 127.0.0.1 -p 5433 -U admin -d mtc_db -c "SELECT id, original_name, nomor_pr, nomor_po, status_pr, status_po FROM procurement_tracking WHERE nomor_pr IN ('PR04637', 'PR04569', 'PR04566');" ''')
+run_cmd('''curl -i -X POST "http://localhost:1325/api/mtc/odoo/sync" -H "Content-Type: application/json" ''')
+
+print("\n--- DB STATE FOR PR04566 (HUTAMA) AFTER SYNC ---")
+run_cmd('''PGPASSWORD=Admin123 psql -h 127.0.0.1 -p 5433 -U admin -d mtc_db -c "SELECT id, original_name, nomor_pr, nomor_po, status_pr, status_po FROM procurement_tracking WHERE nomor_pr = 'PR04566';" ''')
 
 ssh.close()
