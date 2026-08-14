@@ -354,8 +354,10 @@ function findBestMatchedLine(lines: any[], item: any): any {
       }
     }
 
-    // 6. Single Item Generic Fallback: ONLY if line description itself is generic AND original item is generic
-    if (score === 0 && lines.length === 1 && isLineDescriptionGeneric && isGenericName(originalName)) {
+    // 6. Single Item Fallback: If PO has only 1 line, or line description contains core keywords of originalName
+    if (score === 0 && lines.length === 1) {
+      score += 25; // High confidence for single line PO match
+    } else if (score === 0 && isLineDescriptionGeneric && isGenericName(originalName)) {
       score += 15;
     }
 
