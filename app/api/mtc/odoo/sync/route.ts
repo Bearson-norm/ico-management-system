@@ -1319,18 +1319,36 @@ export async function POST(req: NextRequest) {
       let updatedOdooCount = 0;
 
       // Helper function to fetch all Odoo info for a specific group of items (PR/PO)
-      const fetchOdooDataForGroup = async (docName: string, prNo: string | undefined, poNo: string | undefined) => {
-        logDebug(`PO Search for document ${docName} -> poNo: ${poNo}, prNo: ${prNo}`);
+      const fetchOdooDataForGroup = async (docName: string, prNo: string | undefined, poNo: string | undefined, teNo: string | undefined) => {
+        logDebug(`PO Search for document ${docName} -> poNo: ${poNo}, prNo: ${prNo}, teNo: ${teNo}`);
+        const searchCriteria: any[] = [
+          ['name', '=', docName],
+          ['origin', '=', docName],
+          ['partner_ref', '=', docName]
+        ];
+        if (teNo) {
+          searchCriteria.push(['name', 'ilike', teNo]);
+          searchCriteria.push(['origin', 'ilike', teNo]);
+          searchCriteria.push(['partner_ref', 'ilike', teNo]);
+        }
+        if (prNo && prNo !== docName) {
+          searchCriteria.push(['name', 'ilike', prNo]);
+          searchCriteria.push(['origin', 'ilike', prNo]);
+        }
+        if (poNo && poNo !== docName) {
+          searchCriteria.push(['name', 'ilike', poNo]);
+        }
+
+        const domain: any[] = [];
+        for (let i = 0; i < searchCriteria.length - 1; i++) {
+          domain.push('|');
+        }
+        domain.push(...searchCriteria);
+
         let odooPos = await queryOdoo(
           'purchase.order',
           'search_read',
-          [[
-            '|',
-            '|',
-            ['name', '=', docName],
-            ['origin', '=', docName],
-            ['partner_ref', '=', docName]
-          ]],
+          [domain],
           {
             fields: ['id', 'name', 'state', 'amount_total', 'partner_id', 'date_order', 'origin', 'partner_ref', 'create_date'],
             limit: 50
@@ -1432,8 +1450,8 @@ export async function POST(req: NextRequest) {
           const vendorName = Array.isArray(odooPo.partner_id) ? odooPo.partner_id[1] : null;
           const amountTotal = odooPo.amount_total || 0;
 
-          // Fetch PO logs, lines, and GRs in parallel (highly optimized!)
-          const [poLogs, poLines, odooGrs] = await Promise.all([
+          // Fetch PO logs, lines, GRs, and Pickings in parallel (highly optimized!)
+          const [poLogs, poLines, odooGrs, odooPickings] = await Promise.all([
             fetchChatterLogs('purchase.order', poId, 'PO', odooOptions).catch(() => []),
             queryOdoo(
               'purchase.order.line',
@@ -1451,6 +1469,17 @@ export async function POST(req: NextRequest) {
               [[['purchase_id', '=', poId]]],
               {
                 fields: ['id', 'state', 'write_date', 'name'],
+                order: 'id desc',
+                limit: 1
+              },
+              odooOptions
+            ).catch(() => []),
+            queryOdoo(
+              'stock.picking',
+              'search_read',
+              [[['origin', '=', poName]]],
+              {
+                fields: ['id', 'state', 'date_done', 'name'],
                 order: 'id desc',
                 limit: 1
               },
@@ -1474,6 +1503,7 @@ export async function POST(req: NextRequest) {
           let isGrDone = false;
           let odooGrLink: string | null = null;
 
+          // 1. Check good.received model
           if (odooGrs && odooGrs.length > 0) {
             const odooGr = odooGrs[0];
             odooGrLink = `https://foomx.odoo.com/web#id=${odooGr.id}&model=good.received&view_type=form`;
@@ -1487,6 +1517,35 @@ export async function POST(req: NextRequest) {
               }
             }
           }
+
+          // 2. Check stock.picking model fallback
+          if (!isGrDone && odooPickings && odooPickings.length > 0) {
+            const picking = odooPickings[0];
+            if (!odooGrLink) {
+              odooGrLink = `https://foomx.odoo.com/web#id=${picking.id}&model=stock.picking&view_type=form`;
+            }
+            if (picking.state === 'done') {
+              isGrDone = true;
+              if (picking.date_done) {
+                const parsedDate = new Date(picking.date_done);
+                if (!isNaN(parsedDate.getTime())) {
+                  odooGrDate = parsedDate;
+                }
+              }
+            }
+          }
+
+          // 3. Fallback to line-level qty_received / PO done state
+          if (!isGrDone && poLines && poLines.length > 0) {
+            const hasReceived = poLines.some((l: any) => Number(l.qty_received) > 0);
+            if (hasReceived || odooState === 'done') {
+              isGrDone = true;
+              if (!odooGrLink) {
+                odooGrLink = `https://foomx.odoo.com/web#id=${poId}&model=purchase.order&view_type=form`;
+              }
+            }
+          }
+
           poGrStatusMap.set(poId, { isGrDone, odooGrDate, odooGrLink });
         }
 
@@ -1548,8 +1607,9 @@ export async function POST(req: NextRequest) {
         const representativeItem = items[0];
         const prNo = representativeItem.nomorPr?.trim();
         const poNo = representativeItem.nomorPo?.trim();
+        const teNo = representativeItem.nomorTe?.trim();
         try {
-          const data = await fetchOdooDataForGroup(docName, prNo, poNo);
+          const data = await fetchOdooDataForGroup(docName, prNo, poNo, teNo);
           return { docName, items, data, error: null };
         } catch (err) {
           return { docName, items, data: null, error: err };
@@ -1701,35 +1761,42 @@ export async function POST(req: NextRequest) {
               let matchedLine = null;
               if (allPoLines.length > 0) {
                 matchedLine = findBestMatchedLine(allPoLines, item);
+                if (!matchedLine && items.length === 1 && allPoLines.length === 1) {
+                  matchedLine = allPoLines[0];
+                }
               }
 
-              // If item doesn't match any PO line, skip PO assignment for this item
+              // If item doesn't match any PO line, check if single item fallback or if Odoo PO exists
               if (!matchedLine) {
-                // Only update non-PO fields (notes, date) for unmatched items
-                const unlinkedUpdate: any = {
-                  odooNotes: chatterNotes || null,
-                };
-                if (prCreateDate) {
-                  unlinkedUpdate.tanggalList = prCreateDate;
-                }
-                // Clear wrongly-assigned PO if it was set to one of the POs for this PR
-                const odooPoNames = odooPos.map((p: any) => p.name);
-                if ((item.nomorPo && odooPoNames.includes(item.nomorPo)) || !item.nomorPo) {
-                  unlinkedUpdate.nomorPo = null;
-                  unlinkedUpdate.statusPo = null;
-                  unlinkedUpdate.linkGr = null;
-                  unlinkedUpdate.vendor = null;
-                  if (item.statusPr === 'RECEIVED' && !item.tanggalTerima) {
-                    unlinkedUpdate.statusPr = 'APPROVED';
+                if (odooPos && odooPos.length > 0 && items.length === 1) {
+                  matchedLine = allPoLines[0] || { parentPoId: odooPos[0].id, product_qty: item.qty, qty_received: 0 };
+                } else {
+                  // Only update non-PO fields (notes, date) for unmatched items
+                  const unlinkedUpdate: any = {
+                    odooNotes: chatterNotes || null,
+                  };
+                  if (prCreateDate) {
+                    unlinkedUpdate.tanggalList = prCreateDate;
                   }
+                  // Clear wrongly-assigned PO if it was set to one of the POs for this PR
+                  const odooPoNames = odooPos.map((p: any) => p.name);
+                  if ((item.nomorPo && odooPoNames.includes(item.nomorPo)) || !item.nomorPo) {
+                    unlinkedUpdate.nomorPo = null;
+                    unlinkedUpdate.statusPo = null;
+                    unlinkedUpdate.linkGr = null;
+                    unlinkedUpdate.vendor = null;
+                    if (item.statusPr === 'RECEIVED' && !item.tanggalTerima) {
+                      unlinkedUpdate.statusPr = 'APPROVED';
+                    }
+                  }
+                  if (hasActualChanges(item, unlinkedUpdate)) {
+                    await tx.procurementTracking.update({
+                      where: { id: item.id },
+                      data: unlinkedUpdate
+                    });
+                  }
+                  continue;
                 }
-                if (hasActualChanges(item, unlinkedUpdate)) {
-                  await tx.procurementTracking.update({
-                    where: { id: item.id },
-                    data: unlinkedUpdate
-                  });
-                }
-                continue;
               }
 
               const targetPo = odooPos.find((p: any) => p.id === matchedLine.parentPoId)
