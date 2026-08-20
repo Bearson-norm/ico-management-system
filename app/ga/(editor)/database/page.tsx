@@ -217,6 +217,38 @@ export default function GaDatabasePage() {
             <div className="page-title">Database Barang GA</div>
             <div className="page-sub">Kelola master barang — edit per item</div>
           </div>
+          <div className="page-header-actions" style={{ display: 'flex', gap: 8 }}>
+            <a
+              className="btn btn-ghost"
+              href={`/ga/database/print${buildStockQuery(filters)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-disabled={loading || items.length === 0}
+              onClick={(e) => {
+                if (loading || items.length === 0) e.preventDefault();
+              }}
+              style={{
+                pointerEvents: loading || items.length === 0 ? 'none' : 'auto',
+                opacity: loading || items.length === 0 ? 0.5 : 1,
+              }}
+            >
+              Cetak / PDF
+            </a>
+            <a
+              className="btn btn-primary"
+              href={`/api/ga/database/export${buildStockQuery(filters)}`}
+              aria-disabled={loading || items.length === 0}
+              onClick={(e) => {
+                if (loading || items.length === 0) e.preventDefault();
+              }}
+              style={{
+                pointerEvents: loading || items.length === 0 ? 'none' : 'auto',
+                opacity: loading || items.length === 0 ? 0.5 : 1,
+              }}
+            >
+              Download Excel
+            </a>
+          </div>
         </div>
       </div>
 
