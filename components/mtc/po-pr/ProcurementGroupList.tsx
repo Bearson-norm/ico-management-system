@@ -24,6 +24,334 @@ type ProcurementGroupListProps = {
   activeTab: string;
 };
 
+interface OdooChatterMessage {
+  date?: string;
+  author?: string;
+  body?: string;
+  phase?: string;
+}
+
+const OdooChatterViewer: React.FC<{ odooNotes?: string | null }> = ({ odooNotes }) => {
+  const getParsedLogs = (): { type: 'logs'; logs: OdooChatterMessage[] } | { type: 'text'; text: string } | null => {
+    if (!odooNotes || !odooNotes.trim()) return null;
+    const raw = odooNotes.trim();
+    if (raw.startsWith('[') || raw.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return { type: 'logs', logs: parsed };
+        }
+        if (typeof parsed === 'object' && parsed !== null) {
+          return { type: 'logs', logs: [parsed] };
+        }
+      } catch (e) {
+        // Fallback to text
+      }
+    }
+    return { type: 'text', text: raw };
+  };
+
+  const data = getParsedLogs();
+
+  if (!data) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: '12px 16px',
+          background: 'rgba(255, 255, 255, 0.02)',
+          borderRadius: 8,
+          border: '1px dashed var(--br)',
+          color: 'var(--tx3)',
+          fontSize: 12,
+        }}
+      >
+        <span style={{ fontSize: 16 }}>📭</span>
+        <span>Belum ada log catatan chatter atau riwayat approval Odoo untuk pengajuan ini.</span>
+      </div>
+    );
+  }
+
+  if (data.type === 'text') {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 800, color: 'var(--pur)' }}>
+          <span>💬</span>
+          <span>LOG PELACAKAN & KOMENTAR CHATTER ODOO</span>
+        </div>
+        <div
+          style={{
+            padding: '10px 14px',
+            background: 'var(--sf3)',
+            borderRadius: 8,
+            border: '1px solid var(--br)',
+            color: 'var(--tx2)',
+            fontSize: 12,
+            lineHeight: 1.6,
+          }}
+          dangerouslySetInnerHTML={{ __html: data.text }}
+        />
+      </div>
+    );
+  }
+
+  const { logs } = data;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 13 }}>💬</span>
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 800,
+              color: 'var(--pur)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+            }}
+          >
+            Log Pelacakan & Komentar Chatter Odoo
+          </span>
+        </div>
+        <span
+          className="badge"
+          style={{
+            fontSize: 10,
+            padding: '2px 8px',
+            fontWeight: 700,
+            background: 'rgba(168, 85, 247, 0.12)',
+            color: '#c084fc',
+            border: '1px solid rgba(168, 85, 247, 0.25)',
+          }}
+        >
+          {logs.length} Aktivitas / Catatan Tercatat
+        </span>
+      </div>
+
+      {/* Timeline List */}
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          position: 'relative',
+          paddingLeft: 18,
+          borderLeft: '2px solid rgba(168, 85, 247, 0.25)',
+          marginLeft: 8,
+          gap: 10,
+        }}
+      >
+        {logs.map((log, idx) => {
+          const author = log.author || 'Sistem Odoo';
+          const upperAuthor = author.toUpperCase();
+          const isAudit = upperAuthor.includes('AUDIT');
+          const isProcurement =
+            upperAuthor.includes('PROCUREMENT') ||
+            upperAuthor.includes('PURCHASING') ||
+            upperAuthor.includes('BUYER');
+          const isProd =
+            upperAuthor.includes('PROD') ||
+            upperAuthor.includes('MTC') ||
+            upperAuthor.includes('MAINTENANCE');
+          const isFinance =
+            upperAuthor.includes('FINANCE') ||
+            upperAuthor.includes('ACC') ||
+            upperAuthor.includes('MANAGER');
+
+          let avatarIcon = '👤';
+          let avatarBg = 'rgba(255, 255, 255, 0.08)';
+          let avatarColor = 'var(--tx2)';
+          let borderAccent = 'var(--br)';
+          let dotColor = 'var(--pur)';
+
+          if (isAudit) {
+            avatarIcon = '🛡️';
+            avatarBg = 'rgba(59, 130, 246, 0.15)';
+            avatarColor = '#60a5fa';
+            borderAccent = 'rgba(59, 130, 246, 0.3)';
+            dotColor = '#3b82f6';
+          } else if (isProcurement) {
+            avatarIcon = '🛒';
+            avatarBg = 'rgba(168, 85, 247, 0.15)';
+            avatarColor = '#c084fc';
+            borderAccent = 'rgba(168, 85, 247, 0.3)';
+            dotColor = '#a855f7';
+          } else if (isProd) {
+            avatarIcon = '🏭';
+            avatarBg = 'rgba(234, 179, 8, 0.15)';
+            avatarColor = '#facc15';
+            borderAccent = 'rgba(234, 179, 8, 0.3)';
+            dotColor = '#eab308';
+          } else if (isFinance) {
+            avatarIcon = '💼';
+            avatarBg = 'rgba(34, 197, 94, 0.15)';
+            avatarColor = '#4ade80';
+            borderAccent = 'rgba(34, 197, 94, 0.3)';
+            dotColor = '#22c55e';
+          }
+
+          let formattedDate = log.date || '—';
+          if (log.date) {
+            try {
+              const d = new Date(log.date.replace(' ', 'T'));
+              if (!isNaN(d.getTime())) {
+                formattedDate = d.toLocaleString('id-ID', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: false,
+                });
+              }
+            } catch (e) {}
+          }
+
+          const hasBody = log.body && log.body.trim().length > 0;
+          let cleanBody = log.body || '';
+          if (cleanBody) {
+            cleanBody = cleanBody.replace(
+              /<i[^>]*class=["'][^"']*fa-thumbs-up[^"']*["'][^>]*><\/i>/gi,
+              ' <span style="color:#22c55e;font-size:13px;display:inline-block;margin-left:4px;">👍</span> '
+            );
+          }
+
+          return (
+            <div
+              key={idx}
+              style={{
+                position: 'relative',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 6,
+                background: 'var(--sf3)',
+                border: `1px solid ${borderAccent}`,
+                borderRadius: 8,
+                padding: '9px 12px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+              }}
+            >
+              {/* Timeline Bullet Node */}
+              <div
+                style={{
+                  position: 'absolute',
+                  left: -25,
+                  top: 12,
+                  width: 12,
+                  height: 12,
+                  borderRadius: '50%',
+                  background: dotColor,
+                  border: '2px solid var(--sf2)',
+                  boxShadow: `0 0 6px ${dotColor}`,
+                }}
+              />
+
+              {/* Author, Phase & Date */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: 8,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div
+                    style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: 5,
+                      background: avatarBg,
+                      color: avatarColor,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 10,
+                    }}
+                  >
+                    {avatarIcon}
+                  </div>
+                  <span style={{ fontWeight: 800, fontSize: 11.5, color: 'var(--tx)' }}>{author}</span>
+                  {log.phase && (
+                    <span
+                      style={{
+                        fontSize: 9,
+                        padding: '1px 5px',
+                        borderRadius: 4,
+                        fontWeight: 800,
+                        background:
+                          log.phase === 'PO'
+                            ? 'rgba(34, 197, 94, 0.15)'
+                            : 'rgba(168, 85, 247, 0.15)',
+                        color: log.phase === 'PO' ? '#4ade80' : '#c084fc',
+                        border:
+                          log.phase === 'PO'
+                            ? '1px solid rgba(34, 197, 94, 0.3)'
+                            : '1px solid rgba(168, 85, 247, 0.3)',
+                      }}
+                    >
+                      {log.phase}
+                    </span>
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    fontSize: 10,
+                    color: 'var(--tx3)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
+                >
+                  <span>🕒</span>
+                  <span>{formattedDate}</span>
+                </div>
+              </div>
+
+              {/* Message Body or Activity Indicator */}
+              {hasBody ? (
+                <div
+                  style={{
+                    fontSize: 11.5,
+                    color: 'var(--tx)',
+                    lineHeight: 1.5,
+                    marginTop: 2,
+                    padding: '6px 10px',
+                    background: 'rgba(0, 0, 0, 0.25)',
+                    borderRadius: 6,
+                    border: '1px solid rgba(255,255,255,0.04)',
+                  }}
+                  dangerouslySetInnerHTML={{ __html: cleanBody }}
+                />
+              ) : (
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: 'var(--tx3)',
+                    fontStyle: 'italic',
+                    marginTop: 2,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <span>📌</span>
+                  <span>Aktivitas / status dokumen tercatat di Odoo</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
   groupedPrItems,
   filteredItemsCount,
@@ -1145,49 +1473,16 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
                                       >
                                         📥 Terima Barang
                                       </button>
-                                    ) : (
-                                      <button
-                                        type="button"
-                                        disabled={actionLoading !== null}
-                                        onClick={() => openEditModal(item)}
-                                        style={{
-                                          padding: '5px 10px',
-                                          fontSize: 10,
-                                          fontWeight: 700,
-                                          cursor: 'pointer',
-                                          background: 'rgba(59, 130, 246, 0.15)',
-                                          color: '#60a5fa',
-                                          border: '1px solid rgba(59, 130, 246, 0.3)',
-                                          borderRadius: 6,
-                                        }}
-                                      >
-                                        🚢 Push ke PO
-                                      </button>
-                                    )}
+                                    ) : null}
                                   </div>
                                 </td>
                               </tr>
 
                               {/* Chatter Log Row */}
                               {expandedRows[item.id] && (
-                                <tr style={{ background: 'rgba(0,0,0,0.18)' }}>
-                                  <td colSpan={9} style={{ padding: '16px 24px', borderBottom: '1px solid var(--br)' }}>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                      <div
-                                        style={{
-                                          fontSize: 11,
-                                          fontWeight: 800,
-                                          color: 'var(--pur)',
-                                          textTransform: 'uppercase',
-                                          letterSpacing: '0.5px',
-                                        }}
-                                      >
-                                        💬 Log Pelacakan & Komentar Chatter Odoo
-                                      </div>
-                                      <div style={{ fontSize: 11, color: 'var(--tx3)' }}>
-                                        {item.odooNotes || 'Belum ada log catatan chatter Odoo.'}
-                                      </div>
-                                    </div>
+                                <tr style={{ background: 'rgba(0,0,0,0.22)' }}>
+                                  <td colSpan={8} style={{ padding: '16px 24px', borderBottom: '1px solid var(--br)' }}>
+                                    <OdooChatterViewer odooNotes={item.odooNotes} />
                                   </td>
                                 </tr>
                               )}
