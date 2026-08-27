@@ -2,6 +2,10 @@ import { NextRequest } from 'next/server';
 import { prismaGa } from '@/lib/prisma-ga';
 import { requireGaEditor } from '@/lib/auth';
 import { ok, err } from '@/lib/utils';
+import {
+  parseSlowMovingThresholdInput,
+  SLOW_MOVING_THRESHOLD_KEY,
+} from '@/lib/ga/movementClass';
 
 // GET /api/ga/settings
 export async function GET(req: NextRequest) {
@@ -32,6 +36,17 @@ export async function POST(req: NextRequest) {
     body = await req.json();
   } catch {
     return err('Format JSON tidak valid', 400);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, SLOW_MOVING_THRESHOLD_KEY)) {
+    if (session.user.role !== 'administrator') {
+      return err('Hanya administrator yang dapat mengubah batas Slow Moving', 403);
+    }
+    const parsed = parseSlowMovingThresholdInput(body[SLOW_MOVING_THRESHOLD_KEY]);
+    if (parsed === null) {
+      return err('Batas Slow Moving harus bilangan bulat ≥ 0', 400);
+    }
+    body[SLOW_MOVING_THRESHOLD_KEY] = String(parsed);
   }
 
   try {

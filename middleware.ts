@@ -165,9 +165,11 @@ export default async function middleware(req: NextRequest) {
     }
     const role = (token.role as string) || 'viewer';
 
-    // User Management + Cek Audit Trail: hanya administrator
+    // User Management + Cek Audit Trail + Konfigurasi: hanya administrator
     if (
-      (pathname.startsWith('/ga/users') || pathname.startsWith('/ga/audit')) &&
+      (pathname.startsWith('/ga/users') ||
+        pathname.startsWith('/ga/audit') ||
+        pathname.startsWith('/ga/settings')) &&
       role !== 'administrator'
     ) {
       return NextResponse.redirect(new URL('/ga/dashboard', origin));

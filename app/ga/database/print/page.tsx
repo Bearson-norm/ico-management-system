@@ -85,6 +85,9 @@ function GaDatabasePrintContent() {
     if (aktif === 'false') parts.push('Status barang: Nonaktif saja');
     else if (aktif === 'all') parts.push('Status barang: Semua');
     else parts.push('Status barang: Aktif saja');
+    const movementClass = searchParams.get('movementClass');
+    if (movementClass === 'slow') parts.push('Pergerakan: Slow Moving');
+    else if (movementClass === 'fast') parts.push('Pergerakan: Fast Moving');
 
     return parts.join(' · ');
   }, [searchParams, items]);

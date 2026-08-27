@@ -1,6 +1,9 @@
 'use client';
 
-import { useEffect, useState, FormEvent, ChangeEvent } from 'react';
+import { useEffect, useState, FormEvent, ChangeEvent, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+
+type GaMovementClass = 'slow' | 'fast';
 
 type GaItem = {
   id: string;
@@ -16,6 +19,9 @@ type GaItem = {
   currentStock: number;
   aktif: boolean;
   status: 'safe' | 'low' | 'habis' | 'overstock';
+  qtyOut30d: number;
+  movementClass: GaMovementClass;
+  slowMovingThreshold: number;
 };
 
 type Filters = {
@@ -24,6 +30,7 @@ type Filters = {
   kategoriId: string;
   lokasi: string;
   aktif: string;
+  movementClass: string;
 };
 
 const defaultFilters: Filters = {
@@ -32,6 +39,7 @@ const defaultFilters: Filters = {
   kategoriId: '',
   lokasi: '',
   aktif: 'true',
+  movementClass: '',
 };
 
 function buildStockQuery(f: Filters): string {
@@ -41,6 +49,7 @@ function buildStockQuery(f: Filters): string {
   if (f.status) p.set('status', f.status);
   if (f.kategoriId) p.set('kategoriId', f.kategoriId);
   if (f.lokasi) p.set('lokasi', f.lokasi);
+  if (f.movementClass) p.set('movementClass', f.movementClass);
   const q = p.toString();
   return q ? `?${q}` : '';
 }
@@ -50,6 +59,11 @@ function statusBadge(status: GaItem['status']) {
   if (status === 'low') return <span className="badge badge-ylw">Understock</span>;
   if (status === 'overstock') return <span className="badge badge-pur">Overstock</span>;
   return <span className="badge badge-grn">Aman</span>;
+}
+
+function movementClassBadge(movementClass: GaMovementClass) {
+  if (movementClass === 'slow') return <span className="badge badge-ylw">Slow Moving</span>;
+  return <span className="badge badge-blu">Fast Moving</span>;
 }
 
 type EditForm = {
@@ -77,13 +91,33 @@ const emptyForm: EditForm = {
 };
 
 export default function GaDatabasePage() {
+  return (
+    <Suspense fallback={<div className="ga-loading">Memuat data barang…</div>}>
+      <GaDatabasePageInner />
+    </Suspense>
+  );
+}
+
+function GaDatabasePageInner() {
+  const searchParams = useSearchParams();
   const [items, setItems] = useState<GaItem[]>([]);
   const [kategoris, setKategoris] = useState<{ id: number; nama: string }[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState<Filters>(defaultFilters);
+  const [filters, setFilters] = useState<Filters>(() => {
+    const mc = searchParams.get('movementClass');
+    return {
+      ...defaultFilters,
+      movementClass: mc === 'slow' || mc === 'fast' ? mc : '',
+    };
+  });
   const [lokasiOptions, setLokasiOptions] = useState<string[]>([]);
   const [editOpen, setEditOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+  const [editMeta, setEditMeta] = useState<{
+    movementClass: GaMovementClass;
+    qtyOut30d: number;
+    slowMovingThreshold: number;
+  } | null>(null);
   const [form, setForm] = useState<EditForm>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -130,7 +164,8 @@ export default function GaDatabasePage() {
     filters.status !== '' ||
     filters.kategoriId !== '' ||
     filters.lokasi !== '' ||
-    filters.aktif !== 'true';
+    filters.aktif !== 'true' ||
+    filters.movementClass !== '';
 
   function openEdit(it: GaItem) {
     setEditId(it.id);
@@ -145,6 +180,11 @@ export default function GaDatabasePage() {
       kategoriId: it.kategoriId != null ? String(it.kategoriId) : '',
       aktif: it.aktif !== false,
     });
+    setEditMeta({
+      movementClass: it.movementClass,
+      qtyOut30d: it.qtyOut30d,
+      slowMovingThreshold: it.slowMovingThreshold,
+    });
     setEditOpen(true);
   }
 
@@ -152,6 +192,7 @@ export default function GaDatabasePage() {
     setEditOpen(false);
     setEditId(null);
     setForm(emptyForm);
+    setEditMeta(null);
   }
 
   async function handleSave(e: FormEvent) {
@@ -356,6 +397,14 @@ export default function GaDatabasePage() {
                   <option value="all">Semua</option>
                 </select>
               </div>
+              <div className="ga-filter-field">
+                <label className="form-label" htmlFor="filter-movement">Pergerakan</label>
+                <select id="filter-movement" className="form-input form-select" value={filters.movementClass} onChange={(e) => setFilter('movementClass', e.target.value)}>
+                  <option value="">Semua</option>
+                  <option value="fast">Fast Moving</option>
+                  <option value="slow">Slow Moving</option>
+                </select>
+              </div>
               {hasActiveFilters && (
                 <button type="button" className="btn btn-ghost btn-sm" onClick={resetFilters}>Reset filter</button>
               )}
@@ -377,13 +426,14 @@ export default function GaDatabasePage() {
                   <th>Harga</th>
                   <th>Stok</th>
                   <th>Status</th>
+                  <th>Pergerakan</th>
                   <th style={{ width: 140 }}>Aksi</th>
                 </tr>
               </thead>
               <tbody>
                 {items.length === 0 && !loading ? (
                   <tr>
-                    <td colSpan={9} className="text-muted text-center" style={{ padding: 24 }}>
+                    <td colSpan={10} className="text-muted text-center" style={{ padding: 24 }}>
                       {hasActiveFilters
                         ? 'Tidak ada barang yang cocok dengan filter.'
                         : 'Belum ada data. Tambah barang lewat Stock In.'}
@@ -403,6 +453,7 @@ export default function GaDatabasePage() {
                       <td>{fmtRp(it.harga)}</td>
                       <td>{it.currentStock}</td>
                       <td>{statusBadge(it.status)}</td>
+                      <td>{movementClassBadge(it.movementClass)}</td>
                       <td>
                         <div className="ga-table-actions">
                           <button type="button" className="btn btn-ghost btn-sm" onClick={() => openEdit(it)}>
@@ -442,6 +493,26 @@ export default function GaDatabasePage() {
             <form id="gaEditForm" onSubmit={handleSave}>
               <div className="modal-body">
                 <div className="form-grid">
+                  {editMeta && (
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 12,
+                        flexWrap: 'wrap',
+                        padding: '10px 12px',
+                        borderRadius: 'var(--ga-rs)',
+                        background: 'var(--ga-sf2)',
+                        border: '1px solid var(--ga-br)',
+                      }}
+                    >
+                      {movementClassBadge(editMeta.movementClass)}
+                      <span className="text-muted text-tiny">
+                        Keluar 30 hari: {editMeta.qtyOut30d} / batas {editMeta.slowMovingThreshold}
+                      </span>
+                    </div>
+                  )}
                   <p className="ga-modal-form-section">Identitas barang</p>
                   <div
                     className="form-grid-2"

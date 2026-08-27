@@ -7,6 +7,7 @@ import {
   listGaStockItems,
   parseGaStockListFilters,
 } from '@/lib/ga/listStockItems';
+import { gaMovementClassLabel } from '@/lib/ga/movementClass';
 
 export const runtime = 'nodejs';
 
@@ -27,6 +28,7 @@ export async function GET(req: NextRequest) {
     Stok: it.currentStock,
     Harga: it.harga,
     Status: gaStockStatusLabel(it.status),
+    Pergerakan: gaMovementClassLabel(it.movementClass),
   }));
 
   const wb = XLSX.utils.book_new();
@@ -39,6 +41,7 @@ export async function GET(req: NextRequest) {
     { wch: 8 },
     { wch: 8 },
     { wch: 10 },
+    { wch: 14 },
     { wch: 14 },
     { wch: 14 },
   ];

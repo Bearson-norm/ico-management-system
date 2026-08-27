@@ -3,6 +3,12 @@ import { prismaGa } from '@/lib/prisma-ga';
 import { requireGaEditor } from '@/lib/auth';
 import { ok, err } from '@/lib/utils';
 import { computeStockFromMovements } from '@/lib/ga/stockQty';
+import {
+  classifyMovement,
+  getSlowMovingThreshold,
+  last30DaysStartJakarta,
+  sumQtyOutSince,
+} from '@/lib/ga/movementClass';
 
 export async function GET(req: NextRequest) {
   const session = await requireGaEditor();
@@ -17,6 +23,8 @@ export async function GET(req: NextRequest) {
   startDate.setHours(0, 0, 0, 0);
 
   try {
+    const since30d = last30DaysStartJakarta();
+
     const [
       allGaItems,
       recentMovements,
@@ -25,6 +33,7 @@ export async function GET(req: NextRequest) {
       totalDraftOpnameCount,
       totalKategoriCount,
       activeOrderCount,
+      slowMovingThreshold,
     ] = await Promise.all([
       prismaGa.gaItem.findMany({
         where: { aktif: true },
@@ -85,6 +94,7 @@ export async function GET(req: NextRequest) {
       prismaGa.gaOpnameSession.count({ where: { status: 'draft' } }),
       prismaGa.kategori.count(),
       prismaGa.gaProcurementTracking.count({ where: { status: 'ORDERED' } }),
+      getSlowMovingThreshold(),
     ]);
 
     // Hitung stock, valuation, dan kritis
@@ -93,6 +103,8 @@ export async function GET(req: NextRequest) {
     let totalStockCount = 0;
     let totalKritisCount = 0;
     let totalOverstockCount = 0;
+    let totalFastCount = 0;
+    let totalSlowCount = 0;
 
     const itemsWithStock = allGaItems.map((it) => {
       const currentStock = computeStockFromMovements(it.movements);
@@ -118,6 +130,11 @@ export async function GET(req: NextRequest) {
         totalOverstockCount++;
       }
 
+      const qtyOut30d = sumQtyOutSince(it.movements, since30d);
+      const movementClass = classifyMovement(qtyOut30d, slowMovingThreshold);
+      if (movementClass === 'fast') totalFastCount++;
+      else totalSlowCount++;
+
       return {
         id: it.id,
         nama: it.nama,
@@ -130,6 +147,8 @@ export async function GET(req: NextRequest) {
         currentStock,
         isKritis,
         isOverstock,
+        qtyOut30d,
+        movementClass,
       };
     });
 
@@ -143,6 +162,28 @@ export async function GET(req: NextRequest) {
       .sort((a, b) => b.currentStock - a.currentStock)
       .slice(0, 5);
 
+    const toMovementRow = (it: (typeof itemsWithStock)[number]) => ({
+      id: it.id,
+      nama: it.nama,
+      kodeBarang: it.kodeBarang,
+      lokasi: it.lokasi,
+      uom: it.uom,
+      currentStock: it.currentStock,
+      qtyOut30d: it.qtyOut30d,
+    });
+
+    const slowMovingItems = itemsWithStock
+      .filter((it) => it.movementClass === 'slow')
+      .sort((a, b) => a.qtyOut30d - b.qtyOut30d)
+      .slice(0, 5)
+      .map(toMovementRow);
+
+    const fastMovingItems = itemsWithStock
+      .filter((it) => it.movementClass === 'fast')
+      .sort((a, b) => b.qtyOut30d - a.qtyOut30d)
+      .slice(0, 5)
+      .map(toMovementRow);
+
     return ok({
       totalStockValuation,
       totalOutboundValuation,
@@ -150,6 +191,11 @@ export async function GET(req: NextRequest) {
       totalStockCount,
       totalKritisCount,
       totalOverstockCount,
+      slowMovingThreshold,
+      totalFastCount,
+      totalSlowCount,
+      slowMovingItems,
+      fastMovingItems,
       totalDraftOpnameCount,
       totalKategoriCount,
       activeOrderCount,

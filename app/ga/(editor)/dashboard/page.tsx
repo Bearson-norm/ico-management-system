@@ -331,6 +331,129 @@ export default function GaDashboardPage() {
           </div>
         </div>
 
+        {/* ==================== FAST / SLOW MOVING ==================== */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            <div className="card-header" style={{ justifyContent: 'space-between', display: 'flex', alignItems: 'center', height: '48px', padding: '0 20px' }}>
+              <div className="card-title" style={{ color: 'var(--ga-ylw)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}>
+                Slow Moving
+                {data?.totalSlowCount > 0 && (
+                  <span className="badge badge-ylw" style={{ fontSize: 10 }}>{data.totalSlowCount}</span>
+                )}
+              </div>
+              <Link href="/ga/database?movementClass=slow" className="btn btn-ghost btn-sm" style={{ fontSize: '11px', color: 'var(--ga-ylw)' }}>
+                Lihat Semua →
+              </Link>
+            </div>
+            <div style={{ padding: '12px 20px 16px 20px', flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto', maxHeight: '180px' }}>
+              <div style={{ fontSize: '10px', color: 'var(--ga-tx3)', marginBottom: '4px' }}>
+                Keluar 30 hari &lt; {data?.slowMovingThreshold ?? 5} unit
+              </div>
+              {data?.slowMovingItems?.map((sp: { id: string; nama: string; kodeBarang?: string | null; qtyOut30d: number; currentStock: number; uom: string }) => (
+                <Link
+                  href="/ga/database?movementClass=slow"
+                  key={sp.id}
+                  className="ga-critical-item-row"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '6px 10px',
+                    borderRadius: 'var(--ga-rs)',
+                    background: 'var(--ga-sf2)',
+                    border: '1px solid var(--ga-br)',
+                    fontSize: '11px',
+                    color: 'inherit',
+                    textDecoration: 'none',
+                  }}
+                >
+                  <div style={{ minWidth: 0, flex: 1, marginRight: '8px' }}>
+                    <div style={{ fontWeight: 600, color: 'var(--ga-tx)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{sp.nama}</div>
+                    <div style={{ fontSize: '9px', color: 'var(--ga-tx3)', fontFamily: 'monospace', marginTop: '2px' }}>{sp.kodeBarang || sp.id}</div>
+                  </div>
+                  <div style={{
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    fontSize: '10px',
+                    fontWeight: '800',
+                    background: 'rgba(245, 158, 11, 0.12)',
+                    color: 'var(--ga-ylw)',
+                    border: '1px solid rgba(245, 158, 11, 0.25)',
+                    flexShrink: 0,
+                  }}>
+                    keluar {sp.qtyOut30d} {sp.uom}
+                  </div>
+                </Link>
+              ))}
+              {(!data?.slowMovingItems || data.slowMovingItems.length === 0) && (
+                <div style={{ textAlign: 'center', padding: '12px 0', color: 'var(--ga-tx3)', fontSize: '12px' }}>
+                  Tidak ada barang slow moving.
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            <div className="card-header" style={{ justifyContent: 'space-between', display: 'flex', alignItems: 'center', height: '48px', padding: '0 20px' }}>
+              <div className="card-title" style={{ color: 'var(--ga-accent)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}>
+                Fast Moving
+                {data?.totalFastCount > 0 && (
+                  <span className="badge badge-blu" style={{ fontSize: 10 }}>{data.totalFastCount}</span>
+                )}
+              </div>
+              <Link href="/ga/database?movementClass=fast" className="btn btn-ghost btn-sm" style={{ fontSize: '11px', color: 'var(--ga-accent)' }}>
+                Lihat Semua →
+              </Link>
+            </div>
+            <div style={{ padding: '12px 20px 16px 20px', flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto', maxHeight: '180px' }}>
+              <div style={{ fontSize: '10px', color: 'var(--ga-tx3)', marginBottom: '4px' }}>
+                Keluar 30 hari ≥ {data?.slowMovingThreshold ?? 5} unit
+              </div>
+              {data?.fastMovingItems?.map((sp: { id: string; nama: string; kodeBarang?: string | null; qtyOut30d: number; currentStock: number; uom: string }) => (
+                <Link
+                  href="/ga/database?movementClass=fast"
+                  key={sp.id}
+                  className="ga-critical-item-row"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '6px 10px',
+                    borderRadius: 'var(--ga-rs)',
+                    background: 'var(--ga-sf2)',
+                    border: '1px solid var(--ga-br)',
+                    fontSize: '11px',
+                    color: 'inherit',
+                    textDecoration: 'none',
+                  }}
+                >
+                  <div style={{ minWidth: 0, flex: 1, marginRight: '8px' }}>
+                    <div style={{ fontWeight: 600, color: 'var(--ga-tx)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{sp.nama}</div>
+                    <div style={{ fontSize: '9px', color: 'var(--ga-tx3)', fontFamily: 'monospace', marginTop: '2px' }}>{sp.kodeBarang || sp.id}</div>
+                  </div>
+                  <div style={{
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    fontSize: '10px',
+                    fontWeight: '800',
+                    background: 'rgba(59, 130, 246, 0.12)',
+                    color: 'var(--ga-accent)',
+                    border: '1px solid rgba(59, 130, 246, 0.25)',
+                    flexShrink: 0,
+                  }}>
+                    keluar {sp.qtyOut30d} {sp.uom}
+                  </div>
+                </Link>
+              ))}
+              {(!data?.fastMovingItems || data.fastMovingItems.length === 0) && (
+                <div style={{ textAlign: 'center', padding: '12px 0', color: 'var(--ga-tx3)', fontSize: '12px' }}>
+                  Tidak ada barang fast moving.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* ==================== WORKSPACE: 2 COLUMNS LAYOUT ==================== */}
         <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '20px', alignItems: 'start' }}>
           

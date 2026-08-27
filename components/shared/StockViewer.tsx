@@ -6,6 +6,8 @@ type StockItem = {
   uom: string; harga: number; minQty: number; maxQty?: number | null;
   totalIn: number; totalOut: number; currentStock: number;
   status: 'safe' | 'low' | 'habis' | 'overstock';
+  movementClass?: 'slow' | 'fast';
+  qtyOut30d?: number;
   purchasingStatus?: string;
   purchasingNoPr?: string | null;
   purchasingNoPo?: string | null;
@@ -68,6 +70,12 @@ function StatusBadge({ s }: { s: string }) {
   if (s === 'overstock') return <span className="badge badge-pur">🟣 Overstock</span>;
   if (s === 'habis') return <span className="badge badge-red">🔴 Habis</span>;
   return <span className="badge">{s}</span>;
+}
+
+function MovementClassBadge({ movementClass }: { movementClass?: 'slow' | 'fast' }) {
+  if (movementClass === 'slow') return <span className="badge badge-ylw">Slow Moving</span>;
+  if (movementClass === 'fast') return <span className="badge badge-blu">Fast Moving</span>;
+  return null;
 }
 
 function compareRackSegment(a: string, b: string) {
@@ -714,6 +722,7 @@ function KolomCard({ kolom, items }: { kolom: string; items: StockItem[] }) {
                   <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.nama}</span>
                   {item.purchasingStatus === 'PR' && <span className="badge badge-ylw" style={{ fontSize: 9, padding: '1px 6px', fontWeight: 800 }}>⏳ PR</span>}
                   {item.purchasingStatus === 'PO' && <span className="badge badge-blu" style={{ fontSize: 9, padding: '1px 6px', fontWeight: 800 }}>📦 PO</span>}
+                  <MovementClassBadge movementClass={item.movementClass} />
                 </div>
                 <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 1 }}>{item.id}</div>
               </div>
@@ -854,7 +863,10 @@ function StockItemTableRow({
       </td>
       <td style={{ color: 'var(--tx3)', fontSize: 12 }}>{item.uom}</td>
       <td style={{ textAlign: 'center' }}>
-        <StatusBadge s={item.status} />
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+          <StatusBadge s={item.status} />
+          <MovementClassBadge movementClass={item.movementClass} />
+        </div>
       </td>
       {isEditor && (
         <td style={{ textAlign: 'center' }}>
@@ -912,11 +924,15 @@ function StockItemCard({
         {isEditor ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
             <StatusBadge s={item.status} />
+            <MovementClassBadge movementClass={item.movementClass} />
             {item.purchasingStatus === 'PR' && <span className="badge badge-ylw" style={{ fontSize: 10 }}>⏳ Sedang PR</span>}
             {item.purchasingStatus === 'PO' && <span className="badge badge-blu" style={{ fontSize: 10 }}>📦 Sudah PO</span>}
           </div>
         ) : (
-          <StatusBadge s={item.status} />
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+            <StatusBadge s={item.status} />
+            <MovementClassBadge movementClass={item.movementClass} />
+          </div>
         )}
       </div>
     </div>
