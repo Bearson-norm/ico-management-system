@@ -10,6 +10,7 @@ type GaItem = {
   lokasi: string;
   harga: number;
   minQty: number;
+  maxQty: number | null;
   currentStock: number;
   kategori: string;
   status: 'safe' | 'low' | 'habis' | 'overstock';
@@ -280,6 +281,7 @@ function GaDatabasePrintContent() {
             <th style={{ border: '1px solid #9ca3af', padding: 6 }}>Nama Barang</th>
             <th style={{ border: '1px solid #9ca3af', padding: 6 }}>Lokasi</th>
             <th style={{ border: '1px solid #9ca3af', padding: 6, textAlign: 'right' }}>Min</th>
+            <th style={{ border: '1px solid #9ca3af', padding: 6, textAlign: 'right' }}>Max</th>
             <th style={{ border: '1px solid #9ca3af', padding: 6, textAlign: 'right' }}>Stok</th>
             <th style={{ border: '1px solid #9ca3af', padding: 6, textAlign: 'right' }}>Harga</th>
             <th style={{ border: '1px solid #9ca3af', padding: 6 }}>Status</th>
@@ -288,7 +290,7 @@ function GaDatabasePrintContent() {
         <tbody>
           {items.length === 0 ? (
             <tr>
-              <td colSpan={8} style={{ border: '1px solid #d1d5db', padding: 12, textAlign: 'center' }}>
+              <td colSpan={9} style={{ border: '1px solid #d1d5db', padding: 12, textAlign: 'center' }}>
                 Tidak ada barang yang cocok dengan filter.
               </td>
             </tr>
@@ -304,6 +306,7 @@ function GaDatabasePrintContent() {
                 </td>
                 <td style={{ border: '1px solid #d1d5db', padding: 5 }}>{it.lokasi}</td>
                 <td style={{ border: '1px solid #d1d5db', padding: 5, textAlign: 'right' }}>{it.minQty}</td>
+                <td style={{ border: '1px solid #d1d5db', padding: 5, textAlign: 'right' }}>{it.maxQty ?? '—'}</td>
                 <td style={{ border: '1px solid #d1d5db', padding: 5, textAlign: 'right' }}>{it.currentStock}</td>
                 <td style={{ border: '1px solid #d1d5db', padding: 5, textAlign: 'right' }}>{fmtRp(it.harga)}</td>
                 <td style={{ border: '1px solid #d1d5db', padding: 5 }}>{statusLabel(it.status)}</td>

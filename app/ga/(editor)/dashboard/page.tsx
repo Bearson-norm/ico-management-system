@@ -209,21 +209,87 @@ export default function GaDashboardPage() {
             </div>
           </div>
 
-          {/* Right Side: Kritis / Perlu Restock Card */}
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', minHeight: '180px' }}>
-            <div className="card-header" style={{ justifyContent: 'space-between', display: 'flex', alignItems: 'center', height: '48px', padding: '0 20px' }}>
-              <div className="card-title" style={{ color: 'var(--ga-red)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}>
-                <span>🚨</span> Kritis / Perlu Restock
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', minHeight: '180px' }}>
+            {/* Kritis / Perlu Restock */}
+            <div className="card" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+              <div className="card-header" style={{ justifyContent: 'space-between', display: 'flex', alignItems: 'center', height: '48px', padding: '0 20px' }}>
+                <div className="card-title" style={{ color: 'var(--ga-red)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}>
+                  <span>🚨</span> Kritis / Perlu Restock
+                  {data?.totalKritisCount > 0 && (
+                    <span className="badge badge-red" style={{ fontSize: 10 }}>{data.totalKritisCount}</span>
+                  )}
+                </div>
+                <Link href="/ga/stock?status=kritis" className="btn btn-ghost btn-sm" style={{ fontSize: '11px', color: 'var(--ga-red)' }}>
+                  Lihat Stok →
+                </Link>
               </div>
-              <Link href="/ga/stock?status=kritis" className="btn btn-ghost btn-sm" style={{ fontSize: '11px', color: 'var(--ga-red)' }}>
-                Lihat Stok →
-              </Link>
+              <div style={{ padding: '12px 20px 16px 20px', flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto', maxHeight: '140px' }}>
+                {data?.lowStockItems?.map((sp: any) => {
+                  const isOut = sp.currentStock === 0;
+                  return (
+                    <Link href="/ga/stock?status=kritis" key={sp.id} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '6px 10px',
+                      borderRadius: 'var(--ga-rs)',
+                      background: 'var(--ga-sf2)',
+                      border: '1px solid var(--ga-br)',
+                      fontSize: '11px',
+                      color: 'inherit',
+                      textDecoration: 'none'
+                    }}
+                    className="ga-critical-item-row"
+                    >
+                      <div style={{ minWidth: 0, flex: 1, marginRight: '8px' }}>
+                        <div style={{ fontWeight: 600, color: 'var(--ga-tx)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{sp.nama}</div>
+                        <div style={{ fontSize: '9px', color: 'var(--ga-tx3)', fontFamily: 'monospace', marginTop: '2px' }}>{sp.kodeBarang || sp.id}</div>
+                      </div>
+                      <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'flex-end',
+                        flexShrink: 0
+                      }}>
+                        <div style={{
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          fontSize: '10px',
+                          fontWeight: '800',
+                          background: isOut ? 'rgba(239, 68, 68, 0.12)' : 'rgba(245, 158, 11, 0.12)',
+                          color: isOut ? 'var(--ga-red)' : 'var(--ga-ylw)',
+                          border: `1px solid ${isOut ? 'rgba(239, 68, 68, 0.25)' : 'rgba(245, 158, 11, 0.25)'}`,
+                        }}>
+                          {sp.currentStock} / min {sp.minQty} {sp.uom}
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+                {(!data?.lowStockItems || data.lowStockItems.length === 0) && (
+                  <div style={{ textAlign: 'center', padding: '12px 0', color: 'var(--ga-tx3)', fontSize: '12px' }}>
+                    Tidak ada barang understock.
+                  </div>
+                )}
+              </div>
             </div>
-            <div style={{ padding: '12px 20px 20px 20px', flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto', maxHeight: '180px' }}>
-              {data?.lowStockItems?.map((sp: any) => {
-                const isOut = sp.currentStock === 0;
-                return (
-                  <Link href="/ga/stock" key={sp.id} style={{
+
+            {/* Overstock */}
+            <div className="card" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+              <div className="card-header" style={{ justifyContent: 'space-between', display: 'flex', alignItems: 'center', height: '48px', padding: '0 20px' }}>
+                <div className="card-title" style={{ color: 'var(--ga-pur)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}>
+                  <span>📦</span> Overstock
+                  {data?.totalOverstockCount > 0 && (
+                    <span className="badge badge-pur" style={{ fontSize: 10 }}>{data.totalOverstockCount}</span>
+                  )}
+                </div>
+                <Link href="/ga/stock?status=overstock" className="btn btn-ghost btn-sm" style={{ fontSize: '11px', color: 'var(--ga-pur)' }}>
+                  Lihat Stok →
+                </Link>
+              </div>
+              <div style={{ padding: '12px 20px 16px 20px', flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto', maxHeight: '140px' }}>
+                {data?.overstockItems?.map((sp: any) => (
+                  <Link href="/ga/stock?status=overstock" key={sp.id} style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
@@ -239,34 +305,28 @@ export default function GaDashboardPage() {
                   >
                     <div style={{ minWidth: 0, flex: 1, marginRight: '8px' }}>
                       <div style={{ fontWeight: 600, color: 'var(--ga-tx)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{sp.nama}</div>
-                      <div style={{ fontSize: '9px', color: 'var(--ga-tx3)', fontFamily: 'monospace', marginTop: '2px' }}>{sp.id}</div>
+                      <div style={{ fontSize: '9px', color: 'var(--ga-tx3)', fontFamily: 'monospace', marginTop: '2px' }}>{sp.kodeBarang || sp.id}</div>
                     </div>
                     <div style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'flex-end',
-                      flexShrink: 0
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      fontSize: '10px',
+                      fontWeight: '800',
+                      background: 'rgba(139, 92, 246, 0.12)',
+                      color: 'var(--ga-pur)',
+                      border: '1px solid rgba(139, 92, 246, 0.25)',
+                      flexShrink: 0,
                     }}>
-                      <div style={{
-                        padding: '2px 6px',
-                        borderRadius: '4px',
-                        fontSize: '10px',
-                        fontWeight: '800',
-                        background: isOut ? 'rgba(239, 68, 68, 0.12)' : 'rgba(245, 158, 11, 0.12)',
-                        color: isOut ? 'var(--ga-red)' : 'var(--ga-ylw)',
-                        border: `1px solid ${isOut ? 'rgba(239, 68, 68, 0.25)' : 'rgba(245, 158, 11, 0.25)'}`,
-                      }}>
-                        Stok: {sp.currentStock} {sp.uom}
-                      </div>
+                      {sp.currentStock} / max {sp.maxQty} {sp.uom}
                     </div>
                   </Link>
-                );
-              })}
-              {(!data?.lowStockItems || data.lowStockItems.length === 0) && (
-                <div style={{ textAlign: 'center', padding: '16px 0', color: 'var(--ga-tx3)', fontSize: '12px' }}>
-                  🟢 Seluruh persediaan aman.
-                </div>
-              )}
+                ))}
+                {(!data?.overstockItems || data.overstockItems.length === 0) && (
+                  <div style={{ textAlign: 'center', padding: '12px 0', color: 'var(--ga-tx3)', fontSize: '12px' }}>
+                    Tidak ada barang overstock.
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

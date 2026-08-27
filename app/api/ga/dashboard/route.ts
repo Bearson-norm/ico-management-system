@@ -92,6 +92,7 @@ export async function GET(req: NextRequest) {
     let totalOutboundValuation = 0;
     let totalStockCount = 0;
     let totalKritisCount = 0;
+    let totalOverstockCount = 0;
 
     const itemsWithStock = allGaItems.map((it) => {
       const currentStock = computeStockFromMovements(it.movements);
@@ -109,8 +110,12 @@ export async function GET(req: NextRequest) {
       totalStockCount += currentStock;
 
       const isKritis = currentStock < it.minQty || currentStock <= 0;
+      const isOverstock = it.maxQty !== null && currentStock > it.maxQty;
       if (isKritis) {
         totalKritisCount++;
+      }
+      if (isOverstock) {
+        totalOverstockCount++;
       }
 
       return {
@@ -124,6 +129,7 @@ export async function GET(req: NextRequest) {
         harga: price,
         currentStock,
         isKritis,
+        isOverstock,
       };
     });
 
@@ -132,16 +138,23 @@ export async function GET(req: NextRequest) {
       .sort((a, b) => a.currentStock - b.currentStock)
       .slice(0, 5);
 
+    const overstockItems = itemsWithStock
+      .filter((it) => it.isOverstock)
+      .sort((a, b) => b.currentStock - a.currentStock)
+      .slice(0, 5);
+
     return ok({
       totalStockValuation,
       totalOutboundValuation,
       totalItemsCount: allGaItems.length,
       totalStockCount,
       totalKritisCount,
+      totalOverstockCount,
       totalDraftOpnameCount,
       totalKategoriCount,
       activeOrderCount,
       lowStockItems,
+      overstockItems,
       topUsedMovements: topUsedMovements.map((m) => ({
         itemId: m.itemId,
         namaBarang: m.namaBarang,

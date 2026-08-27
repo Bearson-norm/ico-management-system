@@ -3,9 +3,9 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 type StockItem = {
   id: string; nama: string; kategori: string; lokasi: string;
-  uom: string; harga: number; minQty: number;
+  uom: string; harga: number; minQty: number; maxQty?: number | null;
   totalIn: number; totalOut: number; currentStock: number;
-  status: 'safe' | 'low' | 'habis';
+  status: 'safe' | 'low' | 'habis' | 'overstock';
   purchasingStatus?: string;
   purchasingNoPr?: string | null;
   purchasingNoPo?: string | null;
@@ -65,7 +65,9 @@ function LocationChip({ parsed, size = 'sm', hideRak = false }: LocationChipProp
 function StatusBadge({ s }: { s: string }) {
   if (s === 'safe') return <span className="badge badge-grn">🟢 Safe</span>;
   if (s === 'low')  return <span className="badge badge-ylw">🟡 Low</span>;
-  return <span className="badge badge-red">🔴 Habis</span>;
+  if (s === 'overstock') return <span className="badge badge-pur">🟣 Overstock</span>;
+  if (s === 'habis') return <span className="badge badge-red">🔴 Habis</span>;
+  return <span className="badge">{s}</span>;
 }
 
 function compareRackSegment(a: string, b: string) {
@@ -75,10 +77,18 @@ function compareRackSegment(a: string, b: string) {
   return a.localeCompare(b, 'id', { numeric: true, sensitivity: 'base' });
 }
 
-export type StatusFilter = 'all' | 'kritis' | 'low' | 'habis' | 'safe' | 'pr' | 'po';
+export type StatusFilter = 'all' | 'kritis' | 'low' | 'habis' | 'safe' | 'overstock' | 'pr' | 'po';
 
 function parseStatusFilter(raw: string | null): StatusFilter {
-  if (raw === 'kritis' || raw === 'low' || raw === 'habis' || raw === 'safe' || raw === 'pr' || raw === 'po') return raw;
+  if (
+    raw === 'kritis' ||
+    raw === 'low' ||
+    raw === 'habis' ||
+    raw === 'safe' ||
+    raw === 'overstock' ||
+    raw === 'pr' ||
+    raw === 'po'
+  ) return raw;
   return 'all';
 }
 
@@ -210,6 +220,7 @@ export default function StockViewer({ stockApiUrl = '/api/mtc/stock' }: { stockA
       total: items.length,
       habis: items.filter(i => i.status === 'habis').length,
       low:   items.filter(i => i.status === 'low').length,
+      overstock: items.filter(i => i.status === 'overstock').length,
       safe:  items.filter(i => i.status === 'safe').length,
     })).sort((a, b) => (b.habis * 2 + b.low) - (a.habis * 2 + a.low));
   }, [filteredItems]);
@@ -244,6 +255,7 @@ export default function StockViewer({ stockApiUrl = '/api/mtc/stock' }: { stockA
 
   const totalHabis = allItems.filter(i => i.status === 'habis').length;
   const totalLow   = allItems.filter(i => i.status === 'low').length;
+  const totalOverstock = allItems.filter(i => i.status === 'overstock').length;
   const totalKritis = totalHabis + totalLow;
   const isStatusFiltered = statusFilter !== 'all';
 
@@ -272,11 +284,13 @@ export default function StockViewer({ stockApiUrl = '/api/mtc/stock' }: { stockA
                         ? '🔴 Stok Habis'
                         : statusFilter === 'safe'
                           ? '🟢 Stok Aman'
-                          : statusFilter === 'pr'
-                            ? '⏳ Barang Sedang PR'
-                            : statusFilter === 'po'
-                              ? '📦 Barang Sudah PO'
-                              : 'Stock Inventory'}
+                          : statusFilter === 'overstock'
+                            ? '🟣 Overstock'
+                            : statusFilter === 'pr'
+                              ? '⏳ Barang Sedang PR'
+                              : statusFilter === 'po'
+                                ? '📦 Barang Sudah PO'
+                                : 'Stock Inventory'}
                 </div>
                 <div className="page-sub">
                   {isStatusFiltered
@@ -353,8 +367,15 @@ export default function StockViewer({ stockApiUrl = '/api/mtc/stock' }: { stockA
               { key: 'habis' as const, label: 'Habis', count: totalHabis },
               { key: 'low' as const, label: 'Low', count: totalLow },
               { key: 'safe' as const, label: 'Aman', count: allItems.filter(i => i.status === 'safe').length },
-              { key: 'pr' as const, label: '⏳ Sedang PR', count: allItems.filter(i => i.purchasingStatus === 'PR').length },
-              { key: 'po' as const, label: '📦 Sudah PO', count: allItems.filter(i => i.purchasingStatus === 'PO').length },
+              ...(isGa || totalOverstock > 0
+                ? [{ key: 'overstock' as const, label: 'Overstock', count: totalOverstock }]
+                : []),
+              ...(!isGa
+                ? [
+                    { key: 'pr' as const, label: '⏳ Sedang PR', count: allItems.filter(i => i.purchasingStatus === 'PR').length },
+                    { key: 'po' as const, label: '📦 Sudah PO', count: allItems.filter(i => i.purchasingStatus === 'PO').length },
+                  ]
+                : []),
             ]).map(({ key, label, count }) => (
               <button
                 key={key}
@@ -484,6 +505,7 @@ export default function StockViewer({ stockApiUrl = '/api/mtc/stock' }: { stockA
             <div className="gap-8" style={{ marginBottom: 16 }}>
               {activeData.habis > 0 && <span className="badge badge-red">{activeData.habis} Habis</span>}
               {activeData.low   > 0 && <span className="badge badge-ylw">{activeData.low} Low Stock</span>}
+              {activeData.overstock > 0 && <span className="badge badge-pur">{activeData.overstock} Overstock</span>}
               {activeData.safe  > 0 && <span className="badge badge-grn">{activeData.safe} Safe</span>}
             </div>
 
@@ -503,7 +525,7 @@ export default function StockViewer({ stockApiUrl = '/api/mtc/stock' }: { stockA
           <div className="card">
             <div className="card-header">
               <div className="card-title">
-                Daftar Stok — {statusFilter === 'kritis' ? 'Kritis' : statusFilter === 'pr' ? 'Sedang PR' : statusFilter === 'po' ? 'Sudah PO' : statusFilter}
+                Daftar Stok — {statusFilter === 'kritis' ? 'Kritis' : statusFilter === 'overstock' ? 'Overstock' : statusFilter === 'pr' ? 'Sedang PR' : statusFilter === 'po' ? 'Sudah PO' : statusFilter}
                 <span className="text-muted" style={{ fontWeight: 400, marginLeft: 8, fontSize: 13 }}>
                   {filteredItems.length} item
                 </span>
@@ -547,7 +569,8 @@ export default function StockViewer({ stockApiUrl = '/api/mtc/stock' }: { stockA
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
                       {r.habis > 0 && <span className="badge badge-red">{r.habis} Habis</span>}
                       {r.low   > 0 && <span className="badge badge-ylw">{r.low} Low</span>}
-                      {r.habis === 0 && r.low === 0 && <span className="badge badge-grn">✓ Aman</span>}
+                      {r.overstock > 0 && <span className="badge badge-pur">{r.overstock} Overstock</span>}
+                      {r.habis === 0 && r.low === 0 && r.overstock === 0 && <span className="badge badge-grn">✓ Aman</span>}
                     </div>
                   </div>
 
@@ -631,7 +654,7 @@ export default function StockViewer({ stockApiUrl = '/api/mtc/stock' }: { stockA
 // ── Kartu Kolom (dalam sebuah rak) ─────────────────────────────────────────
 function KolomCard({ kolom, items }: { kolom: string; items: StockItem[] }) {
   const sorted = [...items].sort((a, b) => {
-    const score = (i: StockItem) => i.status === 'habis' ? 2 : i.status === 'low' ? 1 : 0;
+    const score = (i: StockItem) => i.status === 'habis' ? 3 : i.status === 'low' ? 2 : i.status === 'overstock' ? 1 : 0;
     if (score(b) !== score(a)) return score(b) - score(a);
     // Sort by Level then Bin
     const lA = a._parsed?.level ?? ''; const bA = a._parsed?.bin ?? '';
@@ -641,6 +664,7 @@ function KolomCard({ kolom, items }: { kolom: string; items: StockItem[] }) {
 
   const habis = items.filter(i => i.status === 'habis').length;
   const low   = items.filter(i => i.status === 'low').length;
+  const overstock = items.filter(i => i.status === 'overstock').length;
 
   return (
     <div className="card">
@@ -663,6 +687,7 @@ function KolomCard({ kolom, items }: { kolom: string; items: StockItem[] }) {
         <div className="gap-8">
           {habis > 0 && <span className="badge badge-red">{habis}</span>}
           {low   > 0 && <span className="badge badge-ylw">{low}</span>}
+          {overstock > 0 && <span className="badge badge-pur">{overstock}</span>}
         </div>
       </div>
 
@@ -671,7 +696,7 @@ function KolomCard({ kolom, items }: { kolom: string; items: StockItem[] }) {
         {sorted.map((item, idx) => {
           const p = item._parsed;
           const lokLabel = p?.valid ? `Lvl ${p.level} · Bin ${p.bin}` : item.lokasi;
-          const stockColor = item.status === 'safe' ? 'var(--grn)' : item.status === 'low' ? 'var(--ylw)' : 'var(--red)';
+          const stockColor = item.status === 'safe' ? 'var(--grn)' : item.status === 'low' ? 'var(--ylw)' : item.status === 'overstock' ? 'var(--pur)' : 'var(--red)';
 
           return (
             <div key={item.id} className="stock-kolom-item" style={{
@@ -779,7 +804,11 @@ function StockItemList({
 }
 
 function stockColor(status: StockItem['status']) {
-  return status === 'safe' ? 'var(--grn)' : status === 'low' ? 'var(--ylw)' : 'var(--red)';
+  if (status === 'safe') return 'var(--grn)';
+  if (status === 'low') return 'var(--ylw)';
+  if (status === 'overstock') return 'var(--pur)';
+  if (status === 'habis') return 'var(--red)';
+  return 'var(--tx)';
 }
 
 function StockItemTableRow({

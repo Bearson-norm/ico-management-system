@@ -280,8 +280,19 @@ export default function GaStockInPage() {
                   </div>
                   <div className="form-group">
                     <label className="form-label">Min qty</label>
-                    <input className="form-input" type="number" value={newForm.minQty} onChange={(e) => setNewForm({ ...newForm, minQty: e.target.value })} />
+                    <input className="form-input" type="number" min={0} value={newForm.minQty} onChange={(e) => setNewForm({ ...newForm, minQty: e.target.value })} />
                   </div>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Max qty (opsional)</label>
+                  <input
+                    className="form-input"
+                    type="number"
+                    min={0}
+                    placeholder="Kosongkan jika tidak dipakai"
+                    value={newForm.maxQty}
+                    onChange={(e) => setNewForm({ ...newForm, maxQty: e.target.value })}
+                  />
                 </div>
               </div>
             )}

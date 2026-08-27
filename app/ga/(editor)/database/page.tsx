@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, FormEvent } from 'react';
+import { useEffect, useState, FormEvent, ChangeEvent } from 'react';
 
 type GaItem = {
   id: string;
@@ -15,7 +15,7 @@ type GaItem = {
   kategori: string;
   currentStock: number;
   aktif: boolean;
-  status: 'safe' | 'low' | 'habis';
+  status: 'safe' | 'low' | 'habis' | 'overstock';
 };
 
 type Filters = {
@@ -48,6 +48,7 @@ function buildStockQuery(f: Filters): string {
 function statusBadge(status: GaItem['status']) {
   if (status === 'habis') return <span className="badge badge-red">Habis</span>;
   if (status === 'low') return <span className="badge badge-ylw">Understock</span>;
+  if (status === 'overstock') return <span className="badge badge-pur">Overstock</span>;
   return <span className="badge badge-grn">Aman</span>;
 }
 
@@ -86,6 +87,10 @@ export default function GaDatabasePage() {
   const [form, setForm] = useState<EditForm>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importMethod, setImportMethod] = useState<'excel' | 'csv'>('excel');
+  const [importText, setImportText] = useState('');
+  const [isImporting, setIsImporting] = useState(false);
 
   async function fetchItems() {
     setLoading(true);
@@ -206,6 +211,54 @@ export default function GaDatabasePage() {
     }
   }
 
+  function closeImport() {
+    setImportOpen(false);
+    setImportText('');
+    setImportMethod('excel');
+  }
+
+  function handleImportFilePick(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setImportText(String(reader.result ?? ''));
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  }
+
+  async function handleImportSubmit() {
+    if (!importText.trim()) return alert('Data masih kosong atau file belum dipilih');
+    setIsImporting(true);
+    try {
+      const res = await fetch('/api/ga/items/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rawText: importText }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        const d = json.data;
+        if (d.skippedRows?.length || d.failedRows?.length) {
+          console.group('Detail import GA');
+          if (d.skippedRows?.length) console.table(d.skippedRows);
+          if (d.failedRows?.length) console.table(d.failedRows);
+          console.groupEnd();
+        }
+        alert(d.message || 'Import data berhasil!');
+        closeImport();
+        fetchItems();
+      } else {
+        alert('Error: ' + json.error);
+      }
+    } catch (err: unknown) {
+      alert('Terjadi kesalahan saat memproses import: ' + (err instanceof Error ? err.message : 'Unknown'));
+    } finally {
+      setIsImporting(false);
+    }
+  }
+
   const fmtRp = (n: number) =>
     new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n);
 
@@ -215,9 +268,12 @@ export default function GaDatabasePage() {
         <div className="flex-between">
           <div>
             <div className="page-title">Database Barang GA</div>
-            <div className="page-sub">Kelola master barang — edit per item</div>
+            <div className="page-sub">Kelola master barang — edit per item atau import Min/Max</div>
           </div>
-          <div className="page-header-actions" style={{ display: 'flex', gap: 8 }}>
+          <div className="page-header-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button type="button" className="btn btn-ghost" onClick={() => setImportOpen(true)}>
+              Import Excel
+            </button>
             <a
               className="btn btn-ghost"
               href={`/ga/database/print${buildStockQuery(filters)}`}
@@ -274,6 +330,7 @@ export default function GaDatabasePage() {
                   <option value="">Semua</option>
                   <option value="safe">Aman</option>
                   <option value="low">Understock</option>
+                  <option value="overstock">Overstock</option>
                   <option value="habis">Habis</option>
                 </select>
               </div>
@@ -316,6 +373,7 @@ export default function GaDatabasePage() {
                   <th>NAMA BARANG</th>
                   <th>LOKASI</th>
                   <th>Min</th>
+                  <th>Max</th>
                   <th>Harga</th>
                   <th>Stok</th>
                   <th>Status</th>
@@ -325,7 +383,7 @@ export default function GaDatabasePage() {
               <tbody>
                 {items.length === 0 && !loading ? (
                   <tr>
-                    <td colSpan={8} className="text-muted text-center" style={{ padding: 24 }}>
+                    <td colSpan={9} className="text-muted text-center" style={{ padding: 24 }}>
                       {hasActiveFilters
                         ? 'Tidak ada barang yang cocok dengan filter.'
                         : 'Belum ada data. Tambah barang lewat Stock In.'}
@@ -341,6 +399,7 @@ export default function GaDatabasePage() {
                       <td>{it.nama}</td>
                       <td>{it.lokasi}</td>
                       <td>{it.minQty}</td>
+                      <td>{it.maxQty ?? '—'}</td>
                       <td>{fmtRp(it.harga)}</td>
                       <td>{it.currentStock}</td>
                       <td>{statusBadge(it.status)}</td>
@@ -501,6 +560,97 @@ export default function GaDatabasePage() {
               </button>
               <button type="submit" form="gaEditForm" className="btn btn-primary" disabled={saving}>
                 {saving ? 'Menyimpan...' : 'Simpan'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {importOpen && (
+        <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget && !isImporting) closeImport(); }}>
+          <div className="modal-box" style={{ maxWidth: 620, width: '100%' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title">Import Min / Max Stok</div>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={closeImport} disabled={isImporting} aria-label="Tutup">
+                ✕
+              </button>
+            </div>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div className="alert alert-blu" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div><strong>Format kolom yang diterima:</strong></div>
+                <code style={{ background: 'rgba(0,0,0,0.2)', padding: '4px 8px', borderRadius: 4, display: 'inline-block', fontSize: 12, wordBreak: 'break-all' }}>
+                  No, Kode, Nama Barang, Lokasi, Min, Max
+                </code>
+                <div style={{ fontSize: 11 }}>
+                  Hanya mengupdate barang yang Kode-nya sudah terdaftar. Stok fisik tidak diubah. Kode yang tidak ketemu dilewati.
+                </div>
+              </div>
+
+              <div className="stock-view-toggle" style={{ background: 'var(--ga-sf3, var(--sf3))', padding: 3, borderRadius: 8 }}>
+                <button
+                  type="button"
+                  className={`stock-view-toggle__btn ${importMethod === 'excel' ? 'stock-view-toggle__btn--active' : ''}`}
+                  style={{ flex: 1, padding: '8px 12px' }}
+                  onClick={() => { setImportMethod('excel'); setImportText(''); }}
+                >
+                  Paste dari Excel
+                </button>
+                <button
+                  type="button"
+                  className={`stock-view-toggle__btn ${importMethod === 'csv' ? 'stock-view-toggle__btn--active' : ''}`}
+                  style={{ flex: 1, padding: '8px 12px' }}
+                  onClick={() => { setImportMethod('csv'); setImportText(''); }}
+                >
+                  Upload File (CSV)
+                </button>
+              </div>
+
+              {importMethod === 'excel' ? (
+                <div className="form-group">
+                  <label className="form-label">Paste data dari Excel</label>
+                  <textarea
+                    className="form-input"
+                    rows={8}
+                    style={{ fontFamily: 'monospace', fontSize: 12, whiteSpace: 'pre', overflowX: 'auto' }}
+                    placeholder={'No\tKode\tNama Barang\tLokasi\tMin\tMax\n1\tA0042\tAIR MINERAL\tG5\t480\t720'}
+                    value={importText}
+                    onChange={(e) => setImportText(e.target.value)}
+                  />
+                  <p style={{ fontSize: 11, color: 'var(--ga-tx3)', marginTop: 4 }}>
+                    Salin tabel di Excel (termasuk baris header), lalu paste (Ctrl+V) di kotak atas.
+                  </p>
+                </div>
+              ) : (
+                <div className="form-group">
+                  <label className="form-label">Pilih file CSV</label>
+                  <input
+                    type="file"
+                    accept=".csv,.txt,text/csv"
+                    className="form-input"
+                    onChange={handleImportFilePick}
+                  />
+                  <p style={{ fontSize: 11, color: 'var(--ga-tx3)', marginTop: 4 }}>
+                    File CSV dengan kolom No, Kode, Nama Barang, Lokasi, Min, Max.
+                  </p>
+                  {importText && (
+                    <div style={{ marginTop: 8, padding: '8px 12px', background: 'var(--ga-sf2)', borderRadius: 6, fontSize: 12, color: 'var(--ga-tx2)' }}>
+                      {Math.max(0, importText.trim().split('\n').length - 1)} baris data terdeteksi.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-ghost" onClick={closeImport} disabled={isImporting}>
+                Batal
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleImportSubmit}
+                disabled={isImporting || !importText.trim()}
+              >
+                {isImporting ? 'Sedang memproses…' : 'Mulai Import'}
               </button>
             </div>
           </div>
