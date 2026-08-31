@@ -82,17 +82,53 @@ export async function GET(req: NextRequest) {
     doc.on('error', reject);
   });
 
-  const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+  const left = doc.page.margins.left;
+  const pageWidth = doc.page.width - left - doc.page.margins.right;
   const bottom = () => doc.page.height - doc.page.margins.bottom;
+  const resetX = () => {
+    doc.x = left;
+  };
   const ensureSpace = (height: number) => {
-    if (doc.y + height > bottom()) doc.addPage();
+    if (doc.y + height > bottom()) {
+      doc.addPage();
+      resetX();
+    }
   };
 
-  doc.font('Helvetica-Bold').fontSize(17).fillColor('#111827').text('LAPORAN AUDIT TRAIL GA');
+  type CellAlign = 'left' | 'right' | 'center';
+  const drawCell = (
+    value: string,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    align: CellAlign,
+    wrap = false
+  ) => {
+    doc.text(value, x, y, {
+      width,
+      height,
+      align,
+      ellipsis: true,
+      lineBreak: wrap,
+    });
+  };
+
+  doc
+    .font('Helvetica-Bold')
+    .fontSize(17)
+    .fillColor('#111827')
+    .text('LAPORAN AUDIT TRAIL GA', left, doc.y, { width: pageWidth, align: 'left' });
   doc.font('Helvetica').fontSize(9).fillColor('#374151');
-  doc.text(`Periode: ${snapshot.periode}`);
-  doc.text(`Digenerate: ${formatJakarta(snapshot.generatedAt)} WIB`);
-  doc.text(`Cutoff: ${formatJakarta(snapshot.cutoffAt)} WIB | Sumber: ${snapshot.source}`);
+  doc.text(`Periode: ${snapshot.periode}`, left, doc.y, { width: pageWidth, align: 'left' });
+  doc.text(`Digenerate: ${formatJakarta(snapshot.generatedAt)} WIB`, left, doc.y, {
+    width: pageWidth,
+    align: 'left',
+  });
+  doc.text(`Cutoff: ${formatJakarta(snapshot.cutoffAt)} WIB | Sumber: ${snapshot.source}`, left, doc.y, {
+    width: pageWidth,
+    align: 'left',
+  });
 
   const backdateItemIds = new Set(
     movements
@@ -100,15 +136,21 @@ export async function GET(req: NextRequest) {
       .map((m) => m.itemId as string)
   );
   doc.moveDown(0.5);
+  resetX();
   doc
     .font('Helvetica-Bold')
     .fontSize(9)
     .fillColor('#111827')
     .text(
-      `Ringkasan: ${snapshot.lines.length} barang | Barang dengan transaksi backdate: ${backdateItemIds.size}`
+      `Ringkasan: ${snapshot.lines.length} barang | Barang dengan transaksi backdate: ${backdateItemIds.size}`,
+      left,
+      doc.y,
+      { width: pageWidth, align: 'left' }
     );
   doc.moveDown(0.8);
+  resetX();
 
+  const summaryRowHeight = 18;
   const summaryColumns = [
     { label: 'Kode', width: 75, align: 'left' as const },
     { label: 'Nama Barang', width: 200, align: 'left' as const },
@@ -123,25 +165,27 @@ export async function GET(req: NextRequest) {
 
   const drawSummaryHeader = () => {
     const y = doc.y;
-    doc.rect(doc.page.margins.left, y, pageWidth, 18).fill('#1f2937');
-    let x = doc.page.margins.left + 4;
+    doc.rect(left, y, pageWidth, summaryRowHeight).fill('#1f2937');
+    let x = left + 4;
     doc.font('Helvetica-Bold').fontSize(6.8).fillColor('#ffffff');
     for (const col of summaryColumns) {
-      doc.text(col.label, x, y + 5, { width: col.width - 6, align: col.align, lineBreak: false });
+      drawCell(col.label, x, y + 5, col.width - 6, summaryRowHeight - 6, col.align);
       x += col.width;
     }
-    doc.y = y + 18;
+    resetX();
+    doc.y = y + summaryRowHeight;
   };
 
   drawSummaryHeader();
   snapshot.lines.forEach((line, index) => {
-    if (doc.y + 18 > bottom()) {
+    if (doc.y + summaryRowHeight > bottom()) {
       doc.addPage();
+      resetX();
       drawSummaryHeader();
     }
     const y = doc.y;
-    if (index % 2 === 1) doc.rect(doc.page.margins.left, y, pageWidth, 18).fill('#f3f4f6');
-    let x = doc.page.margins.left + 4;
+    if (index % 2 === 1) doc.rect(left, y, pageWidth, summaryRowHeight).fill('#f3f4f6');
+    let x = left + 4;
     const values = [
       line.itemId,
       line.namaItem,
@@ -156,104 +200,133 @@ export async function GET(req: NextRequest) {
     doc.font('Helvetica').fontSize(6.5).fillColor('#111827');
     values.forEach((value, colIndex) => {
       const col = summaryColumns[colIndex];
-      doc.text(cleanText(value), x, y + 5, {
-        width: col.width - 6,
-        align: col.align,
-        ellipsis: true,
-        lineBreak: false,
-      });
+      drawCell(cleanText(value), x, y + 5, col.width - 6, summaryRowHeight - 6, col.align);
       x += col.width;
     });
-    doc.y = y + 18;
+    resetX();
+    doc.y = y + summaryRowHeight;
   });
 
   // Detail transaksi per barang
   doc.addPage();
-  doc.font('Helvetica-Bold').fontSize(14).fillColor('#111827').text('DETAIL TRANSAKSI PER BARANG');
+  resetX();
+  doc
+    .font('Helvetica-Bold')
+    .fontSize(14)
+    .fillColor('#111827')
+    .text('DETAIL TRANSAKSI PER BARANG', left, doc.y, { width: pageWidth, align: 'left' });
   doc
     .font('Helvetica')
     .fontSize(8)
     .fillColor('#4b5563')
-    .text(`Periode ${periode}, sampai cutoff ${formatJakarta(snapshot.cutoffAt)} WIB`);
+    .text(`Periode ${periode}, sampai cutoff ${formatJakarta(snapshot.cutoffAt)} WIB`, left, doc.y, {
+      width: pageWidth,
+      align: 'left',
+    });
   doc.moveDown();
+  resetX();
+
+  const detailHeaderHeight = 16;
+  const detailRowMinHeight = 16;
+  const detailPadY = 4;
+  const detailColumns = [
+    { label: 'Tanggal', width: 100, align: 'left' as const, wrap: false },
+    { label: 'Tipe', width: 42, align: 'left' as const, wrap: false },
+    { label: 'Qty', width: 42, align: 'right' as const, wrap: false },
+    { label: 'PIC', width: 110, align: 'left' as const, wrap: false },
+    { label: 'Keterangan', width: pageWidth - 294, align: 'left' as const, wrap: true },
+  ];
+  const ketCol = detailColumns[4];
+  const itemTitleBlock = 12 + 10 + 6 + detailHeaderHeight + detailRowMinHeight;
+
+  const drawDetailHeader = () => {
+    const y = doc.y;
+    doc.rect(left, y, pageWidth, detailHeaderHeight).fill('#e5e7eb');
+    let x = left + 4;
+    doc.font('Helvetica-Bold').fontSize(6.5).fillColor('#111827');
+    for (const col of detailColumns) {
+      drawCell(col.label, x, y + 4, col.width - 6, detailHeaderHeight - 6, col.align);
+      x += col.width;
+    }
+    resetX();
+    doc.y = y + detailHeaderHeight;
+  };
+
+  const drawItemHeading = (title: string, subtitle?: string) => {
+    resetX();
+    doc
+      .font('Helvetica-Bold')
+      .fontSize(subtitle ? 9 : 8)
+      .fillColor('#111827')
+      .text(title, left, doc.y, { width: pageWidth, align: 'left' });
+    if (subtitle) {
+      doc
+        .font('Helvetica')
+        .fontSize(7)
+        .fillColor('#4b5563')
+        .text(subtitle, left, doc.y, { width: pageWidth, align: 'left' });
+    }
+    doc.moveDown(0.35);
+    resetX();
+  };
 
   for (const line of snapshot.lines) {
     const itemMovements = movementsByItem.get(line.itemId) || [];
     if (itemMovements.length === 0) continue;
-    ensureSpace(48);
-    doc
-      .font('Helvetica-Bold')
-      .fontSize(9)
-      .fillColor('#111827')
-      .text(`${line.namaItem} (${line.itemId})`);
-    doc
-      .font('Helvetica')
-      .fontSize(7)
-      .fillColor('#4b5563')
-      .text(
-        `Lokasi: ${line.lokasi || '-'} | Awal: ${line.saldoAwal} | IN: ${line.totalIn} | OUT: ${line.totalOut} | ADJ: ${line.totalAdj} | Stok: ${line.stokSistem}`
-      );
-    doc.moveDown(0.35);
-
-    const detailWidths = [90, 42, 42, 100, pageWidth - 274];
-    const detailHeaders = ['Tanggal', 'Tipe', 'Qty', 'PIC', 'Keterangan'];
-    const drawDetailHeader = () => {
-      const y = doc.y;
-      doc.rect(doc.page.margins.left, y, pageWidth, 16).fill('#e5e7eb');
-      let x = doc.page.margins.left + 4;
-      doc.font('Helvetica-Bold').fontSize(6.5).fillColor('#111827');
-      detailHeaders.forEach((label, i) => {
-        doc.text(label, x, y + 4, { width: detailWidths[i] - 6, lineBreak: false });
-        x += detailWidths[i];
-      });
-      doc.y = y + 16;
-    };
+    ensureSpace(itemTitleBlock);
+    drawItemHeading(
+      `${line.namaItem} (${line.itemId})`,
+      `Lokasi: ${line.lokasi || '-'} | Awal: ${line.saldoAwal} | IN: ${line.totalIn} | OUT: ${line.totalOut} | ADJ: ${line.totalAdj} | Stok: ${line.stokSistem}`
+    );
     drawDetailHeader();
 
     for (const movement of itemMovements) {
-      if (doc.y + 17 > bottom()) {
-        doc.addPage();
-        doc.font('Helvetica-Bold').fontSize(8).fillColor('#111827').text(`${line.namaItem} (lanjutan)`);
-        doc.moveDown(0.3);
-        drawDetailHeader();
-      }
-      const y = doc.y;
       const isBackdate = movement.createdAt.getTime() > snapshot.cutoffAt.getTime();
-      const description = [
-        isBackdate ? '[BACKDATE]' : null,
-        movement.purchaseType,
-        movement.vendor,
-        movement.keterangan,
-      ]
-        .filter(Boolean)
-        .join(' | ');
+      const description = cleanText(
+        [isBackdate ? '[BACKDATE]' : null, movement.purchaseType, movement.vendor, movement.keterangan]
+          .filter(Boolean)
+          .join(' | ')
+      );
       const values = [
         formatJakarta(movement.tanggal),
         movement.tipe,
         String(movement.qty),
         cleanText(movement.picNama),
-        cleanText(description),
+        description,
       ];
-      let x = doc.page.margins.left + 4;
+
+      doc.font('Helvetica').fontSize(6.5);
+      const ketHeight = doc.heightOfString(description, { width: ketCol.width - 6 });
+      let rowHeight = Math.max(detailRowMinHeight, Math.ceil(ketHeight) + detailPadY * 2);
+
+      if (doc.y + rowHeight > bottom()) {
+        doc.addPage();
+        resetX();
+        drawItemHeading(`${line.namaItem} (lanjutan)`);
+        drawDetailHeader();
+        const remaining = bottom() - doc.y;
+        if (rowHeight > remaining) rowHeight = Math.max(detailRowMinHeight, remaining);
+      }
+
+      const y = doc.y;
+      let x = left + 4;
       doc.font('Helvetica').fontSize(6.5).fillColor('#1f2937');
       values.forEach((value, i) => {
-        doc.text(value, x, y + 4, {
-          width: detailWidths[i] - 6,
-          ellipsis: true,
-          lineBreak: false,
-          align: i === 2 ? 'right' : 'left',
-        });
-        x += detailWidths[i];
+        const col = detailColumns[i];
+        drawCell(value, x, y + detailPadY, col.width - 6, rowHeight - detailPadY, col.align, col.wrap);
+        x += col.width;
       });
       doc
-        .moveTo(doc.page.margins.left, y + 16)
-        .lineTo(doc.page.width - doc.page.margins.right, y + 16)
+        .moveTo(left, y + rowHeight)
+        .lineTo(left + pageWidth, y + rowHeight)
         .strokeColor('#e5e7eb')
         .lineWidth(0.5)
         .stroke();
-      doc.y = y + 17;
+      resetX();
+      doc.y = y + rowHeight;
     }
     doc.moveDown(0.7);
+    resetX();
   }
 
   doc.end();
