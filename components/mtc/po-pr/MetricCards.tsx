@@ -277,13 +277,13 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
             <span style={{ fontSize: 14 }}>🎯</span>
             <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--tx1)' }}>
               Filter Aktif Kartu Metrik: &quot;
-              {cardFilter === 'WAITING_PRICE'
-                ? 'Belum Ada Harga (Pengadaan Baru)'
-                : cardFilter === 'PR_PENDING'
-                ? 'PR Tunggu Persetujuan'
-                : cardFilter === 'PO_RECEIVED'
-                ? 'PO Sudah Di-GR (Selesai)'
-                : 'PO Belum Di-GR (Belum Selesai)'}
+              {cardFilter === 'DRAFT'
+                ? '1. Awal PR (Draft)'
+                : cardFilter === 'APPROVAL'
+                ? '2. Approval & Penawaran'
+                : cardFilter === 'PO'
+                ? '3. PO Terbit'
+                : '4. Selesai (Diterima)'}
               &quot;
             </span>
           </div>
