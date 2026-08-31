@@ -122,21 +122,45 @@ export async function POST(req: NextRequest) {
 
         if (!sp) throw new Error('Master Suku Cadang tidak ditemukan');
 
-        // 1. Buat StockMovement tipe IN
-        await tx.stockMovement.create({
-          data: {
-            tipe: 'IN',
+        // 1. Cek apakah StockMovement untuk pengadaan ini sudah pernah dibuat sebelumnya (Anti-Double)
+        const docKeteranganPrefix = `[Penerimaan Pengadaan PR: ${tracking.nomorPr || '—'} / PO: ${tracking.nomorPo || '—'}]`;
+        const existingMov = await tx.stockMovement.findFirst({
+          where: {
             sparepartId: sp.id,
-            namaItem: sp.nama,
-            qty: movementQty,
-            harga: movementHarga,
-            lokasi: sp.lokasi,
-            purchaseType: 'PO',
-            vendor: finalVendor,
-            keterangan: `[Penerimaan Pengadaan PR: ${tracking.nomorPr || '—'} / PO: ${tracking.nomorPo || '—'}]` + (multiplier > 1 ? ` (Kemasan: ${tracking.qty} x ${multiplier})` : ''),
-            tanggal: tDate,
-          },
+            tipe: 'IN',
+            keterangan: { startsWith: docKeteranganPrefix },
+          }
         });
+
+        if (existingMov) {
+          // Update mutasi yang sudah ada agar tidak terjadi double penerimaan
+          await tx.stockMovement.update({
+            where: { id: existingMov.id },
+            data: {
+              qty: movementQty,
+              harga: movementHarga,
+              lokasi: sp.lokasi,
+              vendor: finalVendor,
+              tanggal: tDate,
+            }
+          });
+        } else {
+          // Buat StockMovement baru tipe IN jika belum ada
+          await tx.stockMovement.create({
+            data: {
+              tipe: 'IN',
+              sparepartId: sp.id,
+              namaItem: sp.nama,
+              qty: movementQty,
+              harga: movementHarga,
+              lokasi: sp.lokasi,
+              purchaseType: 'PO',
+              vendor: finalVendor,
+              keterangan: docKeteranganPrefix + (multiplier > 1 ? ` (Kemasan: ${tracking.qty} x ${multiplier})` : ''),
+              tanggal: tDate,
+            },
+          });
+        }
 
         // 2. Hitung Lead Time Baru untuk Sparepart
         const calculatedAvgLeadTime = sp.avgLeadTime === 0

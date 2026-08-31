@@ -527,131 +527,48 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
           const isExpanded = !!expandedGroups[prKey];
           const hasUrgentItem = group.hasUrgent;
 
-          // Accurately determine Group Header Badge text (eliminating confusing fallback)
+          // Simplified Group Header Badge
           let statusBadge = null;
-          if (groupingMode === 'PR') {
-            if (isPrDraft) {
-              statusBadge = (
-                <span className="badge badge-ylw" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700 }}>
-                  📋 Draft / Pending PR
-                </span>
-              );
-            } else if (group.overallStatus === 'CANCELLED') {
-              statusBadge = (
-                <span
-                  className="badge badge-red"
-                  style={{
-                    padding: '4px 10px',
-                    fontSize: 10,
-                    fontWeight: 700,
-                    background: 'rgba(239, 68, 68, 0.2)',
-                    color: '#f87171',
-                    border: '1px solid rgba(239, 68, 68, 0.4)',
-                  }}
-                >
-                  🚫 Dibatalkan (Cancel)
-                </span>
-              );
-            } else if (group.overallStatus === 'DONE') {
-              statusBadge = (
-                <span className="badge badge-grn" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700 }}>
-                  ✓ Diterima Lengkap (Closed)
-                </span>
-              );
-            } else if (group.overallStatus === 'PARTIAL') {
-              statusBadge = (
-                <span
-                  className="badge badge-ylw"
-                  style={{
-                    padding: '4px 10px',
-                    fontSize: 10,
-                    fontWeight: 700,
-                    background: 'rgba(234, 179, 8, 0.15)',
-                    color: '#facc15',
-                  }}
-                >
-                  ⏳ Sebagian Diterima
-                </span>
-              );
-            } else if (group.overallStatus === 'PO_ACTIVE') {
-              statusBadge = (
-                <span className="badge badge-blu" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700 }}>
-                  🚢 Sedang Diproses (PO)
-                </span>
-              );
-            } else if (group.overallStatus === 'PR_APPROVED') {
-              statusBadge = (
-                <span className="badge badge-grn" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700 }}>
-                  ✓ PR Disetujui (Menunggu PO)
-                </span>
-              );
-            } else {
-              statusBadge = (
-                <span
-                  className="badge"
-                  style={{
-                    padding: '4px 10px',
-                    fontSize: 10,
-                    fontWeight: 700,
-                    background: 'rgba(168, 85, 247, 0.15)',
-                    color: '#c084fc',
-                  }}
-                >
-                  📝 PR Diajukan (Odoo)
-                </span>
-              );
-            }
+          if (group.overallStatus === 'CANCELLED') {
+            statusBadge = (
+              <span
+                className="badge badge-red"
+                style={{
+                  padding: '4px 10px',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  background: 'rgba(239, 68, 68, 0.2)',
+                  color: '#f87171',
+                  border: '1px solid rgba(239, 68, 68, 0.4)',
+                }}
+              >
+                🚫 Dibatalkan
+              </span>
+            );
+          } else if (group.overallStatus === 'DONE') {
+            statusBadge = (
+              <span className="badge badge-grn" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700 }}>
+                ✓ Selesai (Diterima)
+              </span>
+            );
+          } else if (group.overallStatus === 'PO') {
+            statusBadge = (
+              <span className="badge badge-pur" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700, background: '#f5f3ff', color: '#7c3aed', border: '1px solid #ddd6fe' }}>
+                🚢 3. PO Terbit
+              </span>
+            );
+          } else if (group.overallStatus === 'APPROVAL') {
+            statusBadge = (
+              <span className="badge badge-blu" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700 }}>
+                ⚖️ 2. Proses Approval
+              </span>
+            );
           } else {
-            if (isPrDraft) {
-              statusBadge = (
-                <span className="badge badge-ylw" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700 }}>
-                  ⏳ Tahap PR / Belum PO
-                </span>
-              );
-            } else if (group.overallStatus === 'CANCELLED') {
-              statusBadge = (
-                <span
-                  className="badge badge-red"
-                  style={{
-                    padding: '4px 10px',
-                    fontSize: 10,
-                    fontWeight: 700,
-                    background: 'rgba(239, 68, 68, 0.2)',
-                    color: '#f87171',
-                    border: '1px solid rgba(239, 68, 68, 0.4)',
-                  }}
-                >
-                  🚫 Dibatalkan (Cancel)
-                </span>
-              );
-            } else if (group.overallStatus === 'DONE') {
-              statusBadge = (
-                <span className="badge badge-grn" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700 }}>
-                  ✓ Diterima Lengkap (Closed)
-                </span>
-              );
-            } else if (group.overallStatus === 'PARTIAL') {
-              statusBadge = (
-                <span
-                  className="badge badge-ylw"
-                  style={{
-                    padding: '4px 10px',
-                    fontSize: 10,
-                    fontWeight: 700,
-                    background: 'rgba(234, 179, 8, 0.15)',
-                    color: '#facc15',
-                  }}
-                >
-                  ⏳ Sebagian Diterima
-                </span>
-              );
-            } else {
-              statusBadge = (
-                <span className="badge badge-blu" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700 }}>
-                  🚢 Sedang Diproses (PO)
-                </span>
-              );
-            }
+            statusBadge = (
+              <span className="badge badge-ylw" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700 }}>
+                📝 1. Draft
+              </span>
+            );
           }
 
           return (

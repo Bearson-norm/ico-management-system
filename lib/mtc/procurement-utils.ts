@@ -66,22 +66,52 @@ export function generateAutoAlias(fullName: string): string {
   return clean.replace(/\b\w/g, char => char.toUpperCase());
 }
 
+export function getItemSimplifiedStatus(item: TrackingItem): 'DRAFT' | 'APPROVAL' | 'PO' | 'DONE' | 'CANCELLED' {
+  if (!item) return 'DRAFT';
+  if (isCancelled(item)) return 'CANCELLED';
+  if (isClosedOrDone(item)) return 'DONE';
+
+  const statusPr = (item.statusPr || '').toUpperCase();
+  const statusPo = (item.statusPo || '').toUpperCase();
+  
+  // 3. PO: PO resmi sudah diterbitkan di Odoo
+  const hasPo = !!(item.nomorPo && item.nomorPo.trim() !== '') || statusPo === 'PO' || statusPr === 'PO';
+  if (hasPo) return 'PO';
+
+  // 2. APPROVAL: Sudah diapprove Finance & dalam proses Penawaran / RFQ
+  const isApprovalOrRfq =
+    statusPr === 'APPROVED' ||
+    statusPr === 'PA_APPROVED' ||
+    statusPr === 'RFQ' ||
+    statusPr === 'APPROVAL' ||
+    statusPr === 'OPEN' ||
+    statusPr === 'IN_PROGRESS';
+
+  if (isApprovalOrRfq) return 'APPROVAL';
+
+  // 1. DRAFT: Tahap awal PR (Draf / persiapan pengajuan)
+  return 'DRAFT';
+}
+
 export function getStatusBadgeStyles(status: string) {
-  switch ((status || '').toUpperCase()) {
+  const norm = (status || '').toUpperCase();
+  switch (norm) {
     case 'DRAFT':
-      return { background: '#f3f4f6', color: '#4b5563', border: '1px solid #d1d5db' };
+      return { background: '#f3f4f6', color: '#4b5563', border: '1px solid #d1d5db', label: '1. DRAFT PR' };
+    case 'APPROVAL':
     case 'TO_APPROVE':
-      return { background: '#fffbeb', color: '#d97706', border: '1px solid #fcd34d' };
     case 'APPROVED':
-      return { background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe' };
     case 'RFQ':
-      return { background: '#f9f5f7', color: '#875A7B', border: '1px solid #e9d5df' };
+      return { background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', label: '2. APPROVAL & PENAWARAN' };
     case 'PO':
-      return { background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0' };
+      return { background: '#f5f3ff', color: '#7c3aed', border: '1px solid #ddd6fe', label: '3. PO TERBIT' };
+    case 'DONE':
+    case 'RECEIVED':
+      return { background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0', label: '✓ SELESAI' };
     case 'CANCELLED':
-      return { background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' };
+      return { background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', label: '✕ BATAL' };
     default:
-      return { background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', border: '1px solid rgba(168, 85, 247, 0.3)' };
+      return { background: '#f3f4f6', color: '#4b5563', border: '1px solid #d1d5db', label: norm };
   }
 }
 
@@ -90,48 +120,29 @@ export function filterItemByTab(
   activeTab: TabType,
   cardFilter: CardFilterType
 ): boolean {
-  const isDone = isClosedOrDone(item);
-  const isCanc = isCancelled(item);
-  const hasPo = hasPoAssigned(item);
-  const spStatus = (item.statusPr || 'DRAFT').toUpperCase();
+  const itemStatus = getItemSimplifiedStatus(item);
 
   // Card filter takes precedence
   if (cardFilter) {
-    if (cardFilter === 'WAITING_PRICE') {
-      const isNoPrice = item.harga == null || Number(item.harga) === 0;
-      if (isDone || isCanc || !isNoPrice) return false;
-    } else if (cardFilter === 'PR_PENDING') {
-      if (isDone || isCanc || !item.nomorPr || item.nomorPo) return false;
-    } else if (cardFilter === 'PO_RECEIVED') {
-      if (!item.nomorPo || !isDone) return false;
-    } else if (cardFilter === 'PO_PENDING_GR') {
-      if (isDone || isCanc || !item.nomorPo) return false;
-    }
+    if (cardFilter === 'DRAFT') return itemStatus === 'DRAFT';
+    if (cardFilter === 'APPROVAL') return itemStatus === 'APPROVAL';
+    if (cardFilter === 'PO') return itemStatus === 'PO';
+    if (cardFilter === 'DONE') return itemStatus === 'DONE' || itemStatus === 'CANCELLED';
     return true;
   }
 
   // Standard Tab Filters
-  if (activeTab === 'ACTIVE') {
-    // ACTIVE excludes Closed and Cancelled
-    if (isDone || isCanc) return false;
-  } else if (activeTab === 'DRAFT_PR') {
-    const isDraft =
-      (!spStatus || spStatus === 'DRAFT' || spStatus === 'WAITING_PRICE' || spStatus === 'CONTINUE') &&
-      (!item.nomorPr || item.nomorPr.trim() === '');
-    if (isDone || isCanc || !isDraft) return false;
-  } else if (activeTab === 'READY_ODOO') {
-    if (isDone || isCanc || spStatus !== 'READY_ODOO' || hasPo) return false;
-  } else if (activeTab === 'TO_APPROVE') {
-    if (isDone || isCanc || spStatus !== 'TO_APPROVE' || hasPo) return false;
-  } else if (activeTab === 'APPROVED') {
-    // APPROVED tab MUST exclude items that already have PO created or are closed/cancelled!
-    if (isDone || isCanc || spStatus !== 'APPROVED' || hasPo) return false;
-  } else if (activeTab === 'PO_RFQ') {
-    // PO_RFQ tab MUST show active items with PO created
-    if (isDone || isCanc || !hasPo) return false;
-  } else if (activeTab === 'RECEIVED') {
-    // RECEIVED tab shows items that are Closed or Cancelled
-    if (!isDone && !isCanc) return false;
+  if (activeTab === 'ALL') {
+    // Tampilkan semua dokumen yang aktif (belum selesai/batal)
+    return itemStatus !== 'DONE' && itemStatus !== 'CANCELLED';
+  } else if (activeTab === 'DRAFT') {
+    return itemStatus === 'DRAFT';
+  } else if (activeTab === 'APPROVAL') {
+    return itemStatus === 'APPROVAL';
+  } else if (activeTab === 'PO') {
+    return itemStatus === 'PO';
+  } else if (activeTab === 'DONE') {
+    return itemStatus === 'DONE' || itemStatus === 'CANCELLED';
   }
 
   return true;

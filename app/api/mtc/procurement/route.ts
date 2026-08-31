@@ -188,63 +188,8 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // 2. Jika ada scriptUrl, kirim data pengajuan ke Google Sheets dengan await agar koneksi diselesaikan sebelum response dikirim
-    let sheetSuccess = true;
-    let sheetError = null;
-
-    if (scriptUrl && scriptUrl.trim()) {
-      const scriptPayload = {
-        originalName: originalName.trim(),
-        mtcItemName: spName,
-        keterangan: keterangan || '',
-        penggunaanBulan: penggunaanBulan ? String(penggunaanBulan) : '',
-        isStocked: isStocked ? 'TRUE' : 'FALSE',
-        tanggalList: tDate.toLocaleDateString('id-ID'), // Format DD/MM/YYYY
-        qty: String(qty),
-        productCategory: productCategory || '',
-        reason: reason || '',
-        urgency: urgency === 'Urgent' ? 'Urgent' : '',
-        linkReferences: linkReferences || '',
-      };
-
-      try {
-        console.log('[Procurement API] Mengirim data ke Google Sheets Webhook:', scriptUrl.trim());
-        const fetchRes = await fetch(scriptUrl.trim(), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(scriptPayload),
-        });
-
-        if (!fetchRes.ok) {
-          sheetSuccess = false;
-          sheetError = `HTTP error! status: ${fetchRes.status}`;
-          console.error('[Google Apps Script Send Fail]', sheetError);
-        } else {
-          const fetchJson = await fetchRes.json().catch(() => null);
-          console.log('[Google Apps Script Response]', fetchJson);
-          if (fetchJson && fetchJson.success === false) {
-            sheetSuccess = false;
-            sheetError = fetchJson.error || 'Gagal diproses di dalam script Sheets';
-            console.error('[Google Apps Script Internal Error]', sheetError);
-          }
-        }
-      } catch (fetchErr: any) {
-        sheetSuccess = false;
-        sheetError = fetchErr.message || String(fetchErr);
-        console.error('[Google Apps Script Send Exception]', fetchErr);
-      }
-    }
-
-    if (!sheetSuccess) {
-      return ok({
-        msg: `Pengajuan PR berhasil disimpan lokal, namun GAGAL dikirim ke Google Sheets: ${sheetError}. Periksa kembali Apps Script URL Anda.`,
-        data: tracking,
-        sheetError,
-      });
-    }
-
     return ok({
-      msg: 'Pengajuan PR berhasil disimpan lokal' + (scriptUrl ? ' & diteruskan ke Google Sheets!' : '!'),
+      msg: 'Pengajuan PR berhasil disimpan!',
       data: tracking,
     });
   } catch (e: any) {
@@ -287,44 +232,30 @@ export async function PATCH(req: NextRequest) {
     linkedPartsJson,
   } = body;
 
-  if (!id) return err('ID record wajib diisi', 400);
+  if (!id) return err('ID pengadaan wajib disertakan', 400);
 
   try {
     const existing = await prisma.procurementTracking.findUnique({
-      where: { id: Number(id) }
+      where: { id: Number(id) },
     });
+
     if (!existing) return err('Data pengadaan tidak ditemukan', 404);
 
-    let finalHarga = harga !== undefined ? (harga ? Number(harga) : null) : existing.harga;
-    let finalStatusPr = statusPr !== undefined ? statusPr : existing.statusPr;
-    let finalVendor = vendor !== undefined ? (vendor?.trim() || null) : existing.vendor;
+    let finalHarga = harga !== undefined ? (harga != null ? Number(harga) : null) : undefined;
+    let finalVendor = vendor !== undefined ? (vendor?.trim() || null) : undefined;
+    let finalStatusPr = statusPr !== undefined ? statusPr : undefined;
 
-    // Jika sparepart baru saja dihubungkan, coba ambil harga dari master & vendor dari riwayat
+    // Jika sparepartId baru dihubungkan secara manual
     if (sparepartId && sparepartId !== existing.sparepartId) {
       const sp = await prisma.sparepart.findUnique({
         where: { id: sparepartId },
-        select: { harga: true }
+        select: { nama: true, harga: true, lokasi: true },
       });
       if (sp) {
-        if (harga === undefined && sp.harga) {
+        if (harga === undefined && Number(sp.harga) > 0) {
           finalHarga = Number(sp.harga);
         }
       }
-      
-      const lastProc = await prisma.procurementTracking.findFirst({
-        where: { sparepartId: sparepartId, vendor: { not: null } },
-        orderBy: { tanggalList: 'desc' },
-        select: { vendor: true }
-      });
-      if (lastProc && vendor === undefined) {
-        finalVendor = lastProc.vendor;
-      }
-    }
-
-    // Auto READY_ODOO logic: Jika status saat ini adalah draf/prep dan ada harga masuk > 0
-    const isDraftStatus = (s: string | null | undefined) => !s || s === 'DRAFT' || s === 'WAITING_PRICE' || s === 'CONTINUE';
-    if (isDraftStatus(finalStatusPr) && Number(finalHarga) > 0) {
-      finalStatusPr = 'READY_ODOO';
     }
 
     const updated = await prisma.procurementTracking.update({
@@ -351,13 +282,13 @@ export async function PATCH(req: NextRequest) {
       },
     });
 
-    // Sync StockMovement if changed after receipt or if sparepart was newly linked
-    const isReceivedItem = !!(updated.tanggalTerima || updated.statusPo === 'DONE' || updated.linkGr);
-    if (isReceivedItem && updated.sparepartId && (updated.isStocked || isStocked === undefined)) {
+    // Catatan Penting: Menghubungkan sparepart (Linking) TIDAK BOLEH membuat StockMovement baru!
+    // Mutasi stok HANYA boleh dibuat melalui aksi "Terima Barang" (/api/mtc/procurement/receive).
+    // Jika mutasi sudah ada sebelumnya dan user mengubah tipe stok (isStocked), baru update mutasi yang ada:
+    if (isStocked !== undefined && existing.isStocked !== Boolean(isStocked) && updated.sparepartId) {
       const existingMov = await prisma.stockMovement.findFirst({
         where: {
           sparepartId: updated.sparepartId,
-          tipe: 'IN',
           OR: [
             { keterangan: { contains: updated.nomorPo ? `PO: ${updated.nomorPo}` : 'Penerimaan' } },
             { keterangan: { contains: updated.nomorPr ? `PR: ${updated.nomorPr}` : 'Penerimaan' } }
@@ -365,31 +296,10 @@ export async function PATCH(req: NextRequest) {
         }
       });
 
-      if (!existingMov) {
-        const sp = await prisma.sparepart.findUnique({
-          where: { id: updated.sparepartId }
-        });
-        if (sp) {
-          const tDate = updated.tanggalTerima || new Date();
-          await prisma.stockMovement.create({
-            data: {
-              tipe: 'IN',
-              sparepartId: sp.id,
-              namaItem: sp.nama,
-              qty: updated.qty,
-              harga: Number(updated.harga) || Number(sp.harga) || 0,
-              lokasi: sp.lokasi,
-              purchaseType: 'PO',
-              vendor: updated.vendor || null,
-              keterangan: `[Penerimaan Pengadaan PR: ${updated.nomorPr || '—'} / PO: ${updated.nomorPo || '—'}]`,
-              tanggal: tDate,
-            }
-          });
-        }
-      } else if (isStocked !== undefined && Boolean(isStocked) !== existing.isStocked) {
+      if (existingMov) {
         const targetTipe = Boolean(isStocked) ? 'IN' : 'LOG';
         let lokasiVal = null;
-        if (targetTipe === 'IN' && updated.sparepartId) {
+        if (targetTipe === 'IN') {
           const sp = await prisma.sparepart.findUnique({
             where: { id: updated.sparepartId },
             select: { lokasi: true },
@@ -407,7 +317,7 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
-    // MTC PRO: Propagate status, nomor PR/PO, price, and chatter notes to Sparepart master database table
+    // MTC PRO: Propagate status, nomor PR/PO, price, and chatter notes to Sparepart master database tableable
     if (updated.sparepartId) {
       const spUpdateData: any = {};
       if (updated.statusPr) spUpdateData.purchasingStatus = updated.statusPr;
