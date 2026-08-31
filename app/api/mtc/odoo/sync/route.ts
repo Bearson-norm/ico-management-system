@@ -1918,13 +1918,14 @@ export async function POST(req: NextRequest) {
                 }
                 finalIsGrDone = true;
               } else {
-                // If newReceiptQty <= 0, keep statusPo as PO unless physical receipt date is already recorded in MTC
-                updateData.statusPo = item.tanggalTerima ? 'DONE' : 'PO';
-                updateData.tanggalTerima = item.tanggalTerima || null;
+                // Item BELUM diterima (Good Received di Odoo masih draft atau qty_received == 0)
+                updateData.statusPo = (localStatusPr === 'APPROVED' || localStatusPr === 'PO') ? 'PO' : localStatusPr;
+                updateData.tanggalTerima = null;
                 if (odooGrLink) {
                   updateData.linkGr = odooGrLink;
                   updateData.linkReferences = combinePrAndPoLinks(updateData.linkReferences || item.linkReferences, odooGrLink, 'gr');
                 }
+                finalIsGrDone = false;
               }
 
               const hasChanges = hasActualChanges(item, updateData);
