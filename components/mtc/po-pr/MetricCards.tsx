@@ -4,10 +4,10 @@ import { fmtRupiah, isClosedOrDone } from '@/lib/mtc/procurement-utils';
 
 type MetricCardsProps = {
   stats: {
-    noPriceCount: number;
-    prPendingCount: number;
-    poReceivedCount: number;
-    poPendingGrCount: number;
+    draftCount: number;
+    approvalCount: number;
+    poCount: number;
+    doneCount: number;
   };
   cardFilter: CardFilterType;
   setCardFilter: (val: CardFilterType) => void;
@@ -39,26 +39,26 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
           style={{
             cursor: 'pointer',
             transition: 'all 0.2s',
-            borderLeft: '4px solid var(--ylw)',
+            borderLeft: '4px solid #9ca3af',
             boxShadow:
-              cardFilter === 'WAITING_PRICE'
-                ? '0 0 0 2px var(--ylw), 0 4px 20px rgba(234, 179, 8, 0.25)'
+              cardFilter === 'DRAFT'
+                ? '0 0 0 2px #9ca3af, 0 4px 20px rgba(156, 163, 175, 0.25)'
                 : 'none',
-            transform: cardFilter === 'WAITING_PRICE' ? 'scale(1.02)' : 'scale(1)',
-            opacity: cardFilter && cardFilter !== 'WAITING_PRICE' ? 0.6 : 1,
+            transform: cardFilter === 'DRAFT' ? 'scale(1.02)' : 'scale(1)',
+            opacity: cardFilter && cardFilter !== 'DRAFT' ? 0.6 : 1,
           }}
           onClick={() => {
-            if (cardFilter === 'WAITING_PRICE') {
+            if (cardFilter === 'DRAFT') {
               setCardFilter(null);
             } else {
-              setCardFilter('WAITING_PRICE');
-              setActiveTab('ACTIVE');
+              setCardFilter('DRAFT');
+              setActiveTab('DRAFT');
             }
           }}
         >
-          <div className="stat-label">Belum Ada Harga (Pengadaan Baru)</div>
-          <div className="stat-value">{stats.noPriceCount}</div>
-          <div className="stat-sub">Barang baru diajukan, menunggu harga dari SCM</div>
+          <div className="stat-label">📝 1. Awal PR (Draft)</div>
+          <div className="stat-value">{stats.draftCount}</div>
+          <div className="stat-sub">Pengajuan awal PR, belum disetujui Finance</div>
         </div>
 
         <div
@@ -68,24 +68,24 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
             transition: 'all 0.2s',
             borderLeft: '4px solid var(--blu)',
             boxShadow:
-              cardFilter === 'PR_PENDING'
+              cardFilter === 'APPROVAL'
                 ? '0 0 0 2px var(--blu), 0 4px 20px rgba(59, 130, 246, 0.25)'
                 : 'none',
-            transform: cardFilter === 'PR_PENDING' ? 'scale(1.02)' : 'scale(1)',
-            opacity: cardFilter && cardFilter !== 'PR_PENDING' ? 0.6 : 1,
+            transform: cardFilter === 'APPROVAL' ? 'scale(1.02)' : 'scale(1)',
+            opacity: cardFilter && cardFilter !== 'APPROVAL' ? 0.6 : 1,
           }}
           onClick={() => {
-            if (cardFilter === 'PR_PENDING') {
+            if (cardFilter === 'APPROVAL') {
               setCardFilter(null);
             } else {
-              setCardFilter('PR_PENDING');
-              setActiveTab('ACTIVE');
+              setCardFilter('APPROVAL');
+              setActiveTab('APPROVAL');
             }
           }}
         >
-          <div className="stat-label">PR Tunggu Persetujuan</div>
-          <div className="stat-value">{stats.prPendingCount}</div>
-          <div className="stat-sub">PR sudah dibuat, menunggu proses PO oleh SCM</div>
+          <div className="stat-label">⚖️ 2. Approval & Penawaran</div>
+          <div className="stat-value">{stats.approvalCount}</div>
+          <div className="stat-sub">Disetujui Finance & proses penawaran / RFQ</div>
         </div>
 
         <div
@@ -95,24 +95,24 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
             transition: 'all 0.2s',
             borderLeft: '4px solid var(--pur)',
             boxShadow:
-              cardFilter === 'PO_RECEIVED'
+              cardFilter === 'PO'
                 ? '0 0 0 2px var(--pur), 0 4px 20px rgba(168, 85, 247, 0.25)'
                 : 'none',
-            transform: cardFilter === 'PO_RECEIVED' ? 'scale(1.02)' : 'scale(1)',
-            opacity: cardFilter && cardFilter !== 'PO_RECEIVED' ? 0.6 : 1,
+            transform: cardFilter === 'PO' ? 'scale(1.02)' : 'scale(1)',
+            opacity: cardFilter && cardFilter !== 'PO' ? 0.6 : 1,
           }}
           onClick={() => {
-            if (cardFilter === 'PO_RECEIVED') {
+            if (cardFilter === 'PO') {
               setCardFilter(null);
             } else {
-              setCardFilter('PO_RECEIVED');
-              setActiveTab('RECEIVED');
+              setCardFilter('PO');
+              setActiveTab('PO');
             }
           }}
         >
-          <div className="stat-label">PO Sudah Di-GR (Selesai)</div>
-          <div className="stat-value">{stats.poReceivedCount}</div>
-          <div className="stat-sub">Barang sudah datang dan sukses dicatat GR</div>
+          <div className="stat-label">🚢 3. PO Terbit</div>
+          <div className="stat-value">{stats.poCount}</div>
+          <div className="stat-sub">PO terbit di Odoo, menunggu barang datang</div>
         </div>
 
         <div
@@ -122,24 +122,24 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
             transition: 'all 0.2s',
             borderLeft: '4px solid var(--grn)',
             boxShadow:
-              cardFilter === 'PO_PENDING_GR'
+              cardFilter === 'DONE'
                 ? '0 0 0 2px var(--grn), 0 4px 20px rgba(34, 197, 94, 0.25)'
                 : 'none',
-            transform: cardFilter === 'PO_PENDING_GR' ? 'scale(1.02)' : 'scale(1)',
-            opacity: cardFilter && cardFilter !== 'PO_PENDING_GR' ? 0.6 : 1,
+            transform: cardFilter === 'DONE' ? 'scale(1.02)' : 'scale(1)',
+            opacity: cardFilter && cardFilter !== 'DONE' ? 0.6 : 1,
           }}
           onClick={() => {
-            if (cardFilter === 'PO_PENDING_GR') {
+            if (cardFilter === 'DONE') {
               setCardFilter(null);
             } else {
-              setCardFilter('PO_PENDING_GR');
-              setActiveTab('ACTIVE');
+              setCardFilter('DONE');
+              setActiveTab('DONE');
             }
           }}
         >
-          <div className="stat-label">PO Belum Di-GR (Belum Selesai)</div>
-          <div className="stat-value">{stats.poPendingGrCount}</div>
-          <div className="stat-sub">Barang dalam proses pengiriman, belum dicatat GR</div>
+          <div className="stat-label">✓ 4. Selesai (Diterima)</div>
+          <div className="stat-value">{stats.doneCount}</div>
+          <div className="stat-sub">Barang sudah diterima & masuk stok gudang</div>
         </div>
       </div>
 

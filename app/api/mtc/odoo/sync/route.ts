@@ -65,16 +65,17 @@ function hasActualChanges(existingItem: any, updateData: any): boolean {
   return false;
 }
 
-// Mencari sparepart di DB lokal berdasarkan nama atau alias (secara eksak maupun fuzzy)
+// Mencari sparepart di DB lokal HANYA jika cocok persis 100% (Exact Match)
+// TIDAK BOLEH auto-match fuzzy substring agar tidak salah jodoh
 async function findMtcSparepartMatch(tx: any, prodName: string): Promise<string | null> {
-  const cleanProd = prodName.toLowerCase().trim();
+  const cleanProd = prodName?.trim();
   if (!cleanProd) return null;
 
   // 1. Coba match nama secara persis (case-insensitive)
   let matched = await tx.sparepart.findFirst({
     where: { 
       aktif: true,
-      nama: { equals: prodName, mode: 'insensitive' } 
+      nama: { equals: cleanProd, mode: 'insensitive' } 
     }
   });
   if (matched) return matched.id;
@@ -83,30 +84,13 @@ async function findMtcSparepartMatch(tx: any, prodName: string): Promise<string 
   matched = await tx.sparepart.findFirst({
     where: {
       aktif: true,
-      namaAlias: { equals: prodName, mode: 'insensitive' }
+      namaAlias: { equals: cleanProd, mode: 'insensitive' }
     }
   });
   if (matched) return matched.id;
 
-  // 3. Coba match fuzzy (seperti GA) dengan list all active spareparts
-  const allSpareparts = await tx.sparepart.findMany({ where: { aktif: true } });
-  
-  const fuzzyMatched = allSpareparts.find((sp: any) => {
-    const cleanSpName = sp.nama.toLowerCase().trim();
-    const cleanAlias = sp.namaAlias?.toLowerCase().trim();
-    
-    // Cocokkan nama sparepart
-    if (cleanSpName && (cleanProd.includes(cleanSpName) || cleanSpName.includes(cleanProd))) {
-      return true;
-    }
-    // Cocokkan alias sparepart
-    if (cleanAlias && (cleanProd.includes(cleanAlias) || cleanAlias.includes(cleanProd))) {
-      return true;
-    }
-    return false;
-  });
-
-  return fuzzyMatched ? fuzzyMatched.id : null;
+  // Hentikan tebak-tebakan fuzzy / substring! Biarkan user menghubungkan secara sadar lewat UI jika nama berbeda.
+  return null;
 }
 
 // Map Odoo's state to our local statusPr values
@@ -1518,8 +1502,8 @@ export async function POST(req: NextRequest) {
             }
           }
 
-          // 2. Check stock.picking model fallback
-          if (!isGrDone && odooPickings && odooPickings.length > 0) {
+          // 2. Check stock.picking model
+          if (odooPickings && odooPickings.length > 0) {
             const picking = odooPickings[0];
             if (!odooGrLink) {
               odooGrLink = `https://foomx.odoo.com/web#id=${picking.id}&model=stock.picking&view_type=form`;
@@ -1535,16 +1519,8 @@ export async function POST(req: NextRequest) {
             }
           }
 
-          // 3. Fallback to line-level qty_received / PO done state
-          if (!isGrDone && poLines && poLines.length > 0) {
-            const hasReceived = poLines.some((l: any) => Number(l.qty_received) > 0);
-            if (hasReceived || odooState === 'done') {
-              isGrDone = true;
-              if (!odooGrLink) {
-                odooGrLink = `https://foomx.odoo.com/web#id=${poId}&model=purchase.order&view_type=form`;
-              }
-            }
-          }
+          // Catatan: JANGAN memukul rata isGrDone = true hanya karena PO state 'done' atau 'purchase'!
+          // Status GR Selesai HANYA valid jika surat jalan / good.received atau stock.picking sudah dinyatakan 'done' di Odoo.
 
           poGrStatusMap.set(poId, { isGrDone, odooGrDate, odooGrLink });
         }
@@ -1799,13 +1775,16 @@ export async function POST(req: NextRequest) {
                 }
               }
 
-              const targetPo = odooPos.find((p: any) => p.id === matchedLine.parentPoId)
-                || odooPos[0];
+              const targetPo = (matchedLine && matchedLine.parentPoId)
+                ? (odooPos.find((p: any) => p.id === matchedLine.parentPoId) || odooPos[0])
+                : odooPos[0];
               const poId = targetPo.id;
-              const poName = targetPo.name;
+              const poName = (matchedLine && matchedLine.parentPoName) ? matchedLine.parentPoName : targetPo.name;
               const odooState = targetPo.state;
               const localStatusPr = mapOdooStateToLocal(odooState);
-              const vendorName = Array.isArray(targetPo.partner_id) ? targetPo.partner_id[1] : null;
+              const vendorName = (matchedLine && matchedLine.parentVendorName)
+                ? matchedLine.parentVendorName
+                : (Array.isArray(targetPo.partner_id) ? targetPo.partner_id[1] : null);
               const amountTotal = targetPo.amount_total || 0;
               const odooPoUrl = `https://foomx.odoo.com/web#id=${poId}&model=purchase.order&view_type=form`;
 
@@ -1984,43 +1963,8 @@ export async function POST(req: NextRequest) {
                         spUpdate.poDate = null;
                       }
 
-                      // Auto-create StockMovement IN if GR is done in Odoo and no StockMovement IN exists yet
-                      const existingMov = await tx.stockMovement.findFirst({
-                        where: {
-                          sparepartId: sp.id,
-                          tipe: 'IN',
-                          OR: [
-                            { keterangan: { contains: updatedItem.nomorPo ? `PO: ${updatedItem.nomorPo}` : 'Penerimaan' } },
-                            { keterangan: { contains: updatedItem.nomorPr ? `PR: ${updatedItem.nomorPr}` : 'Penerimaan' } }
-                          ]
-                        }
-                      });
-
-                      if (!existingMov) {
-                        const tDate = odooGrDate || updatedItem.tanggalTerima || new Date();
-                        const movHarga = matchedPrice > 0 ? matchedPrice : (Number(updatedItem.harga) || Number(sp.harga) || 0);
-                        await tx.stockMovement.create({
-                          data: {
-                            tipe: 'IN',
-                            sparepartId: sp.id,
-                            namaItem: sp.nama,
-                            qty: updatedItem.qty,
-                            harga: movHarga,
-                            lokasi: sp.lokasi,
-                            purchaseType: 'PO',
-                            vendor: vendorName || updatedItem.vendor || null,
-                            keterangan: `[Odoo Sync Penerimaan PR: ${updatedItem.nomorPr || '—'} / PO: ${updatedItem.nomorPo || '—'}]`,
-                            tanggal: tDate,
-                          }
-                        });
-
-                        if (!updatedItem.isStocked) {
-                          await tx.procurementTracking.update({
-                            where: { id: updatedItem.id },
-                            data: { isStocked: true }
-                          });
-                        }
-                      }
+                      // Catatan: Sinkronisasi Odoo TIDAK BOLEH otomatis membuat StockMovement ke gudang secara diam-diam.
+                      // Penambahan stok fisik HANYA dilakukan saat user mengklik "Terima Barang" di web.
                     }
                   }
 

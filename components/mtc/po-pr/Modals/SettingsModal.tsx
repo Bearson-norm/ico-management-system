@@ -3,10 +3,6 @@ import React from 'react';
 type SettingsModalProps = {
   showSettingsModal: boolean;
   setShowSettingsModal: (val: boolean) => void;
-  tempSheetUrl: string;
-  setTempSheetUrl: (val: string) => void;
-  tempScriptUrl: string;
-  setTempScriptUrl: (val: string) => void;
   tempOdooPassword: string;
   setTempOdooPassword: (val: string) => void;
   tempOdooDb: string;
@@ -16,10 +12,6 @@ type SettingsModalProps = {
   tempOdooSessionId: string;
   setTempOdooSessionId: (val: string) => void;
   handleSaveSettings: (e: React.FormEvent) => void;
-  csvFileName: string;
-  csvFileText: string;
-  handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  handleManualSyncSubmit: (e: React.FormEvent) => void;
   manualSyncStatus: { type: 'success' | 'error'; msg: string } | null;
   actionLoading: string | null;
   handleClearAllProcurementData: () => void;
@@ -28,10 +20,6 @@ type SettingsModalProps = {
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   showSettingsModal,
   setShowSettingsModal,
-  tempSheetUrl,
-  setTempSheetUrl,
-  tempScriptUrl,
-  setTempScriptUrl,
   tempOdooPassword,
   setTempOdooPassword,
   tempOdooDb,
@@ -41,10 +29,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   tempOdooSessionId,
   setTempOdooSessionId,
   handleSaveSettings,
-  csvFileName,
-  csvFileText,
-  handleFileChange,
-  handleManualSyncSubmit,
   manualSyncStatus,
   actionLoading,
   handleClearAllProcurementData,
@@ -71,7 +55,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         className="card"
         style={{
           width: '100%',
-          maxWidth: 680,
+          maxWidth: 580,
           maxHeight: '90vh',
           overflowY: 'auto',
           background: 'var(--sf2)',
@@ -90,7 +74,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           }}
         >
           <div className="card-title" style={{ fontSize: 15, fontWeight: 800, color: 'var(--pur)', margin: 0 }}>
-            ⚙️ Pengaturan Integrasi Google Sheets, CSV & Odoo Cloud
+            ⚙️ Pengaturan Koneksi Odoo Cloud ERP
           </div>
           <button
             type="button"
@@ -103,42 +87,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         <div style={{ padding: 20 }}>
-          <form onSubmit={handleSaveSettings} style={{ marginBottom: 24 }}>
+          <form onSubmit={handleSaveSettings} style={{ marginBottom: 20 }}>
             <div style={{ fontWeight: 800, fontSize: 12, color: 'var(--pur)', marginBottom: 12 }}>
-              1. KONEKSI SINKRONISASI OTOMATIS GOOGLE SHEETS
+              🔑 KREDENSIAL ODOO CLOUD (FOOMX)
             </div>
 
-            <div className="form-group">
-              <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>
-                Link Google Sheets SCM (Publik / Web Export)
+            <div className="form-group" style={{ marginBottom: 16 }}>
+              <label className="form-label" style={{ fontWeight: 700, fontSize: 12, color: 'var(--txt)' }}>
+                Cookie Session ID (Odoo Browser Session) ⭐
               </label>
+              <div style={{ fontSize: 11, color: 'var(--mut)', marginBottom: 6 }}>
+                Ambil dari Cookie Browser <code style={{ color: 'var(--pur)' }}>session_id</code> saat login di foomx.odoo.com.
+              </div>
               <input
-                type="url"
+                type="text"
                 className="form-input"
-                placeholder="https://docs.google.com/spreadsheets/d/..."
-                value={tempSheetUrl}
-                onChange={(e) => setTempSheetUrl(e.target.value)}
+                placeholder="Tempelkan session_id dari Cookie Browser Odoo..."
+                value={tempOdooSessionId}
+                onChange={(e) => setTempOdooSessionId(e.target.value)}
+                style={{ fontFamily: 'monospace', fontSize: 12 }}
               />
             </div>
 
-            <div className="form-group">
-              <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>
-                Google Apps Script Webhook URL (Auto-Push PR)
-              </label>
-              <input
-                type="url"
-                className="form-input"
-                placeholder="https://script.google.com/macros/s/..."
-                value={tempScriptUrl}
-                onChange={(e) => setTempScriptUrl(e.target.value)}
-              />
-            </div>
-
-            <div style={{ fontWeight: 800, fontSize: 12, color: 'var(--pur)', margin: '20px 0 12px 0' }}>
-              2. KREDENSIAL ODOO CLOUD (RPC / SESSION COOKIE)
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
               <div className="form-group">
                 <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>
                   Database Odoo
@@ -153,7 +124,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
               <div className="form-group">
                 <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>
-                  UID Pengguna Odoo
+                  UID Pengguna (Opsional)
                 </label>
                 <input
                   type="text"
@@ -164,27 +135,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
             </div>
 
-            <div className="form-group">
+            <div className="form-group" style={{ marginBottom: 16 }}>
               <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>
-                Cookie Session ID (Odoo Browser Session)
+                Password / API Key Odoo (Opsional jika pakai RPC)
               </label>
               <input
                 type="password"
                 className="form-input"
-                placeholder="Tempelkan session_id dari Cookie Browser Odoo..."
-                value={tempOdooSessionId}
-                onChange={(e) => setTempOdooSessionId(e.target.value)}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>
-                Password / API Key Odoo
-              </label>
-              <input
-                type="password"
-                className="form-input"
-                placeholder="Password akun Odoo..."
+                placeholder="Password akun Odoo jika menggunakan RPC..."
                 value={tempOdooPassword}
                 onChange={(e) => setTempOdooPassword(e.target.value)}
               />
@@ -203,49 +161,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <button
                 type="submit"
                 className="btn btn-pur"
-                style={{ fontWeight: 800, padding: '0 20px', height: 36, cursor: 'pointer' }}
+                style={{ fontWeight: 800, padding: '0 20px', height: 38, cursor: 'pointer' }}
               >
-                💾 Simpan Pengaturan Connection
+                💾 Simpan Pengaturan Odoo
               </button>
             </div>
           </form>
 
           <div style={{ borderTop: '1px dashed var(--br)', margin: '20px 0' }} />
 
-          <div style={{ fontWeight: 800, fontSize: 12, color: 'var(--pur)', marginBottom: 12 }}>
-            3. UNGGAH FILE CSV MANUAL & RESET DATA
-          </div>
-
-          <form onSubmit={handleManualSyncSubmit} style={{ marginBottom: 20 }}>
-            <div className="form-group">
-              <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>
-                Pilih Berkas CSV dari Komputer
-              </label>
-              <input
-                type="file"
-                accept=".csv"
-                className="form-input"
-                onChange={handleFileChange}
-                style={{ padding: '6px 12px' }}
-              />
-              {csvFileName && (
-                <div style={{ fontSize: 10, color: 'var(--grn)', marginTop: 4 }}>
-                  ✓ File terpilih: {csvFileName}
-                </div>
-              )}
-            </div>
-
-            <button
-              type="submit"
-              disabled={!csvFileText || actionLoading === 'manual-sync'}
-              className="btn btn-grn"
-              style={{ fontWeight: 800, padding: '0 20px', height: 36, cursor: 'pointer', width: '100%' }}
-            >
-              {actionLoading === 'manual-sync' ? 'Memproses CSV...' : '📥 Impor & Sync File CSV Manual'}
-            </button>
-          </form>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 11, color: 'var(--mut)' }}>
+              Ingin membersihkan semua data pelacakan lokal?
+            </span>
             <button
               type="button"
               className="btn btn-ghost btn-sm"
@@ -254,12 +182,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               style={{
                 color: 'var(--red)',
                 border: '1px solid rgba(239, 68, 68, 0.3)',
-                fontSize: 10,
-                padding: '4px 10px',
+                fontSize: 11,
+                padding: '6px 12px',
                 cursor: 'pointer',
               }}
             >
-              🗑️ Menghapus Semua Data Pengadaan (Clean Reset)
+              🗑️ Reset Data Pengadaan Lokal
             </button>
           </div>
         </div>

@@ -59,7 +59,7 @@ export type GroupedPrItem = {
   poNumbers: string;
   prNumbers: string;
   hasUrgent: boolean;
-  overallStatus: 'DRAFT' | 'PR_PROCESS' | 'PR_APPROVED' | 'PO_ACTIVE' | 'PARTIAL' | 'DONE' | 'CANCELLED';
+  overallStatus: 'DRAFT' | 'APPROVAL' | 'PO' | 'DONE' | 'CANCELLED';
   daysRunningStr: string;
   oldestDate: Date | null;
   oldestDateStr: string;
@@ -68,18 +68,16 @@ export type GroupedPrItem = {
 };
 
 export type TabType =
-  | 'ACTIVE'
-  | 'DRAFT_PR'
-  | 'READY_ODOO'
-  | 'TO_APPROVE'
-  | 'APPROVED'
-  | 'PO_RFQ'
-  | 'RECEIVED'
-  | 'ALL';
+  | 'ALL'
+  | 'DRAFT'
+  | 'APPROVAL'
+  | 'PO'
+  | 'DONE';
 
 export type CardFilterType =
-  | 'WAITING_PRICE'
-  | 'PR_PENDING'
-  | 'PO_RECEIVED'
-  | 'PO_PENDING_GR'
+  | 'DRAFT'
+  | 'APPROVAL'
+  | 'PO'
+  | 'DONE'
   | null;
+

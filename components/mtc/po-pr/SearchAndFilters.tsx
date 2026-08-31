@@ -1,5 +1,6 @@
 import React from 'react';
 import { TrackingItem, TabType, CardFilterType } from '@/types/mtc/procurement';
+import { getItemSimplifiedStatus } from '@/lib/mtc/procurement-utils';
 
 type SearchAndFiltersProps = {
   searchQuery: string;
@@ -48,58 +49,26 @@ export const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
   scopedItems,
   checkMonthYear,
 }) => {
-  const isReceivedItem = (i: TrackingItem) =>
-    !!i.tanggalTerima || i.statusPo === 'DONE' || i.statusPr === 'RECEIVED';
-  const isCancelledItem = (i: TrackingItem) =>
-    i.statusPr === 'CANCELLED' || i.statusPo === 'CANCELLED';
-
   const counts = {
-    ACTIVE: scopedItems.filter((i) => !isReceivedItem(i) && !isCancelledItem(i) && checkMonthYear(i, false)).length,
-    DRAFT_PR: scopedItems.filter(
-      (i) =>
-        !isReceivedItem(i) &&
-        !isCancelledItem(i) &&
-        checkMonthYear(i, false) &&
-        (!i.statusPr || i.statusPr === 'DRAFT' || i.statusPr === 'WAITING_PRICE' || i.statusPr === 'CONTINUE') &&
-        (!i.nomorPr || i.nomorPr.trim() === '') &&
-        (!i.nomorPo || i.nomorPo.trim() === '')
-    ).length,
-    READY_ODOO: scopedItems.filter(
-      (i) => !isReceivedItem(i) && !isCancelledItem(i) && checkMonthYear(i, false) && i.statusPr === 'READY_ODOO' && !i.nomorPo
-    ).length,
-    TO_APPROVE: scopedItems.filter(
-      (i) => !isReceivedItem(i) && !isCancelledItem(i) && checkMonthYear(i, false) && i.statusPr === 'TO_APPROVE' && !i.nomorPo
-    ).length,
-    APPROVED: scopedItems.filter(
-      (i) =>
-        !isReceivedItem(i) &&
-        !isCancelledItem(i) &&
-        checkMonthYear(i, false) &&
-        i.statusPr === 'APPROVED' &&
-        (!i.nomorPo || i.nomorPo.trim() === '') &&
-        i.statusPo !== 'PO' &&
-        i.statusPo !== 'RFQ'
-    ).length,
-    PO_RFQ: scopedItems.filter(
-      (i) =>
-        !isReceivedItem(i) &&
-        !isCancelledItem(i) &&
-        checkMonthYear(i, false) &&
-        (i.statusPr === 'PO' || i.statusPr === 'RFQ' || i.statusPo === 'PO' || i.statusPo === 'RFQ' || (i.nomorPo && i.nomorPo.trim() !== ''))
-    ).length,
-    RECEIVED: scopedItems.filter((i) => (isReceivedItem(i) || isCancelledItem(i)) && (checkMonthYear(i, true) || checkMonthYear(i, false))).length,
-    ALL: scopedItems.filter((i) => (isReceivedItem(i) ? checkMonthYear(i, true) : checkMonthYear(i, false))).length,
+    ALL: scopedItems.filter((i) => {
+      const s = getItemSimplifiedStatus(i);
+      return s !== 'DONE' && s !== 'CANCELLED' && checkMonthYear(i, false);
+    }).length,
+    DRAFT: scopedItems.filter((i) => getItemSimplifiedStatus(i) === 'DRAFT' && checkMonthYear(i, false)).length,
+    APPROVAL: scopedItems.filter((i) => getItemSimplifiedStatus(i) === 'APPROVAL' && checkMonthYear(i, false)).length,
+    PO: scopedItems.filter((i) => getItemSimplifiedStatus(i) === 'PO' && checkMonthYear(i, false)).length,
+    DONE: scopedItems.filter((i) => {
+      const s = getItemSimplifiedStatus(i);
+      return (s === 'DONE' || s === 'CANCELLED') && (checkMonthYear(i, true) || checkMonthYear(i, false));
+    }).length,
   };
 
   const tabs: { id: TabType; label: string; count: number }[] = [
-    { id: 'ACTIVE', label: '⏳ Semua Aktif', count: counts.ACTIVE },
-    { id: 'DRAFT_PR', label: '⚙️ Draft PR', count: counts.DRAFT_PR },
-    { id: 'READY_ODOO', label: '🚀 Siap Odoo', count: counts.READY_ODOO },
-    { id: 'TO_APPROVE', label: '⏳ Tunggu Approve', count: counts.TO_APPROVE },
-    { id: 'APPROVED', label: '✓ Disetujui', count: counts.APPROVED },
-    { id: 'PO_RFQ', label: '🚢 Dalam Proses PO', count: counts.PO_RFQ },
-    { id: 'RECEIVED', label: '📦 Closed / Finished', count: counts.RECEIVED },
-    { id: 'ALL', label: '🌐 Semua Dokumen', count: counts.ALL },
+    { id: 'ALL', label: '⏳ Semua Aktif', count: counts.ALL },
+    { id: 'DRAFT', label: '📝 1. Awal PR (Draft)', count: counts.DRAFT },
+    { id: 'APPROVAL', label: '⚖️ 2. Approval & Penawaran', count: counts.APPROVAL },
+    { id: 'PO', label: '🚢 3. PO Terbit', count: counts.PO },
+    { id: 'DONE', label: '📦 Selesai / Riwayat', count: counts.DONE },
   ];
 
   return (
