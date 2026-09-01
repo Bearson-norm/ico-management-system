@@ -924,7 +924,7 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
                       <thead>
                         <tr style={{ background: 'rgba(0,0,0,0.1)' }}>
                           <th style={{ width: 60, textAlign: 'center', paddingLeft: 20 }}>Nomor</th>
-                          <th style={{ minWidth: 260 }}>Nama Barang Pengajuan (Sheets)</th>
+                          <th style={{ minWidth: 260 }}>Nama Barang / Suku Cadang (Odoo)</th>
                           <th style={{ minWidth: 240 }}>Koneksi Database Resmi MTC (Odoo)</th>
                           <th style={{ minWidth: 140, textAlign: 'center' }}>Fondasi Stok</th>
                           <th style={{ width: 80, textAlign: 'center' }}>Qty</th>

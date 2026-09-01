@@ -1878,6 +1878,12 @@ export async function POST(req: NextRequest) {
                 nomorPo: poName,
                 odooNotes: chatterNotes || null,
               };
+              if ((!item.nomorPr || item.nomorPr.trim() === '') && targetPo && targetPo.origin) {
+                const cleanOrigin = targetPo.origin.trim();
+                if (cleanOrigin.toUpperCase().startsWith('PR') || cleanOrigin.toUpperCase().startsWith('TE')) {
+                  updateData.nomorPr = cleanOrigin;
+                }
+              }
               if (isGenericName(item.originalName)) {
                 const lineToUse = matchedLine || (allPoLines && allPoLines[0]);
                 let specificName = lineToUse ? getBestOdooLineName(lineToUse) : null;
