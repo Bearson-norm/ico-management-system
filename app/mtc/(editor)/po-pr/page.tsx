@@ -5,6 +5,8 @@ import { Sparepart, TrackingItem, TabType, CardFilterType } from '@/types/mtc/pr
 import {
   filterItemByTab,
   isClosedOrDone,
+  isOdooGrDone,
+  isPhysicallyReceived,
   isCancelled,
   generateAutoAlias,
   getItemSimplifiedStatus,
@@ -678,20 +680,18 @@ export default function ProcurementTrackingPage() {
         if (item.urgency === 'Urgent') hasUrgent = true;
 
         const itemCancelled = isCancelled(item);
-        const itemDone = isClosedOrDone(item);
+        const itemGrDone = isOdooGrDone(item);
+        const itemStockReceived = isPhysicallyReceived(item);
 
-        if (itemDone) {
+        if (itemGrDone) {
           someDone = true;
         } else if (!itemCancelled) {
           allDone = false;
         }
 
-        if (item.nomorPo && !itemDone && !itemCancelled) {
-          hasPoActive = true;
-        }
         if (item.nomorPo && !itemCancelled) {
           poItemsCount++;
-          if (!itemDone) belumGrCount++;
+          if (!itemGrDone) belumGrCount++;
         }
 
         const dateL = new Date(item.tanggalList);

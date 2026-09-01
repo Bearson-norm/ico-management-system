@@ -26,11 +26,21 @@ export function parseOdooLinks(item: any) {
   return { prUrl, poUrl, grUrl };
 }
 
-export function isClosedOrDone(item: TrackingItem): boolean {
+export function isOdooGrDone(item: TrackingItem): boolean {
   if (!item) return false;
   const statusPr = (item.statusPr || '').toUpperCase();
   const statusPo = (item.statusPo || '').toUpperCase();
-  return !!item.tanggalTerima || statusPo === 'DONE' || statusPr === 'RECEIVED';
+  return statusPo === 'DONE' || statusPr === 'RECEIVED';
+}
+
+export function isPhysicallyReceived(item: TrackingItem): boolean {
+  if (!item) return false;
+  return !!item.tanggalTerima;
+}
+
+export function isClosedOrDone(item: TrackingItem): boolean {
+  if (!item) return false;
+  return isOdooGrDone(item);
 }
 
 export function isCancelled(item: TrackingItem): boolean {
