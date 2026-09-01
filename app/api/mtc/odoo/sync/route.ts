@@ -1941,7 +1941,7 @@ export async function POST(req: NextRequest) {
               if (odooState === 'cancel') {
                 updateData.statusPr = 'CANCELLED';
                 updateData.statusPo = 'CANCELLED';
-              } else if (newReceiptQty > 0 && newReceiptQty < item.qty) {
+              } else if (isPartialOdooGr && newReceiptQty > 0 && newReceiptQty < item.qty && item.statusPo !== 'DONE') {
                 // SPLIT GR HANDLING: Baru diterima sebagian dari porsi pending saat ini
                 updateData.qty = newReceiptQty;
                 updateData.statusPo = 'DONE';
