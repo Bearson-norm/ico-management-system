@@ -177,7 +177,18 @@ export async function createOpnameSession(input: {
   };
 }
 
-export async function getOpnameSession(id: number) {
+export type OpnameSessionDetail = {
+  session: OpnameSessionView;
+  lines: OpnameLineView[];
+  lokasiProgress: LokasiProgress[];
+  /** Jumlah baris qtySistem yang baru disinkron dari stok live; 0 jika tidak ada perubahan / bukan draft. */
+  qtySistemUpdated: number;
+};
+
+export async function getOpnameSession(
+  id: number,
+  extras: { qtySistemUpdated?: number } = {}
+): Promise<OpnameSessionDetail | null> {
   const session = await prismaGa.gaOpnameSession.findUnique({
     where: { id },
     include: {
@@ -194,7 +205,56 @@ export async function getOpnameSession(id: number) {
     session: mapSession(session),
     lines,
     lokasiProgress: buildLokasiProgress(lines),
+    qtySistemUpdated: extras.qtySistemUpdated ?? 0,
   };
+}
+
+/**
+ * Perbarui kolom Sistem (qtySistem) sesi opname draft dari stok live Database Barang.
+ * Dipanggil saat sesi draft dibuka (GET), keyed `itemId` — bukan nama SKU.
+ *
+ * @param sessionId - `ga_opname_session.id`
+ * @returns Detail sesi seperti `getOpnameSession`; `null` jika sesi tidak ada.
+ *
+ * Side effects: menulis `ga_opname_line.qty_sistem` saja, dan hanya jika angkanya berbeda.
+ * Tidak mengubah qty fisik, PIC, status, atau daftar baris.
+ * Gotcha: `waiting_approval` dan `posted` dilewati (posted pakai Recalculate).
+ */
+export async function syncDraftQtySistem(
+  sessionId: number
+): Promise<OpnameSessionDetail | null> {
+  const session = await prismaGa.gaOpnameSession.findUnique({
+    where: { id: sessionId },
+    select: {
+      status: true,
+      lines: { select: { id: true, itemId: true, qtySistem: true } },
+    },
+  });
+  if (!session) return null;
+  if (session.status !== 'draft') {
+    return getOpnameSession(sessionId);
+  }
+
+  const itemIds = session.lines.map((l) => l.itemId);
+  const stockMap = await getGaCurrentStockMap(prismaGa, itemIds);
+
+  const toUpdate = session.lines.filter((l) => {
+    const live = stockMap.get(l.itemId) ?? 0;
+    return l.qtySistem !== live;
+  });
+
+  if (toUpdate.length > 0) {
+    await prismaGa.$transaction(async (tx) => {
+      for (const l of toUpdate) {
+        await tx.gaOpnameLine.update({
+          where: { id: l.id },
+          data: { qtySistem: stockMap.get(l.itemId) ?? 0 },
+        });
+      }
+    });
+  }
+
+  return getOpnameSession(sessionId, { qtySistemUpdated: toUpdate.length });
 }
 
 export async function updateOpnameSessionStatus(

@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { requireGaAuth, requireGaEditor } from '@/lib/auth';
 import { ok, err } from '@/lib/utils';
 import { GaOpnameUpdateLinesSchema } from '@/lib/validations/ga-opname';
-import { getOpnameSession, updateOpnameLines } from '@/lib/ga/opnameService';
+import { syncDraftQtySistem, updateOpnameLines } from '@/lib/ga/opnameService';
 import { prismaGa } from '@/lib/prisma-ga';
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -20,7 +20,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
   const id = parseId(raw);
   if (!id) return err('ID tidak valid');
 
-  const data = await getOpnameSession(id);
+  const data = await syncDraftQtySistem(id);
   if (!data) return err('Sesi tidak ditemukan', 404);
   return ok(data);
 }

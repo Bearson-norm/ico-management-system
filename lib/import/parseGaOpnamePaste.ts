@@ -5,6 +5,8 @@ export type GaOpnamePasteRow = {
   nama: string;
   qty: number;
   picNama: string;
+  /** Opsional: kode barang / item ID jika kolom itu ada di paste */
+  kode?: string;
 };
 
 export type ParseGaOpnamePasteResult = {
@@ -87,7 +89,21 @@ function recordToOpnameRow(row: Record<string, string>): GaOpnamePasteRow | null
   const picNama = cell(row, 'PIC', 'pic', 'Pic', 'NAMA', 'nama pic')?.trim();
   if (!picNama) return null;
 
-  return { nama, qty, picNama };
+  const kode =
+    cell(
+      row,
+      'Kode Barang',
+      'kode barang',
+      'KODE BARANG',
+      'kode',
+      'Item ID',
+      'itemId',
+      'item id',
+      'SKU',
+      'sku'
+    )?.trim() || undefined;
+
+  return { nama, qty, picNama, ...(kode ? { kode } : {}) };
 }
 
 export function parseGaOpnamePaste(text: string): ParseGaOpnamePasteResult {

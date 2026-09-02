@@ -28,6 +28,35 @@ function normalizeName(s: string): string {
   return s.trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
+type LineRef = { id: number; nama: string };
+
+function pushIndex(map: Map<string, LineRef[]>, raw: string | null | undefined, ref: LineRef) {
+  const key = raw ? normalizeName(raw) : '';
+  if (!key) return;
+  const list = map.get(key) ?? [];
+  list.push(ref);
+  map.set(key, list);
+}
+
+/** Urutan: itemId, lalu kodeBarang, lalu nama (dinormalisasi). */
+function resolveLineMatches(
+  row: GaOpnamePasteRow,
+  byItemId: Map<string, LineRef[]>,
+  byKode: Map<string, LineRef[]>,
+  byName: Map<string, LineRef[]>
+): LineRef[] | undefined {
+  const tokens = [row.kode, row.nama].filter((s): s is string => Boolean(s?.trim()));
+  for (const raw of tokens) {
+    const hits = byItemId.get(normalizeName(raw));
+    if (hits?.length) return hits;
+  }
+  for (const raw of tokens) {
+    const hits = byKode.get(normalizeName(raw));
+    if (hits?.length) return hits;
+  }
+  return byName.get(normalizeName(row.nama));
+}
+
 function formatMessage(report: Omit<ImportGaOpnameReport, 'message'>): string {
   let msg = 'Import opname selesai:\n';
   if (report.physicalLines != null && report.mergedLines != null) {
@@ -82,12 +111,14 @@ export async function importGaOpnameBatch(
     include: { item: { select: { nama: true, kodeBarang: true } } },
   });
 
-  const byName = new Map<string, { id: number; nama: string }[]>();
+  const byItemId = new Map<string, LineRef[]>();
+  const byKode = new Map<string, LineRef[]>();
+  const byName = new Map<string, LineRef[]>();
   for (const line of lineRows) {
-    const key = normalizeName(line.item.nama);
-    const list = byName.get(key) ?? [];
-    list.push({ id: line.id, nama: line.item.nama });
-    byName.set(key, list);
+    const ref: LineRef = { id: line.id, nama: line.item.nama };
+    pushIndex(byItemId, line.itemId, ref);
+    pushIndex(byKode, line.item.kodeBarang, ref);
+    pushIndex(byName, line.item.nama, ref);
   }
 
   const skippedRows: ImportGaOpnameIssue[] = [];
@@ -107,8 +138,7 @@ export async function importGaOpnameBatch(
   for (let i = 0; i < rows.length; i++) {
     const lineNo = i + 1;
     const row = rows[i];
-    const key = normalizeName(row.nama);
-    const matches = byName.get(key);
+    const matches = resolveLineMatches(row, byItemId, byKode, byName);
 
     if (!matches?.length) {
       skipped++;
@@ -116,7 +146,7 @@ export async function importGaOpnameBatch(
         skippedRows.push({
           line: lineNo,
           nama: row.nama,
-          reason: 'Nama barang tidak ditemukan di sesi opname ini',
+          reason: 'Barang tidak ditemukan di sesi opname ini (nama/kode/ID)',
         });
       }
       continue;
@@ -128,7 +158,7 @@ export async function importGaOpnameBatch(
         skippedRows.push({
           line: lineNo,
           nama: row.nama,
-          reason: 'Nama barang ambigu (lebih dari 1 item di sesi)',
+          reason: 'Barang ambigu (lebih dari 1 item di sesi)',
         });
       }
       continue;

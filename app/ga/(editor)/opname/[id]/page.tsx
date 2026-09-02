@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import {
   buildLokasiProgress,
@@ -87,8 +87,11 @@ export default function GaOpnameDetailPage() {
   const [recalcPreview, setRecalcPreview] = useState<RecalcPreview | null>(null);
   const [recalculating, setRecalculating] = useState(false);
   const [showBackdateDetail, setShowBackdateDetail] = useState(false);
+  const [sistemSyncedCount, setSistemSyncedCount] = useState(0);
+  const linesRef = useRef<Line[]>([]);
 
   const isDraft = session?.status === 'draft';
+  linesRef.current = lines;
 
   function isLineCounted(l: Line) {
     if (!isDraft) return l.counted;
@@ -118,14 +121,28 @@ export default function GaOpnameDetailPage() {
       const res = await fetch(`/api/ga/opname/${id}`);
       const j = await res.json();
       if (j.success) {
+        const newLines = j.data.lines as Line[];
+        const prevById = new Map(linesRef.current.map((l) => [l.id, l]));
         setSession(j.data.session);
-        setLines(j.data.lines);
-        const d: Record<number, string> = {};
-        for (const l of j.data.lines as Line[]) {
-          d[l.id] = l.qtyFisik != null ? String(l.qtyFisik) : '';
-        }
-        setDraft(d);
+        setLines(newLines);
+        setDraft((prev) => {
+          const next: Record<number, string> = {};
+          for (const l of newLines) {
+            const serverVal = l.qtyFisik != null ? String(l.qtyFisik) : '';
+            const prevLine = prevById.get(l.id);
+            const prevDraft = prev[l.id];
+            const prevServerVal = prevLine?.qtyFisik != null ? String(prevLine.qtyFisik) : '';
+            if (prevDraft !== undefined && prevLine && prevServerVal === serverVal) {
+              next[l.id] = prevDraft;
+            } else {
+              next[l.id] = serverVal;
+            }
+          }
+          return next;
+        });
         setPostForm((f) => ({ ...f, tanggal: j.data.session.tanggal }));
+
+        setSistemSyncedCount(Number(j.data.qtySistemUpdated) || 0);
 
         if (j.data.session.status === 'posted') {
           try {
@@ -574,6 +591,11 @@ export default function GaOpnameDetailPage() {
       <div className="page-body">
         {msg && <div className="ga-alert-success" style={{ marginBottom: 12 }}>{msg}</div>}
         {err && <div className="ga-alert-error" style={{ marginBottom: 12 }}>{err}</div>}
+        {isDraft && sistemSyncedCount > 0 && (
+          <div className="ga-alert-success" style={{ marginBottom: 12 }}>
+            Stok sistem diperbarui dari Database Barang berdasarkan ID barang ({sistemSyncedCount} SKU). Qty fisik tidak diubah.
+          </div>
+        )}
 
         {session.status === 'posted' && recalcPreview && recalcPreview.backdate.count > 0 && (
           <div
