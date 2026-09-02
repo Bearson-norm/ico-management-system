@@ -6,7 +6,7 @@ import { useSession } from 'next-auth/react';
 import ShellLayout from '@/components/shared/ShellLayout';
 
 export default function MtcOpnameStandaloneDashboardPage() {
-  const { data: sessionData } = useSession();
+  const { data: sessionData, status: authStatus } = useSession();
   const isEditor = (sessionData?.user as any)?.role === 'editor';
 
   const [sessions, setSessions] = useState<any[]>([]);
@@ -74,6 +74,28 @@ export default function MtcOpnameStandaloneDashboardPage() {
     }
   }
 
+  if (authStatus === 'loading' || (loading && sessions.length === 0)) {
+    return (
+      <div style={{ padding: 60, textAlign: 'center', color: '#94a3b8', fontFamily: 'Inter, sans-serif' }}>
+        <div style={{ fontSize: 28, marginBottom: 12 }}>⏳</div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>Memuat modul Stock Opname MTC...</div>
+      </div>
+    );
+  }
+
+  if (!isEditor) {
+    return (
+      <div style={{ padding: 60, textAlign: 'center', color: '#fff', fontFamily: 'Inter, sans-serif' }}>
+        <div style={{ fontSize: 36, marginBottom: 12 }}>🔒</div>
+        <h2>Akses Ditolak</h2>
+        <p style={{ color: '#94a3b8', fontSize: 13 }}>Halaman Stock Opname hanya dapat diakses oleh user dengan hak akses <strong>Editor / Maintenance Administrator</strong>.</p>
+        <Link href="/mtc/stock" style={{ color: '#38bdf8', textDecoration: 'underline', marginTop: 16, display: 'inline-block' }}>
+          ← Buka Halaman Stok Sparepart
+        </Link>
+      </div>
+    );
+  }
+
   // Stats calculation
   const totalDraft = sessions.filter(s => s.status === 'DRAFT').length;
   const totalWaiting = sessions.filter(s => s.status === 'WAITING_APPROVAL').length;
@@ -81,11 +103,11 @@ export default function MtcOpnameStandaloneDashboardPage() {
 
   const content = (
     <div style={{
-      minHeight: isEditor ? 'auto' : '100vh',
+      minHeight: 'auto',
       background: 'var(--bg1, #0f172a)',
       color: 'var(--tx1, #f8fafc)',
       fontFamily: 'Inter, system-ui, sans-serif',
-      padding: isEditor ? '0 0 40px 0' : '16px 20px 80px 20px'
+      paddingBottom: 60
     }}>
       {/* Top Navbar */}
       <div style={{
@@ -100,7 +122,7 @@ export default function MtcOpnameStandaloneDashboardPage() {
           <span style={{ fontSize: 24 }}>📋</span>
           <div>
             <div style={{ fontSize: 18, fontWeight: 900, letterSpacing: '-0.02em' }}>Stock Opname MTC</div>
-            <div style={{ fontSize: 11, color: 'var(--tx3, #94a3b8)' }}>Modul Stock Opname</div>
+            <div style={{ fontSize: 11, color: 'var(--tx3, #94a3b8)' }}>Modul Audit Stok Fisik Sparepart & Maintenance</div>
           </div>
         </div>
       </div>
@@ -129,11 +151,11 @@ export default function MtcOpnameStandaloneDashboardPage() {
               padding: '3px 8px',
               borderRadius: 12
             }}>
-              Modul MTC
+              Khusus Editor MTC
             </span>
           </div>
           <p style={{ margin: 0, color: 'var(--tx2, #cbd5e1)', fontSize: 13, maxWidth: 540 }}>
-            Kelola sesi audit fisik gudang, buat sesi opname baru, dan tinjau rekapitulasi hasil opname.
+            Cetak lembar kerja fisik untuk hitung di gudang, input hasil opname secara cepat, dan tinjau selisih sebelum di-ACC.
           </p>
         </div>
 
@@ -179,59 +201,45 @@ export default function MtcOpnameStandaloneDashboardPage() {
           <div style={{ fontSize: 10, color: 'var(--tx3, #94a3b8)', fontWeight: 700, textTransform: 'uppercase' }}>Ter-posting (Selesai)</div>
           <div style={{ fontSize: 22, fontWeight: 900, color: '#22c55e', marginTop: 2 }}>{totalPosted} <span style={{ fontSize: 11, fontWeight: 500 }}>Sesi</span></div>
         </div>
-
-        <div style={{ background: 'var(--bg2, rgba(255,255,255,0.03))', border: '1px solid var(--bdr, rgba(255,255,255,0.1))', padding: 16, borderRadius: 12, borderLeft: '4px solid #3b82f6' }}>
-          <div style={{ fontSize: 10, color: 'var(--tx3, #94a3b8)', fontWeight: 700, textTransform: 'uppercase' }}>Total Seluruh Audit</div>
-          <div style={{ fontSize: 22, fontWeight: 900, color: 'var(--tx1, #fff)', marginTop: 2 }}>{sessions.length} <span style={{ fontSize: 11, fontWeight: 500 }}>Sesi</span></div>
-        </div>
       </div>
 
-      {/* Sessions List */}
-      <div style={{ background: 'var(--bg2, rgba(255,255,255,0.03))', border: '1px solid var(--bdr, rgba(255,255,255,0.1))', padding: 20, borderRadius: 16 }}>
-        <h3 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span>📑</span> Daftar Sesi Audit Stock Opname
-        </h3>
+      {/* Session List */}
+      <div style={{
+        background: 'var(--bg2, rgba(255,255,255,0.03))',
+        border: '1px solid var(--bdr, rgba(255,255,255,0.1))',
+        borderRadius: 16,
+        padding: 20
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div style={{ fontSize: 16, fontWeight: 800 }}>Daftar Sesi Stock Opname</div>
+          <div style={{ fontSize: 12, color: 'var(--tx3, #94a3b8)' }}>Total: {sessions.length} Sesi</div>
+        </div>
 
-        {loading ? (
-          <div style={{ padding: 40, textAlign: 'center', color: 'var(--tx3, #94a3b8)' }}>
-            ⏳ Memuat daftar sesi Stock Opname...
-          </div>
-        ) : sessions.length === 0 ? (
-          <div style={{ padding: 40, textAlign: 'center', border: '2px dashed var(--bdr, rgba(255,255,255,0.1))', borderRadius: 12 }}>
-            <span style={{ fontSize: 36, display: 'block', marginBottom: 8 }}>📋</span>
-            <div style={{ fontWeight: 700, fontSize: 15 }}>Belum ada sesi Stock Opname</div>
-            <p style={{ color: 'var(--tx3, #94a3b8)', fontSize: 13, margin: '6px 0 16px 0' }}>
-              Klik tombol di bawah untuk membuat sesi audit stok fisik baru bersama tim teknisi.
-            </p>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              style={{
-                padding: '8px 16px',
-                background: '#a855f7',
-                color: '#fff',
-                border: 'none',
-                borderRadius: 8,
-                fontWeight: 700,
-                fontSize: 12,
-                cursor: 'pointer'
-              }}
-            >
-              ➕ Buat Sesi Opname Pertama
-            </button>
+        {sessions.length === 0 ? (
+          <div style={{
+            textAlign: 'center',
+            padding: 40,
+            color: 'var(--tx3, #94a3b8)',
+            border: '2px dashed var(--bdr, rgba(255,255,255,0.1))',
+            borderRadius: 12
+          }}>
+            <span style={{ fontSize: 32, display: 'block', marginBottom: 8 }}>📋</span>
+            Belum ada sesi Stock Opname yang dibuat. Klik tombol <strong>+ Buat Sesi Opname Baru</strong> di atas untuk memulai.
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {sessions.map(s => {
-              let statusBadge = (
-                <span style={{ background: 'rgba(234, 179, 8, 0.2)', color: '#eab308', padding: '4px 10px', fontSize: 11, fontWeight: 800, borderRadius: 12 }}>
-                  ⏳ DRAFT (Sedang Dihitung)
-                </span>
-              );
-
-              if (s.status === 'WAITING_APPROVAL') {
+            {sessions.map((s) => {
+              let statusBadge = null;
+              if (s.status === 'DRAFT') {
+                statusBadge = (
+                  <span style={{ background: 'rgba(234, 179, 8, 0.2)', color: '#eab308', padding: '4px 10px', fontSize: 11, fontWeight: 800, borderRadius: 12 }}>
+                    ⏳ DRAFT (HITUNG FISIK)
+                  </span>
+                );
+              } else if (s.status === 'WAITING_APPROVAL') {
                 statusBadge = (
                   <span style={{ background: 'rgba(168, 85, 247, 0.2)', color: '#c084fc', padding: '4px 10px', fontSize: 11, fontWeight: 800, borderRadius: 12 }}>
-                    📤 MENUNGGU ACC MANAGER
+                    📤 MENUNGGU ACC
                   </span>
                 );
               } else if (s.status === 'POSTED') {
@@ -267,7 +275,7 @@ export default function MtcOpnameStandaloneDashboardPage() {
                   <div style={{ flex: 1, minWidth: 260 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                       <span style={{ fontWeight: 800, fontSize: 15, color: 'var(--tx1, #fff)' }}>{s.judul}</span>
-                      <span style={{ fontSize: 11, color: 'var(--tx3, #94a3b8)' }}>#{s.id}</span>
+                      <span style={{ fontSize: 11, color: 'var(--tx3, #94a3b8)', fontFamily: 'monospace' }}>#SO-{s.id}</span>
                     </div>
 
                     <div style={{ fontSize: 12, color: 'var(--tx2, #cbd5e1)', display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 6 }}>
@@ -286,7 +294,7 @@ export default function MtcOpnameStandaloneDashboardPage() {
                         <div style={{
                           width: `${s.progressPct}%`,
                           height: '100%',
-                          background: s.progressPct === 100 ? '#22c55e' : 'linear-gradient(90deg, #a855f7, #3b82f6)',
+                          background: s.progressPct === 100 ? '#22c55e' : 'linear-gradient(90deg, #a855f7, #38bdf8)',
                           borderRadius: 3,
                           transition: 'width 0.3s'
                         }} />
@@ -294,10 +302,10 @@ export default function MtcOpnameStandaloneDashboardPage() {
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                     {statusBadge}
 
-                    <div style={{ display: 'flex', gap: 8 }}>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       <Link
                         href={`/mtc/opname/${s.id}`}
                         style={{
@@ -310,22 +318,42 @@ export default function MtcOpnameStandaloneDashboardPage() {
                           borderRadius: 8
                         }}
                       >
-                        📱 Buka Form Hitung
+                        ⚡ Input & Hitung
                       </Link>
 
                       <Link
-                        href={`/mtc/opname/${s.id}/print`}
+                        href={`/mtc/opname/${s.id}/print?mode=form`}
+                        target="_blank"
+                        style={{
+                          padding: '8px 12px',
+                          fontSize: 12,
+                          fontWeight: 700,
+                          background: 'rgba(59, 130, 246, 0.2)',
+                          border: '1px solid rgba(59, 130, 246, 0.4)',
+                          color: '#fff',
+                          textDecoration: 'none',
+                          borderRadius: 8
+                        }}
+                        title="Cetak lembar kerja fisik blanko"
+                      >
+                        📋 Form Fisik
+                      </Link>
+
+                      <Link
+                        href={`/mtc/opname/${s.id}/print?mode=report`}
                         target="_blank"
                         style={{
                           padding: '8px 12px',
                           fontSize: 12,
                           background: 'rgba(255,255,255,0.08)',
+                          border: '1px solid rgba(255,255,255,0.12)',
                           color: '#fff',
                           textDecoration: 'none',
                           borderRadius: 8
                         }}
+                        title="Cetak laporan rekapitulasi hasil"
                       >
-                        🖨️ Cetak
+                        📊 Laporan
                       </Link>
                     </div>
                   </div>
@@ -389,7 +417,7 @@ export default function MtcOpnameStandaloneDashboardPage() {
                 </label>
                 <input
                   type="text"
-                  placeholder="Kosongkan untuk SEMUA rak, atau ketik nama rak (misal: Rak A1)"
+                  placeholder="Kosongkan untuk semua rak gudang, atau isi: Rak 1, 2-C-211..."
                   value={lokasi}
                   onChange={e => setLokasi(e.target.value)}
                   style={{
@@ -458,9 +486,5 @@ export default function MtcOpnameStandaloneDashboardPage() {
     </div>
   );
 
-  if (isEditor) {
-    return <ShellLayout>{content}</ShellLayout>;
-  }
-
-  return content;
+  return <ShellLayout>{content}</ShellLayout>;
 }

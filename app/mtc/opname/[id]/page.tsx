@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
+import ShellLayout from '@/components/shared/ShellLayout';
 
-export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id: string } }) {
+export default function MtcOpnameDetailPage({ params }: { params: { id: string } }) {
   const sessionId = params.id;
-  const { data: sessionData } = useSession();
+  const { data: sessionData, status: authStatus } = useSession();
   const isEditor = (sessionData?.user as any)?.role === 'editor';
 
   const [session, setSession] = useState<any>(null);
@@ -16,13 +17,17 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
   const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Filter states
+  // View Mode: 'table' (Fast Spreadsheet Input Mode) vs 'cards' (Mobile Card View)
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+
+  // Filter & Sort states
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING' | 'MATCH' | 'PLUS' | 'MINUS'>('ALL');
   const [selectedLocation, setSelectedLocation] = useState<string>('ALL');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
+  const [sortBy, setSortBy] = useState<'location' | 'default' | 'name' | 'uncounted_first' | 'variance_first'>('location');
 
-  // Multi-user technician name
+  // Auditor name
   const [technicianName, setTechnicianName] = useState('');
   const [focusedItemId, setFocusedItemId] = useState<number | null>(null);
 
@@ -48,25 +53,28 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
   // Status submitting & action states
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
+  // Refs for keyboard navigation in fast table mode
+  const inputRefs = useRef<{ [key: number]: HTMLInputElement | null }>({});
+
   useEffect(() => {
-    // Load technician name from localStorage
+    // Load technician name from localStorage or session
     if (typeof window !== 'undefined') {
-      const savedName = localStorage.getItem('mtc_opname_auditor_name') || '';
+      const savedName = localStorage.getItem('mtc_opname_auditor_name') || sessionData?.user?.name || '';
       setTechnicianName(savedName);
     }
 
     fetchOpnameDetail();
 
-    // Auto refresh data every 8 seconds for real-time collaboration
+    // Auto refresh data every 10 seconds for real-time collaboration
     const timer = setInterval(() => {
       fetchOpnameDetail(false);
-    }, 8000);
+    }, 10000);
 
     return () => clearInterval(timer);
-  }, [sessionId]);
+  }, [sessionId, sessionData]);
 
   async function fetchOpnameDetail(showLoader = true) {
-    if (!showLoader && focusedItemId !== null) return; // Skip background refresh while user is actively typing
+    if (!showLoader && focusedItemId !== null) return; // Skip background refresh while actively typing
     if (showLoader) setLoading(true);
     try {
       const res = await fetch(`/api/mtc/opname/${sessionId}`);
@@ -89,19 +97,14 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
 
   // Atomic single item update
   async function handleUpdateCount(itemId: number, newQty: number | null, itemNotes?: string) {
-    if (!technicianName.trim()) {
-      const inputName = prompt('Masukkan nama Anda (Teknisi Audit):');
-      if (!inputName || !inputName.trim()) {
-        alert('Nama teknisi wajib diisi untuk mencatat penanggung jawab audit!');
-        return;
-      }
-      setTechnicianName(inputName.trim());
+    let currentAuditor = technicianName.trim();
+    if (!currentAuditor) {
+      currentAuditor = (sessionData?.user as any)?.name || (sessionData?.user as any)?.email || 'Teknisi MTC';
+      setTechnicianName(currentAuditor);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('mtc_opname_auditor_name', inputName.trim());
+        localStorage.setItem('mtc_opname_auditor_name', currentAuditor);
       }
     }
-
-    const currentAuditor = technicianName.trim() || 'Teknisi MTC';
 
     // Optimistic UI update
     setItems(prev => prev.map(item => {
@@ -137,6 +140,42 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
       }
     } catch (e) {
       console.error('Error saving atomic item count:', e);
+    }
+  }
+
+  // Bulk Match All Uncounted Items
+  async function handleBulkMatchUncounted() {
+    const uncountedCount = items.filter(i => i.qtyFisik === null).length;
+    if (uncountedCount === 0) {
+      alert('Semua item sudah memiliki data hitungan fisik.');
+      return;
+    }
+
+    if (!confirm(`Apakah Anda yakin ingin mengisi ${uncountedCount} item yang BELUM dihitung agar SAMA DENGAN STOK SISTEM (Selisih 0)?\n\nFitur ini cocok digunakan jika mayoritas barang di rak sudah dipastikan sesuai.`)) {
+      return;
+    }
+
+    setActionLoading('bulk-match');
+    try {
+      const res = await fetch(`/api/mtc/opname/${sessionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'bulk_match_uncounted',
+          auditedBy: technicianName.trim() || sessionData?.user?.name || 'Teknisi MTC'
+        })
+      });
+      const json = await res.json();
+      if (json.success) {
+        alert(json.data.msg || '✓ Berhasil menyamakan stok fisik sesuai sistem!');
+        await fetchOpnameDetail(true);
+      } else {
+        alert(`Gagal bulk match: ${json.error}`);
+      }
+    } catch (e) {
+      alert('Terjadi kesalahan jaringan.');
+    } finally {
+      setActionLoading(null);
     }
   }
 
@@ -323,51 +362,122 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
     }
   }
 
-  // Filtered items
-  const filteredItems = items.filter(item => {
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      const matchName = item.namaItem?.toLowerCase().includes(q);
-      const matchKat = item.kategori?.toLowerCase().includes(q);
-      const matchLok = item.lokasi?.toLowerCase().includes(q);
-      const matchSp = item.sparepartId?.toLowerCase().includes(q);
-      if (!matchName && !matchKat && !matchLok && !matchSp) return false;
-    }
+  // Filtered & Sorted items
+  const filteredItems = useMemo(() => {
+    let result = items.filter(item => {
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        const matchName = item.namaItem?.toLowerCase().includes(q);
+        const matchKat = item.kategori?.toLowerCase().includes(q);
+        const matchLok = item.lokasi?.toLowerCase().includes(q);
+        const matchSp = item.sparepartId?.toLowerCase().includes(q);
+        if (!matchName && !matchKat && !matchLok && !matchSp) return false;
+      }
 
-    if (selectedLocation !== 'ALL') {
-      if ((item.lokasi || '') !== selectedLocation) return false;
-    }
+      if (selectedLocation !== 'ALL') {
+        if ((item.lokasi || '') !== selectedLocation) return false;
+      }
 
-    if (selectedCategory !== 'ALL') {
-      if ((item.kategori || '') !== selectedCategory) return false;
-    }
+      if (selectedCategory !== 'ALL') {
+        if ((item.kategori || '') !== selectedCategory) return false;
+      }
 
-    if (activeTab === 'PENDING') {
-      if (item.id === focusedItemId) return true; // Keep card visible while user is actively typing
-      return !item.isCounted;
-    }
-    if (activeTab === 'MATCH') return item.isCounted && item.selisih === 0;
-    if (activeTab === 'PLUS') return item.isCounted && item.selisih > 0;
-    if (activeTab === 'MINUS') return item.isCounted && item.selisih < 0;
+      if (activeTab === 'PENDING') {
+        if (item.id === focusedItemId) return true;
+        return item.qtyFisik === null || item.qtyFisik === undefined;
+      }
+      if (activeTab === 'MATCH') return item.qtyFisik !== null && item.selisih === 0;
+      if (activeTab === 'PLUS') return item.qtyFisik !== null && item.selisih > 0;
+      if (activeTab === 'MINUS') return item.qtyFisik !== null && item.selisih < 0;
 
-    return true;
-  });
+      return true;
+    });
+
+    // Sorting
+    result.sort((a, b) => {
+      if (sortBy === 'location') {
+        const locA = a.lokasi || '';
+        const locB = b.lokasi || '';
+        if (locA !== locB) return locA.localeCompare(locB);
+        return (a.namaItem || '').localeCompare(b.namaItem || '');
+      }
+      if (sortBy === 'name') {
+        return (a.namaItem || '').localeCompare(b.namaItem || '');
+      }
+      if (sortBy === 'uncounted_first') {
+        const aCounted = a.qtyFisik !== null ? 1 : 0;
+        const bCounted = b.qtyFisik !== null ? 1 : 0;
+        if (aCounted !== bCounted) return aCounted - bCounted;
+        return (a.lokasi || '').localeCompare(b.lokasi || '');
+      }
+      if (sortBy === 'variance_first') {
+        const aVar = Math.abs(a.selisih || 0);
+        const bVar = Math.abs(b.selisih || 0);
+        return bVar - aVar;
+      }
+      return a.id - b.id; // default
+    });
+
+    return result;
+  }, [items, search, selectedLocation, selectedCategory, activeTab, sortBy, focusedItemId]);
 
   const fmtCurrency = (val: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
   };
 
-  if (loading) {
+  // Keyboard navigation handler for fast table entry
+  function handleInputKeyDown(e: React.KeyboardEvent<HTMLInputElement>, currentIndex: number, item: any) {
+    if (e.key === 'Enter' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      const nextItem = filteredItems[currentIndex + 1];
+      if (nextItem && inputRefs.current[nextItem.id]) {
+        inputRefs.current[nextItem.id]?.focus();
+        inputRefs.current[nextItem.id]?.select();
+      }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const prevItem = filteredItems[currentIndex - 1];
+      if (prevItem && inputRefs.current[prevItem.id]) {
+        inputRefs.current[prevItem.id]?.focus();
+        inputRefs.current[prevItem.id]?.select();
+      }
+    } else if (e.key === '=') {
+      // Shortcut '=' sets value to system qty
+      e.preventDefault();
+      handleUpdateCount(item.id, item.qtySistem);
+      const nextItem = filteredItems[currentIndex + 1];
+      if (nextItem && inputRefs.current[nextItem.id]) {
+        inputRefs.current[nextItem.id]?.focus();
+        inputRefs.current[nextItem.id]?.select();
+      }
+    }
+  }
+
+  if (authStatus === 'loading' || loading) {
     return (
-      <div style={{ padding: 60, textAlign: 'center', color: 'var(--tx3, #94a3b8)' }}>
-        ⏳ Memuat form Stock Opname...
+      <div style={{ padding: 60, textAlign: 'center', color: '#94a3b8', fontFamily: 'Inter, sans-serif' }}>
+        <div style={{ fontSize: 28, marginBottom: 12 }}>⏳</div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>Memuat data Stock Opname MTC...</div>
+      </div>
+    );
+  }
+
+  if (!isEditor) {
+    return (
+      <div style={{ padding: 60, textAlign: 'center', color: '#fff', fontFamily: 'Inter, sans-serif' }}>
+        <div style={{ fontSize: 36, marginBottom: 12 }}>🔒</div>
+        <h2>Akses Ditolak</h2>
+        <p style={{ color: '#94a3b8', fontSize: 13 }}>Halaman Stock Opname hanya dapat diakses oleh user dengan hak akses <strong>Editor / Maintenance Administrator</strong>.</p>
+        <Link href="/mtc/stock" style={{ color: '#38bdf8', textDecoration: 'underline', marginTop: 16, display: 'inline-block' }}>
+          ← Buka Halaman Stok Sparepart
+        </Link>
       </div>
     );
   }
 
   if (!session) {
     return (
-      <div style={{ padding: 40, textAlign: 'center', color: '#fff' }}>
+      <div style={{ padding: 60, textAlign: 'center', color: '#fff', fontFamily: 'Inter, sans-serif' }}>
         <h2>Sesi Stock Opname Tidak Ditemukan</h2>
         <Link href="/mtc/opname" style={{ color: '#a855f7', textDecoration: 'underline', marginTop: 16, display: 'inline-block' }}>
           ← Kembali ke Daftar Opname
@@ -378,63 +488,100 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
 
   const isReadOnly = session.status === 'POSTED';
 
-  return (
+  const content = (
     <div style={{
       minHeight: '100vh',
       background: 'var(--bg1, #0f172a)',
       color: 'var(--tx1, #f8fafc)',
       fontFamily: 'Inter, system-ui, sans-serif',
-      paddingBottom: 110
+      paddingBottom: 120
     }}>
-      {/* Sticky Navigation & Metadata Bar */}
+      {/* Sticky Header Bar */}
       <div style={{
         position: 'sticky',
         top: 0,
         zIndex: 100,
         background: '#1e293b',
         borderBottom: '1px solid rgba(255,255,255,0.1)',
-        padding: '12px 16px',
+        padding: '12px 18px',
         marginBottom: 16,
-        boxShadow: '0 4px 12px rgba(0,0,0,0.25)'
+        boxShadow: '0 4px 14px rgba(0,0,0,0.35)'
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            {isEditor ? (
-              <Link href="/mtc/opname" style={{ textDecoration: 'none', fontSize: 20, color: '#94a3b8' }} title="Kembali ke Daftar Opname">
-                ←
-              </Link>
-            ) : (
-              <span style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 10, fontWeight: 800, padding: '4px 8px', borderRadius: 6 }}>
-                FOOM MTC
-              </span>
-            )}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Link href="/mtc/opname" style={{ textDecoration: 'none', fontSize: 20, color: '#94a3b8' }} title="Kembali ke Daftar Opname">
+              ←
+            </Link>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#fff' }}>{session.judul}</h2>
-                <span style={{ fontSize: 11, color: '#94a3b8' }}>#{session.id}</span>
+                <span style={{ fontSize: 11, color: '#94a3b8', fontFamily: 'monospace' }}>#SO-{session.id}</span>
               </div>
               <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
-                📍 {session.lokasi || 'Semua Rak Gudang'} · {stats?.countedItems}/{stats?.totalItems} Item ({stats?.progressPct}%)
+                📍 {session.lokasi || 'Semua Rak Gudang'} · {stats?.countedItems}/{stats?.totalItems} Item Terhitung ({stats?.progressPct}%)
               </div>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             {session.status === 'DRAFT' && (
-              <span style={{ background: 'rgba(234, 179, 8, 0.2)', color: '#eab308', padding: '4px 8px', fontSize: 10, fontWeight: 800, borderRadius: 10 }}>
+              <span style={{ background: 'rgba(234, 179, 8, 0.2)', color: '#eab308', padding: '4px 10px', fontSize: 11, fontWeight: 800, borderRadius: 10 }}>
                 ⏳ DRAFT
               </span>
             )}
             {session.status === 'WAITING_APPROVAL' && (
-              <span style={{ background: 'rgba(168, 85, 247, 0.2)', color: '#c084fc', padding: '4px 8px', fontSize: 10, fontWeight: 800, borderRadius: 10 }}>
+              <span style={{ background: 'rgba(168, 85, 247, 0.2)', color: '#c084fc', padding: '4px 10px', fontSize: 11, fontWeight: 800, borderRadius: 10 }}>
                 📤 MENUNGGU ACC
               </span>
             )}
             {session.status === 'POSTED' && (
-              <span style={{ background: 'rgba(34, 197, 94, 0.2)', color: '#4ade80', padding: '4px 8px', fontSize: 10, fontWeight: 800, borderRadius: 10 }}>
+              <span style={{ background: 'rgba(34, 197, 94, 0.2)', color: '#4ade80', padding: '4px 10px', fontSize: 11, fontWeight: 800, borderRadius: 10 }}>
                 ✓ TER-POSTING
               </span>
             )}
+
+            {/* Print Shortcuts */}
+            <Link
+              href={`/mtc/opname/${sessionId}/print?mode=form`}
+              target="_blank"
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: '#fff',
+                background: 'rgba(59, 130, 246, 0.2)',
+                border: '1px solid rgba(59, 130, 246, 0.4)',
+                padding: '6px 12px',
+                borderRadius: 8,
+                textDecoration: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4
+              }}
+              title="Cetak lembar kerja fisik blanko untuk pencatatan di atas kertas di lapangan"
+            >
+              📋 Cetak Form Fisik
+            </Link>
+
+            <Link
+              href={`/mtc/opname/${sessionId}/print?mode=report`}
+              target="_blank"
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: '#fff',
+                background: 'rgba(255,255,255,0.1)',
+                border: '1px solid rgba(255,255,255,0.15)',
+                padding: '6px 12px',
+                borderRadius: 8,
+                textDecoration: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4
+              }}
+              title="Cetak laporan rekapitulasi hasil opname"
+            >
+              📊 Cetak Laporan
+            </Link>
 
             {isEditor && (session.status === 'POSTED' || session.status === 'WAITING_APPROVAL') && (
               <button
@@ -455,10 +602,6 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
                 {actionLoading === 'unpost-opname' ? '⏳ Resetting...' : '↩️ Batal ACC'}
               </button>
             )}
-
-            <Link href={`/mtc/opname/${sessionId}/print`} target="_blank" style={{ fontSize: 11, color: '#fff', background: 'rgba(255,255,255,0.1)', padding: '6px 12px', borderRadius: 8, textDecoration: 'none' }}>
-              🖨️ Cetak
-            </Link>
           </div>
         </div>
 
@@ -467,14 +610,14 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
           <div style={{
             width: `${stats?.progressPct || 0}%`,
             height: '100%',
-            background: stats?.progressPct === 100 ? '#22c55e' : 'linear-gradient(90deg, #a855f7, #3b82f6)',
+            background: stats?.progressPct === 100 ? '#22c55e' : 'linear-gradient(90deg, #a855f7, #38bdf8)',
             transition: 'width 0.3s'
           }} />
         </div>
       </div>
 
-      <div style={{ padding: '0 16px' }}>
-        {/* Auditor Name Input Banner */}
+      <div style={{ padding: '0 18px' }}>
+        {/* Auditor & Quick Action Banner */}
         <div style={{
           padding: 14,
           marginBottom: 16,
@@ -483,47 +626,88 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
           alignItems: 'center',
           justifyContent: 'space-between',
           flexWrap: 'wrap',
-          gap: 10,
+          gap: 12,
           background: 'rgba(59, 130, 246, 0.1)',
-          border: '1px solid rgba(59, 130, 246, 0.3)'
+          border: '1px solid rgba(59, 130, 246, 0.25)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 20 }}>👤</span>
+            <span style={{ fontSize: 22 }}>👤</span>
             <div>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#60a5fa', textTransform: 'uppercase' }}>Nama Teknisi Audit (Petugas Hitung)</div>
-              <div style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>{technicianName || 'Belum diisi (Klik Set Nama)'}</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#60a5fa', textTransform: 'uppercase' }}>Teknisi Audit / Penginput Data</div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>{technicianName || 'Belum diisi'}</div>
             </div>
+            <button
+              onClick={() => {
+                const name = prompt('Masukkan Nama Anda untuk dicatat di setiap item yang dihitung:', technicianName);
+                if (name && name.trim()) {
+                  setTechnicianName(name.trim());
+                  if (typeof window !== 'undefined') {
+                    localStorage.setItem('mtc_opname_auditor_name', name.trim());
+                  }
+                }
+              }}
+              style={{
+                padding: '4px 10px',
+                fontSize: 11,
+                borderRadius: 6,
+                border: '1px solid #60a5fa',
+                background: 'transparent',
+                color: '#60a5fa',
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
+            >
+              ✏️ Ganti Nama
+            </button>
           </div>
 
-          <button
-            onClick={() => {
-              const name = prompt('Masukkan Nama Anda untuk dicatat di setiap item yang dihitung:', technicianName);
-              if (name && name.trim()) {
-                setTechnicianName(name.trim());
-                if (typeof window !== 'undefined') {
-                  localStorage.setItem('mtc_opname_auditor_name', name.trim());
-                }
-              }
-            }}
-            style={{
-              padding: '6px 12px',
-              fontSize: 11,
-              borderRadius: 8,
-              border: '1px solid #60a5fa',
-              background: 'transparent',
-              color: '#60a5fa',
-              fontWeight: 700,
-              cursor: 'pointer'
-            }}
-          >
-            ✏️ Set / Ganti Nama
-          </button>
+          {/* Quick Bulk Tools */}
+          {!isReadOnly && (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <button
+                onClick={handleBulkMatchUncounted}
+                disabled={actionLoading === 'bulk-match'}
+                style={{
+                  padding: '7px 14px',
+                  borderRadius: 8,
+                  border: '1px solid rgba(34, 197, 94, 0.4)',
+                  background: 'rgba(34, 197, 94, 0.15)',
+                  color: '#4ade80',
+                  fontSize: 11,
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4
+                }}
+                title="Isi sekaligus semua item yang belum dihitung agar sama dengan stok sistem (Selisih 0)"
+              >
+                {actionLoading === 'bulk-match' ? '⏳ Memproses...' : '⚡ Samakan Sisa Belum Hitung = Sistem'}
+              </button>
+
+              <button
+                onClick={() => setShowAddUnlistedModal(true)}
+                style={{
+                  padding: '7px 14px',
+                  borderRadius: 8,
+                  border: '1px solid rgba(168, 85, 247, 0.4)',
+                  background: 'rgba(168, 85, 247, 0.15)',
+                  color: '#c084fc',
+                  fontSize: 11,
+                  fontWeight: 800,
+                  cursor: 'pointer'
+                }}
+              >
+                ➕ Barang Tidak Terdaftar
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Audit Stats Summary Cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 16 }}>
           <div style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: 12, textAlign: 'center', borderTop: '3px solid #0284c7' }}>
-            <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700 }}>🎯 AKURASI STOK</div>
+            <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700 }}>🎯 AKURASI DATA</div>
             <div style={{ fontSize: 18, fontWeight: 900, color: '#38bdf8', marginTop: 2 }}>
               {stats?.accuracyPct !== undefined ? stats.accuracyPct : (stats?.countedItems > 0 ? ((stats.totalMatchingCount / stats.countedItems) * 100).toFixed(1) : 0)}%
             </div>
@@ -533,6 +717,7 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
           <div style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: 12, textAlign: 'center', borderTop: '3px solid #22c55e' }}>
             <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700 }}>🟢 SESUAI (0)</div>
             <div style={{ fontSize: 18, fontWeight: 900, color: '#4ade80', marginTop: 2 }}>{stats?.totalMatchingCount}</div>
+            <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 2 }}>Item Cocok</div>
           </div>
 
           <div style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: 12, textAlign: 'center', borderTop: '3px solid #ef4444' }}>
@@ -552,33 +737,83 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
             <div style={{ fontSize: 15, fontWeight: 900, color: (stats?.netVarianceValue || 0) < 0 ? '#f87171' : (stats?.netVarianceValue || 0) > 0 ? '#60a5fa' : '#4ade80', marginTop: 2 }}>
               {fmtCurrency(stats?.netVarianceValue || 0)}
             </div>
+            <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 2 }}>Total Selisih Rp</div>
           </div>
         </div>
 
-        {/* Filter Toolbar */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
-          <input
-            type="text"
-            placeholder="🔍 Cari nama barang, kategori, atau kode Rak..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '10px 14px',
-              fontSize: 13,
-              borderRadius: 10,
-              background: '#1e293b',
-              border: '1px solid rgba(255,255,255,0.15)',
-              color: '#fff'
-            }}
-          />
+        {/* Filter & View Toolbar */}
+        <div style={{
+          background: '#1e293b',
+          border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: 14,
+          padding: 14,
+          marginBottom: 16,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 12
+        }}>
+          {/* Row 1: Search & View Mode Switcher */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+            <input
+              type="text"
+              placeholder="🔍 Cari nama sparepart, kode barang, atau posisi rak..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{
+                flex: 1,
+                minWidth: 260,
+                padding: '9px 14px',
+                fontSize: 13,
+                borderRadius: 8,
+                background: '#0f172a',
+                border: '1px solid rgba(255,255,255,0.15)',
+                color: '#fff'
+              }}
+            />
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-            <div style={{ display: 'flex', gap: 4, overflowX: 'auto', paddingBottom: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#0f172a', padding: 3, borderRadius: 8 }}>
+              <button
+                onClick={() => setViewMode('table')}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: 6,
+                  border: 'none',
+                  fontSize: 11,
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  background: viewMode === 'table' ? '#38bdf8' : 'transparent',
+                  color: viewMode === 'table' ? '#0f172a' : '#94a3b8'
+                }}
+                title="Mode Tabel Cepat untuk input data dari lembar kertas dengan navigasi keyboard Enter/Panah"
+              >
+                ⚡ Mode Tabel Cepat (Spreadsheet)
+              </button>
+              <button
+                onClick={() => setViewMode('cards')}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: 6,
+                  border: 'none',
+                  fontSize: 11,
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  background: viewMode === 'cards' ? '#38bdf8' : 'transparent',
+                  color: viewMode === 'cards' ? '#0f172a' : '#94a3b8'
+                }}
+                title="Mode Kartu"
+              >
+                📱 Mode Kartu
+              </button>
+            </div>
+          </div>
+
+          {/* Row 2: Status Tabs, Location Filter, and Sorting */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+            <div style={{ display: 'flex', gap: 4, overflowX: 'auto', paddingBottom: 2 }}>
               {[
-                { id: 'ALL', label: `Semua (${stats?.totalItems})` },
-                { id: 'PENDING', label: `Belum (${stats?.totalItems - stats?.countedItems})` },
-                { id: 'MATCH', label: `Sesuai (${stats?.totalMatchingCount})` },
+                { id: 'ALL', label: `Semua (${stats?.totalItems || items.length})` },
+                { id: 'PENDING', label: `Belum (${(stats?.totalItems || items.length) - (stats?.countedItems || 0)})` },
+                { id: 'MATCH', label: `Sesuai (${stats?.totalMatchingCount || 0})` },
                 { id: 'MINUS', label: `Minus (-)` },
                 { id: 'PLUS', label: `Plus (+)` },
               ].map(tab => (
@@ -586,14 +821,14 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
                   style={{
-                    padding: '6px 12px',
+                    padding: '5px 11px',
                     borderRadius: 20,
                     fontSize: 11,
                     fontWeight: 700,
                     border: 'none',
                     whiteSpace: 'nowrap',
                     cursor: 'pointer',
-                    background: activeTab === tab.id ? '#fff' : '#1e293b',
+                    background: activeTab === tab.id ? '#fff' : 'rgba(255,255,255,0.06)',
                     color: activeTab === tab.id ? '#0f172a' : '#cbd5e1',
                   }}
                 >
@@ -602,25 +837,45 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
               ))}
             </div>
 
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              {/* Sort By Dropdown */}
+              <select
+                value={sortBy}
+                onChange={e => setSortBy(e.target.value as any)}
+                style={{
+                  padding: '6px 10px',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  borderRadius: 8,
+                  background: '#0f172a',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  color: '#cbd5e1'
+                }}
+              >
+                <option value="location">📍 Urutkan: Rak / Lokasi (Sesuai Form Kertas)</option>
+                <option value="default">🔢 Urutkan: No ID Default</option>
+                <option value="name">🔤 Urutkan: Nama Barang (A-Z)</option>
+                <option value="uncounted_first">⏳ Urutkan: Belum Dihitung Teratas</option>
+                <option value="variance_first">⚠️ Urutkan: Selisih Terbanyak</option>
+              </select>
+
               {locations.length > 0 && (
                 <select
                   value={selectedLocation}
                   onChange={e => setSelectedLocation(e.target.value)}
                   style={{
-                    minWidth: 130,
                     padding: '6px 10px',
                     fontSize: 11,
                     fontWeight: 700,
                     borderRadius: 8,
-                    background: '#1e293b',
+                    background: '#0f172a',
                     border: '1px solid rgba(255,255,255,0.15)',
-                    color: '#fff'
+                    color: '#cbd5e1'
                   }}
                 >
-                  <option value="ALL">📍 Semua SLOC / Rak ({locations.length})</option>
+                  <option value="ALL">Semua Rak ({locations.length})</option>
                   {locations.map(loc => (
-                    <option key={loc} value={loc}>📍 {loc}</option>
+                    <option key={loc} value={loc}>Rak: {loc}</option>
                   ))}
                 </select>
               )}
@@ -630,19 +885,18 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
                   value={selectedCategory}
                   onChange={e => setSelectedCategory(e.target.value)}
                   style={{
-                    minWidth: 140,
                     padding: '6px 10px',
                     fontSize: 11,
                     fontWeight: 700,
                     borderRadius: 8,
-                    background: '#1e293b',
+                    background: '#0f172a',
                     border: '1px solid rgba(255,255,255,0.15)',
-                    color: '#fff'
+                    color: '#cbd5e1'
                   }}
                 >
-                  <option value="ALL">🏷️ Semua Kategori ({categories.length})</option>
+                  <option value="ALL">Semua Kategori ({categories.length})</option>
                   {categories.map(cat => (
-                    <option key={cat} value={cat}>🏷️ {cat}</option>
+                    <option key={cat} value={cat}>{cat}</option>
                   ))}
                 </select>
               )}
@@ -650,186 +904,453 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
           </div>
         </div>
 
-        {/* Items Cards List */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {filteredItems.length === 0 ? (
-            <div style={{ padding: 40, textAlign: 'center', border: '2px dashed rgba(255,255,255,0.1)', borderRadius: 12 }}>
-              <span style={{ fontSize: 32, display: 'block', marginBottom: 6 }}>🔍</span>
-              <div style={{ color: '#94a3b8', fontSize: 13 }}>Tidak ada item yang sesuai filter.</div>
+        {/* MODE 1: FAST SPREADSHEET TABLE INPUT MODE */}
+        {viewMode === 'table' && (
+          <div style={{
+            background: '#1e293b',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 14,
+            overflow: 'hidden',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.2)'
+          }}>
+            <div style={{
+              background: '#0f172a',
+              padding: '8px 14px',
+              borderBottom: '1px solid rgba(255,255,255,0.1)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              fontSize: 11,
+              color: '#94a3b8'
+            }}>
+              <div>
+                ⌨️ <strong>Tips Input Cepat:</strong> Tekan <kbd style={{ background: '#334155', color: '#fff', padding: '1px 5px', borderRadius: 4 }}>Enter</kbd> atau <kbd style={{ background: '#334155', color: '#fff', padding: '1px 5px', borderRadius: 4 }}>↓</kbd> untuk simpan & lompat ke baris bawah. Tekan <kbd style={{ background: '#334155', color: '#fff', padding: '1px 5px', borderRadius: 4 }}>=</kbd> untuk samakan dengan sistem.
+              </div>
+              <div>Menampilkan <strong>{filteredItems.length}</strong> item</div>
             </div>
-          ) : (
-            filteredItems.map(item => {
-              const isCounted = item.qtyFisik !== null && item.qtyFisik !== undefined;
-              const selisih = item.selisih || 0;
 
-              let cardBorder = '1px solid rgba(255,255,255,0.1)';
-              let badgeTag = null;
+            <div style={{ overflowX: 'auto', maxHeight: '70vh' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, textAlign: 'left' }}>
+                <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: '#1e293b', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.15)', color: '#94a3b8' }}>
+                    <th style={{ padding: '10px 8px', width: 34, textAlign: 'center' }}>No</th>
+                    <th style={{ padding: '10px 10px', width: 90 }}>Kode</th>
+                    <th style={{ padding: '10px 10px' }}>Nama Sparepart / Barang</th>
+                    <th style={{ padding: '10px 10px', width: 110 }}>Lokasi / Rak</th>
+                    <th style={{ padding: '10px 8px', width: 50, textAlign: 'center' }}>UOM</th>
+                    <th style={{ padding: '10px 10px', width: 85, textAlign: 'right' }}>Stok Sistem</th>
+                    <th style={{ padding: '10px 10px', width: 190, textAlign: 'center', background: 'rgba(56, 189, 248, 0.08)' }}>
+                      INPUT STOK FISIK
+                    </th>
+                    <th style={{ padding: '10px 10px', width: 95, textAlign: 'right' }}>Selisih</th>
+                    <th style={{ padding: '10px 10px', width: 95, textAlign: 'center' }}>Petugas</th>
+                    <th style={{ padding: '10px 10px', width: 130 }}>Catatan & Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={10} style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>
+                        Tidak ada item yang sesuai filter pencarian.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredItems.map((item, idx) => {
+                      const isCounted = item.qtyFisik !== null && item.qtyFisik !== undefined;
+                      const selisih = item.selisih || 0;
 
-              if (isCounted) {
-                if (selisih === 0) {
-                  cardBorder = '1px solid rgba(34, 197, 94, 0.4)';
-                  badgeTag = (
-                    <span style={{ background: 'rgba(34, 197, 94, 0.2)', color: '#4ade80', padding: '3px 8px', fontSize: 10, fontWeight: 800, borderRadius: 8 }}>
-                      🟢 SESUAI
-                    </span>
-                  );
-                } else if (selisih < 0) {
-                  cardBorder = '1px solid rgba(239, 68, 68, 0.4)';
-                  badgeTag = (
-                    <span style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#f87171', padding: '3px 8px', fontSize: 10, fontWeight: 800, borderRadius: 8 }}>
-                      🔴 MINUS ({selisih} {item.uom})
-                    </span>
-                  );
-                } else {
-                  cardBorder = '1px solid rgba(59, 130, 246, 0.4)';
-                  badgeTag = (
-                    <span style={{ background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa', padding: '3px 8px', fontSize: 10, fontWeight: 800, borderRadius: 8 }}>
-                      🔵 PLUS (+{selisih} {item.uom})
-                    </span>
-                  );
+                      let rowBg = idx % 2 === 0 ? '#1e293b' : 'rgba(255,255,255,0.02)';
+                      if (isCounted) {
+                        if (selisih === 0) rowBg = 'rgba(34, 197, 94, 0.05)';
+                        else if (selisih < 0) rowBg = 'rgba(239, 68, 68, 0.08)';
+                        else rowBg = 'rgba(59, 130, 246, 0.08)';
+                      }
+
+                      return (
+                        <tr
+                          key={item.id}
+                          style={{
+                            background: rowBg,
+                            borderBottom: '1px solid rgba(255,255,255,0.06)'
+                          }}
+                        >
+                          <td style={{ padding: '8px 6px', textAlign: 'center', color: '#94a3b8', fontSize: 11 }}>{idx + 1}</td>
+                          <td style={{ padding: '8px 10px', fontFamily: 'monospace', fontSize: 11, color: '#94a3b8' }}>
+                            {item.sparepartId || '—'}
+                          </td>
+                          <td style={{ padding: '8px 10px' }}>
+                            <div style={{ fontWeight: 700, color: '#fff' }}>{item.namaItem}</div>
+                            {item.isNewItem && (
+                              <span style={{ fontSize: 9, color: '#eab308', background: 'rgba(234, 179, 8, 0.15)', padding: '1px 5px', borderRadius: 4 }}>
+                                Item Baru
+                              </span>
+                            )}
+                          </td>
+                          <td style={{ padding: '8px 10px' }}>
+                            <span
+                              onClick={() => setSelectedLocation(item.lokasi || 'ALL')}
+                              style={{
+                                background: 'rgba(255,255,255,0.08)',
+                                padding: '2px 6px',
+                                borderRadius: 4,
+                                fontSize: 11,
+                                color: '#38bdf8',
+                                cursor: 'pointer'
+                              }}
+                              title="Klik untuk filter hanya rak ini"
+                            >
+                              📍 {item.lokasi || 'Gudang'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '8px 6px', textAlign: 'center', color: '#94a3b8', fontSize: 11 }}>{item.uom}</td>
+                          <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 800, color: '#cbd5e1' }}>
+                            {item.qtySistem}
+                          </td>
+
+                          {/* Fast Input Field with Keyboard Navigation */}
+                          <td style={{ padding: '6px 10px', textAlign: 'center', background: 'rgba(56, 189, 248, 0.04)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                              <input
+                                ref={el => { inputRefs.current[item.id] = el; }}
+                                type="number"
+                                disabled={isReadOnly}
+                                placeholder="Hitung..."
+                                value={item.qtyFisik !== null && item.qtyFisik !== undefined ? item.qtyFisik : ''}
+                                onFocus={() => setFocusedItemId(item.id)}
+                                onBlur={() => {
+                                  setTimeout(() => {
+                                    setFocusedItemId(prev => prev === item.id ? null : prev);
+                                  }, 400);
+                                }}
+                                onKeyDown={e => handleInputKeyDown(e, idx, item)}
+                                onChange={e => {
+                                  const val = e.target.value === '' ? null : parseInt(e.target.value);
+                                  handleUpdateCount(item.id, val);
+                                }}
+                                style={{
+                                  width: 80,
+                                  height: 34,
+                                  textAlign: 'center',
+                                  fontWeight: 900,
+                                  fontSize: 15,
+                                  borderRadius: 8,
+                                  border: isCounted
+                                    ? (selisih === 0 ? '2px solid #22c55e' : selisih < 0 ? '2px solid #ef4444' : '2px solid #3b82f6')
+                                    : '1px solid rgba(255,255,255,0.2)',
+                                  background: '#0f172a',
+                                  color: '#fff'
+                                }}
+                              />
+
+                              {!isReadOnly && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateCount(item.id, item.qtySistem)}
+                                  style={{
+                                    height: 34,
+                                    padding: '0 8px',
+                                    borderRadius: 6,
+                                    border: '1px solid rgba(34, 197, 94, 0.3)',
+                                    background: 'rgba(34, 197, 94, 0.15)',
+                                    color: '#4ade80',
+                                    fontSize: 11,
+                                    fontWeight: 800,
+                                    cursor: 'pointer'
+                                  }}
+                                  title="Klik untuk samakan dengan stok sistem (Selisih 0)"
+                                >
+                                  = Sesuai
+                                </button>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Selisih Result */}
+                          <td style={{ padding: '8px 10px', textAlign: 'right' }}>
+                            {!isCounted ? (
+                              <span style={{ color: '#94a3b8', fontSize: 11, fontStyle: 'italic' }}>Belum hitung</span>
+                            ) : selisih === 0 ? (
+                              <span style={{ color: '#4ade80', fontWeight: 800 }}>0 Sesuai</span>
+                            ) : selisih < 0 ? (
+                              <span style={{ color: '#f87171', fontWeight: 900 }}>{selisih} {item.uom}</span>
+                            ) : (
+                              <span style={{ color: '#60a5fa', fontWeight: 900 }}>+{selisih} {item.uom}</span>
+                            )}
+                          </td>
+
+                          <td style={{ padding: '8px 10px', textAlign: 'center', fontSize: 10, color: '#94a3b8' }}>
+                            {item.auditedBy || '—'}
+                          </td>
+
+                          {/* Catatan & Action Icons */}
+                          <td style={{ padding: '8px 10px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <button
+                                onClick={() => {
+                                  const note = prompt('Masukkan catatan audit untuk barang ini:', item.catatan || '');
+                                  if (note !== null) {
+                                    handleUpdateCount(item.id, item.qtyFisik, note);
+                                  }
+                                }}
+                                style={{
+                                  background: item.catatan ? 'rgba(192, 132, 252, 0.2)' : 'transparent',
+                                  border: '1px solid rgba(255,255,255,0.1)',
+                                  color: item.catatan ? '#c084fc' : '#94a3b8',
+                                  borderRadius: 4,
+                                  padding: '3px 6px',
+                                  fontSize: 10,
+                                  cursor: 'pointer'
+                                }}
+                                title={item.catatan || 'Tambah catatan audit'}
+                              >
+                                💬 {item.catatan ? 'Catatan' : '+'}
+                              </button>
+
+                              {!isReadOnly && (
+                                <>
+                                  <button
+                                    onClick={() => openEditModal(item)}
+                                    style={{
+                                      background: 'transparent',
+                                      border: 'none',
+                                      color: '#38bdf8',
+                                      fontSize: 11,
+                                      cursor: 'pointer',
+                                      padding: '2px 4px'
+                                    }}
+                                    title="Edit nama barang / lokasi rak"
+                                  >
+                                    ✏️
+                                  </button>
+
+                                  <button
+                                    onClick={() => handleDeleteItem(item.id, item.namaItem)}
+                                    style={{
+                                      background: 'transparent',
+                                      border: 'none',
+                                      color: '#f87171',
+                                      fontSize: 11,
+                                      cursor: 'pointer',
+                                      padding: '2px 4px'
+                                    }}
+                                    title="Hapus dari sesi opname"
+                                  >
+                                    🗑️
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* MODE 2: CARD VIEW */}
+        {viewMode === 'cards' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {filteredItems.length === 0 ? (
+              <div style={{ padding: 40, textAlign: 'center', border: '2px dashed rgba(255,255,255,0.1)', borderRadius: 12 }}>
+                <span style={{ fontSize: 32, display: 'block', marginBottom: 6 }}>🔍</span>
+                <div style={{ color: '#94a3b8', fontSize: 13 }}>Tidak ada item yang sesuai filter.</div>
+              </div>
+            ) : (
+              filteredItems.map(item => {
+                const isCounted = item.qtyFisik !== null && item.qtyFisik !== undefined;
+                const selisih = item.selisih || 0;
+
+                let cardBorder = '1px solid rgba(255,255,255,0.1)';
+                let badgeTag = null;
+
+                if (isCounted) {
+                  if (selisih === 0) {
+                    cardBorder = '1px solid rgba(34, 197, 94, 0.4)';
+                    badgeTag = (
+                      <span style={{ background: 'rgba(34, 197, 94, 0.2)', color: '#4ade80', padding: '3px 8px', fontSize: 10, fontWeight: 800, borderRadius: 8 }}>
+                        🟢 SESUAI
+                      </span>
+                    );
+                  } else if (selisih < 0) {
+                    cardBorder = '1px solid rgba(239, 68, 68, 0.4)';
+                    badgeTag = (
+                      <span style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#f87171', padding: '3px 8px', fontSize: 10, fontWeight: 800, borderRadius: 8 }}>
+                        🔴 MINUS ({selisih} {item.uom})
+                      </span>
+                    );
+                  } else {
+                    cardBorder = '1px solid rgba(59, 130, 246, 0.4)';
+                    badgeTag = (
+                      <span style={{ background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa', padding: '3px 8px', fontSize: 10, fontWeight: 800, borderRadius: 8 }}>
+                        🔵 PLUS (+{selisih} {item.uom})
+                      </span>
+                    );
+                  }
                 }
-              }
 
-              return (
-                <div
-                  key={item.id}
-                  style={{
-                    padding: 16,
-                    borderRadius: 14,
-                    border: cardBorder,
-                    background: '#1e293b',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 12
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        <span style={{ fontWeight: 800, fontSize: 15, color: '#fff' }}>{item.namaItem}</span>
-                        {item.isNewItem && (
-                          <span style={{ background: 'rgba(234, 179, 8, 0.2)', color: '#eab308', padding: '2px 6px', fontSize: 9, fontWeight: 700, borderRadius: 6 }}>
-                            ✨ BARANG TIDAK TERDAFTAR
-                          </span>
+                return (
+                  <div
+                    key={item.id}
+                    style={{
+                      padding: 16,
+                      borderRadius: 14,
+                      border: cardBorder,
+                      background: '#1e293b',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 12
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                          <span style={{ fontWeight: 800, fontSize: 15, color: '#fff' }}>{item.namaItem}</span>
+                          {item.isNewItem && (
+                            <span style={{ background: 'rgba(234, 179, 8, 0.2)', color: '#eab308', padding: '2px 6px', fontSize: 9, fontWeight: 700, borderRadius: 6 }}>
+                              ✨ BARANG BARU
+                            </span>
+                          )}
+                        </div>
+
+                        <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                          <span>📍 Rak: <strong style={{ color: '#38bdf8' }}>{item.lokasi || 'Gudang MTC'}</strong></span>
+                          <span>Kat: {item.kategori || 'Umum'}</span>
+                          {item.sparepartId && <span>Kode: {item.sparepartId}</span>}
+                        </div>
+                      </div>
+
+                      <div>{badgeTag}</div>
+                    </div>
+
+                    <div style={{
+                      background: '#0f172a',
+                      borderRadius: 12,
+                      padding: 12,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                      gap: 12
+                    }}>
+                      <div>
+                        <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase' }}>Stok Sistem</div>
+                        <div style={{ fontSize: 16, fontWeight: 800, color: '#fff' }}>{item.qtySistem} <span style={{ fontSize: 10, color: '#94a3b8' }}>{item.uom}</span></div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <button
+                          disabled={isReadOnly}
+                          onClick={() => {
+                            const current = item.qtyFisik !== null ? item.qtyFisik : item.qtySistem;
+                            const next = Math.max(0, current - 1);
+                            handleUpdateCount(item.id, next);
+                          }}
+                          style={{
+                            width: 38,
+                            height: 38,
+                            borderRadius: 8,
+                            border: '1px solid rgba(255,255,255,0.15)',
+                            background: '#1e293b',
+                            fontSize: 18,
+                            fontWeight: 800,
+                            color: '#fff',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          -
+                        </button>
+
+                        <input
+                          type="number"
+                          disabled={isReadOnly}
+                          placeholder="Input..."
+                          value={item.qtyFisik !== null && item.qtyFisik !== undefined ? item.qtyFisik : ''}
+                          onFocus={() => setFocusedItemId(item.id)}
+                          onBlur={() => {
+                            setTimeout(() => {
+                              setFocusedItemId(prev => prev === item.id ? null : prev);
+                            }, 400);
+                          }}
+                          onChange={e => {
+                            const val = e.target.value === '' ? null : parseInt(e.target.value);
+                            handleUpdateCount(item.id, val);
+                          }}
+                          style={{
+                            width: 75,
+                            height: 38,
+                            textAlign: 'center',
+                            fontWeight: 900,
+                            fontSize: 16,
+                            borderRadius: 8,
+                            border: isCounted ? '2px solid #38bdf8' : '1px solid rgba(255,255,255,0.15)',
+                            background: '#0f172a',
+                            color: '#fff'
+                          }}
+                        />
+
+                        <button
+                          disabled={isReadOnly}
+                          onClick={() => {
+                            const current = item.qtyFisik !== null ? item.qtyFisik : item.qtySistem;
+                            const next = current + 1;
+                            handleUpdateCount(item.id, next);
+                          }}
+                          style={{
+                            width: 38,
+                            height: 38,
+                            borderRadius: 8,
+                            border: '1px solid rgba(255,255,255,0.15)',
+                            background: '#1e293b',
+                            fontSize: 18,
+                            fontWeight: 800,
+                            color: '#fff',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          +
+                        </button>
+
+                        {!isReadOnly && (
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateCount(item.id, item.qtySistem)}
+                            style={{
+                              height: 38,
+                              padding: '0 10px',
+                              borderRadius: 8,
+                              border: '1px solid rgba(34, 197, 94, 0.4)',
+                              background: 'rgba(34, 197, 94, 0.15)',
+                              color: '#4ade80',
+                              fontSize: 11,
+                              fontWeight: 800,
+                              cursor: 'pointer'
+                            }}
+                            title="Set sama dengan stok sistem"
+                          >
+                            = Sesuai
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, fontSize: 11 }}>
+                      <div style={{ color: '#94a3b8' }}>
+                        {item.auditedBy ? (
+                          <span>👤 Dihitung oleh: <strong style={{ color: '#fff' }}>{item.auditedBy}</strong></span>
+                        ) : (
+                          <span style={{ fontStyle: 'italic' }}>Belum diperiksa</span>
                         )}
                       </div>
 
-                      <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                        <span>📍 Rak: <strong style={{ color: '#fff' }}>{item.lokasi || 'Gudang MTC'}</strong></span>
-                        <span>Kat: {item.kategori || 'Umum'}</span>
-                        {item.sparepartId && <span>Kode: {item.sparepartId}</span>}
-                      </div>
-                    </div>
-
-                    <div>{badgeTag}</div>
-                  </div>
-
-                  {/* Counter & Qty Controls */}
-                  <div style={{
-                    background: '#0f172a',
-                    borderRadius: 12,
-                    padding: 12,
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    flexWrap: 'wrap',
-                    gap: 12
-                  }}>
-                    <div>
-                      <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase' }}>Stok Sistem</div>
-                      <div style={{ fontSize: 16, fontWeight: 800, color: '#fff' }}>{item.qtySistem} <span style={{ fontSize: 10, color: '#94a3b8' }}>{item.uom}</span></div>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <button
-                        disabled={isReadOnly}
-                        onClick={() => {
-                          const current = item.qtyFisik !== null ? item.qtyFisik : item.qtySistem;
-                          const next = Math.max(0, current - 1);
-                          handleUpdateCount(item.id, next);
-                        }}
-                        style={{
-                          width: 40,
-                          height: 40,
-                          borderRadius: 10,
-                          border: '1px solid rgba(255,255,255,0.15)',
-                          background: '#1e293b',
-                          fontSize: 18,
-                          fontWeight: 800,
-                          color: '#fff',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        -
-                      </button>
-
-                      <input
-                        type="number"
-                        disabled={isReadOnly}
-                        placeholder="Input..."
-                        value={item.qtyFisik !== null && item.qtyFisik !== undefined ? item.qtyFisik : ''}
-                        onFocus={() => setFocusedItemId(item.id)}
-                        onBlur={() => {
-                          setTimeout(() => {
-                            setFocusedItemId((prev: number | null) => prev === item.id ? null : prev);
-                          }, 400);
-                        }}
-                        onChange={e => {
-                          const val = e.target.value === '' ? null : parseInt(e.target.value);
-                          handleUpdateCount(item.id, val);
-                        }}
-                        style={{
-                          width: 75,
-                          height: 40,
-                          textAlign: 'center',
-                          fontWeight: 900,
-                          fontSize: 16,
-                          borderRadius: 10,
-                          border: isCounted ? '2px solid #38bdf8' : '1px solid rgba(255,255,255,0.15)',
-                          background: '#0f172a',
-                          color: '#fff'
-                        }}
-                      />
-
-                      <button
-                        disabled={isReadOnly}
-                        onClick={() => {
-                          const current = item.qtyFisik !== null ? item.qtyFisik : item.qtySistem;
-                          const next = current + 1;
-                          handleUpdateCount(item.id, next);
-                        }}
-                        style={{
-                          width: 40,
-                          height: 40,
-                          borderRadius: 10,
-                          border: '1px solid rgba(255,255,255,0.15)',
-                          background: '#1e293b',
-                          fontSize: 18,
-                          fontWeight: 800,
-                          color: '#fff',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, fontSize: 11 }}>
-                    <div style={{ color: '#94a3b8' }}>
-                      {item.auditedBy ? (
-                        <span>👤 Dihitung oleh: <strong style={{ color: '#fff' }}>{item.auditedBy}</strong></span>
-                      ) : (
-                        <span style={{ fontStyle: 'italic' }}>Belum diperiksa</span>
-                      )}
-                    </div>
-
-                    {!isReadOnly && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {!isReadOnly && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <button
                             onClick={() => {
-                              const note = prompt('Masukkan catatan/alasan selisih untuk item ini:', item.catatan || '');
+                              const note = prompt('Masukkan catatan audit untuk item ini:', item.catatan || '');
                               if (note !== null) {
                                 handleUpdateCount(item.id, item.qtyFisik, note);
                               }
@@ -842,30 +1363,28 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
                           <button
                             onClick={() => openEditModal(item)}
                             style={{ background: 'none', border: 'none', color: '#38bdf8', fontSize: 11, cursor: 'pointer', padding: 0 }}
-                            title="Edit nama barang dan lokasi rak ini"
                           >
-                            ✏️ Edit (Nama / Rak)
+                            ✏️ Edit
+                          </button>
+
+                          <button
+                            onClick={() => handleDeleteItem(item.id, item.namaItem)}
+                            style={{ background: 'none', border: 'none', color: '#f87171', fontSize: 11, cursor: 'pointer', padding: 0 }}
+                          >
+                            🗑️ Hapus
                           </button>
                         </div>
-
-                        <button
-                          onClick={() => handleDeleteItem(item.id, item.namaItem)}
-                          style={{ background: 'none', border: 'none', color: '#f87171', fontSize: 11, cursor: 'pointer', padding: '2px 6px', borderRadius: 4 }}
-                          title="Hapus item ini dari sesi opname"
-                        >
-                          🗑️ Hapus
-                        </button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })
-          )}
-        </div>
+                );
+              })
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Floating Action Buttons */}
+      {/* Floating Action Buttons for Session Submissions */}
       {!isReadOnly && (
         <div style={{
           position: 'fixed',
@@ -873,48 +1392,29 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
           left: 16,
           right: 16,
           display: 'flex',
-          gap: 10,
+          gap: 12,
           zIndex: 99,
           justifyContent: 'center'
         }}>
-          <button
-            onClick={() => setShowAddUnlistedModal(true)}
-            style={{
-              flex: 1,
-              maxWidth: 240,
-              padding: '12px 14px',
-              fontSize: 12,
-              fontWeight: 800,
-              borderRadius: 30,
-              background: '#334155',
-              color: '#fff',
-              border: 'none',
-              cursor: 'pointer',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.4)'
-            }}
-          >
-            ➕ Barang Tidak Terdaftar
-          </button>
-
           {session.status === 'DRAFT' && (
             <button
               onClick={handleSubmitForApproval}
               disabled={actionLoading === 'submit-approval'}
               style={{
                 flex: 1,
-                maxWidth: 240,
-                padding: '12px 14px',
-                fontSize: 12,
+                maxWidth: 280,
+                padding: '13px 18px',
+                fontSize: 13,
                 fontWeight: 800,
                 borderRadius: 30,
                 background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
                 color: '#fff',
                 border: 'none',
                 cursor: 'pointer',
-                boxShadow: '0 4px 16px rgba(168, 85, 247, 0.4)'
+                boxShadow: '0 4px 18px rgba(168, 85, 247, 0.45)'
               }}
             >
-              {actionLoading === 'submit-approval' ? '⏳ Mengajukan...' : '📤 Ajukan ke Manager'}
+              {actionLoading === 'submit-approval' ? '⏳ Mengajukan...' : '📤 Selesai & Ajukan ke Manager'}
             </button>
           )}
 
@@ -924,54 +1424,21 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
               disabled={actionLoading === 'post-opname'}
               style={{
                 flex: 1,
-                maxWidth: 260,
-                padding: '12px 14px',
-                fontSize: 12,
+                maxWidth: 300,
+                padding: '13px 18px',
+                fontSize: 13,
                 fontWeight: 800,
                 borderRadius: 30,
                 background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
                 color: '#fff',
                 border: 'none',
                 cursor: 'pointer',
-                boxShadow: '0 4px 16px rgba(34, 197, 94, 0.4)'
+                boxShadow: '0 4px 18px rgba(34, 197, 94, 0.45)'
               }}
             >
-              {actionLoading === 'post-opname' ? '⏳ Posting...' : '✓ ACC & Post Adjustment'}
+              {actionLoading === 'post-opname' ? '⏳ Posting...' : '✓ ACC & Post Penyesuaian Stok'}
             </button>
           )}
-        </div>
-      )}
-
-      {session.status === 'POSTED' && isEditor && (
-        <div style={{
-          position: 'fixed',
-          bottom: 20,
-          left: 16,
-          right: 16,
-          display: 'flex',
-          gap: 10,
-          zIndex: 99,
-          justifyContent: 'center'
-        }}>
-          <button
-            onClick={handleUnpostSession}
-            disabled={actionLoading === 'unpost-opname'}
-            style={{
-              flex: 1,
-              maxWidth: 280,
-              padding: '12px 14px',
-              fontSize: 12,
-              fontWeight: 800,
-              borderRadius: 30,
-              background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-              color: '#fff',
-              border: 'none',
-              cursor: 'pointer',
-              boxShadow: '0 4px 16px rgba(239, 68, 68, 0.4)'
-            }}
-          >
-            {actionLoading === 'unpost-opname' ? '⏳ Membatalkan ACC...' : '↩️ Batal ACC / Edit Ulang'}
-          </button>
         </div>
       )}
 
@@ -1034,7 +1501,7 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
                   <input
                     type="text"
                     list="opnameLokasiDatalist"
-                    placeholder="Pilih atau ketik Rak (cth: Rak 1, 2-C-211)"
+                    placeholder="Pilih atau ketik Rak..."
                     value={unlistedLokasi}
                     onChange={e => setUnlistedLokasi(e.target.value)}
                     style={{ width: '100%', padding: '8px 12px', borderRadius: 8, background: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', fontSize: 12 }}
@@ -1187,7 +1654,7 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
                 <input
                   type="text"
                   list="editRakDatalist"
-                  placeholder="Atau ketik nama lokasi rak baru (cth: Rak 1, 2-C-211)..."
+                  placeholder="Atau ketik nama lokasi rak baru..."
                   value={editLokasi}
                   onChange={e => setEditLokasi(e.target.value)}
                   style={{ width: '100%', padding: '9px 12px', borderRadius: 8, background: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', fontSize: 12 }}
@@ -1197,9 +1664,6 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
                     <option key={loc} value={loc} />
                   ))}
                 </datalist>
-                <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 4 }}>
-                  Pilih dari rak terdaftar di atas atau ketik nama rak baru jika belum terdaftar.
-                </div>
               </div>
 
               <div style={{ marginBottom: 18 }}>
@@ -1229,4 +1693,6 @@ export default function MtcOpnameStandaloneDetailPage({ params }: { params: { id
       )}
     </div>
   );
+
+  return <ShellLayout>{content}</ShellLayout>;
 }
