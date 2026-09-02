@@ -14,7 +14,6 @@ export default function MtcOpnamePrintPage({ params }: { params: { id: string } 
   const [selectedLocation, setSelectedLocation] = useState<string>('ALL');
 
   useEffect(() => {
-    // Check URL query parameters for mode
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
       const modeParam = urlParams.get('mode');
@@ -49,7 +48,7 @@ export default function MtcOpnamePrintPage({ params }: { params: { id: string } 
 
   if (loading) {
     return (
-      <div style={{ padding: 60, textAlign: 'center', fontFamily: 'Inter, sans-serif' }}>
+      <div style={{ padding: 60, textAlign: 'center', fontFamily: 'Arial, sans-serif' }}>
         <div style={{ fontSize: 24, marginBottom: 10 }}>⏳</div>
         <strong>Memuat dokumen cetak Stock Opname...</strong>
       </div>
@@ -58,7 +57,7 @@ export default function MtcOpnamePrintPage({ params }: { params: { id: string } 
 
   if (!data || !data.session) {
     return (
-      <div style={{ padding: 40, textAlign: 'center', fontFamily: 'Inter, sans-serif' }}>
+      <div style={{ padding: 40, textAlign: 'center', fontFamily: 'Arial, sans-serif' }}>
         <h2>Dokumen Stock Opname tidak ditemukan atau Anda tidak memiliki akses.</h2>
         <Link href="/mtc/opname" style={{ color: '#2563eb', textDecoration: 'underline' }}>
           ← Kembali ke Daftar Opname
@@ -67,7 +66,7 @@ export default function MtcOpnamePrintPage({ params }: { params: { id: string } 
     );
   }
 
-  const { session, stats, items, locations = [] } = data;
+  const { session, stats, items = [], locations = [] } = data;
 
   // Filter items by selected location if specified
   const filteredItems = (items || []).filter((item: any) => {
@@ -78,28 +77,71 @@ export default function MtcOpnamePrintPage({ params }: { params: { id: string } 
   });
 
   return (
-    <div style={{
-      background: '#fff',
-      color: '#000',
-      fontFamily: 'Arial, Helvetica, sans-serif',
-      padding: '24px 30px',
-      maxWidth: 1050,
-      margin: '0 auto',
-      fontSize: 11
-    }}>
-      {/* Print CSS Styles */}
+    <div className="mtc-print-root">
+      {/* Global Print CSS Styles */}
       <style jsx global>{`
         @page {
           size: A4 portrait;
-          margin: 10mm 12mm;
+          margin: 8mm 8mm 8mm 8mm;
         }
-        body {
+
+        html, body {
           background: #fff !important;
           color: #000 !important;
+          font-family: Arial, Helvetica, sans-serif !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
         }
+
+        .mtc-print-root {
+          background: #fff !important;
+          color: #000 !important;
+          font-family: Arial, Helvetica, sans-serif !important;
+          padding: 20px 24px;
+          max-width: 980px;
+          margin: 0 auto;
+          font-size: 10.5px;
+          box-sizing: border-box;
+        }
+
+        .mtc-print-root * {
+          box-sizing: border-box;
+          color: #000 !important;
+        }
+
+        .mtc-print-root table {
+          width: 100% !important;
+          border-collapse: collapse !important;
+          table-layout: fixed !important;
+        }
+
+        .mtc-print-root td,
+        .mtc-print-root th {
+          background-color: #fff !important;
+          color: #000 !important;
+          word-break: break-word;
+          overflow-wrap: break-word;
+        }
+
+        .mtc-print-root tr.header-row th {
+          background-color: #f1f5f9 !important;
+          font-weight: bold;
+        }
+
         @media print {
           .no-print {
             display: none !important;
+          }
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+          }
+          .mtc-print-root {
+            max-width: 100% !important;
+            width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
           }
           .page-break {
             page-break-before: always;
@@ -125,8 +167,8 @@ export default function MtcOpnamePrintPage({ params }: { params: { id: string } 
         background: '#f8fafc',
         border: '1px solid #cbd5e1',
         borderRadius: 12,
-        padding: '14px 18px',
-        marginBottom: 24,
+        padding: '12px 16px',
+        marginBottom: 20,
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -138,8 +180,8 @@ export default function MtcOpnamePrintPage({ params }: { params: { id: string } 
           <Link
             href={`/mtc/opname/${sessionId}`}
             style={{
-              padding: '8px 14px',
-              borderRadius: 8,
+              padding: '7px 12px',
+              borderRadius: 6,
               border: '1px solid #cbd5e1',
               background: '#fff',
               color: '#334155',
@@ -148,7 +190,7 @@ export default function MtcOpnamePrintPage({ params }: { params: { id: string } 
               fontSize: 12
             }}
           >
-            ← Kembali ke Detail Sesi
+            ← Kembali
           </Link>
 
           {/* Mode Selector */}
@@ -156,14 +198,14 @@ export default function MtcOpnamePrintPage({ params }: { params: { id: string } 
             <button
               onClick={() => setPrintMode('form')}
               style={{
-                padding: '6px 14px',
+                padding: '6px 12px',
                 borderRadius: 6,
                 border: 'none',
                 cursor: 'pointer',
                 fontWeight: 800,
                 fontSize: 12,
                 background: printMode === 'form' ? '#2563eb' : 'transparent',
-                color: printMode === 'form' ? '#fff' : '#475569'
+                color: printMode === 'form' ? '#fff !important' : '#475569 !important'
               }}
             >
               📋 Form Lembar Kerja Fisik (Blanko)
@@ -171,14 +213,14 @@ export default function MtcOpnamePrintPage({ params }: { params: { id: string } 
             <button
               onClick={() => setPrintMode('report')}
               style={{
-                padding: '6px 14px',
+                padding: '6px 12px',
                 borderRadius: 6,
                 border: 'none',
                 cursor: 'pointer',
                 fontWeight: 800,
                 fontSize: 12,
                 background: printMode === 'report' ? '#2563eb' : 'transparent',
-                color: printMode === 'report' ? '#fff' : '#475569'
+                color: printMode === 'report' ? '#fff !important' : '#475569 !important'
               }}
             >
               📊 Laporan Rekapitulasi Hasil
@@ -187,7 +229,6 @@ export default function MtcOpnamePrintPage({ params }: { params: { id: string } 
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          {/* Options for Form Mode */}
           {printMode === 'form' && (
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#334155', cursor: 'pointer' }}>
               <input
@@ -200,7 +241,6 @@ export default function MtcOpnamePrintPage({ params }: { params: { id: string } 
             </label>
           )}
 
-          {/* Location Filter */}
           {locations.length > 0 && (
             <select
               value={selectedLocation}
@@ -225,10 +265,10 @@ export default function MtcOpnamePrintPage({ params }: { params: { id: string } 
           <button
             onClick={() => window.print()}
             style={{
-              padding: '9px 20px',
-              borderRadius: 8,
+              padding: '8px 18px',
+              borderRadius: 6,
               background: '#2563eb',
-              color: '#fff',
+              color: '#fff !important',
               fontWeight: 800,
               border: 'none',
               cursor: 'pointer',
@@ -238,60 +278,60 @@ export default function MtcOpnamePrintPage({ params }: { params: { id: string } 
               gap: 6
             }}
           >
-            🖨️ Cetak / Print ke PDF
+            🖨️ Cetak / Save to PDF
           </button>
         </div>
       </div>
 
-      {/* Official FLG Kop Surat Header */}
-      <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #000', marginBottom: 14, fontSize: 11 }}>
+      {/* Official FLG Kop Surat Header (Table Layout Fixed 100%) */}
+      <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #000', marginBottom: 12, fontSize: 10.5, tableLayout: 'fixed' }}>
         <tbody>
           <tr>
-            {/* Logo FOOM (Rowspan 3) */}
-            <td rowSpan={3} style={{ width: '22%', border: '1px solid #000', padding: 8, textAlign: 'center', verticalAlign: 'middle', background: '#fff' }}>
-              <img src="/logo.png" alt="FOOM" style={{ maxHeight: 42, maxWidth: '100%', objectFit: 'contain' }} />
+            {/* Logo FOOM (Rowspan 3: 20%) */}
+            <td rowSpan={3} style={{ width: '20%', border: '1px solid #000', padding: 6, textAlign: 'center', verticalAlign: 'middle', background: '#fff' }}>
+              <img src="/logo.png" alt="FOOM" style={{ maxHeight: 38, maxWidth: '95%', objectFit: 'contain' }} />
             </td>
 
-            {/* Row 1 Center: PT. FOOM Lab Global */}
-            <td style={{ border: '1px solid #000', padding: '4px 8px', textAlign: 'center', fontWeight: 'bold', fontSize: 12 }}>
+            {/* Row 1 Center: PT. FOOM Lab Global (42%) */}
+            <td style={{ width: '42%', border: '1px solid #000', padding: '4px 6px', textAlign: 'center', fontWeight: 'bold', fontSize: 11.5 }}>
               PT. FOOM Lab Global
             </td>
 
-            {/* Row 1 Right: No. Dokumen */}
-            <td style={{ width: '13%', border: '1px solid #000', padding: '4px 8px' }}>
+            {/* Row 1 Right: No. Dokumen (13% + 25%) */}
+            <td style={{ width: '13%', border: '1px solid #000', padding: '4px 6px' }}>
               No. Dokumen
             </td>
-            <td style={{ width: '25%', border: '1px solid #000', padding: '4px 8px', fontWeight: 'bold', fontFamily: 'monospace' }}>
+            <td style={{ width: '25%', border: '1px solid #000', padding: '4px 6px', fontWeight: 'bold', fontFamily: 'monospace' }}>
               FLG/FORM/MTC/013-00
             </td>
           </tr>
 
           <tr>
             {/* Row 2 Center: Cikupa Factory */}
-            <td style={{ border: '1px solid #000', padding: '4px 8px', textAlign: 'center', fontWeight: 'bold', fontSize: 11 }}>
+            <td style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'center', fontWeight: 'bold', fontSize: 10.5 }}>
               Cikupa Factory
             </td>
 
             {/* Row 2 Right: Revisi */}
-            <td style={{ border: '1px solid #000', padding: '4px 8px' }}>
+            <td style={{ border: '1px solid #000', padding: '4px 6px' }}>
               Revisi
             </td>
-            <td style={{ border: '1px solid #000', padding: '4px 8px' }}>
+            <td style={{ border: '1px solid #000', padding: '4px 6px' }}>
               00
             </td>
           </tr>
 
           <tr>
             {/* Row 3 Center: Title depends on Print Mode */}
-            <td style={{ border: '1px solid #000', padding: '5px 8px', textAlign: 'center', fontWeight: 'bold', fontSize: 12, textTransform: 'uppercase' }}>
+            <td style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'center', fontWeight: 'bold', fontSize: 11, textTransform: 'uppercase' }}>
               {printMode === 'form' ? 'LEMBAR KERJA STOCK OPNAME MTC (FORM FISIK)' : 'LAPORAN HASIL REKAPITULASI STOCK OPNAME MTC'}
             </td>
 
             {/* Row 3 Right: Tanggal */}
-            <td style={{ border: '1px solid #000', padding: '4px 8px' }}>
+            <td style={{ border: '1px solid #000', padding: '4px 6px' }}>
               Tanggal
             </td>
-            <td style={{ border: '1px solid #000', padding: '4px 8px' }}>
+            <td style={{ border: '1px solid #000', padding: '4px 6px' }}>
               {session.createdAt ? new Date(session.createdAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}
             </td>
           </tr>
@@ -299,19 +339,19 @@ export default function MtcOpnamePrintPage({ params }: { params: { id: string } 
       </table>
 
       {/* Sesi & Lokasi Metadata */}
-      <table style={{ width: '100%', marginBottom: 14, fontSize: 11, borderCollapse: 'collapse', background: '#fff' }}>
+      <table style={{ width: '100%', marginBottom: 10, fontSize: 10.5, borderCollapse: 'collapse', tableLayout: 'fixed' }}>
         <tbody>
           <tr>
-            <td style={{ width: '14%', fontWeight: 'bold', padding: '3px 0' }}>Judul Sesi SO</td>
-            <td style={{ width: '36%', padding: '3px 0' }}>: <strong>{session.judul}</strong></td>
-            <td style={{ width: '14%', fontWeight: 'bold', padding: '3px 0' }}>No. Sesi</td>
-            <td style={{ width: '36%', padding: '3px 0' }}>: <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>SO-MTC-{session.id}</span> ({session.status})</td>
+            <td style={{ width: '13%', fontWeight: 'bold', padding: '2px 0' }}>Judul Sesi SO</td>
+            <td style={{ width: '37%', padding: '2px 0' }}>: <strong>{session.judul}</strong></td>
+            <td style={{ width: '13%', fontWeight: 'bold', padding: '2px 0' }}>No. Sesi</td>
+            <td style={{ width: '37%', padding: '2px 0' }}>: <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>SO-MTC-{session.id}</span> ({session.status})</td>
           </tr>
           <tr>
-            <td style={{ fontWeight: 'bold', padding: '3px 0' }}>Cakupan Lokasi</td>
-            <td style={{ padding: '3px 0' }}>: {selectedLocation !== 'ALL' ? `Rak / Lokasi: ${selectedLocation}` : (session.lokasi || 'Semua Rak Gudang MTC')}</td>
-            <td style={{ fontWeight: 'bold', padding: '3px 0' }}>Tanggal Cetak</td>
-            <td style={{ padding: '3px 0' }}>: {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+            <td style={{ fontWeight: 'bold', padding: '2px 0' }}>Cakupan Lokasi</td>
+            <td style={{ padding: '2px 0' }}>: {selectedLocation !== 'ALL' ? `Rak: ${selectedLocation}` : (session.lokasi || 'Semua Rak Gudang MTC')}</td>
+            <td style={{ fontWeight: 'bold', padding: '2px 0' }}>Tanggal Cetak</td>
+            <td style={{ padding: '2px 0' }}>: {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</td>
           </tr>
         </tbody>
       </table>
@@ -322,100 +362,96 @@ export default function MtcOpnamePrintPage({ params }: { params: { id: string } 
           <div style={{
             border: '1px dashed #475569',
             borderRadius: 4,
-            padding: '6px 10px',
-            marginBottom: 12,
+            padding: '5px 8px',
+            marginBottom: 10,
             background: '#f8fafc',
-            fontSize: 10,
-            color: '#334155'
+            fontSize: 9.5,
+            lineHeight: 1.3
           }}>
-            <strong>📌 Petunjuk Pengisian Lapangan:</strong>
-            <span style={{ marginLeft: 6 }}>
-              1. Hitung fisik barang aktual di rak/gudang. 2. Tuliskan jumlah fisik pada kolom <strong>Qty Fisik</strong>. 3. Beri centang/keterangan kondisi barang. 4. Jika ada sparepart fisik yang belum terdaftar di tabel, tuliskan pada baris kosong di halaman terakhir. 5. Tanda tangani form setelah selesai.
-            </span>
+            <strong>📌 Petunjuk:</strong> Hitung fisik aktual di rak & tulis pada kolom <strong>Qty Fisik</strong>. Centang kondisi (B=Baik, R=Rusak). Tulis barang temuan baru di baris kosong di bawah.
           </div>
 
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10, marginBottom: 24 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 9.5, marginBottom: 16, tableLayout: 'fixed' }}>
             <thead>
-              <tr style={{ background: '#f1f5f9', textAlign: 'left' }}>
-                <th style={{ border: '1px solid #000', padding: '6px 4px', width: 26, textAlign: 'center' }}>No</th>
-                <th style={{ border: '1px solid #000', padding: '6px 6px', width: 85 }}>Kode Barang</th>
-                <th style={{ border: '1px solid #000', padding: '6px 6px' }}>Nama Sparepart / Barang</th>
-                <th style={{ border: '1px solid #000', padding: '6px 6px', width: 90 }}>Lokasi / Rak</th>
-                <th style={{ border: '1px solid #000', padding: '6px 4px', width: 42, textAlign: 'center' }}>Satuan</th>
+              <tr className="header-row" style={{ background: '#f1f5f9', textAlign: 'left' }}>
+                <th style={{ border: '1px solid #000', padding: '5px 3px', width: '4%', textAlign: 'center' }}>No</th>
+                <th style={{ border: '1px solid #000', padding: '5px 5px', width: showSystemQtyInForm ? '13%' : '14%' }}>Kode Barang</th>
+                <th style={{ border: '1px solid #000', padding: '5px 5px', width: showSystemQtyInForm ? '29%' : '34%' }}>Nama Sparepart / Barang</th>
+                <th style={{ border: '1px solid #000', padding: '5px 5px', width: showSystemQtyInForm ? '12%' : '13%' }}>Lokasi / Rak</th>
+                <th style={{ border: '1px solid #000', padding: '5px 3px', width: '6%', textAlign: 'center' }}>Satuan</th>
                 {showSystemQtyInForm && (
-                  <th style={{ border: '1px solid #000', padding: '6px 6px', width: 65, textAlign: 'right' }}>Qty Sistem</th>
+                  <th style={{ border: '1px solid #000', padding: '5px 4px', width: '8%', textAlign: 'right' }}>Qty Sistem</th>
                 )}
-                <th style={{ border: '2px solid #000', padding: '6px 6px', width: 85, textAlign: 'center', background: '#fff' }}>
-                  QTY FISIK<br /><span style={{ fontSize: 8, fontWeight: 'normal' }}>(Tulis Tangan)</span>
+                <th style={{ border: '2px solid #000', padding: '5px 4px', width: showSystemQtyInForm ? '10%' : '12%', textAlign: 'center', background: '#fff' }}>
+                  QTY FISIK
                 </th>
-                <th style={{ border: '1px solid #000', padding: '6px 4px', width: 75, textAlign: 'center' }}>Kondisi (B/R)</th>
-                <th style={{ border: '1px solid #000', padding: '6px 6px', width: 130 }}>Catatan / Keterangan</th>
+                <th style={{ border: '1px solid #000', padding: '5px 3px', width: showSystemQtyInForm ? '8%' : '9%', textAlign: 'center' }}>Kondisi</th>
+                <th style={{ border: '1px solid #000', padding: '5px 5px', width: showSystemQtyInForm ? '10%' : '14%' }}>Catatan</th>
               </tr>
             </thead>
             <tbody>
               {filteredItems.map((item: any, idx: number) => (
-                <tr key={item.id} style={{ height: 28, background: idx % 2 === 0 ? '#fff' : '#fafafa' }}>
-                  <td style={{ border: '1px solid #000', padding: '4px 3px', textAlign: 'center' }}>{idx + 1}</td>
-                  <td style={{ border: '1px solid #000', padding: '4px 6px', fontFamily: 'monospace', fontSize: 9 }}>{item.sparepartId || '—'}</td>
-                  <td style={{ border: '1px solid #000', padding: '4px 6px' }}>
+                <tr key={item.id} style={{ height: 26, background: idx % 2 === 0 ? '#fff' : '#fafafa' }}>
+                  <td style={{ border: '1px solid #000', padding: '3px 2px', textAlign: 'center' }}>{idx + 1}</td>
+                  <td style={{ border: '1px solid #000', padding: '3px 4px', fontSize: 9 }}>{item.sparepartId || '—'}</td>
+                  <td style={{ border: '1px solid #000', padding: '3px 4px' }}>
                     <strong>{item.namaItem}</strong>
-                    {item.isNewItem && <span style={{ fontSize: 8, marginLeft: 4 }}>(Baru)</span>}
+                    {item.isNewItem && <span style={{ fontSize: 8, marginLeft: 3 }}>(Baru)</span>}
                   </td>
-                  <td style={{ border: '1px solid #000', padding: '4px 6px' }}>{item.lokasi || 'Gudang MTC'}</td>
-                  <td style={{ border: '1px solid #000', padding: '4px 3px', textAlign: 'center' }}>{item.uom || 'Pcs'}</td>
+                  <td style={{ border: '1px solid #000', padding: '3px 4px' }}>{item.lokasi || 'Gudang MTC'}</td>
+                  <td style={{ border: '1px solid #000', padding: '3px 2px', textAlign: 'center' }}>{item.uom || 'Pcs'}</td>
                   {showSystemQtyInForm && (
-                    <td style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'right', fontWeight: 'bold' }}>{item.qtySistem}</td>
+                    <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'right', fontWeight: 'bold' }}>{item.qtySistem}</td>
                   )}
-                  {/* Empty hand-writing box */}
-                  <td style={{ border: '2px solid #000', padding: '4px 6px', textAlign: 'center', background: '#fff' }}>
-                    {/* Blank line for writing */}
+                  {/* Empty handwriting box */}
+                  <td style={{ border: '2px solid #000', padding: '3px 4px', textAlign: 'center', background: '#fff' }}>
                   </td>
-                  <td style={{ border: '1px solid #000', padding: '4px 3px', textAlign: 'center', fontSize: 9, color: '#666' }}>
-                    [ &nbsp; ] B &nbsp; [ &nbsp; ] R
+                  <td style={{ border: '1px solid #000', padding: '3px 2px', textAlign: 'center', fontSize: 8.5 }}>
+                    [ ] B &nbsp; [ ] R
                   </td>
-                  <td style={{ border: '1px solid #000', padding: '4px 6px' }}></td>
+                  <td style={{ border: '1px solid #000', padding: '3px 4px' }}></td>
                 </tr>
               ))}
 
-              {/* Extra Blank Rows for Writing Unlisted Items in Warehouse */}
+              {/* Extra Blank Rows for Writing Unlisted Items */}
               {[1, 2, 3, 4, 5].map((blankIdx) => (
-                <tr key={`blank-${blankIdx}`} style={{ height: 30, background: '#fff' }}>
-                  <td style={{ border: '1px solid #000', padding: '4px 3px', textAlign: 'center', color: '#888' }}>{filteredItems.length + blankIdx}</td>
-                  <td style={{ border: '1px solid #000', padding: '4px 6px', color: '#888', fontStyle: 'italic', fontSize: 9 }}>[Item Baru]</td>
-                  <td style={{ border: '1px solid #000', padding: '4px 6px' }}></td>
-                  <td style={{ border: '1px solid #000', padding: '4px 6px' }}></td>
-                  <td style={{ border: '1px solid #000', padding: '4px 3px', textAlign: 'center' }}>Pcs</td>
+                <tr key={`blank-${blankIdx}`} style={{ height: 28, background: '#fff' }}>
+                  <td style={{ border: '1px solid #000', padding: '3px 2px', textAlign: 'center', color: '#888' }}>{filteredItems.length + blankIdx}</td>
+                  <td style={{ border: '1px solid #000', padding: '3px 4px', color: '#888', fontStyle: 'italic', fontSize: 8.5 }}>[Item Baru]</td>
+                  <td style={{ border: '1px solid #000', padding: '3px 4px' }}></td>
+                  <td style={{ border: '1px solid #000', padding: '3px 4px' }}></td>
+                  <td style={{ border: '1px solid #000', padding: '3px 2px', textAlign: 'center' }}>Pcs</td>
                   {showSystemQtyInForm && (
-                    <td style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'right', color: '#888' }}>0</td>
+                    <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'right', color: '#888' }}>0</td>
                   )}
-                  <td style={{ border: '2px solid #000', padding: '4px 6px', textAlign: 'center' }}></td>
-                  <td style={{ border: '1px solid #000', padding: '4px 3px', textAlign: 'center', fontSize: 9, color: '#666' }}>
-                    [ &nbsp; ] B &nbsp; [ &nbsp; ] R
+                  <td style={{ border: '2px solid #000', padding: '3px 4px', textAlign: 'center' }}></td>
+                  <td style={{ border: '1px solid #000', padding: '3px 2px', textAlign: 'center', fontSize: 8.5 }}>
+                    [ ] B &nbsp; [ ] R
                   </td>
-                  <td style={{ border: '1px solid #000', padding: '4px 6px' }}></td>
+                  <td style={{ border: '1px solid #000', padding: '3px 4px' }}></td>
                 </tr>
               ))}
             </tbody>
           </table>
 
           {/* Signature Block for Form Mode */}
-          <div style={{ display: 'flex', justifyContent: 'space-around', textAlign: 'center', marginTop: 30, pageBreakInside: 'avoid' }}>
-            <div style={{ width: '42%' }}>
-              <div style={{ fontSize: 11, marginBottom: 55, fontWeight: 'bold' }}>Petugas Penghitung Fisik Lapangan,</div>
-              <div style={{ borderBottom: '1px solid #000', fontWeight: 'bold', paddingBottom: 4 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-around', textAlign: 'center', marginTop: 24, pageBreakInside: 'avoid' }}>
+            <div style={{ width: '40%' }}>
+              <div style={{ fontSize: 10.5, marginBottom: 45, fontWeight: 'bold' }}>Petugas Penghitung Lapangan,</div>
+              <div style={{ borderBottom: '1px solid #000', fontWeight: 'bold', paddingBottom: 3 }}>
                 ( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )
               </div>
-              <div style={{ fontSize: 10, color: '#444', marginTop: 4 }}>Teknisi / Staff Audit MTC</div>
-              <div style={{ fontSize: 9, color: '#666', marginTop: 2 }}>Tgl: ............................................</div>
+              <div style={{ fontSize: 9.5, marginTop: 3 }}>Teknisi / Staff Audit MTC</div>
+              <div style={{ fontSize: 8.5, marginTop: 2 }}>Tgl: ............................................</div>
             </div>
 
-            <div style={{ width: '42%' }}>
-              <div style={{ fontSize: 11, marginBottom: 55, fontWeight: 'bold' }}>Penanggung Jawab / Supervisor MTC,</div>
-              <div style={{ borderBottom: '1px solid #000', fontWeight: 'bold', paddingBottom: 4 }}>
+            <div style={{ width: '40%' }}>
+              <div style={{ fontSize: 10.5, marginBottom: 45, fontWeight: 'bold' }}>Supervisor / Penanggung Jawab MTC,</div>
+              <div style={{ borderBottom: '1px solid #000', fontWeight: 'bold', paddingBottom: 3 }}>
                 ( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )
               </div>
-              <div style={{ fontSize: 10, color: '#444', marginTop: 4 }}>Supervisor / PIC Gudang MTC</div>
-              <div style={{ fontSize: 9, color: '#666', marginTop: 2 }}>Tgl: ............................................</div>
+              <div style={{ fontSize: 9.5, marginTop: 3 }}>Supervisor / PIC Gudang MTC</div>
+              <div style={{ fontSize: 8.5, marginTop: 2 }}>Tgl: ............................................</div>
             </div>
           </div>
         </>
@@ -425,40 +461,40 @@ export default function MtcOpnamePrintPage({ params }: { params: { id: string } 
       {printMode === 'report' && (
         <>
           {/* Summary Box */}
-          <div style={{ border: '1px solid #000', borderRadius: 4, padding: 12, marginBottom: 18, background: '#f9fafb' }}>
-            <div style={{ fontWeight: 'bold', fontSize: 11, marginBottom: 8, borderBottom: '1px solid #d1d5db', paddingBottom: 4, letterSpacing: '0.5px' }}>
+          <div style={{ border: '1px solid #000', borderRadius: 4, padding: 10, marginBottom: 14, background: '#f9fafb' }}>
+            <div style={{ fontWeight: 'bold', fontSize: 10.5, marginBottom: 6, borderBottom: '1px solid #d1d5db', paddingBottom: 3 }}>
               📊 RINGKASAN REKAPITULASI HASIL OPNAME
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10, textAlign: 'center', fontSize: 11 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 8, textAlign: 'center', fontSize: 10 }}>
               <div>
-                <div style={{ color: '#666' }}>Total Item Audit</div>
-                <div style={{ fontWeight: 'bold', fontSize: 14 }}>{stats.totalItems} Item</div>
-                <div style={{ fontSize: 9, color: '#666' }}>({stats.countedItems} Dihitung)</div>
+                <div style={{ color: '#555' }}>Total Item Audit</div>
+                <div style={{ fontWeight: 'bold', fontSize: 13 }}>{stats.totalItems} Item</div>
+                <div style={{ fontSize: 8.5, color: '#555' }}>({stats.countedItems} Dihitung)</div>
               </div>
               <div>
-                <div style={{ color: '#0284c7' }}>🎯 Akurasi Data</div>
-                <div style={{ fontWeight: 'bold', fontSize: 14, color: '#0284c7' }}>
+                <div>🎯 Akurasi Data</div>
+                <div style={{ fontWeight: 'bold', fontSize: 13 }}>
                   {stats.accuracyPct !== undefined ? stats.accuracyPct : (stats.totalItems > 0 ? ((stats.totalMatchingCount / (stats.countedItems || stats.totalItems)) * 100).toFixed(1) : 0)}%
                 </div>
-                <div style={{ fontSize: 9, color: '#0284c7' }}>({stats.totalMatchingCount} Sesuai)</div>
+                <div style={{ fontSize: 8.5 }}>({stats.totalMatchingCount} Sesuai)</div>
               </div>
               <div>
-                <div style={{ color: '#16a34a' }}>🟢 Sesuai (0)</div>
-                <div style={{ fontWeight: 'bold', fontSize: 14, color: '#16a34a' }}>{stats.totalMatchingCount} Item</div>
+                <div>🟢 Sesuai (0)</div>
+                <div style={{ fontWeight: 'bold', fontSize: 13 }}>{stats.totalMatchingCount} Item</div>
               </div>
               <div>
-                <div style={{ color: '#dc2626' }}>🔴 Total Minus (-Qty)</div>
-                <div style={{ fontWeight: 'bold', fontSize: 14, color: '#dc2626' }}>-{stats.totalMinusQty} Pcs</div>
-                <div style={{ fontSize: 9, color: '#dc2626' }}>({fmtCurrency(stats.totalMinusValue)})</div>
+                <div>🔴 Total Minus (-Qty)</div>
+                <div style={{ fontWeight: 'bold', fontSize: 13 }}>-{stats.totalMinusQty} Pcs</div>
+                <div style={{ fontSize: 8.5 }}>({fmtCurrency(stats.totalMinusValue)})</div>
               </div>
               <div>
-                <div style={{ color: '#2563eb' }}>🔵 Total Plus (+Qty)</div>
-                <div style={{ fontWeight: 'bold', fontSize: 14, color: '#2563eb' }}>+{stats.totalPlusQty} Pcs</div>
-                <div style={{ fontSize: 9, color: '#2563eb' }}>({fmtCurrency(stats.totalPlusValue)})</div>
+                <div>🔵 Total Plus (+Qty)</div>
+                <div style={{ fontWeight: 'bold', fontSize: 13 }}>+{stats.totalPlusQty} Pcs</div>
+                <div style={{ fontSize: 8.5 }}>({fmtCurrency(stats.totalPlusValue)})</div>
               </div>
               <div>
-                <div style={{ color: '#000' }}>Net Varian Rp</div>
-                <div style={{ fontWeight: 'bold', fontSize: 13, color: stats.netVarianceValue < 0 ? '#dc2626' : stats.netVarianceValue > 0 ? '#2563eb' : '#16a34a' }}>
+                <div>Net Varian Rp</div>
+                <div style={{ fontWeight: 'bold', fontSize: 12 }}>
                   {fmtCurrency(stats.netVarianceValue)}
                 </div>
               </div>
@@ -466,59 +502,51 @@ export default function MtcOpnamePrintPage({ params }: { params: { id: string } 
           </div>
 
           {/* Detailed Items Table */}
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10, marginBottom: 30 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 9.5, marginBottom: 20, tableLayout: 'fixed' }}>
             <thead>
-              <tr style={{ background: '#e5e7eb', textAlign: 'left' }}>
-                <th style={{ border: '1px solid #9ca3af', padding: 6, width: 24, textAlign: 'center' }}>No</th>
-                <th style={{ border: '1px solid #9ca3af', padding: 6, width: 85 }}>Kode</th>
-                <th style={{ border: '1px solid #9ca3af', padding: 6 }}>Nama Sparepart / Barang Fisik</th>
-                <th style={{ border: '1px solid #9ca3af', padding: 6, width: 90 }}>Lokasi</th>
-                <th style={{ border: '1px solid #9ca3af', padding: 6, textAlign: 'right', width: 70 }}>Qty Sistem</th>
-                <th style={{ border: '1px solid #9ca3af', padding: 6, textAlign: 'right', width: 70 }}>Qty Fisik</th>
-                <th style={{ border: '1px solid #9ca3af', padding: 6, textAlign: 'right', width: 70 }}>Selisih</th>
-                <th style={{ border: '1px solid #9ca3af', padding: 6, textAlign: 'center', width: 90 }}>Petugas</th>
-                <th style={{ border: '1px solid #9ca3af', padding: 6, width: 120 }}>Catatan Audit</th>
+              <tr className="header-row" style={{ background: '#e5e7eb', textAlign: 'left' }}>
+                <th style={{ border: '1px solid #9ca3af', padding: '5px 3px', width: '4%', textAlign: 'center' }}>No</th>
+                <th style={{ border: '1px solid #9ca3af', padding: '5px 4px', width: '13%' }}>Kode</th>
+                <th style={{ border: '1px solid #9ca3af', padding: '5px 5px', width: '30%' }}>Nama Sparepart / Barang</th>
+                <th style={{ border: '1px solid #9ca3af', padding: '5px 4px', width: '13%' }}>Lokasi</th>
+                <th style={{ border: '1px solid #9ca3af', padding: '5px 4px', textAlign: 'right', width: '8%' }}>Qty Sis</th>
+                <th style={{ border: '1px solid #9ca3af', padding: '5px 4px', textAlign: 'right', width: '8%' }}>Qty Fis</th>
+                <th style={{ border: '1px solid #9ca3af', padding: '5px 4px', textAlign: 'right', width: '8%' }}>Selisih</th>
+                <th style={{ border: '1px solid #9ca3af', padding: '5px 3px', textAlign: 'center', width: '8%' }}>Petugas</th>
+                <th style={{ border: '1px solid #9ca3af', padding: '5px 4px', width: '8%' }}>Catatan</th>
               </tr>
             </thead>
             <tbody>
               {filteredItems.map((item: any, idx: number) => {
                 const selisih = item.selisih || 0;
-                let statusStyle = {};
                 let selisihText = '0';
 
                 if (item.isCounted) {
-                  if (selisih < 0) {
-                    statusStyle = { color: '#dc2626', fontWeight: 'bold' };
-                    selisihText = `${selisih} ${item.uom}`;
-                  } else if (selisih > 0) {
-                    statusStyle = { color: '#2563eb', fontWeight: 'bold' };
-                    selisihText = `+${selisih} ${item.uom}`;
-                  } else {
-                    statusStyle = { color: '#16a34a' };
-                    selisihText = '0';
-                  }
+                  if (selisih < 0) selisihText = `${selisih} ${item.uom}`;
+                  else if (selisih > 0) selisihText = `+${selisih} ${item.uom}`;
+                  else selisihText = '0';
                 } else {
                   selisihText = 'Belum Hitung';
                 }
 
                 return (
                   <tr key={item.id} style={{ background: idx % 2 === 0 ? '#fff' : '#f9fafb' }}>
-                    <td style={{ border: '1px solid #d1d5db', padding: 5, textAlign: 'center' }}>{idx + 1}</td>
-                    <td style={{ border: '1px solid #d1d5db', padding: 5, fontFamily: 'monospace', fontSize: 9 }}>{item.sparepartId || '—'}</td>
-                    <td style={{ border: '1px solid #d1d5db', padding: 5 }}>
+                    <td style={{ border: '1px solid #d1d5db', padding: '3px 2px', textAlign: 'center' }}>{idx + 1}</td>
+                    <td style={{ border: '1px solid #d1d5db', padding: '3px 4px', fontSize: 9 }}>{item.sparepartId || '—'}</td>
+                    <td style={{ border: '1px solid #d1d5db', padding: '3px 5px' }}>
                       <strong>{item.namaItem}</strong>
-                      {item.isNewItem && <span style={{ color: '#d97706', fontSize: 9, marginLeft: 4 }}>(Item Baru)</span>}
+                      {item.isNewItem && <span style={{ fontSize: 8, marginLeft: 3 }}>(Baru)</span>}
                     </td>
-                    <td style={{ border: '1px solid #d1d5db', padding: 5 }}>{item.lokasi || 'Gudang'}</td>
-                    <td style={{ border: '1px solid #d1d5db', padding: 5, textAlign: 'right' }}>{item.qtySistem} {item.uom}</td>
-                    <td style={{ border: '1px solid #d1d5db', padding: 5, textAlign: 'right', fontWeight: 'bold' }}>
+                    <td style={{ border: '1px solid #d1d5db', padding: '3px 4px' }}>{item.lokasi || 'Gudang'}</td>
+                    <td style={{ border: '1px solid #d1d5db', padding: '3px 4px', textAlign: 'right' }}>{item.qtySistem} {item.uom}</td>
+                    <td style={{ border: '1px solid #d1d5db', padding: '3px 4px', textAlign: 'right', fontWeight: 'bold' }}>
                       {item.qtyFisik !== null && item.qtyFisik !== undefined ? `${item.qtyFisik} ${item.uom}` : '—'}
                     </td>
-                    <td style={{ border: '1px solid #d1d5db', padding: 5, textAlign: 'right', ...statusStyle }}>
+                    <td style={{ border: '1px solid #d1d5db', padding: '3px 4px', textAlign: 'right', fontWeight: selisih !== 0 ? 'bold' : 'normal' }}>
                       {selisihText}
                     </td>
-                    <td style={{ border: '1px solid #d1d5db', padding: 5, textAlign: 'center', fontSize: 9 }}>{item.auditedBy || '—'}</td>
-                    <td style={{ border: '1px solid #d1d5db', padding: 5, fontSize: 9 }}>{item.catatan || '—'}</td>
+                    <td style={{ border: '1px solid #d1d5db', padding: '3px 3px', textAlign: 'center', fontSize: 8.5 }}>{item.auditedBy || '—'}</td>
+                    <td style={{ border: '1px solid #d1d5db', padding: '3px 4px', fontSize: 8.5 }}>{item.catatan || '—'}</td>
                   </tr>
                 );
               })}
@@ -526,21 +554,21 @@ export default function MtcOpnamePrintPage({ params }: { params: { id: string } 
           </table>
 
           {/* Signature Block for Report Mode */}
-          <div style={{ display: 'flex', justifyContent: 'space-around', textAlign: 'center', marginTop: 36, pageBreakInside: 'avoid' }}>
-            <div style={{ width: '42%' }}>
-              <div style={{ fontSize: 11, marginBottom: 55 }}>Dihitung Oleh,</div>
-              <div style={{ borderBottom: '1px solid #000', fontWeight: 'bold', paddingBottom: 4 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-around', textAlign: 'center', marginTop: 24, pageBreakInside: 'avoid' }}>
+            <div style={{ width: '40%' }}>
+              <div style={{ fontSize: 10.5, marginBottom: 45 }}>Dihitung Oleh,</div>
+              <div style={{ borderBottom: '1px solid #000', fontWeight: 'bold', paddingBottom: 3 }}>
                 ( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )
               </div>
-              <div style={{ fontSize: 10, color: '#555', marginTop: 4 }}>Admin / Teknisi Maintenance</div>
+              <div style={{ fontSize: 9.5, marginTop: 3 }}>Admin / Teknisi Maintenance</div>
             </div>
 
-            <div style={{ width: '42%' }}>
-              <div style={{ fontSize: 11, marginBottom: 55 }}>Diketahui & Disetujui Oleh,</div>
-              <div style={{ borderBottom: '1px solid #000', fontWeight: 'bold', paddingBottom: 4 }}>
+            <div style={{ width: '40%' }}>
+              <div style={{ fontSize: 10.5, marginBottom: 45 }}>Diketahui & Disetujui Oleh,</div>
+              <div style={{ borderBottom: '1px solid #000', fontWeight: 'bold', paddingBottom: 3 }}>
                 ( {session.approvedBy || '.........................................'} )
               </div>
-              <div style={{ fontSize: 10, color: '#555', marginTop: 4 }}>Manufacturing Manager / Supervisor</div>
+              <div style={{ fontSize: 9.5, marginTop: 3 }}>Manufacturing Manager / Supervisor</div>
             </div>
           </div>
         </>
