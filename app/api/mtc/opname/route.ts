@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
         lokasi: lokasi ? String(lokasi).trim() : null,
         catatan: catatan ? String(catatan).trim() : null,
         status: 'DRAFT',
-        createdById: (sessionUser?.user as any)?.id || null
+        createdById: sessionUser?.user?.id ? (parseInt(String(sessionUser.user.id)) || null) : null
       }
     });
 
