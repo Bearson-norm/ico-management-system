@@ -924,7 +924,7 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
                       <thead>
                         <tr style={{ background: 'rgba(0,0,0,0.1)' }}>
                           <th style={{ width: 60, textAlign: 'center', paddingLeft: 20 }}>Nomor</th>
-                          <th style={{ minWidth: 260 }}>Nama Barang Pengajuan (Sheets)</th>
+                          <th style={{ minWidth: 260 }}>Nama Barang / Suku Cadang (Odoo)</th>
                           <th style={{ minWidth: 240 }}>Koneksi Database Resmi MTC (Odoo)</th>
                           <th style={{ minWidth: 140, textAlign: 'center' }}>Fondasi Stok</th>
                           <th style={{ width: 80, textAlign: 'center' }}>Qty</th>
@@ -936,8 +936,8 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
                       <tbody>
                         {group.items.map((item) => {
                           const isItemUrgent = item.urgency === 'Urgent';
-                          const isOdooGrDone = item.statusPo === 'DONE';
-                          const isItemReceived = !!item.tanggalTerima || isOdooGrDone;
+                          const isOdooGrDone = (item.statusPo || '').toUpperCase() === 'DONE' || (item.statusPr || '').toUpperCase() === 'RECEIVED';
+                          const isStockReceived = !!item.tanggalTerima;
                           const effectiveGrLink = parseOdooLinks(item).grUrl || item.linkGr;
 
                           return (
@@ -946,7 +946,7 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
                                 style={{
                                   borderBottom: '1px solid var(--br)',
                                   backgroundColor:
-                                    isItemUrgent && !isItemReceived ? 'rgba(239, 68, 68, 0.02)' : 'transparent',
+                                    isItemUrgent && !isOdooGrDone ? 'rgba(239, 68, 68, 0.02)' : 'transparent',
                                   cursor: 'pointer',
                                 }}
                                 onClick={() => toggleRowExpand(item.id)}
@@ -961,7 +961,7 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
                                 <td>
                                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                      {isItemUrgent && !isItemReceived && (
+                                      {isItemUrgent && !isOdooGrDone && (
                                         <span style={{ color: 'var(--red)', fontSize: 12 }}>🚨</span>
                                       )}
                                       {renderFormattedItemName(item.originalName)}
@@ -1281,24 +1281,23 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
                                       href={effectiveGrLink}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      title="Buka Lembar GR Odoo di Tab Baru"
-                                      className="btn btn-ghost btn-sm"
+                                      className="badge"
                                       style={{
                                         padding: '3px 8px',
-                                        fontSize: 11,
-                                        height: 'auto',
+                                        fontSize: 9,
                                         borderRadius: 6,
-                                        color: '#a855f7',
-                                        background: 'rgba(168, 85, 247, 0.12)',
-                                        border: '1px solid rgba(168, 85, 247, 0.3)',
+                                        color: isOdooGrDone ? '#22c55e' : '#f59e0b',
+                                        background: isOdooGrDone ? 'rgba(34, 197, 94, 0.12)' : 'rgba(245, 158, 11, 0.12)',
+                                        border: `1px solid ${isOdooGrDone ? 'rgba(34, 197, 94, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`,
                                         display: 'inline-flex',
                                         alignItems: 'center',
                                         gap: 4,
                                         textDecoration: 'none',
                                         fontWeight: 700,
                                       }}
+                                      title={isOdooGrDone ? "Dokumen GR Odoo Valid (Done)" : "Dokumen GR Odoo masih Draft / Belum Validasi"}
                                     >
-                                      📦 GR Odoo ↗
+                                      📦 {isOdooGrDone ? 'GR Done ↗' : 'GR Draft ↗'}
                                     </a>
                                   ) : (
                                     <button
@@ -1343,17 +1342,43 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
                                       ✏️ Edit
                                     </button>
 
-                                    {isItemReceived ? (
+                                    {isOdooGrDone ? (
                                       <div style={{ textAlign: 'right' }}>
                                         <span
                                           className="badge badge-grn"
                                           style={{ padding: '4px 8px', fontSize: 10, fontWeight: 700 }}
                                         >
-                                          ✓ Diterima {item.isStocked ? '(Gudang)' : '(Non-Stok)'}
+                                          ✓ Selesai GR {item.isStocked ? '(Gudang)' : '(Non-Stok)'}
                                         </span>
                                         {item.tanggalTerima && (
                                           <div style={{ fontSize: 8, color: 'var(--tx3)', marginTop: 2 }}>
                                             Tgl:{' '}
+                                            {new Date(item.tanggalTerima).toLocaleDateString('id-ID', {
+                                              day: '2-digit',
+                                              month: '2-digit',
+                                            })}
+                                          </div>
+                                        )}
+                                      </div>
+                                    ) : isStockReceived ? (
+                                      <div style={{ textAlign: 'right' }}>
+                                        <span
+                                          className="badge badge-blu"
+                                          style={{
+                                            padding: '4px 8px',
+                                            fontSize: 10,
+                                            fontWeight: 700,
+                                            background: 'rgba(59, 130, 246, 0.15)',
+                                            color: '#60a5fa',
+                                            border: '1px solid rgba(59, 130, 246, 0.3)',
+                                          }}
+                                          title="Barang sudah dimasukkan ke stok lokal MTC, namun dokumen Good Received (GR) resmi di Odoo masih berstatus Draft / Belum Selesai."
+                                        >
+                                          📦 Masuk Stok (Belum GR Odoo)
+                                        </span>
+                                        {item.tanggalTerima && (
+                                          <div style={{ fontSize: 8, color: 'var(--tx3)', marginTop: 2 }}>
+                                            Tgl Masuk:{' '}
                                             {new Date(item.tanggalTerima).toLocaleDateString('id-ID', {
                                               day: '2-digit',
                                               month: '2-digit',

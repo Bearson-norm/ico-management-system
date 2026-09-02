@@ -1,11 +1,14 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { ok, err } from '@/lib/utils';
-import { requireMtcAuth } from '@/lib/auth';
+import { requireMtcEditor } from '@/lib/auth';
 
 // GET /api/mtc/opname - List all Stock Opname sessions
 export async function GET(req: NextRequest) {
   try {
+    const sessionUser = await requireMtcEditor();
+    if (!sessionUser) return err('Unauthorized: Hanya editor yang dapat mengakses Stock Opname', 403);
+
     const sessions = await prisma.opnameSession.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
@@ -53,7 +56,8 @@ export async function GET(req: NextRequest) {
 // POST /api/mtc/opname - Create a new Stock Opname session & pre-populate items
 export async function POST(req: NextRequest) {
   try {
-    const sessionUser = await requireMtcAuth();
+    const sessionUser = await requireMtcEditor();
+    if (!sessionUser) return err('Unauthorized: Hanya editor yang dapat membuat Stock Opname', 403);
 
     const body = await req.json();
     const { judul, lokasi, catatan } = body;
@@ -106,7 +110,7 @@ export async function POST(req: NextRequest) {
         lokasi: lokasi ? String(lokasi).trim() : null,
         catatan: catatan ? String(catatan).trim() : null,
         status: 'DRAFT',
-        createdById: (sessionUser?.user as any)?.id || null
+        createdById: sessionUser?.user?.id ? (parseInt(String(sessionUser.user.id)) || null) : null
       }
     });
 

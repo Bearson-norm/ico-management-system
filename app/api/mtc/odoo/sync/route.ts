@@ -938,6 +938,8 @@ export async function POST(req: NextRequest) {
 
       let importedPrCount = 0;
 
+      const processedPrFromRequisitions = new Set<string>();
+
       // Import/Sync from purchase.requisition
       try {
         logDebug(`Mencari purchase.requisition di Odoo sejak ${thirtyDaysAgoStr} untuk UID ${parsedUid}...`);
@@ -996,6 +998,7 @@ export async function POST(req: NextRequest) {
           for (const req of recentRequisitions) {
             const prName = (req.origin && String(req.origin).trim()) ? String(req.origin).trim() : req.name?.trim();
             if (!prName) continue;
+            processedPrFromRequisitions.add(prName);
 
             const reqLines = allReqLines.filter((line: any) => line.requisition_id && line.requisition_id[0] === req.id);
             if (reqLines.length === 0) continue;
@@ -1048,7 +1051,11 @@ export async function POST(req: NextRequest) {
                 const sparepartId = await findMtcSparepartMatch(tx, prodName);
                 const teNumber = (req.name && String(req.name).trim()) ? String(req.name).trim() : null;
 
-                const targetIndex = bestMatchIndex !== -1 ? bestMatchIndex : (localItems.length > 0 ? 0 : -1);
+                let targetIndex = (bestMatchIndex !== -1 && bestScore >= 15) ? bestMatchIndex : -1;
+                // If prodName is generic but localItems has remaining items for this PR, reuse local item
+                if (targetIndex === -1 && isGenericName(prodName) && localItems.length > 0) {
+                  targetIndex = 0;
+                }
 
                 if (targetIndex !== -1) {
                   // MATCH / REUSE FOUND: update existing local item in-place (no duplicates!)
@@ -1076,26 +1083,53 @@ export async function POST(req: NextRequest) {
                       data: updateData
                     });
                   }
-                } else {
-                  // NO MATCH AT ALL & LOCAL LIST EMPTY: create new local item
-                  await tx.procurementTracking.create({
-                    data: {
-                      originalName: prodName,
-                      qty: Math.round(qty),
-                      harga: price,
+                } else if (!isGenericName(prodName)) {
+                  // Double check DB directly to prevent duplicate creation
+                  const dbExisting = await tx.procurementTracking.findFirst({
+                    where: {
                       nomorPr: prName,
-                      nomorTe: teNumber,
-                      statusPr: localStatusPr,
-                      statusPo: localStatusPr === 'CANCELLED' ? 'CANCELLED' : null,
-                      tanggalList: prDate,
-                      keterangan: req.description || null,
-                      sparepartId,
-                      isStocked: sparepartId ? true : false,
-                      productCategory: 'Sparepart',
-                      urgency: 'Normal'
+                      OR: [
+                        { originalName: { equals: prodName, mode: 'insensitive' } },
+                        { originalName: { contains: prodName, mode: 'insensitive' } }
+                      ]
                     }
                   });
-                  importedPrCount++;
+
+                  if (dbExisting) {
+                    const resolvedSpId = sparepartId || dbExisting.sparepartId;
+                    await tx.procurementTracking.update({
+                      where: { id: dbExisting.id },
+                      data: {
+                        statusPr: localStatusPr,
+                        ...(localStatusPr === 'CANCELLED' ? { statusPo: 'CANCELLED' } : {}),
+                        harga: price > 0 ? price : undefined,
+                        qty: Math.round(qty),
+                        sparepartId: resolvedSpId,
+                        isStocked: resolvedSpId ? true : undefined,
+                        ...(teNumber ? { nomorTe: teNumber } : {}),
+                      }
+                    });
+                  } else {
+                    // NO MATCH AT ALL & LOCAL LIST EMPTY: create new local item
+                    await tx.procurementTracking.create({
+                      data: {
+                        originalName: prodName,
+                        qty: Math.round(qty),
+                        harga: price,
+                        nomorPr: prName,
+                        nomorTe: teNumber,
+                        statusPr: localStatusPr,
+                        statusPo: localStatusPr === 'CANCELLED' ? 'CANCELLED' : null,
+                        tanggalList: prDate,
+                        keterangan: req.description || null,
+                        sparepartId,
+                        isStocked: sparepartId ? true : false,
+                        productCategory: 'Sparepart',
+                        urgency: 'Normal'
+                      }
+                    });
+                    importedPrCount++;
+                  }
                 }
               }
             }, { timeout: 60000, maxWait: 10000 });
@@ -1162,6 +1196,10 @@ export async function POST(req: NextRequest) {
           for (const req of recentRequests) {
             const prName = req.name?.trim();
             if (!prName) continue;
+            if (processedPrFromRequisitions.has(prName)) {
+              logDebug(`Skipping purchase.request for ${prName} as it was already processed in purchase.requisition`);
+              continue;
+            }
 
             const reqLines = allReqLines.filter((line: any) => line.request_id && line.request_id[0] === req.id);
             if (reqLines.length === 0) continue;
@@ -1211,7 +1249,11 @@ export async function POST(req: NextRequest) {
 
                 const sparepartId = await findMtcSparepartMatch(tx, prodName);
 
-                const targetIndex = bestMatchIndex !== -1 ? bestMatchIndex : (localItems.length > 0 ? 0 : -1);
+                let targetIndex = (bestMatchIndex !== -1 && bestScore >= 15) ? bestMatchIndex : -1;
+                // If prodName is generic but localItems has remaining items for this PR, reuse local item
+                if (targetIndex === -1 && isGenericName(prodName) && localItems.length > 0) {
+                  targetIndex = 0;
+                }
 
                 if (targetIndex !== -1) {
                   // MATCH / REUSE FOUND: update existing local item in-place (no duplicates!)
@@ -1237,24 +1279,49 @@ export async function POST(req: NextRequest) {
                       data: updateData
                     });
                   }
-                } else {
-                  // NO MATCH: create new local item
-                  await tx.procurementTracking.create({
-                    data: {
-                      originalName: prodName,
-                      qty: Math.round(qty),
-                      harga: price,
+                } else if (!isGenericName(prodName)) {
+                  // Double check DB directly to prevent duplicate creation
+                  const dbExisting = await tx.procurementTracking.findFirst({
+                    where: {
                       nomorPr: prName,
-                      statusPr: localStatusPr,
-                      tanggalList: prDate,
-                      keterangan: line.name || null,
-                      sparepartId,
-                      isStocked: sparepartId ? true : false,
-                      productCategory: 'Sparepart',
-                      urgency: 'Normal'
+                      OR: [
+                        { originalName: { equals: prodName, mode: 'insensitive' } },
+                        { originalName: { contains: prodName, mode: 'insensitive' } }
+                      ]
                     }
                   });
-                  importedPrCount++;
+
+                  if (dbExisting) {
+                    const resolvedSpId = sparepartId || dbExisting.sparepartId;
+                    await tx.procurementTracking.update({
+                      where: { id: dbExisting.id },
+                      data: {
+                        statusPr: localStatusPr,
+                        harga: price > 0 ? price : undefined,
+                        qty: Math.round(qty),
+                        sparepartId: resolvedSpId,
+                        isStocked: resolvedSpId ? true : undefined,
+                      }
+                    });
+                  } else {
+                    // NO MATCH: create new local item
+                    await tx.procurementTracking.create({
+                      data: {
+                        originalName: prodName,
+                        qty: Math.round(qty),
+                        harga: price,
+                        nomorPr: prName,
+                        statusPr: localStatusPr,
+                        tanggalList: prDate,
+                        keterangan: line.name || null,
+                        sparepartId,
+                        isStocked: sparepartId ? true : false,
+                        productCategory: 'Sparepart',
+                        urgency: 'Normal'
+                      }
+                    });
+                    importedPrCount++;
+                  }
                 }
               }
             }, { timeout: 60000, maxWait: 10000 });
@@ -1811,6 +1878,12 @@ export async function POST(req: NextRequest) {
                 nomorPo: poName,
                 odooNotes: chatterNotes || null,
               };
+              if ((!item.nomorPr || item.nomorPr.trim() === '') && targetPo && targetPo.origin) {
+                const cleanOrigin = targetPo.origin.trim();
+                if (cleanOrigin.toUpperCase().startsWith('PR') || cleanOrigin.toUpperCase().startsWith('TE')) {
+                  updateData.nomorPr = cleanOrigin;
+                }
+              }
               if (isGenericName(item.originalName)) {
                 const lineToUse = matchedLine || (allPoLines && allPoLines[0]);
                 let specificName = lineToUse ? getBestOdooLineName(lineToUse) : null;
@@ -1874,7 +1947,7 @@ export async function POST(req: NextRequest) {
               if (odooState === 'cancel') {
                 updateData.statusPr = 'CANCELLED';
                 updateData.statusPo = 'CANCELLED';
-              } else if (newReceiptQty > 0 && newReceiptQty < item.qty) {
+              } else if (isPartialOdooGr && newReceiptQty > 0 && newReceiptQty < item.qty && item.statusPo !== 'DONE') {
                 // SPLIT GR HANDLING: Baru diterima sebagian dari porsi pending saat ini
                 updateData.qty = newReceiptQty;
                 updateData.statusPo = 'DONE';
@@ -1918,13 +1991,14 @@ export async function POST(req: NextRequest) {
                 }
                 finalIsGrDone = true;
               } else {
-                // If newReceiptQty <= 0, keep statusPo as PO unless physical receipt date is already recorded in MTC
-                updateData.statusPo = item.tanggalTerima ? 'DONE' : 'PO';
-                updateData.tanggalTerima = item.tanggalTerima || null;
+                // Item BELUM diterima (Good Received di Odoo masih draft atau qty_received == 0)
+                updateData.statusPo = (localStatusPr === 'APPROVED' || localStatusPr === 'PO') ? 'PO' : localStatusPr;
+                updateData.tanggalTerima = null;
                 if (odooGrLink) {
                   updateData.linkGr = odooGrLink;
                   updateData.linkReferences = combinePrAndPoLinks(updateData.linkReferences || item.linkReferences, odooGrLink, 'gr');
                 }
+                finalIsGrDone = false;
               }
 
               const hasChanges = hasActualChanges(item, updateData);

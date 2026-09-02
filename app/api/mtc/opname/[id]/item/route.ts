@@ -1,12 +1,13 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { ok, err, generateItemId } from '@/lib/utils';
-import { requireMtcAuth } from '@/lib/auth';
+import { requireMtcEditor } from '@/lib/auth';
 
 // POST /api/mtc/opname/[id]/item - Add an unlisted physical item on-the-fly to an active SO session
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const sessionUser = await requireMtcAuth();
+    const sessionUser = await requireMtcEditor();
+    if (!sessionUser) return err('Unauthorized: Hanya editor yang dapat menambah item Stock Opname', 403);
 
     const sessionId = parseInt(params.id);
     if (isNaN(sessionId)) return err('ID sesi tidak valid', 400);
@@ -94,6 +95,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 // DELETE /api/mtc/opname/[id]/item?itemId=123 - Delete an item from an active SO session
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const sessionUser = await requireMtcEditor();
+    if (!sessionUser) return err('Unauthorized: Hanya editor yang dapat menghapus item Stock Opname', 403);
+
     const sessionId = parseInt(params.id);
     if (isNaN(sessionId)) return err('ID sesi tidak valid', 400);
 
@@ -141,6 +145,9 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 // PATCH /api/mtc/opname/[id]/item - Edit an opname item's name/metadata
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const sessionUser = await requireMtcEditor();
+    if (!sessionUser) return err('Unauthorized: Hanya editor yang dapat mengubah item Stock Opname', 403);
+
     const sessionId = parseInt(params.id);
     if (isNaN(sessionId)) return err('ID sesi tidak valid', 400);
 

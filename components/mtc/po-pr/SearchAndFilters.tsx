@@ -81,7 +81,7 @@ export const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
           </svg>
           <input
             type="text"
-            placeholder="Cari PR, PO, nama barang sheets, atau nama suku cadang Odoo..."
+            placeholder="Cari No. PR, PO, TE, vendor, atau nama suku cadang..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
