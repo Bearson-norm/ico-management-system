@@ -82,7 +82,7 @@ export default function MtcOpnamePrintPage({ params }: { params: { id: string } 
       <style jsx global>{`
         @page {
           size: A4 portrait;
-          margin: 8mm 8mm 8mm 8mm;
+          margin: 1.0cm 1.0cm 1.0cm 1.0cm;
         }
 
         html, body {
@@ -91,17 +91,20 @@ export default function MtcOpnamePrintPage({ params }: { params: { id: string } 
           font-family: Arial, Helvetica, sans-serif !important;
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
+          margin: 0 !important;
+          padding: 0 !important;
         }
 
         .mtc-print-root {
           background: #fff !important;
           color: #000 !important;
           font-family: Arial, Helvetica, sans-serif !important;
-          padding: 20px 24px;
-          max-width: 980px;
+          padding: 16px 20px;
+          max-width: 960px;
           margin: 0 auto;
-          font-size: 10.5px;
+          font-size: 9.5px;
           box-sizing: border-box;
+          line-height: 1.25;
         }
 
         .mtc-print-root * {
@@ -121,11 +124,13 @@ export default function MtcOpnamePrintPage({ params }: { params: { id: string } 
           color: #000 !important;
           word-break: break-word;
           overflow-wrap: break-word;
+          border: 1px solid #000;
         }
 
         .mtc-print-root tr.header-row th {
           background-color: #f1f5f9 !important;
           font-weight: bold;
+          font-size: 9.5px;
         }
 
         @media print {
@@ -148,6 +153,7 @@ export default function MtcOpnamePrintPage({ params }: { params: { id: string } 
           }
           table {
             page-break-inside: auto;
+            width: 100% !important;
           }
           tr {
             page-break-inside: avoid;
@@ -168,7 +174,7 @@ export default function MtcOpnamePrintPage({ params }: { params: { id: string } 
         border: '1px solid #cbd5e1',
         borderRadius: 12,
         padding: '12px 16px',
-        marginBottom: 20,
+        marginBottom: 16,
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -284,54 +290,54 @@ export default function MtcOpnamePrintPage({ params }: { params: { id: string } 
       </div>
 
       {/* Official FLG Kop Surat Header (Table Layout Fixed 100%) */}
-      <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #000', marginBottom: 12, fontSize: 10.5, tableLayout: 'fixed' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #000', marginBottom: 10, fontSize: 10, tableLayout: 'fixed' }}>
         <tbody>
           <tr>
-            {/* Logo FOOM (Rowspan 3: 20%) */}
-            <td rowSpan={3} style={{ width: '20%', border: '1px solid #000', padding: 6, textAlign: 'center', verticalAlign: 'middle', background: '#fff' }}>
-              <img src="/logo.png" alt="FOOM" style={{ maxHeight: 38, maxWidth: '95%', objectFit: 'contain' }} />
+            {/* Logo FOOM (Rowspan 3: 18%) */}
+            <td rowSpan={3} style={{ width: '18%', border: '1px solid #000', padding: 4, textAlign: 'center', verticalAlign: 'middle', background: '#fff' }}>
+              <img src="/logo.png" alt="FOOM" style={{ maxHeight: 34, maxWidth: '90%', objectFit: 'contain' }} />
             </td>
 
-            {/* Row 1 Center: PT. FOOM Lab Global (42%) */}
-            <td style={{ width: '42%', border: '1px solid #000', padding: '4px 6px', textAlign: 'center', fontWeight: 'bold', fontSize: 11.5 }}>
+            {/* Row 1 Center: PT. FOOM Lab Global (44%) */}
+            <td style={{ width: '44%', border: '1px solid #000', padding: '3px 6px', textAlign: 'center', fontWeight: 'bold', fontSize: 11 }}>
               PT. FOOM Lab Global
             </td>
 
             {/* Row 1 Right: No. Dokumen (13% + 25%) */}
-            <td style={{ width: '13%', border: '1px solid #000', padding: '4px 6px' }}>
+            <td style={{ width: '13%', border: '1px solid #000', padding: '3px 6px' }}>
               No. Dokumen
             </td>
-            <td style={{ width: '25%', border: '1px solid #000', padding: '4px 6px', fontWeight: 'bold', fontFamily: 'monospace' }}>
+            <td style={{ width: '25%', border: '1px solid #000', padding: '3px 6px', fontWeight: 'bold', fontFamily: 'monospace' }}>
               FLG/FORM/MTC/013-00
             </td>
           </tr>
 
           <tr>
             {/* Row 2 Center: Cikupa Factory */}
-            <td style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'center', fontWeight: 'bold', fontSize: 10.5 }}>
+            <td style={{ border: '1px solid #000', padding: '3px 6px', textAlign: 'center', fontWeight: 'bold', fontSize: 10 }}>
               Cikupa Factory
             </td>
 
             {/* Row 2 Right: Revisi */}
-            <td style={{ border: '1px solid #000', padding: '4px 6px' }}>
+            <td style={{ border: '1px solid #000', padding: '3px 6px' }}>
               Revisi
             </td>
-            <td style={{ border: '1px solid #000', padding: '4px 6px' }}>
+            <td style={{ border: '1px solid #000', padding: '3px 6px' }}>
               00
             </td>
           </tr>
 
           <tr>
             {/* Row 3 Center: Title depends on Print Mode */}
-            <td style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'center', fontWeight: 'bold', fontSize: 11, textTransform: 'uppercase' }}>
+            <td style={{ border: '1px solid #000', padding: '3px 6px', textAlign: 'center', fontWeight: 'bold', fontSize: 10.5, textTransform: 'uppercase' }}>
               {printMode === 'form' ? 'LEMBAR KERJA STOCK OPNAME MTC (FORM FISIK)' : 'LAPORAN HASIL REKAPITULASI STOCK OPNAME MTC'}
             </td>
 
             {/* Row 3 Right: Tanggal */}
-            <td style={{ border: '1px solid #000', padding: '4px 6px' }}>
+            <td style={{ border: '1px solid #000', padding: '3px 6px' }}>
               Tanggal
             </td>
-            <td style={{ border: '1px solid #000', padding: '4px 6px' }}>
+            <td style={{ border: '1px solid #000', padding: '3px 6px' }}>
               {session.createdAt ? new Date(session.createdAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}
             </td>
           </tr>
@@ -339,19 +345,19 @@ export default function MtcOpnamePrintPage({ params }: { params: { id: string } 
       </table>
 
       {/* Sesi & Lokasi Metadata */}
-      <table style={{ width: '100%', marginBottom: 10, fontSize: 10.5, borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+      <table style={{ width: '100%', marginBottom: 8, fontSize: 10, borderCollapse: 'collapse', tableLayout: 'fixed' }}>
         <tbody>
           <tr>
-            <td style={{ width: '13%', fontWeight: 'bold', padding: '2px 0' }}>Judul Sesi SO</td>
-            <td style={{ width: '37%', padding: '2px 0' }}>: <strong>{session.judul}</strong></td>
-            <td style={{ width: '13%', fontWeight: 'bold', padding: '2px 0' }}>No. Sesi</td>
-            <td style={{ width: '37%', padding: '2px 0' }}>: <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>SO-MTC-{session.id}</span> ({session.status})</td>
+            <td style={{ width: '13%', fontWeight: 'bold', padding: '2px 0', border: 'none' }}>Judul Sesi SO</td>
+            <td style={{ width: '37%', padding: '2px 0', border: 'none' }}>: <strong>{session.judul}</strong></td>
+            <td style={{ width: '13%', fontWeight: 'bold', padding: '2px 0', border: 'none' }}>No. Sesi</td>
+            <td style={{ width: '37%', padding: '2px 0', border: 'none' }}>: <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>SO-MTC-{session.id}</span> ({session.status})</td>
           </tr>
           <tr>
-            <td style={{ fontWeight: 'bold', padding: '2px 0' }}>Cakupan Lokasi</td>
-            <td style={{ padding: '2px 0' }}>: {selectedLocation !== 'ALL' ? `Rak: ${selectedLocation}` : (session.lokasi || 'Semua Rak Gudang MTC')}</td>
-            <td style={{ fontWeight: 'bold', padding: '2px 0' }}>Tanggal Cetak</td>
-            <td style={{ padding: '2px 0' }}>: {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</td>
+            <td style={{ fontWeight: 'bold', padding: '2px 0', border: 'none' }}>Cakupan Lokasi</td>
+            <td style={{ padding: '2px 0', border: 'none' }}>: {selectedLocation !== 'ALL' ? `Rak: ${selectedLocation}` : (session.lokasi || 'Semua Rak Gudang MTC')}</td>
+            <td style={{ fontWeight: 'bold', padding: '2px 0', border: 'none' }}>Tanggal Cetak</td>
+            <td style={{ padding: '2px 0', border: 'none' }}>: {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</td>
           </tr>
         </tbody>
       </table>
@@ -362,96 +368,96 @@ export default function MtcOpnamePrintPage({ params }: { params: { id: string } 
           <div style={{
             border: '1px dashed #475569',
             borderRadius: 4,
-            padding: '5px 8px',
-            marginBottom: 10,
+            padding: '4px 6px',
+            marginBottom: 8,
             background: '#f8fafc',
-            fontSize: 9.5,
-            lineHeight: 1.3
+            fontSize: 9,
+            lineHeight: 1.25
           }}>
             <strong>📌 Petunjuk:</strong> Hitung fisik aktual di rak & tulis pada kolom <strong>Qty Fisik</strong>. Centang kondisi (B=Baik, R=Rusak). Tulis barang temuan baru di baris kosong di bawah.
           </div>
 
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 9.5, marginBottom: 16, tableLayout: 'fixed' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 9, marginBottom: 14, tableLayout: 'fixed' }}>
             <thead>
               <tr className="header-row" style={{ background: '#f1f5f9', textAlign: 'left' }}>
-                <th style={{ border: '1px solid #000', padding: '5px 3px', width: '4%', textAlign: 'center' }}>No</th>
-                <th style={{ border: '1px solid #000', padding: '5px 5px', width: showSystemQtyInForm ? '13%' : '14%' }}>Kode Barang</th>
-                <th style={{ border: '1px solid #000', padding: '5px 5px', width: showSystemQtyInForm ? '29%' : '34%' }}>Nama Sparepart / Barang</th>
-                <th style={{ border: '1px solid #000', padding: '5px 5px', width: showSystemQtyInForm ? '12%' : '13%' }}>Lokasi / Rak</th>
-                <th style={{ border: '1px solid #000', padding: '5px 3px', width: '6%', textAlign: 'center' }}>Satuan</th>
+                <th style={{ border: '1px solid #000', padding: '4px 2px', width: '4%', textAlign: 'center' }}>No</th>
+                <th style={{ border: '1px solid #000', padding: '4px 4px', width: showSystemQtyInForm ? '11%' : '12%' }}>Kode</th>
+                <th style={{ border: '1px solid #000', padding: '4px 4px', width: showSystemQtyInForm ? '32%' : '37%' }}>Nama Sparepart / Barang</th>
+                <th style={{ border: '1px solid #000', padding: '4px 4px', width: showSystemQtyInForm ? '10%' : '11%' }}>Rak</th>
+                <th style={{ border: '1px solid #000', padding: '4px 2px', width: '5%', textAlign: 'center' }}>Satuan</th>
                 {showSystemQtyInForm && (
-                  <th style={{ border: '1px solid #000', padding: '5px 4px', width: '8%', textAlign: 'right' }}>Qty Sistem</th>
+                  <th style={{ border: '1px solid #000', padding: '4px 3px', width: '7%', textAlign: 'right' }}>Qty Sis</th>
                 )}
-                <th style={{ border: '2px solid #000', padding: '5px 4px', width: showSystemQtyInForm ? '10%' : '12%', textAlign: 'center', background: '#fff' }}>
+                <th style={{ border: '2px solid #000', padding: '4px 3px', width: showSystemQtyInForm ? '9%' : '10%', textAlign: 'center', background: '#fff' }}>
                   QTY FISIK
                 </th>
-                <th style={{ border: '1px solid #000', padding: '5px 3px', width: showSystemQtyInForm ? '8%' : '9%', textAlign: 'center' }}>Kondisi</th>
-                <th style={{ border: '1px solid #000', padding: '5px 5px', width: showSystemQtyInForm ? '10%' : '14%' }}>Catatan</th>
+                <th style={{ border: '1px solid #000', padding: '4px 2px', width: showSystemQtyInForm ? '8%' : '9%', textAlign: 'center' }}>Kondisi</th>
+                <th style={{ border: '1px solid #000', padding: '4px 4px', width: showSystemQtyInForm ? '14%' : '17%' }}>Catatan</th>
               </tr>
             </thead>
             <tbody>
               {filteredItems.map((item: any, idx: number) => (
-                <tr key={item.id} style={{ height: 26, background: idx % 2 === 0 ? '#fff' : '#fafafa' }}>
-                  <td style={{ border: '1px solid #000', padding: '3px 2px', textAlign: 'center' }}>{idx + 1}</td>
-                  <td style={{ border: '1px solid #000', padding: '3px 4px', fontSize: 9 }}>{item.sparepartId || '—'}</td>
-                  <td style={{ border: '1px solid #000', padding: '3px 4px' }}>
+                <tr key={item.id} style={{ height: 24, background: idx % 2 === 0 ? '#fff' : '#fafafa' }}>
+                  <td style={{ border: '1px solid #000', padding: '2px 2px', textAlign: 'center' }}>{idx + 1}</td>
+                  <td style={{ border: '1px solid #000', padding: '2px 4px', fontSize: 8.5 }}>{item.sparepartId || '—'}</td>
+                  <td style={{ border: '1px solid #000', padding: '2px 4px' }}>
                     <strong>{item.namaItem}</strong>
-                    {item.isNewItem && <span style={{ fontSize: 8, marginLeft: 3 }}>(Baru)</span>}
+                    {item.isNewItem && <span style={{ fontSize: 7.5, marginLeft: 2 }}>(Baru)</span>}
                   </td>
-                  <td style={{ border: '1px solid #000', padding: '3px 4px' }}>{item.lokasi || 'Gudang MTC'}</td>
-                  <td style={{ border: '1px solid #000', padding: '3px 2px', textAlign: 'center' }}>{item.uom || 'Pcs'}</td>
+                  <td style={{ border: '1px solid #000', padding: '2px 4px' }}>{item.lokasi || 'Gudang MTC'}</td>
+                  <td style={{ border: '1px solid #000', padding: '2px 2px', textAlign: 'center' }}>{item.uom || 'Pcs'}</td>
                   {showSystemQtyInForm && (
-                    <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'right', fontWeight: 'bold' }}>{item.qtySistem}</td>
+                    <td style={{ border: '1px solid #000', padding: '2px 3px', textAlign: 'right', fontWeight: 'bold' }}>{item.qtySistem}</td>
                   )}
                   {/* Empty handwriting box */}
-                  <td style={{ border: '2px solid #000', padding: '3px 4px', textAlign: 'center', background: '#fff' }}>
+                  <td style={{ border: '2px solid #000', padding: '2px 3px', textAlign: 'center', background: '#fff' }}>
                   </td>
-                  <td style={{ border: '1px solid #000', padding: '3px 2px', textAlign: 'center', fontSize: 8.5 }}>
+                  <td style={{ border: '1px solid #000', padding: '2px 2px', textAlign: 'center', fontSize: 8 }}>
                     [ ] B &nbsp; [ ] R
                   </td>
-                  <td style={{ border: '1px solid #000', padding: '3px 4px' }}></td>
+                  <td style={{ border: '1px solid #000', padding: '2px 4px' }}></td>
                 </tr>
               ))}
 
               {/* Extra Blank Rows for Writing Unlisted Items */}
               {[1, 2, 3, 4, 5].map((blankIdx) => (
-                <tr key={`blank-${blankIdx}`} style={{ height: 28, background: '#fff' }}>
-                  <td style={{ border: '1px solid #000', padding: '3px 2px', textAlign: 'center', color: '#888' }}>{filteredItems.length + blankIdx}</td>
-                  <td style={{ border: '1px solid #000', padding: '3px 4px', color: '#888', fontStyle: 'italic', fontSize: 8.5 }}>[Item Baru]</td>
-                  <td style={{ border: '1px solid #000', padding: '3px 4px' }}></td>
-                  <td style={{ border: '1px solid #000', padding: '3px 4px' }}></td>
-                  <td style={{ border: '1px solid #000', padding: '3px 2px', textAlign: 'center' }}>Pcs</td>
+                <tr key={`blank-${blankIdx}`} style={{ height: 26, background: '#fff' }}>
+                  <td style={{ border: '1px solid #000', padding: '2px 2px', textAlign: 'center', color: '#888' }}>{filteredItems.length + blankIdx}</td>
+                  <td style={{ border: '1px solid #000', padding: '2px 4px', color: '#888', fontStyle: 'italic', fontSize: 8 }}>[Item Baru]</td>
+                  <td style={{ border: '1px solid #000', padding: '2px 4px' }}></td>
+                  <td style={{ border: '1px solid #000', padding: '2px 4px' }}></td>
+                  <td style={{ border: '1px solid #000', padding: '2px 2px', textAlign: 'center' }}>Pcs</td>
                   {showSystemQtyInForm && (
-                    <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'right', color: '#888' }}>0</td>
+                    <td style={{ border: '1px solid #000', padding: '2px 3px', textAlign: 'right', color: '#888' }}>0</td>
                   )}
-                  <td style={{ border: '2px solid #000', padding: '3px 4px', textAlign: 'center' }}></td>
-                  <td style={{ border: '1px solid #000', padding: '3px 2px', textAlign: 'center', fontSize: 8.5 }}>
+                  <td style={{ border: '2px solid #000', padding: '2px 3px', textAlign: 'center' }}></td>
+                  <td style={{ border: '1px solid #000', padding: '2px 2px', textAlign: 'center', fontSize: 8 }}>
                     [ ] B &nbsp; [ ] R
                   </td>
-                  <td style={{ border: '1px solid #000', padding: '3px 4px' }}></td>
+                  <td style={{ border: '1px solid #000', padding: '2px 4px' }}></td>
                 </tr>
               ))}
             </tbody>
           </table>
 
           {/* Signature Block for Form Mode */}
-          <div style={{ display: 'flex', justifyContent: 'space-around', textAlign: 'center', marginTop: 24, pageBreakInside: 'avoid' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-around', textAlign: 'center', marginTop: 20, pageBreakInside: 'avoid' }}>
             <div style={{ width: '40%' }}>
-              <div style={{ fontSize: 10.5, marginBottom: 45, fontWeight: 'bold' }}>Petugas Penghitung Lapangan,</div>
-              <div style={{ borderBottom: '1px solid #000', fontWeight: 'bold', paddingBottom: 3 }}>
+              <div style={{ fontSize: 10, marginBottom: 40, fontWeight: 'bold' }}>Petugas Penghitung Lapangan,</div>
+              <div style={{ borderBottom: '1px solid #000', fontWeight: 'bold', paddingBottom: 2 }}>
                 ( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )
               </div>
-              <div style={{ fontSize: 9.5, marginTop: 3 }}>Teknisi / Staff Audit MTC</div>
-              <div style={{ fontSize: 8.5, marginTop: 2 }}>Tgl: ............................................</div>
+              <div style={{ fontSize: 9, marginTop: 2 }}>Teknisi / Staff Audit MTC</div>
+              <div style={{ fontSize: 8, marginTop: 1 }}>Tgl: ............................................</div>
             </div>
 
             <div style={{ width: '40%' }}>
-              <div style={{ fontSize: 10.5, marginBottom: 45, fontWeight: 'bold' }}>Supervisor / Penanggung Jawab MTC,</div>
-              <div style={{ borderBottom: '1px solid #000', fontWeight: 'bold', paddingBottom: 3 }}>
+              <div style={{ fontSize: 10, marginBottom: 40, fontWeight: 'bold' }}>Supervisor / Penanggung Jawab MTC,</div>
+              <div style={{ borderBottom: '1px solid #000', fontWeight: 'bold', paddingBottom: 2 }}>
                 ( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )
               </div>
-              <div style={{ fontSize: 9.5, marginTop: 3 }}>Supervisor / PIC Gudang MTC</div>
-              <div style={{ fontSize: 8.5, marginTop: 2 }}>Tgl: ............................................</div>
+              <div style={{ fontSize: 9, marginTop: 2 }}>Supervisor / PIC Gudang MTC</div>
+              <div style={{ fontSize: 8, marginTop: 1 }}>Tgl: ............................................</div>
             </div>
           </div>
         </>
@@ -461,40 +467,40 @@ export default function MtcOpnamePrintPage({ params }: { params: { id: string } 
       {printMode === 'report' && (
         <>
           {/* Summary Box */}
-          <div style={{ border: '1px solid #000', borderRadius: 4, padding: 10, marginBottom: 14, background: '#f9fafb' }}>
-            <div style={{ fontWeight: 'bold', fontSize: 10.5, marginBottom: 6, borderBottom: '1px solid #d1d5db', paddingBottom: 3 }}>
+          <div style={{ border: '1px solid #000', borderRadius: 4, padding: 8, marginBottom: 12, background: '#f9fafb' }}>
+            <div style={{ fontWeight: 'bold', fontSize: 10, marginBottom: 4, borderBottom: '1px solid #d1d5db', paddingBottom: 2 }}>
               📊 RINGKASAN REKAPITULASI HASIL OPNAME
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 8, textAlign: 'center', fontSize: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 6, textAlign: 'center', fontSize: 9.5 }}>
               <div>
                 <div style={{ color: '#555' }}>Total Item Audit</div>
-                <div style={{ fontWeight: 'bold', fontSize: 13 }}>{stats.totalItems} Item</div>
-                <div style={{ fontSize: 8.5, color: '#555' }}>({stats.countedItems} Dihitung)</div>
+                <div style={{ fontWeight: 'bold', fontSize: 12 }}>{stats.totalItems} Item</div>
+                <div style={{ fontSize: 8, color: '#555' }}>({stats.countedItems} Dihitung)</div>
               </div>
               <div>
                 <div>🎯 Akurasi Data</div>
-                <div style={{ fontWeight: 'bold', fontSize: 13 }}>
+                <div style={{ fontWeight: 'bold', fontSize: 12 }}>
                   {stats.accuracyPct !== undefined ? stats.accuracyPct : (stats.totalItems > 0 ? ((stats.totalMatchingCount / (stats.countedItems || stats.totalItems)) * 100).toFixed(1) : 0)}%
                 </div>
-                <div style={{ fontSize: 8.5 }}>({stats.totalMatchingCount} Sesuai)</div>
+                <div style={{ fontSize: 8 }}>({stats.totalMatchingCount} Sesuai)</div>
               </div>
               <div>
                 <div>🟢 Sesuai (0)</div>
-                <div style={{ fontWeight: 'bold', fontSize: 13 }}>{stats.totalMatchingCount} Item</div>
+                <div style={{ fontWeight: 'bold', fontSize: 12 }}>{stats.totalMatchingCount} Item</div>
               </div>
               <div>
                 <div>🔴 Total Minus (-Qty)</div>
-                <div style={{ fontWeight: 'bold', fontSize: 13 }}>-{stats.totalMinusQty} Pcs</div>
-                <div style={{ fontSize: 8.5 }}>({fmtCurrency(stats.totalMinusValue)})</div>
+                <div style={{ fontWeight: 'bold', fontSize: 12 }}>-{stats.totalMinusQty} Pcs</div>
+                <div style={{ fontSize: 8 }}>({fmtCurrency(stats.totalMinusValue)})</div>
               </div>
               <div>
                 <div>🔵 Total Plus (+Qty)</div>
-                <div style={{ fontWeight: 'bold', fontSize: 13 }}>+{stats.totalPlusQty} Pcs</div>
-                <div style={{ fontSize: 8.5 }}>({fmtCurrency(stats.totalPlusValue)})</div>
+                <div style={{ fontWeight: 'bold', fontSize: 12 }}>+{stats.totalPlusQty} Pcs</div>
+                <div style={{ fontSize: 8 }}>({fmtCurrency(stats.totalPlusValue)})</div>
               </div>
               <div>
                 <div>Net Varian Rp</div>
-                <div style={{ fontWeight: 'bold', fontSize: 12 }}>
+                <div style={{ fontWeight: 'bold', fontSize: 11.5 }}>
                   {fmtCurrency(stats.netVarianceValue)}
                 </div>
               </div>
@@ -502,18 +508,18 @@ export default function MtcOpnamePrintPage({ params }: { params: { id: string } 
           </div>
 
           {/* Detailed Items Table */}
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 9.5, marginBottom: 20, tableLayout: 'fixed' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 9, marginBottom: 16, tableLayout: 'fixed' }}>
             <thead>
               <tr className="header-row" style={{ background: '#e5e7eb', textAlign: 'left' }}>
-                <th style={{ border: '1px solid #9ca3af', padding: '5px 3px', width: '4%', textAlign: 'center' }}>No</th>
-                <th style={{ border: '1px solid #9ca3af', padding: '5px 4px', width: '13%' }}>Kode</th>
-                <th style={{ border: '1px solid #9ca3af', padding: '5px 5px', width: '30%' }}>Nama Sparepart / Barang</th>
-                <th style={{ border: '1px solid #9ca3af', padding: '5px 4px', width: '13%' }}>Lokasi</th>
-                <th style={{ border: '1px solid #9ca3af', padding: '5px 4px', textAlign: 'right', width: '8%' }}>Qty Sis</th>
-                <th style={{ border: '1px solid #9ca3af', padding: '5px 4px', textAlign: 'right', width: '8%' }}>Qty Fis</th>
-                <th style={{ border: '1px solid #9ca3af', padding: '5px 4px', textAlign: 'right', width: '8%' }}>Selisih</th>
-                <th style={{ border: '1px solid #9ca3af', padding: '5px 3px', textAlign: 'center', width: '8%' }}>Petugas</th>
-                <th style={{ border: '1px solid #9ca3af', padding: '5px 4px', width: '8%' }}>Catatan</th>
+                <th style={{ border: '1px solid #9ca3af', padding: '4px 2px', width: '4%', textAlign: 'center' }}>No</th>
+                <th style={{ border: '1px solid #9ca3af', padding: '4px 3px', width: '12%' }}>Kode</th>
+                <th style={{ border: '1px solid #9ca3af', padding: '4px 4px', width: '32%' }}>Nama Sparepart / Barang</th>
+                <th style={{ border: '1px solid #9ca3af', padding: '4px 3px', width: '11%' }}>Lokasi</th>
+                <th style={{ border: '1px solid #9ca3af', padding: '4px 3px', textAlign: 'right', width: '7%' }}>Qty Sis</th>
+                <th style={{ border: '1px solid #9ca3af', padding: '4px 3px', textAlign: 'right', width: '7%' }}>Qty Fis</th>
+                <th style={{ border: '1px solid #9ca3af', padding: '4px 3px', textAlign: 'right', width: '8%' }}>Selisih</th>
+                <th style={{ border: '1px solid #9ca3af', padding: '4px 3px', textAlign: 'center', width: '9%' }}>Petugas</th>
+                <th style={{ border: '1px solid #9ca3af', padding: '4px 4px', width: '10%' }}>Catatan</th>
               </tr>
             </thead>
             <tbody>
@@ -530,23 +536,23 @@ export default function MtcOpnamePrintPage({ params }: { params: { id: string } 
                 }
 
                 return (
-                  <tr key={item.id} style={{ background: idx % 2 === 0 ? '#fff' : '#f9fafb' }}>
-                    <td style={{ border: '1px solid #d1d5db', padding: '3px 2px', textAlign: 'center' }}>{idx + 1}</td>
-                    <td style={{ border: '1px solid #d1d5db', padding: '3px 4px', fontSize: 9 }}>{item.sparepartId || '—'}</td>
-                    <td style={{ border: '1px solid #d1d5db', padding: '3px 5px' }}>
+                  <tr key={item.id} style={{ height: 23, background: idx % 2 === 0 ? '#fff' : '#f9fafb' }}>
+                    <td style={{ border: '1px solid #d1d5db', padding: '2px 2px', textAlign: 'center' }}>{idx + 1}</td>
+                    <td style={{ border: '1px solid #d1d5db', padding: '2px 3px', fontSize: 8.5 }}>{item.sparepartId || '—'}</td>
+                    <td style={{ border: '1px solid #d1d5db', padding: '2px 4px' }}>
                       <strong>{item.namaItem}</strong>
-                      {item.isNewItem && <span style={{ fontSize: 8, marginLeft: 3 }}>(Baru)</span>}
+                      {item.isNewItem && <span style={{ fontSize: 7.5, marginLeft: 2 }}>(Baru)</span>}
                     </td>
-                    <td style={{ border: '1px solid #d1d5db', padding: '3px 4px' }}>{item.lokasi || 'Gudang'}</td>
-                    <td style={{ border: '1px solid #d1d5db', padding: '3px 4px', textAlign: 'right' }}>{item.qtySistem} {item.uom}</td>
-                    <td style={{ border: '1px solid #d1d5db', padding: '3px 4px', textAlign: 'right', fontWeight: 'bold' }}>
+                    <td style={{ border: '1px solid #d1d5db', padding: '2px 3px' }}>{item.lokasi || 'Gudang'}</td>
+                    <td style={{ border: '1px solid #d1d5db', padding: '2px 3px', textAlign: 'right' }}>{item.qtySistem} {item.uom}</td>
+                    <td style={{ border: '1px solid #d1d5db', padding: '2px 3px', textAlign: 'right', fontWeight: 'bold' }}>
                       {item.qtyFisik !== null && item.qtyFisik !== undefined ? `${item.qtyFisik} ${item.uom}` : '—'}
                     </td>
-                    <td style={{ border: '1px solid #d1d5db', padding: '3px 4px', textAlign: 'right', fontWeight: selisih !== 0 ? 'bold' : 'normal' }}>
+                    <td style={{ border: '1px solid #d1d5db', padding: '2px 3px', textAlign: 'right', fontWeight: selisih !== 0 ? 'bold' : 'normal' }}>
                       {selisihText}
                     </td>
-                    <td style={{ border: '1px solid #d1d5db', padding: '3px 3px', textAlign: 'center', fontSize: 8.5 }}>{item.auditedBy || '—'}</td>
-                    <td style={{ border: '1px solid #d1d5db', padding: '3px 4px', fontSize: 8.5 }}>{item.catatan || '—'}</td>
+                    <td style={{ border: '1px solid #d1d5db', padding: '2px 2px', textAlign: 'center', fontSize: 8 }}>{item.auditedBy || '—'}</td>
+                    <td style={{ border: '1px solid #d1d5db', padding: '2px 3px', fontSize: 8 }}>{item.catatan || '—'}</td>
                   </tr>
                 );
               })}
@@ -554,21 +560,21 @@ export default function MtcOpnamePrintPage({ params }: { params: { id: string } 
           </table>
 
           {/* Signature Block for Report Mode */}
-          <div style={{ display: 'flex', justifyContent: 'space-around', textAlign: 'center', marginTop: 24, pageBreakInside: 'avoid' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-around', textAlign: 'center', marginTop: 20, pageBreakInside: 'avoid' }}>
             <div style={{ width: '40%' }}>
-              <div style={{ fontSize: 10.5, marginBottom: 45 }}>Dihitung Oleh,</div>
-              <div style={{ borderBottom: '1px solid #000', fontWeight: 'bold', paddingBottom: 3 }}>
+              <div style={{ fontSize: 10, marginBottom: 40 }}>Dihitung Oleh,</div>
+              <div style={{ borderBottom: '1px solid #000', fontWeight: 'bold', paddingBottom: 2 }}>
                 ( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )
               </div>
-              <div style={{ fontSize: 9.5, marginTop: 3 }}>Admin / Teknisi Maintenance</div>
+              <div style={{ fontSize: 9, marginTop: 2 }}>Admin / Teknisi Maintenance</div>
             </div>
 
             <div style={{ width: '40%' }}>
-              <div style={{ fontSize: 10.5, marginBottom: 45 }}>Diketahui & Disetujui Oleh,</div>
-              <div style={{ borderBottom: '1px solid #000', fontWeight: 'bold', paddingBottom: 3 }}>
+              <div style={{ fontSize: 10, marginBottom: 40 }}>Diketahui & Disetujui Oleh,</div>
+              <div style={{ borderBottom: '1px solid #000', fontWeight: 'bold', paddingBottom: 2 }}>
                 ( {session.approvedBy || '.........................................'} )
               </div>
-              <div style={{ fontSize: 9.5, marginTop: 3 }}>Manufacturing Manager / Supervisor</div>
+              <div style={{ fontSize: 9, marginTop: 2 }}>Manufacturing Manager / Supervisor</div>
             </div>
           </div>
         </>
