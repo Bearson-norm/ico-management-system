@@ -26,20 +26,97 @@ export function parseOdooLinks(item: any) {
   return { prUrl, poUrl, grUrl };
 }
 
-export function isOdooGrDone(item: TrackingItem): boolean {
-  if (!item) return false;
-  const statusPr = (item.statusPr || '').toUpperCase();
-  const statusPo = (item.statusPo || '').toUpperCase();
-  return statusPo === 'DONE' || statusPr === 'RECEIVED';
+/**
+ * Ekstraksi nomor PO dari notifikasi Chatter Odoo
+ * Contoh pesan:
+ * "Order confirmation P14859 for your Request PR04785"
+ * "The following requested items from Purchase Request PR04785 have now been confirmed in Purchase Order P14859:"
+ */
+export function extractPoFromChatter(odooNotes?: string | null): string | null {
+  if (!odooNotes || !odooNotes.trim()) return null;
+  const patterns = [
+    /Order confirmation\s+(P\d+)/i,
+    /confirmed in Purchase Order\s+(P\d+)/i,
+    /Purchase Order\s+(P\d+)/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = odooNotes.match(pattern);
+    if (match && match[1]) {
+      return match[1].toUpperCase();
+    }
+  }
+  return null;
 }
 
+/**
+ * Mendapatkan nomor PO efektif:
+ * Prioritas 1: item.nomorPo di database
+ * Prioritas 2: Ekstraksi dari notifikasi konfirmasi PO di Odoo Chatter
+ */
+export function getEffectivePoNumber(item: TrackingItem): string | null {
+  if (!item) return null;
+  const directPo = (item.nomorPo || '').trim();
+  if (directPo.length > 0) return directPo;
+  return extractPoFromChatter(item.odooNotes);
+}
+
+/**
+ * Cek apakah item sudah memiliki PO resmi atau konfirmasi PO dari chatter
+ */
+export function hasPoAssigned(item: TrackingItem): boolean {
+  if (!item) return false;
+  const effectivePo = getEffectivePoNumber(item);
+  const statusPr = (item.statusPr || '').toUpperCase();
+  const statusPo = (item.statusPo || '').toUpperCase();
+  return (
+    (effectivePo !== null && effectivePo !== '') ||
+    statusPr === 'PO' ||
+    statusPr === 'RFQ' ||
+    statusPo === 'PO' ||
+    statusPo === 'RFQ'
+  );
+}
+
+/**
+ * LOGIC TERIMA (Penerimaan Fisik Barang di Gudang):
+ * Murni mencatat bahwa barang fisik telah tiba dan diterima oleh tim gudang/pabrik.
+ * Tidak sama dengan dokumen Good Received (GR) di Odoo.
+ */
 export function isPhysicallyReceived(item: TrackingItem): boolean {
   if (!item) return false;
   return !!item.tanggalTerima;
 }
 
+/**
+ * LOGIC GR (Good Received Resmi dari Odoo):
+ * Menandakan dokumen penerimaan barang resmi (good.received) di Odoo sudah ada atau disahkan.
+ */
+export function isOdooGrDone(item: TrackingItem): boolean {
+  if (!item) return false;
+  const statusPr = (item.statusPr || '').toUpperCase();
+  const statusPo = (item.statusPo || '').toUpperCase();
+  const hasGrLink = !!(item.linkGr && item.linkGr.trim() !== '');
+  return statusPo === 'DONE' || statusPr === 'RECEIVED' || hasGrLink;
+}
+
+/**
+ * Kategori: DITERIMA SAJA (BELUM GR)
+ * Barang fisik sudah sampai di gudang (tanggalTerima terisi),
+ * TETAPI dokumen GR di Odoo belum dibuat/diterbitkan.
+ */
+export function isReceivedOnly(item: TrackingItem): boolean {
+  if (!item) return false;
+  return isPhysicallyReceived(item) && !isOdooGrDone(item);
+}
+
+/**
+ * Kategori: CLOSED / SELESAI
+ * Barang fisik sudah diterima DAN dokumen GR resmi dari Odoo sudah terbit/selesai.
+ */
 export function isClosedOrDone(item: TrackingItem): boolean {
   if (!item) return false;
+  // Status CLOSED tercapai jika dokumen GR Odoo sudah selesai
   return isOdooGrDone(item);
 }
 
@@ -50,21 +127,13 @@ export function isCancelled(item: TrackingItem): boolean {
   return statusPr === 'CANCELLED' || statusPo === 'CANCELLED';
 }
 
-export function hasPoAssigned(item: TrackingItem): boolean {
-  if (!item) return false;
-  const poNo = (item.nomorPo || '').trim();
-  const statusPr = (item.statusPr || '').toUpperCase();
-  const statusPo = (item.statusPo || '').toUpperCase();
-  return poNo.length > 0 || statusPr === 'PO' || statusPr === 'RFQ' || statusPo === 'PO' || statusPo === 'RFQ';
-}
-
 export function fmtRupiah(value: number | null): string {
   if (value == null) return '—';
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',
     currency: 'IDR',
     minimumFractionDigits: 0,
-    maximumFractionDigits: 0
+    maximumFractionDigits: 0,
   }).format(value);
 }
 
@@ -73,22 +142,35 @@ export function generateAutoAlias(fullName: string): string {
     .replace(/[^a-zA-Z0-9\s]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
-  return clean.replace(/\b\w/g, char => char.toUpperCase());
+  return clean.replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-export function getItemSimplifiedStatus(item: TrackingItem): 'DRAFT' | 'APPROVAL' | 'PO' | 'DONE' | 'CANCELLED' {
+export type SimplifiedStatus = 'DRAFT' | 'APPROVAL' | 'PO' | 'RECEIVED' | 'CLOSED' | 'CANCELLED';
+
+/**
+ * Menentukan 5 Status Utama yang Rapi & Tegas:
+ * 1. DRAFT: Persiapan PR / pengajuan awal
+ * 2. APPROVAL: Disetujui Finance / proses penawaran harga (RFQ)
+ * 3. PO: PO resmi sudah terbit di Odoo (atau ada notifikasi konfirmasi PO di chatter)
+ * 4. RECEIVED: Barang fisik sudah diterima, tetapi dokumen GR Odoo belum terbit (Terima Saja)
+ * 5. CLOSED: Barang fisik sudah diterima + dokumen GR Odoo sudah terbit (Closed / Selesai)
+ * 6. CANCELLED: Dibatalkan
+ */
+export function getItemSimplifiedStatus(item: TrackingItem): SimplifiedStatus {
   if (!item) return 'DRAFT';
   if (isCancelled(item)) return 'CANCELLED';
-  if (isClosedOrDone(item)) return 'DONE';
 
-  const statusPr = (item.statusPr || '').toUpperCase();
-  const statusPo = (item.statusPo || '').toUpperCase();
-  
-  // 3. PO: PO resmi sudah diterbitkan di Odoo
-  const hasPo = !!(item.nomorPo && item.nomorPo.trim() !== '') || statusPo === 'PO' || statusPr === 'PO';
-  if (hasPo) return 'PO';
+  // 5. CLOSED: Sudah Diterima + Dokumen GR Odoo selesai
+  if (isClosedOrDone(item)) return 'CLOSED';
+
+  // 4. RECEIVED: Diterima Saja (Fisik sudah sampai, tapi belum ada GR di Odoo)
+  if (isReceivedOnly(item)) return 'RECEIVED';
+
+  // 3. PO: PO resmi sudah diterbitkan di Odoo atau dikonfirmasi di chatter
+  if (hasPoAssigned(item)) return 'PO';
 
   // 2. APPROVAL: Sudah diapprove Finance & dalam proses Penawaran / RFQ
+  const statusPr = (item.statusPr || '').toUpperCase();
   const isApprovalOrRfq =
     statusPr === 'APPROVED' ||
     statusPr === 'PA_APPROVED' ||
@@ -115,9 +197,12 @@ export function getStatusBadgeStyles(status: string) {
       return { background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', label: '2. APPROVAL & PENAWARAN' };
     case 'PO':
       return { background: '#f5f3ff', color: '#7c3aed', border: '1px solid #ddd6fe', label: '3. PO TERBIT' };
-    case 'DONE':
     case 'RECEIVED':
-      return { background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0', label: '✓ SELESAI' };
+    case 'TERIMA_SAJA':
+      return { background: '#fffbeb', color: '#b45309', border: '1px solid #fde68a', label: '📦 4. DITERIMA (BELUM GR)' };
+    case 'CLOSED':
+    case 'DONE':
+      return { background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0', label: '✓ 5. CLOSED (SELESAI)' };
     case 'CANCELLED':
       return { background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', label: '✕ BATAL' };
     default:
@@ -137,22 +222,25 @@ export function filterItemByTab(
     if (cardFilter === 'DRAFT') return itemStatus === 'DRAFT';
     if (cardFilter === 'APPROVAL') return itemStatus === 'APPROVAL';
     if (cardFilter === 'PO') return itemStatus === 'PO';
-    if (cardFilter === 'DONE') return itemStatus === 'DONE' || itemStatus === 'CANCELLED';
+    if (cardFilter === 'RECEIVED') return itemStatus === 'RECEIVED';
+    if (cardFilter === 'CLOSED' || cardFilter === 'DONE') return itemStatus === 'CLOSED' || itemStatus === 'CANCELLED';
     return true;
   }
 
   // Standard Tab Filters
   if (activeTab === 'ALL') {
-    // Tampilkan semua dokumen yang aktif (belum selesai/batal)
-    return itemStatus !== 'DONE' && itemStatus !== 'CANCELLED';
+    // Tampilkan semua dokumen yang aktif (belum CLOSED / BATAL)
+    return itemStatus !== 'CLOSED' && itemStatus !== 'CANCELLED';
   } else if (activeTab === 'DRAFT') {
     return itemStatus === 'DRAFT';
   } else if (activeTab === 'APPROVAL') {
     return itemStatus === 'APPROVAL';
   } else if (activeTab === 'PO') {
     return itemStatus === 'PO';
-  } else if (activeTab === 'DONE') {
-    return itemStatus === 'DONE' || itemStatus === 'CANCELLED';
+  } else if (activeTab === 'RECEIVED') {
+    return itemStatus === 'RECEIVED';
+  } else if (activeTab === 'CLOSED' || activeTab === 'DONE') {
+    return itemStatus === 'CLOSED' || itemStatus === 'CANCELLED';
   }
 
   return true;

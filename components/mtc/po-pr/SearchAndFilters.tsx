@@ -52,23 +52,25 @@ export const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
   const counts = {
     ALL: scopedItems.filter((i) => {
       const s = getItemSimplifiedStatus(i);
-      return s !== 'DONE' && s !== 'CANCELLED' && checkMonthYear(i, false);
+      return s !== 'CLOSED' && s !== 'CANCELLED' && checkMonthYear(i, false);
     }).length,
     DRAFT: scopedItems.filter((i) => getItemSimplifiedStatus(i) === 'DRAFT' && checkMonthYear(i, false)).length,
     APPROVAL: scopedItems.filter((i) => getItemSimplifiedStatus(i) === 'APPROVAL' && checkMonthYear(i, false)).length,
     PO: scopedItems.filter((i) => getItemSimplifiedStatus(i) === 'PO' && checkMonthYear(i, false)).length,
-    DONE: scopedItems.filter((i) => {
+    RECEIVED: scopedItems.filter((i) => getItemSimplifiedStatus(i) === 'RECEIVED' && checkMonthYear(i, false)).length,
+    CLOSED: scopedItems.filter((i) => {
       const s = getItemSimplifiedStatus(i);
-      return (s === 'DONE' || s === 'CANCELLED') && (checkMonthYear(i, true) || checkMonthYear(i, false));
+      return (s === 'CLOSED' || s === 'CANCELLED') && (checkMonthYear(i, true) || checkMonthYear(i, false));
     }).length,
   };
 
   const tabs: { id: TabType; label: string; count: number }[] = [
     { id: 'ALL', label: '⏳ Semua Aktif', count: counts.ALL },
-    { id: 'DRAFT', label: '📝 1. Awal PR (Draft)', count: counts.DRAFT },
-    { id: 'APPROVAL', label: '⚖️ 2. Approval & Penawaran', count: counts.APPROVAL },
+    { id: 'DRAFT', label: '📝 1. Draft PR', count: counts.DRAFT },
+    { id: 'APPROVAL', label: '⚖️ 2. Approval', count: counts.APPROVAL },
     { id: 'PO', label: '🚢 3. PO Terbit', count: counts.PO },
-    { id: 'DONE', label: '📦 Selesai / Riwayat', count: counts.DONE },
+    { id: 'RECEIVED', label: '📦 4. Diterima (Belum GR)', count: counts.RECEIVED },
+    { id: 'CLOSED', label: '✓ 5. Closed (Selesai)', count: counts.CLOSED },
   ];
 
   return (

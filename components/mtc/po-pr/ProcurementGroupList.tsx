@@ -1,6 +1,16 @@
 import React, { Fragment } from 'react';
 import { TrackingItem, GroupedPrItem } from '@/types/mtc/procurement';
-import { parseOdooLinks, fmtRupiah, getStatusBadgeStyles } from '@/lib/mtc/procurement-utils';
+import {
+  parseOdooLinks,
+  fmtRupiah,
+  getStatusBadgeStyles,
+  getEffectivePoNumber,
+  getItemSimplifiedStatus,
+  isReceivedOnly,
+  isClosedOrDone,
+  isPhysicallyReceived,
+  isOdooGrDone,
+} from '@/lib/mtc/procurement-utils';
 
 type ProcurementGroupListProps = {
   groupedPrItems: GroupedPrItem[];
@@ -545,10 +555,26 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
                 🚫 Dibatalkan
               </span>
             );
-          } else if (group.overallStatus === 'DONE') {
+          } else if (group.overallStatus === 'CLOSED' || group.overallStatus === 'DONE') {
             statusBadge = (
               <span className="badge badge-grn" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700 }}>
-                ✓ Selesai (Diterima)
+                ✓ 5. Closed (Diterima + GR)
+              </span>
+            );
+          } else if (group.overallStatus === 'RECEIVED') {
+            statusBadge = (
+              <span
+                className="badge"
+                style={{
+                  padding: '4px 10px',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  background: '#fffbeb',
+                  color: '#b45309',
+                  border: '1px solid #fde68a',
+                }}
+              >
+                📦 4. Diterima (Belum GR)
               </span>
             );
           } else if (group.overallStatus === 'PO') {
@@ -566,7 +592,7 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
           } else {
             statusBadge = (
               <span className="badge badge-ylw" style={{ padding: '4px 10px', fontSize: 10, fontWeight: 700 }}>
-                📝 1. Draft
+                📝 1. Draft PR
               </span>
             );
           }
@@ -578,8 +604,12 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
               style={{
                 overflow: 'hidden',
                 borderLeft:
-                  group.overallStatus === 'DONE'
+                  group.overallStatus === 'CLOSED' || group.overallStatus === 'DONE'
                     ? '4px solid var(--grn)'
+                    : group.overallStatus === 'RECEIVED'
+                    ? '4px solid #f59e0b'
+                    : group.overallStatus === 'PO'
+                    ? '4px solid var(--pur)'
                     : group.overallStatus === 'CANCELLED'
                     ? '4px solid var(--red)'
                     : hasUrgentItem
@@ -936,9 +966,12 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
                       <tbody>
                         {group.items.map((item) => {
                           const isItemUrgent = item.urgency === 'Urgent';
-                          const isOdooGrDone = (item.statusPo || '').toUpperCase() === 'DONE' || (item.statusPr || '').toUpperCase() === 'RECEIVED';
-                          const isStockReceived = !!item.tanggalTerima;
+                          const isGrDone = isOdooGrDone(item);
+                          const isStockReceived = isPhysicallyReceived(item);
+                          const isRecOnly = isReceivedOnly(item);
                           const effectiveGrLink = parseOdooLinks(item).grUrl || item.linkGr;
+                          const effectivePo = getEffectivePoNumber(item);
+                          const itemStatus = getItemSimplifiedStatus(item);
 
                           return (
                             <Fragment key={item.id}>
@@ -946,7 +979,7 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
                                 style={{
                                   borderBottom: '1px solid var(--br)',
                                   backgroundColor:
-                                    isItemUrgent && !isOdooGrDone ? 'rgba(239, 68, 68, 0.02)' : 'transparent',
+                                    isItemUrgent && !isGrDone ? 'rgba(239, 68, 68, 0.02)' : 'transparent',
                                   cursor: 'pointer',
                                 }}
                                 onClick={() => toggleRowExpand(item.id)}
@@ -1104,42 +1137,42 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
                                         <div style={{ fontWeight: 700, color: 'var(--tx2)', fontSize: 12 }}>
                                           {item.sparepart.nama}
                                         </div>
-                                        {item.statusPr && item.statusPr !== 'READY_ODOO' && (
+                                        {itemStatus && (
                                           <span
                                             className="badge"
                                             style={{
                                               fontSize: 8,
                                               padding: '1px 5px',
                                               fontWeight: 800,
-                                              ...getStatusBadgeStyles(item.statusPr),
+                                              ...getStatusBadgeStyles(itemStatus),
                                             }}
                                           >
-                                            {item.statusPr}
+                                            {getStatusBadgeStyles(itemStatus).label}
                                           </span>
                                         )}
-                                        {item.nomorPo && (
+                                        {effectivePo && (
                                           <span
                                             className="badge"
                                             style={{
                                               fontSize: 8,
                                               padding: '2px 6px',
                                               fontWeight: 800,
-                                              background: isOdooGrDone
+                                              background: isGrDone
                                                 ? 'rgba(34, 197, 94, 0.15)'
-                                                : 'rgba(239, 68, 68, 0.15)',
-                                              color: isOdooGrDone ? '#22c55e' : '#f87171',
-                                              border: isOdooGrDone
+                                                : 'rgba(168, 85, 247, 0.15)',
+                                              color: isGrDone ? '#22c55e' : '#c084fc',
+                                              border: isGrDone
                                                 ? '1px solid rgba(34, 197, 94, 0.3)'
-                                                : '1px solid rgba(239, 68, 68, 0.3)',
+                                                : '1px solid rgba(168, 85, 247, 0.3)',
                                               marginLeft: 4,
                                             }}
                                             title={
-                                              isOdooGrDone
-                                                ? 'Status Odoo: Receipt sudah divalidate'
-                                                : 'Status Odoo: Receipt belum divalidate'
+                                              item.nomorPo
+                                                ? `PO Odoo Terdaftar: ${effectivePo}`
+                                                : `PO Terkonfirmasi via Chatter Odoo: ${effectivePo}`
                                             }
                                           >
-                                            {isOdooGrDone ? `✓ PO Odoo: ${item.nomorPo}` : `⚠️ PO Odoo: ${item.nomorPo}`}
+                                            {isGrDone ? `✓ PO: ${effectivePo}` : `🚢 PO: ${effectivePo}${!item.nomorPo ? ' (Notif)' : ''}`}
                                           </span>
                                         )}
                                       </div>
@@ -1203,23 +1236,28 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
                                           🔗 Hubungkan
                                         </button>
                                       </div>
-                                      {item.nomorPo && (
+                                      {effectivePo && (
                                         <span
                                           className="badge"
                                           style={{
                                             fontSize: 8,
                                             padding: '2px 6px',
                                             fontWeight: 800,
-                                            background: isOdooGrDone
+                                            background: isGrDone
                                               ? 'rgba(34, 197, 94, 0.15)'
-                                              : 'rgba(239, 68, 68, 0.15)',
-                                            color: isOdooGrDone ? '#22c55e' : '#f87171',
-                                            border: isOdooGrDone
+                                              : 'rgba(168, 85, 247, 0.15)',
+                                            color: isGrDone ? '#22c55e' : '#c084fc',
+                                            border: isGrDone
                                               ? '1px solid rgba(34, 197, 94, 0.3)'
-                                              : '1px solid rgba(239, 68, 68, 0.3)',
+                                              : '1px solid rgba(168, 85, 247, 0.3)',
                                           }}
+                                          title={
+                                            item.nomorPo
+                                              ? `PO Odoo Terdaftar: ${effectivePo}`
+                                              : `PO Terkonfirmasi via Chatter Odoo: ${effectivePo}`
+                                          }
                                         >
-                                          {isOdooGrDone ? `✓ PO Odoo: ${item.nomorPo}` : `⚠️ PO Odoo: ${item.nomorPo}`}
+                                          {isGrDone ? `✓ PO: ${effectivePo}` : `🚢 PO: ${effectivePo}${!item.nomorPo ? ' (Notif)' : ''}`}
                                         </span>
                                       )}
                                     </div>
@@ -1286,18 +1324,18 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
                                         padding: '3px 8px',
                                         fontSize: 9,
                                         borderRadius: 6,
-                                        color: isOdooGrDone ? '#22c55e' : '#f59e0b',
-                                        background: isOdooGrDone ? 'rgba(34, 197, 94, 0.12)' : 'rgba(245, 158, 11, 0.12)',
-                                        border: `1px solid ${isOdooGrDone ? 'rgba(34, 197, 94, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`,
+                                        color: isGrDone ? '#22c55e' : '#f59e0b',
+                                        background: isGrDone ? 'rgba(34, 197, 94, 0.12)' : 'rgba(245, 158, 11, 0.12)',
+                                        border: `1px solid ${isGrDone ? 'rgba(34, 197, 94, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`,
                                         display: 'inline-flex',
                                         alignItems: 'center',
                                         gap: 4,
                                         textDecoration: 'none',
                                         fontWeight: 700,
                                       }}
-                                      title={isOdooGrDone ? "Dokumen GR Odoo Valid (Done)" : "Dokumen GR Odoo masih Draft / Belum Validasi"}
+                                      title={isGrDone ? "Dokumen GR Odoo Valid (Done)" : "Dokumen GR Odoo masih Draft / Belum Validasi"}
                                     >
-                                      📦 {isOdooGrDone ? 'GR Done ↗' : 'GR Draft ↗'}
+                                      📦 {isGrDone ? 'GR Done ↗' : 'GR Draft ↗'}
                                     </a>
                                   ) : (
                                     <button
@@ -1342,13 +1380,14 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
                                       ✏️ Edit
                                     </button>
 
-                                    {isOdooGrDone ? (
+                                    {isGrDone ? (
                                       <div style={{ textAlign: 'right' }}>
                                         <span
                                           className="badge badge-grn"
                                           style={{ padding: '4px 8px', fontSize: 10, fontWeight: 700 }}
+                                          title="Barang fisik diterima & dokumen Good Received (GR) resmi Odoo telah selesai."
                                         >
-                                          ✓ Selesai GR {item.isStocked ? '(Gudang)' : '(Non-Stok)'}
+                                          ✓ Closed (Diterima + GR)
                                         </span>
                                         {item.tanggalTerima && (
                                           <div style={{ fontSize: 8, color: 'var(--tx3)', marginTop: 2 }}>
@@ -1363,22 +1402,22 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
                                     ) : isStockReceived ? (
                                       <div style={{ textAlign: 'right' }}>
                                         <span
-                                          className="badge badge-blu"
+                                          className="badge"
                                           style={{
                                             padding: '4px 8px',
                                             fontSize: 10,
                                             fontWeight: 700,
-                                            background: 'rgba(59, 130, 246, 0.15)',
-                                            color: '#60a5fa',
-                                            border: '1px solid rgba(59, 130, 246, 0.3)',
+                                            background: '#fffbeb',
+                                            color: '#b45309',
+                                            border: '1px solid #fde68a',
                                           }}
-                                          title="Barang sudah dimasukkan ke stok lokal MTC, namun dokumen Good Received (GR) resmi di Odoo masih berstatus Draft / Belum Selesai."
+                                          title="Barang fisik sudah diterima di gudang, namun dokumen Good Received (GR) resmi di Odoo belum terbit."
                                         >
-                                          📦 Masuk Stok (Belum GR Odoo)
+                                          📦 Diterima (Belum GR)
                                         </span>
                                         {item.tanggalTerima && (
-                                          <div style={{ fontSize: 8, color: 'var(--tx3)', marginTop: 2 }}>
-                                            Tgl Masuk:{' '}
+                                          <div style={{ fontSize: 8, color: '#b45309', marginTop: 2 }}>
+                                            Tgl Terima:{' '}
                                             {new Date(item.tanggalTerima).toLocaleDateString('id-ID', {
                                               day: '2-digit',
                                               month: '2-digit',
@@ -1405,7 +1444,7 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
                                       >
                                         🚀 Selesai Odoo
                                       </button>
-                                    ) : item.nomorPo ? (
+                                    ) : effectivePo ? (
                                       <button
                                         type="button"
                                         className="btn btn-grn btn-sm"

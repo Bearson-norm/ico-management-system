@@ -59,7 +59,7 @@ export type GroupedPrItem = {
   poNumbers: string;
   prNumbers: string;
   hasUrgent: boolean;
-  overallStatus: 'DRAFT' | 'APPROVAL' | 'PO' | 'DONE' | 'CANCELLED';
+  overallStatus: 'DRAFT' | 'APPROVAL' | 'PO' | 'RECEIVED' | 'CLOSED' | 'DONE' | 'CANCELLED';
   daysRunningStr: string;
   oldestDate: Date | null;
   oldestDateStr: string;
@@ -72,12 +72,16 @@ export type TabType =
   | 'DRAFT'
   | 'APPROVAL'
   | 'PO'
+  | 'RECEIVED'
+  | 'CLOSED'
   | 'DONE';
 
 export type CardFilterType =
   | 'DRAFT'
   | 'APPROVAL'
   | 'PO'
+  | 'RECEIVED'
+  | 'CLOSED'
   | 'DONE'
   | null;
 

@@ -7,7 +7,9 @@ type MetricCardsProps = {
     draftCount: number;
     approvalCount: number;
     poCount: number;
-    doneCount: number;
+    receivedCount?: number;
+    closedCount?: number;
+    doneCount?: number;
   };
   cardFilter: CardFilterType;
   setCardFilter: (val: CardFilterType) => void;
@@ -31,9 +33,12 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
     })
     .sort((a, b) => new Date(b.updatedAt!).getTime() - new Date(a.updatedAt!).getTime());
 
+  const receivedCount = stats.receivedCount ?? 0;
+  const closedCount = stats.closedCount ?? stats.doneCount ?? 0;
+
   return (
     <>
-      <div className="stats-grid" style={{ marginBottom: 24 }}>
+      <div className="stats-grid" style={{ marginBottom: 24, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
         <div
           className="stat-card stat-ylw"
           style={{
@@ -116,30 +121,60 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
         </div>
 
         <div
+          className="stat-card"
+          style={{
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            background: 'var(--sf2)',
+            borderRadius: 12,
+            padding: 16,
+            borderLeft: '4px solid #f59e0b',
+            boxShadow:
+              cardFilter === 'RECEIVED'
+                ? '0 0 0 2px #f59e0b, 0 4px 20px rgba(245, 158, 11, 0.25)'
+                : 'none',
+            transform: cardFilter === 'RECEIVED' ? 'scale(1.02)' : 'scale(1)',
+            opacity: cardFilter && cardFilter !== 'RECEIVED' ? 0.6 : 1,
+          }}
+          onClick={() => {
+            if (cardFilter === 'RECEIVED') {
+              setCardFilter(null);
+            } else {
+              setCardFilter('RECEIVED');
+              setActiveTab('RECEIVED');
+            }
+          }}
+        >
+          <div className="stat-label" style={{ color: '#f59e0b', fontWeight: 800 }}>📦 4. Diterima (Belum GR)</div>
+          <div className="stat-value" style={{ color: '#f59e0b' }}>{receivedCount}</div>
+          <div className="stat-sub">Barang fisik tiba, menunggu dokumen GR Odoo</div>
+        </div>
+
+        <div
           className="stat-card stat-grn"
           style={{
             cursor: 'pointer',
             transition: 'all 0.2s',
             borderLeft: '4px solid var(--grn)',
             boxShadow:
-              cardFilter === 'DONE'
+              cardFilter === 'CLOSED' || cardFilter === 'DONE'
                 ? '0 0 0 2px var(--grn), 0 4px 20px rgba(34, 197, 94, 0.25)'
                 : 'none',
-            transform: cardFilter === 'DONE' ? 'scale(1.02)' : 'scale(1)',
-            opacity: cardFilter && cardFilter !== 'DONE' ? 0.6 : 1,
+            transform: cardFilter === 'CLOSED' || cardFilter === 'DONE' ? 'scale(1.02)' : 'scale(1)',
+            opacity: cardFilter && cardFilter !== 'CLOSED' && cardFilter !== 'DONE' ? 0.6 : 1,
           }}
           onClick={() => {
-            if (cardFilter === 'DONE') {
+            if (cardFilter === 'CLOSED' || cardFilter === 'DONE') {
               setCardFilter(null);
             } else {
-              setCardFilter('DONE');
-              setActiveTab('DONE');
+              setCardFilter('CLOSED');
+              setActiveTab('CLOSED');
             }
           }}
         >
-          <div className="stat-label">✓ 4. Selesai (Diterima)</div>
-          <div className="stat-value">{stats.doneCount}</div>
-          <div className="stat-sub">Barang sudah diterima & masuk stok gudang</div>
+          <div className="stat-label">✓ 5. Closed (Diterima + GR)</div>
+          <div className="stat-value">{closedCount}</div>
+          <div className="stat-sub">Barang diterima & dokumen GR Odoo selesai</div>
         </div>
       </div>
 

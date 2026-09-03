@@ -710,12 +710,14 @@ export default function ProcurementTrackingPage() {
       const allCancelled = itemsInGroup.length > 0 && itemsInGroup.every(isCancelled);
 
       // Determine Simplified Overall Status for Group Header
-      let overallStatus: 'DRAFT' | 'APPROVAL' | 'PO' | 'DONE' | 'CANCELLED' = 'DRAFT';
+      let overallStatus: 'DRAFT' | 'APPROVAL' | 'PO' | 'RECEIVED' | 'CLOSED' | 'DONE' | 'CANCELLED' = 'DRAFT';
       if (allCancelled) {
         overallStatus = 'CANCELLED';
       } else if (allDone) {
-        overallStatus = 'DONE';
-      } else if (hasPoActive || posSet.size > 0 && Array.from(posSet)[0] !== 'BELUM_ADA_PO') {
+        overallStatus = 'CLOSED';
+      } else if (itemsInGroup.some((i) => getItemSimplifiedStatus(i) === 'RECEIVED')) {
+        overallStatus = 'RECEIVED';
+      } else if (hasPoActive || (posSet.size > 0 && Array.from(posSet)[0] !== 'BELUM_ADA_PO') || itemsInGroup.some((i) => getItemSimplifiedStatus(i) === 'PO')) {
         overallStatus = 'PO';
       } else if (itemsInGroup.some((i) => getItemSimplifiedStatus(i) === 'APPROVAL') || (key !== 'DRAFT' && prsSet.size > 0)) {
         overallStatus = 'APPROVAL';
@@ -759,21 +761,25 @@ export default function ProcurementTrackingPage() {
     let draftCount = 0;
     let approvalCount = 0;
     let poCount = 0;
-    let doneCount = 0;
+    let receivedCount = 0;
+    let closedCount = 0;
 
     scopedItems.forEach((i) => {
       const s = getItemSimplifiedStatus(i);
       if (s === 'DRAFT') draftCount++;
       else if (s === 'APPROVAL') approvalCount++;
       else if (s === 'PO') poCount++;
-      else if (s === 'DONE') doneCount++;
+      else if (s === 'RECEIVED') receivedCount++;
+      else if (s === 'CLOSED') closedCount++;
     });
 
     return {
       draftCount,
       approvalCount,
       poCount,
-      doneCount,
+      receivedCount,
+      closedCount,
+      doneCount: closedCount
     };
   }, [scopedItems]);
 

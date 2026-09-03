@@ -1733,11 +1733,24 @@ export async function POST(req: NextRequest) {
               const reqId = matchedPR.id;
               const odooPrUrl = `https://foomx.odoo.com/web#id=${reqId}&model=${matchedPR.model || 'purchase.request'}&view_type=form`;
 
+              // Check if chatterNotes contain PO confirmation (Order confirmation Pxxxxx)
+              let extractedPo: string | null = null;
+              if (chatterNotes) {
+                const m = chatterNotes.match(/Order confirmation\s+(P\d+)/i)
+                       || chatterNotes.match(/confirmed in Purchase Order\s+(P\d+)/i)
+                       || chatterNotes.match(/Purchase Order\s+(P\d+)/i);
+                if (m && m[1]) extractedPo = m[1].toUpperCase();
+              }
+
               const updateData: any = {
-                statusPr: localStatusPr,
+                statusPr: extractedPo ? 'PO' : localStatusPr,
                 odooNotes: chatterNotes || null,
                 linkReferences: combinePrAndPoLinks(item.linkReferences, odooPrUrl, 'pr')
               };
+              if (extractedPo && (!item.nomorPo || item.nomorPo.trim() === '')) {
+                updateData.nomorPo = extractedPo;
+                updateData.poApproved = true;
+              }
               if (isGenericName(item.originalName)) {
                 const lineToUse = matchedLine || (prLines && prLines[0]);
                 let specificName = lineToUse ? getBestOdooLineName(lineToUse) : null;
