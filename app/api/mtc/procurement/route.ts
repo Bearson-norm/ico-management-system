@@ -288,10 +288,16 @@ export async function PATCH(req: NextRequest) {
     if (isStocked !== undefined && existing.isStocked !== Boolean(isStocked) && updated.sparepartId) {
       const existingMov = await prisma.stockMovement.findFirst({
         where: {
-          sparepartId: updated.sparepartId,
           OR: [
-            { keterangan: { contains: updated.nomorPo ? `PO: ${updated.nomorPo}` : 'Penerimaan' } },
-            { keterangan: { contains: updated.nomorPr ? `PR: ${updated.nomorPr}` : 'Penerimaan' } }
+            { keterangan: { contains: `[Penerimaan Pengadaan #${updated.id}` } },
+            { keterangan: { contains: `[Penerimaan Paket #${updated.id}` } },
+            {
+              sparepartId: updated.sparepartId,
+              OR: [
+                { keterangan: { contains: updated.nomorPo ? `PO: ${updated.nomorPo}` : 'Penerimaan' } },
+                { keterangan: { contains: updated.nomorPr ? `PR: ${updated.nomorPr}` : 'Penerimaan' } }
+              ]
+            }
           ]
         }
       });

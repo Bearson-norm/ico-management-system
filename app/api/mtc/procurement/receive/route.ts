@@ -52,21 +52,48 @@ export async function POST(req: NextRequest) {
 
           if (!sp) throw new Error(`Master Suku Cadang '${partSpId}' tidak ditemukan.`);
 
-          // 1. Buat StockMovement tipe IN atau LOG
-          await tx.stockMovement.create({
-            data: {
-              tipe: isStocked ? 'IN' : 'LOG',
+          const partKeterangan = `[Penerimaan Paket #${tracking.id} PR: ${tracking.nomorPr || '—'} / PO: ${tracking.nomorPo || '—'}] Bagian dari paket: ${tracking.originalName}`;
+
+          // Cek apakah mutasi untuk part ini pada pengadaan ini sudah pernah dibuat sebelumnya (Anti-Double)
+          const existingPartMov = await tx.stockMovement.findFirst({
+            where: {
               sparepartId: sp.id,
-              namaItem: sp.nama,
-              qty: partQty,
-              harga: partHarga,
-              lokasi: isStocked ? sp.lokasi : null,
-              purchaseType: 'PO',
-              vendor: finalVendor,
-              keterangan: `[Penerimaan Paket PR: ${tracking.nomorPr || '—'} / PO: ${tracking.nomorPo || '—'}] Bagian dari paket gabungan: ${tracking.originalName}`,
-              tanggal: tDate,
+              OR: [
+                { keterangan: { contains: `[Penerimaan Paket #${tracking.id}` } },
+                { keterangan: { startsWith: `[Penerimaan Paket PR: ${tracking.nomorPr || '—'} / PO: ${tracking.nomorPo || '—'}]` } },
+              ],
             },
           });
+
+          if (existingPartMov) {
+            await tx.stockMovement.update({
+              where: { id: existingPartMov.id },
+              data: {
+                tipe: isStocked ? 'IN' : 'LOG',
+                qty: partQty,
+                harga: partHarga,
+                lokasi: isStocked ? sp.lokasi : null,
+                vendor: finalVendor,
+                keterangan: partKeterangan,
+                tanggal: tDate,
+              },
+            });
+          } else {
+            await tx.stockMovement.create({
+              data: {
+                tipe: isStocked ? 'IN' : 'LOG',
+                sparepartId: sp.id,
+                namaItem: sp.nama,
+                qty: partQty,
+                harga: partHarga,
+                lokasi: isStocked ? sp.lokasi : null,
+                purchaseType: 'PO',
+                vendor: finalVendor,
+                keterangan: partKeterangan,
+                tanggal: tDate,
+              },
+            });
+          }
 
           // 2. Hitung Lead Time Baru untuk Sparepart
           const calculatedAvgLeadTime = sp.avgLeadTime === 0
@@ -123,13 +150,19 @@ export async function POST(req: NextRequest) {
         if (!sp) throw new Error('Master Suku Cadang tidak ditemukan');
 
         // 1. Cek apakah StockMovement untuk pengadaan ini sudah pernah dibuat sebelumnya (Anti-Double)
-        const docKeteranganPrefix = `[Penerimaan Pengadaan PR: ${tracking.nomorPr || '—'} / PO: ${tracking.nomorPo || '—'}]`;
+        const docKeteranganPrefix = `[Penerimaan Pengadaan #${tracking.id} PR: ${tracking.nomorPr || '—'} / PO: ${tracking.nomorPo || '—'}]`;
         const existingMov = await tx.stockMovement.findFirst({
           where: {
             sparepartId: sp.id,
-            tipe: 'IN',
-            keterangan: { startsWith: docKeteranganPrefix },
-          }
+            OR: [
+              { keterangan: { contains: `[Penerimaan Pengadaan #${tracking.id}` } },
+              { keterangan: { startsWith: `[Penerimaan Pengadaan PR: ${tracking.nomorPr || '—'} / PO: ${tracking.nomorPo || '—'}]` } },
+              ...(tracking.nomorPo ? [{
+                tipe: 'IN',
+                keterangan: { contains: `PO: ${tracking.nomorPo}` },
+              }] : []),
+            ],
+          },
         });
 
         if (existingMov) {
@@ -137,12 +170,14 @@ export async function POST(req: NextRequest) {
           await tx.stockMovement.update({
             where: { id: existingMov.id },
             data: {
+              tipe: 'IN',
               qty: movementQty,
               harga: movementHarga,
               lokasi: sp.lokasi,
               vendor: finalVendor,
+              keterangan: docKeteranganPrefix + (multiplier > 1 ? ` (Kemasan: ${tracking.qty} x ${multiplier})` : ''),
               tanggal: tDate,
-            }
+            },
           });
         } else {
           // Buat StockMovement baru tipe IN jika belum ada
@@ -198,20 +233,49 @@ export async function POST(req: NextRequest) {
     } else {
       // OPSI B: Langsung Pakai (Non-Stok)
       await prisma.$transaction(async (tx) => {
-        // 1. Buat StockMovement tipe LOG
-        await tx.stockMovement.create({
-          data: {
-            tipe: 'LOG',
-            sparepartId: tracking.sparepartId || null,
-            namaItem: tracking.originalName,
-            qty: movementQty,
-            harga: movementHarga,
-            purchaseType: 'PO',
-            vendor: finalVendor,
-            keterangan: `[Penerimaan Pengadaan - Langsung Pakai]` + (multiplier > 1 ? ` (Kemasan: ${tracking.qty} x ${multiplier})` : '') + ` Alasan: ${tracking.reason || 'Kebutuhan pemakaian langsung'}`,
-            tanggal: tDate,
+        const logKeterangan = `[Penerimaan Pengadaan #${tracking.id} - Langsung Pakai]` + (multiplier > 1 ? ` (Kemasan: ${tracking.qty} x ${multiplier})` : '') + ` Alasan: ${tracking.reason || 'Kebutuhan pemakaian langsung'}`;
+
+        // Cek apakah StockMovement tipe LOG untuk pengadaan ini sudah pernah dibuat sebelumnya (Anti-Double)
+        const existingLog = await tx.stockMovement.findFirst({
+          where: {
+            OR: [
+              { keterangan: { contains: `[Penerimaan Pengadaan #${tracking.id}` } },
+              {
+                tipe: 'LOG',
+                namaItem: tracking.originalName,
+                keterangan: { startsWith: `[Penerimaan Pengadaan - Langsung Pakai]` },
+              },
+            ],
           },
         });
+
+        if (existingLog) {
+          await tx.stockMovement.update({
+            where: { id: existingLog.id },
+            data: {
+              qty: movementQty,
+              harga: movementHarga,
+              vendor: finalVendor,
+              keterangan: logKeterangan,
+              tanggal: tDate,
+            },
+          });
+        } else {
+          // 1. Buat StockMovement tipe LOG jika belum ada
+          await tx.stockMovement.create({
+            data: {
+              tipe: 'LOG',
+              sparepartId: tracking.sparepartId || null,
+              namaItem: tracking.originalName,
+              qty: movementQty,
+              harga: movementHarga,
+              purchaseType: 'PO',
+              vendor: finalVendor,
+              keterangan: logKeterangan,
+              tanggal: tDate,
+            },
+          });
+        }
 
         // 2. Update Lead Time Sparepart jika terhubung
         if (tracking.sparepartId) {
