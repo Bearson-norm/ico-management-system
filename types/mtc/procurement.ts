@@ -65,6 +65,8 @@ export type GroupedPrItem = {
   oldestDateStr: string;
   poItemsCount: number;
   belumGrCount: number;
+  totalScopeItemsCount?: number;
+  closedScopeItemsCount?: number;
 };
 
 export type TabType =

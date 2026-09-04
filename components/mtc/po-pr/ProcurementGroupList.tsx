@@ -904,6 +904,11 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
                     >
                       <span>
                         {group.items.length} Item ({group.totalQty} Pcs)
+                        {group.totalScopeItemsCount && group.totalScopeItemsCount > group.items.length ? (
+                          <span style={{ color: 'var(--tx3)', marginLeft: 6, fontWeight: 500, fontSize: 9 }}>
+                            (dari total {group.totalScopeItemsCount} item{group.closedScopeItemsCount ? ` · ${group.closedScopeItemsCount} selesai/closed` : ''})
+                          </span>
+                        ) : null}
                       </span>
                       {group.poItemsCount > 0 && (
                         <>

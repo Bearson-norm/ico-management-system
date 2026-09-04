@@ -657,6 +657,12 @@ export default function ProcurementTrackingPage() {
 
     return sortedKeys.map((key) => {
       const itemsInGroup = groups[key];
+      const allItemsForPr = scopedItems.filter((i) =>
+        (groupingMode === 'PR' ? i.nomorPr?.trim() || 'DRAFT' : i.nomorPo?.trim() || 'BELUM_ADA_PO') === key
+      );
+      const totalScopeItemsCount = allItemsForPr.length;
+      const closedScopeItemsCount = allItemsForPr.filter(isClosedOrDone).length;
+
       let totalQty = 0;
       let totalCost = 0;
       const vendorsSet = new Set<string>();
@@ -717,7 +723,9 @@ export default function ProcurementTrackingPage() {
         overallStatus = 'CLOSED';
       } else if (itemsInGroup.some((i) => getItemSimplifiedStatus(i) === 'RECEIVED')) {
         overallStatus = 'RECEIVED';
-      } else if (hasPoActive || (posSet.size > 0 && Array.from(posSet)[0] !== 'BELUM_ADA_PO') || itemsInGroup.some((i) => getItemSimplifiedStatus(i) === 'PO')) {
+      } else if (posSet.size > 0 && Array.from(posSet)[0] !== 'BELUM_ADA_PO') {
+        overallStatus = 'PO';
+      } else if (itemsInGroup.some((i) => getItemSimplifiedStatus(i) === 'PO')) {
         overallStatus = 'PO';
       } else if (itemsInGroup.some((i) => getItemSimplifiedStatus(i) === 'APPROVAL') || (key !== 'DRAFT' && prsSet.size > 0)) {
         overallStatus = 'APPROVAL';
@@ -753,9 +761,11 @@ export default function ProcurementTrackingPage() {
           : '—',
         poItemsCount,
         belumGrCount,
+        totalScopeItemsCount,
+        closedScopeItemsCount,
       };
     });
-  }, [filteredItems, groupingMode]);
+  }, [filteredItems, groupingMode, scopedItems]);
 
   const stats = useMemo(() => {
     let draftCount = 0;

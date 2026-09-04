@@ -72,9 +72,7 @@ export function hasPoAssigned(item: TrackingItem): boolean {
   return (
     (effectivePo !== null && effectivePo !== '') ||
     statusPr === 'PO' ||
-    statusPr === 'RFQ' ||
-    statusPo === 'PO' ||
-    statusPo === 'RFQ'
+    statusPo === 'PO'
   );
 }
 
@@ -90,20 +88,21 @@ export function isPhysicallyReceived(item: TrackingItem): boolean {
 
 /**
  * LOGIC GR (Good Received Resmi dari Odoo):
- * Menandakan dokumen penerimaan barang resmi (good.received) di Odoo sudah ada atau disahkan.
+ * Menandakan dokumen penerimaan barang resmi di Odoo sudah DONE / disahkan.
+ * PERHATIAN: Tautan (linkGr) yang ada BUKAN penanda GR sudah selesai,
+ * karena dokumen di Odoo bisa saja masih berstatus DRAFT.
  */
 export function isOdooGrDone(item: TrackingItem): boolean {
   if (!item) return false;
   const statusPr = (item.statusPr || '').toUpperCase();
   const statusPo = (item.statusPo || '').toUpperCase();
-  const hasGrLink = !!(item.linkGr && item.linkGr.trim() !== '');
-  return statusPo === 'DONE' || statusPr === 'RECEIVED' || hasGrLink;
+  return statusPo === 'DONE' || statusPr === 'RECEIVED';
 }
 
 /**
  * Kategori: DITERIMA SAJA (BELUM GR)
  * Barang fisik sudah sampai di gudang (tanggalTerima terisi),
- * TETAPI dokumen GR di Odoo belum dibuat/diterbitkan.
+ * TETAPI dokumen GR di Odoo belum selesai/valid (masih Draft atau belum ada).
  */
 export function isReceivedOnly(item: TrackingItem): boolean {
   if (!item) return false;
@@ -112,11 +111,10 @@ export function isReceivedOnly(item: TrackingItem): boolean {
 
 /**
  * Kategori: CLOSED / SELESAI
- * Barang fisik sudah diterima DAN dokumen GR resmi dari Odoo sudah terbit/selesai.
+ * Dokumen GR resmi dari Odoo sudah terbit/selesai (statusPo === 'DONE' atau statusPr === 'RECEIVED').
  */
 export function isClosedOrDone(item: TrackingItem): boolean {
   if (!item) return false;
-  // Status CLOSED tercapai jika dokumen GR Odoo sudah selesai
   return isOdooGrDone(item);
 }
 
