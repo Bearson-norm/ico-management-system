@@ -49,16 +49,11 @@ export function extractPoFromChatter(odooNotes?: string | null): string | null {
   return null;
 }
 
-/**
- * Mendapatkan nomor PO efektif:
- * Prioritas 1: item.nomorPo di database
- * Prioritas 2: Ekstraksi dari notifikasi konfirmasi PO di Odoo Chatter
- */
 export function getEffectivePoNumber(item: TrackingItem): string | null {
   if (!item) return null;
   const directPo = (item.nomorPo || '').trim();
   if (directPo.length > 0) return directPo;
-  return extractPoFromChatter(item.odooNotes);
+  return null;
 }
 
 /**
