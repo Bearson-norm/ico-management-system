@@ -35,6 +35,13 @@ export default function MasterPage() {
   const [stockImportSync, setStockImportSync] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
 
+  // Export State
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [exportTarget, setExportTarget] = useState<string>('sparepart');
+  const [exportFormat, setExportFormat] = useState<'xlsx' | 'csv'>('xlsx');
+  const [exportFilteredOnly, setExportFilteredOnly] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
+
   // BOM State
   const [bomMesins, setBomMesins] = useState<any[]>([]);
   const [expandedMesinId, setExpandedMesinId] = useState<number | null>(null);
@@ -249,6 +256,63 @@ export default function MasterPage() {
     }
   };
 
+  const hasActiveFilters = Boolean(
+    search.trim() || filterKategori || filterMesin || filterStatus || filterPengadaan || filterTipeMesin
+  );
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const params = new URLSearchParams();
+      params.set('tab', exportTarget);
+      params.set('format', exportFormat);
+
+      if (exportFilteredOnly && exportTarget !== 'all') {
+        if (search.trim()) params.set('search', search.trim());
+        if (exportTarget === 'sparepart' || exportTarget === activeTab) {
+          if (filterKategori) params.set('kategori', filterKategori);
+          if (filterMesin) params.set('mesin', filterMesin);
+          if (filterPengadaan) params.set('pengadaan', filterPengadaan);
+        }
+        if (filterStatus) params.set('status', filterStatus);
+        if (filterTipeMesin) params.set('tipeMesin', filterTipeMesin);
+      }
+
+      const res = await fetch(`/api/mtc/master/export?${params.toString()}`);
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        alert(`Gagal export data: ${errJson.error || res.statusText}`);
+        return;
+      }
+
+      const disposition = res.headers.get('Content-Disposition');
+      let filename = `Master_Export_${exportTarget}.${exportFormat}`;
+      if (disposition && disposition.includes('filename=')) {
+        const match = disposition.match(/filename="?([^";]+)"?/);
+        if (match && match[1]) {
+          filename = match[1];
+        }
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+      setExportModalOpen(false);
+    } catch (err: any) {
+      console.error('Export error:', err);
+      alert('Terjadi kesalahan saat mengunduh data: ' + err.message);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <>
       <div className="page-header">
@@ -258,6 +322,17 @@ export default function MasterPage() {
             <div className="page-sub">Kelola informasi barang, teknisi, mesin, dan kategori</div>
           </div>
           <div className="page-header-actions">
+            <button 
+              type="button" 
+              className="btn btn-ghost" 
+              onClick={() => {
+                setExportTarget(activeTab);
+                setExportModalOpen(true);
+              }}
+              title="Unduh data master ke Excel atau CSV"
+            >
+              📥 Export Data
+            </button>
             {(activeTab === 'sparepart' || activeTab === 'mesin' || activeTab === 'bom') && (
               <button 
                 type="button" 
@@ -1051,6 +1126,156 @@ export default function MasterPage() {
                 style={{ flex: 2, justifyContent: 'center' }}
               >
                 {isImporting ? '⏳ Sedang Memproses...' : '📥 Mulai Import Data'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EXPORT DATA MODAL */}
+      {exportModalOpen && (
+        <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget && !isExporting) setExportModalOpen(false); }}>
+          <div className="modal-box" style={{ maxWidth: 520, width: '100%' }}>
+            <div className="modal-header">
+              <div className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                📥 Export Master Data
+              </div>
+              <button 
+                onClick={() => { if (!isExporting) setExportModalOpen(false); }} 
+                style={{ background: 'none', border: 'none', color: 'var(--tx2)', fontSize: 20, cursor: 'pointer' }}
+                disabled={isExporting}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="modal-body" style={{ gap: 16 }}>
+              {/* Target Data Selection */}
+              <div className="form-group">
+                <label className="form-label" style={{ fontSize: 11, fontWeight: 600 }}>1. Pilih Kategori Data</label>
+                <select 
+                  className="form-input form-select"
+                  value={exportTarget}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setExportTarget(val);
+                    if (val === 'all') {
+                      setExportFormat('xlsx');
+                    }
+                  }}
+                  disabled={isExporting}
+                >
+                  <option value="sparepart">📦 Master Sparepart (Barang, Stok & Purchasing)</option>
+                  <option value="mesin">🏭 Master Mesin (Data Unit & Status Vital)</option>
+                  <option value="teknisi">👷 Master Teknisi (Daftar Personel & Aktivitas)</option>
+                  <option value="kategori">🏷️ Master Kategori (Kategori Komponen)</option>
+                  <option value="bom">🔗 BOM per Mesin (Bill of Materials Lengkap)</option>
+                  <option value="all">📑 Semua Data Sekaligus (Multi-Sheet Excel)</option>
+                </select>
+              </div>
+
+              {/* File Format Selection */}
+              <div className="form-group">
+                <label className="form-label" style={{ fontSize: 11, fontWeight: 600 }}>2. Format File</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <button
+                    type="button"
+                    className={`btn ${exportFormat === 'xlsx' ? 'btn-primary' : 'btn-ghost'}`}
+                    onClick={() => setExportFormat('xlsx')}
+                    disabled={isExporting}
+                    style={{ justifyContent: 'center', gap: 6 }}
+                  >
+                    📗 Excel (.xlsx)
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn ${exportFormat === 'csv' ? 'btn-primary' : 'btn-ghost'}`}
+                    onClick={() => {
+                      if (exportTarget !== 'all') {
+                        setExportFormat('csv');
+                      }
+                    }}
+                    disabled={isExporting || exportTarget === 'all'}
+                    title={exportTarget === 'all' ? 'Format CSV tidak mendukung multi-sheet' : 'Export CSV UTF-8'}
+                    style={{ 
+                      justifyContent: 'center', 
+                      gap: 6,
+                      opacity: exportTarget === 'all' ? 0.45 : 1,
+                      cursor: exportTarget === 'all' ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    📄 CSV (.csv)
+                  </button>
+                </div>
+                {exportTarget === 'all' && (
+                  <p style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 4 }}>
+                    *Export seluruh kategori otomatis digabungkan dalam 1 buku kerja Excel multi-sheet.
+                  </p>
+                )}
+              </div>
+
+              {/* Filter Scope Option */}
+              {exportTarget !== 'all' && (
+                <div style={{ background: 'var(--sf2)', padding: '12px 14px', borderRadius: 8, border: '1px solid var(--br)' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600, fontSize: 12 }}>
+                    <input
+                      type="checkbox"
+                      checked={exportFilteredOnly}
+                      onChange={(e) => setExportFilteredOnly(e.target.checked)}
+                      disabled={isExporting}
+                    />
+                    Terapkan filter pencarian & dropdown saat ini
+                  </label>
+                  <div style={{ color: 'var(--tx3)', fontSize: 11, marginTop: 4, marginLeft: 22 }}>
+                    {hasActiveFilters ? (
+                      <div>
+                        Filter aktif:{' '}
+                        {[
+                          search && `Cari: "${search}"`,
+                          filterKategori && `Kategori: "${filterKategori}"`,
+                          filterMesin && `Mesin: "${filterMesin}"`,
+                          filterStatus && `Status: "${filterStatus}"`,
+                          filterPengadaan && `Pengadaan: "${filterPengadaan}"`,
+                          filterTipeMesin && `Tipe: "${filterTipeMesin}"`,
+                        ].filter(Boolean).join(', ')}
+                      </div>
+                    ) : (
+                      'Saat ini tidak ada filter aktif. Seluruh data pada kategori ini akan diekspor.'
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Information / Summary Box */}
+              <div className="alert alert-blu" style={{ fontSize: 12, padding: '10px 14px', lineHeight: 1.5 }}>
+                ℹ️ <strong>Ringkasan Export:</strong> Mengunduh data <strong>{
+                  exportTarget === 'sparepart' ? 'Master Sparepart' :
+                  exportTarget === 'mesin' ? 'Master Mesin' :
+                  exportTarget === 'teknisi' ? 'Master Teknisi' :
+                  exportTarget === 'kategori' ? 'Master Kategori' :
+                  exportTarget === 'bom' ? 'BOM per Mesin' : 'Seluruh Master Data'
+                }</strong> dalam format <strong>{exportFormat.toUpperCase()}</strong>.
+              </div>
+            </div>
+
+            <div className="modal-footer" style={{ padding: '16px 24px', borderTop: '1px solid var(--br)', display: 'flex', gap: 10 }}>
+              <button 
+                type="button" 
+                className="btn btn-ghost" 
+                onClick={() => setExportModalOpen(false)} 
+                disabled={isExporting}
+                style={{ flex: 1, justifyContent: 'center' }}
+              >
+                Batal
+              </button>
+              <button 
+                type="button" 
+                className="btn btn-primary" 
+                onClick={handleExport} 
+                disabled={isExporting}
+                style={{ flex: 2, justifyContent: 'center', gap: 8 }}
+              >
+                {isExporting ? '⏳ Mengunduh Data...' : '📥 Mulai Unduh'}
               </button>
             </div>
           </div>
