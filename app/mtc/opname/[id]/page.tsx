@@ -179,6 +179,33 @@ export default function MtcOpnameDetailPage({ params }: { params: { id: string }
     }
   }
 
+  // Handle Sync / Refresh Opname Items from Master Data
+  async function handleSyncFromMasterData() {
+    if (!confirm('Apakah Anda ingin memperbarui Nama Barang, Lokasi Rak, dan Kategori pada sesi ini sesuai Master Data terbaru?\n\nHasil hitungan fisik (Qty Fisik) yang sudah diisi TIDAK akan hilang.')) {
+      return;
+    }
+
+    setActionLoading('sync-master');
+    try {
+      const res = await fetch(`/api/mtc/opname/${sessionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'sync_master_data' })
+      });
+      const json = await res.json();
+      if (json.success) {
+        alert(json.data?.msg || '✓ Berhasil menyinkronkan data dari Master Data!');
+        await fetchOpnameDetail(false);
+      } else {
+        alert(`Gagal menyinkronkan data: ${json.error}`);
+      }
+    } catch (e) {
+      alert('Terjadi kesalahan jaringan.');
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
   // Handle Deleting Item from SO Session
   async function handleDeleteItem(itemId: number, namaItem: string) {
     if (!confirm(`Apakah Anda yakin ingin menghapus "${namaItem}" dari sesi Stock Opname ini?`)) return;
@@ -699,6 +726,27 @@ export default function MtcOpnameDetailPage({ params }: { params: { id: string }
                 }}
               >
                 ➕ Barang Tidak Terdaftar
+              </button>
+
+              <button
+                onClick={handleSyncFromMasterData}
+                disabled={actionLoading === 'sync-master'}
+                style={{
+                  padding: '7px 14px',
+                  borderRadius: 8,
+                  border: '1px solid rgba(56, 189, 248, 0.4)',
+                  background: 'rgba(56, 189, 248, 0.15)',
+                  color: '#38bdf8',
+                  fontSize: 11,
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4
+                }}
+                title="Perbaharui Nama, Kategori, dan Posisi Rak pada sesi opname ini sesuai data Master Data terbaru"
+              >
+                {actionLoading === 'sync-master' ? '⏳ Menyinkronkan...' : '🔄 Perbaharui dari Master Data'}
               </button>
             </div>
           )}

@@ -220,7 +220,91 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       return ok({ msg: `✓ Berhasil memperbarui ${bulkUpdates.length} item.` });
     }
 
-    // ACTION D: Atomic Single Item Count Update
+    // ACTION D: Sync / Refresh from Master Data
+    if (action === 'sync_master_data') {
+      const itemsInSession = await prisma.opnameItem.findMany({
+        where: { sessionId }
+      });
+
+      const allSpareparts = await prisma.sparepart.findMany({
+        include: { kategori: true }
+      });
+      const spMapById = new Map<string, typeof allSpareparts[0]>();
+      const spMapByName = new Map<string, typeof allSpareparts[0]>();
+
+      for (const sp of allSpareparts) {
+        spMapById.set(sp.id, sp);
+        spMapByName.set(sp.nama.trim().toLowerCase(), sp);
+      }
+
+      let updatedCount = 0;
+      for (const item of itemsInSession) {
+        let matchedSp = item.sparepartId ? spMapById.get(item.sparepartId) : null;
+        if (!matchedSp && item.namaItem) {
+          matchedSp = spMapByName.get(item.namaItem.trim().toLowerCase()) || null;
+        }
+
+        if (matchedSp) {
+          const newName = matchedSp.nama;
+          const newKategori = matchedSp.kategori?.nama || item.kategori;
+          const newLokasi = matchedSp.lokasi || item.lokasi;
+          const newUom = matchedSp.uom || item.uom;
+
+          const isDiff =
+            item.namaItem !== newName ||
+            item.kategori !== newKategori ||
+            item.lokasi !== newLokasi ||
+            item.uom !== newUom ||
+            (!item.sparepartId && matchedSp.id);
+
+          if (isDiff) {
+            await prisma.opnameItem.update({
+              where: { id: item.id },
+              data: {
+                sparepartId: matchedSp.id,
+                namaItem: newName,
+                kategori: newKategori,
+                lokasi: newLokasi,
+                uom: newUom
+              }
+            });
+            updatedCount++;
+          }
+        }
+      }
+
+      // Check if there are active spareparts not yet in this session
+      const existingSpIds = new Set(itemsInSession.map(i => i.sparepartId).filter(Boolean));
+      const missingActiveSp = allSpareparts.filter(sp => sp.aktif && !existingSpIds.has(sp.id));
+
+      let addedCount = 0;
+      if (body.includeNewSpareparts && missingActiveSp.length > 0) {
+        for (const sp of missingActiveSp) {
+          await prisma.opnameItem.create({
+            data: {
+              sessionId,
+              sparepartId: sp.id,
+              namaItem: sp.nama,
+              kategori: sp.kategori?.nama || null,
+              lokasi: sp.lokasi || null,
+              uom: sp.uom || 'Pcs',
+              qtySistem: 0,
+              qtyFisik: null,
+              selisih: 0
+            }
+          });
+          addedCount++;
+        }
+      }
+
+      return ok({
+        updatedCount,
+        addedCount,
+        msg: `✓ Sinkronisasi selesai: ${updatedCount} item diperbarui sesuai Master Data terbaru${addedCount > 0 ? `, ${addedCount} sparepart baru ditambahkan` : ''}.`
+      });
+    }
+
+    // ACTION E: Atomic Single Item Count Update
     if (itemId) {
       const itemNum = parseInt(String(itemId));
       const targetItem = await prisma.opnameItem.findUnique({

@@ -151,6 +151,21 @@ export async function importSparepartBatch(
           avgLeadTime: row.avgLeadTime,
         },
       });
+
+      // Also cascade update active (unposted) opname items so opname reports reflect new master data
+      await prisma.opnameItem.updateMany({
+        where: {
+          sparepartId: row.id,
+          session: { status: { in: ['DRAFT', 'WAITING_APPROVAL'] } }
+        },
+        data: {
+          namaItem: row.nama || row.id,
+          lokasi: row.lokasi || null,
+          uom: row.uom || 'Pcs',
+          ...(row.kategoriNama ? { kategori: row.kategoriNama } : {})
+        }
+      });
+
       success++;
     } catch (e: unknown) {
       const reason =

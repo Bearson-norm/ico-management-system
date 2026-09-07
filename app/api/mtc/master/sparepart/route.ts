@@ -231,6 +231,21 @@ export async function PUT(req: NextRequest) {
       },
     });
 
+    // Cascade master data updates to any active (unposted) opname sessions
+    const katRecord = kid ? await tx.kategori.findUnique({ where: { id: kid } }) : null;
+    await tx.opnameItem.updateMany({
+      where: {
+        sparepartId: String(id),
+        session: { status: { in: ['DRAFT', 'WAITING_APPROVAL'] } }
+      },
+      data: {
+        ...(nama !== undefined ? { namaItem: nama.trim() } : {}),
+        ...(lokasi !== undefined ? { lokasi: lokasi || null } : {}),
+        ...(uom !== undefined ? { uom: uom || 'Pcs' } : {}),
+        ...(kid !== undefined ? { kategori: katRecord?.nama || null } : {}),
+      }
+    });
+
     if (body.currentStock !== undefined && body.currentStock !== null && body.currentStock !== '' && !isNaN(Number(body.currentStock))) {
       const targetStock = Number(body.currentStock);
       const spMovements = await tx.stockMovement.findMany({
