@@ -294,6 +294,26 @@ export async function PUT(req: NextRequest) {
             },
           });
         }
+
+        // Also cascade updated stock to all active (unposted) opname items and recalculate variance
+        const activeOpnameItems = await tx.opnameItem.findMany({
+          where: {
+            sparepartId: String(id),
+            session: { status: { in: ['DRAFT', 'WAITING_APPROVAL'] } }
+          }
+        });
+        for (const opItem of activeOpnameItems) {
+          const newSelisih = opItem.qtyFisik !== null && opItem.qtyFisik !== undefined
+            ? opItem.qtyFisik - targetStock
+            : 0;
+          await tx.opnameItem.update({
+            where: { id: opItem.id },
+            data: {
+              qtySistem: targetStock,
+              selisih: newSelisih
+            }
+          });
+        }
       }
     }
 

@@ -226,7 +226,6 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
       return ok({ msg: `✓ Berhasil memperbarui ${bulkUpdates.length} item.` });
     }
-
     // ACTION D: Sync / Refresh from Master Data
     if (action === 'sync_master_data') {
       const itemsInSession = await prisma.opnameItem.findMany({
@@ -244,6 +243,25 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         spMapByName.set(sp.nama.trim().toLowerCase(), sp);
       }
 
+      // Calculate latest system stock from stock movements (excluding histori-sheets)
+      const allMovements = await prisma.stockMovement.findMany({
+        where: {
+          OR: [{ purchaseType: null }, { purchaseType: { not: 'histori-sheets' } }],
+        },
+        select: {
+          sparepartId: true,
+          tipe: true,
+          qty: true
+        }
+      });
+      const stockMap = new Map<string, number>();
+      allMovements.forEach(m => {
+        if (!m.sparepartId) return;
+        const current = stockMap.get(m.sparepartId) || 0;
+        if (m.tipe === 'IN') stockMap.set(m.sparepartId, current + m.qty);
+        else if (m.tipe === 'OUT') stockMap.set(m.sparepartId, current - m.qty);
+      });
+
       let updatedCount = 0;
       for (const item of itemsInSession) {
         let matchedSp = item.sparepartId ? spMapById.get(item.sparepartId) : null;
@@ -256,12 +274,18 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
           const newKategori = matchedSp.kategori?.nama || item.kategori;
           const newLokasi = matchedSp.lokasi || item.lokasi;
           const newUom = matchedSp.uom || item.uom;
+          const newQtySistem = stockMap.get(matchedSp.id) ?? 0;
+          const newSelisih = item.qtyFisik !== null && item.qtyFisik !== undefined
+            ? item.qtyFisik - newQtySistem
+            : 0;
 
           const isDiff =
             item.namaItem !== newName ||
             item.kategori !== newKategori ||
             item.lokasi !== newLokasi ||
             item.uom !== newUom ||
+            item.qtySistem !== newQtySistem ||
+            item.selisih !== newSelisih ||
             (!item.sparepartId && matchedSp.id);
 
           if (isDiff) {
@@ -272,7 +296,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
                 namaItem: newName,
                 kategori: newKategori,
                 lokasi: newLokasi,
-                uom: newUom
+                uom: newUom,
+                qtySistem: newQtySistem,
+                selisih: newSelisih
               }
             });
             updatedCount++;
@@ -295,7 +321,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
               kategori: sp.kategori?.nama || null,
               lokasi: sp.lokasi || null,
               uom: sp.uom || 'Pcs',
-              qtySistem: 0,
+              qtySistem: stockMap.get(sp.id) ?? 0,
               qtyFisik: null,
               selisih: 0
             }
