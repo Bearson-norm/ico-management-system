@@ -77,3 +77,21 @@ export function ok<T>(data: T, status = 200) {
 export function err(message: string, status = 400) {
   return Response.json({ success: false, error: message }, { status });
 }
+
+/**
+ * Natural comparison for Storage Location / SLOC / Rak.
+ * Items with valid rack locations are sorted naturally (e.g. 1-A-1-2 before 1-A-1-10).
+ * Items without location ('-', '', null, undefined, or 'Tanpa Lokasi') are placed at the very end.
+ */
+export function compareLocations(locA?: string | null, locB?: string | null): number {
+  const cleanA = (locA || '').trim();
+  const cleanB = (locB || '').trim();
+  const isNoLocA = !cleanA || cleanA === '-' || cleanA.toLowerCase() === 'tanpa lokasi';
+  const isNoLocB = !cleanB || cleanB === '-' || cleanB.toLowerCase() === 'tanpa lokasi';
+
+  if (isNoLocA && !isNoLocB) return 1;
+  if (!isNoLocA && isNoLocB) return -1;
+  if (isNoLocA && isNoLocB) return 0;
+
+  return cleanA.localeCompare(cleanB, undefined, { numeric: true, sensitivity: 'base' });
+}

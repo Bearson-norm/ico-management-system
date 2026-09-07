@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { ok, err } from '@/lib/utils';
+import { ok, err, compareLocations } from '@/lib/utils';
 import { requireMtcEditor } from '@/lib/auth';
 
 // GET /api/mtc/opname/[id] - Get details of a single Stock Opname session
@@ -74,7 +74,14 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       };
     });
 
-    const locations = Array.from(locationsSet).sort();
+    // Sort items naturally by SLOC / Rak (runtut), placing empty / '-' location at the very end
+    itemsWithCalc.sort((a, b) => {
+      const locDiff = compareLocations(a.lokasi, b.lokasi);
+      if (locDiff !== 0) return locDiff;
+      return (a.namaItem || '').trim().localeCompare((b.namaItem || '').trim(), undefined, { numeric: true, sensitivity: 'base' });
+    });
+
+    const locations = Array.from(locationsSet).sort((a, b) => compareLocations(a, b));
 
     const masterKategori = await prisma.kategori.findMany({
       select: { nama: true },

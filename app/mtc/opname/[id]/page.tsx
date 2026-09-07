@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import ShellLayout from '@/components/shared/ShellLayout';
+import { compareLocations } from '@/lib/utils';
 
 export default function MtcOpnameDetailPage({ params }: { params: { id: string } }) {
   const sessionId = params.id;
@@ -423,24 +424,28 @@ export default function MtcOpnameDetailPage({ params }: { params: { id: string }
     // Sorting
     result.sort((a, b) => {
       if (sortBy === 'location') {
-        const locA = a.lokasi || '';
-        const locB = b.lokasi || '';
-        if (locA !== locB) return locA.localeCompare(locB);
-        return (a.namaItem || '').localeCompare(b.namaItem || '');
+        const locDiff = compareLocations(a.lokasi, b.lokasi);
+        if (locDiff !== 0) return locDiff;
+        return (a.namaItem || '').trim().localeCompare((b.namaItem || '').trim(), undefined, { numeric: true, sensitivity: 'base' });
       }
       if (sortBy === 'name') {
-        return (a.namaItem || '').localeCompare(b.namaItem || '');
+        return (a.namaItem || '').trim().localeCompare((b.namaItem || '').trim(), undefined, { numeric: true, sensitivity: 'base' });
       }
       if (sortBy === 'uncounted_first') {
-        const aCounted = a.qtyFisik !== null ? 1 : 0;
-        const bCounted = b.qtyFisik !== null ? 1 : 0;
+        const aCounted = a.qtyFisik !== null && a.qtyFisik !== undefined ? 1 : 0;
+        const bCounted = b.qtyFisik !== null && b.qtyFisik !== undefined ? 1 : 0;
         if (aCounted !== bCounted) return aCounted - bCounted;
-        return (a.lokasi || '').localeCompare(b.lokasi || '');
+        const locDiff = compareLocations(a.lokasi, b.lokasi);
+        if (locDiff !== 0) return locDiff;
+        return (a.namaItem || '').trim().localeCompare((b.namaItem || '').trim(), undefined, { numeric: true, sensitivity: 'base' });
       }
       if (sortBy === 'variance_first') {
         const aVar = Math.abs(a.selisih || 0);
         const bVar = Math.abs(b.selisih || 0);
-        return bVar - aVar;
+        if (bVar !== aVar) return bVar - aVar;
+        const locDiff = compareLocations(a.lokasi, b.lokasi);
+        if (locDiff !== 0) return locDiff;
+        return (a.namaItem || '').trim().localeCompare((b.namaItem || '').trim(), undefined, { numeric: true, sensitivity: 'base' });
       }
       return a.id - b.id; // default
     });
@@ -991,7 +996,7 @@ export default function MtcOpnameDetailPage({ params }: { params: { id: string }
                 >
                   <option value="ALL">Semua Rak ({locations.length})</option>
                   {locations.map(loc => (
-                    <option key={loc} value={loc}>Rak: {loc}</option>
+                    <option key={loc} value={loc}>{loc === '-' || !loc ? 'Tanpa Rak / Sloc (-)' : `Rak: ${loc}`}</option>
                   ))}
                 </select>
               )}

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { compareLocations } from '@/lib/utils';
 
 export default function MtcOpnamePrintPage({ params }: { params: { id: string } }) {
   const sessionId = params.id;
@@ -68,13 +69,19 @@ export default function MtcOpnamePrintPage({ params }: { params: { id: string } 
 
   const { session, stats, items = [], locations = [] } = data;
 
-  // Filter items by selected location if specified
-  const filteredItems = (items || []).filter((item: any) => {
-    if (selectedLocation !== 'ALL') {
-      return (item.lokasi || '') === selectedLocation;
-    }
-    return true;
-  });
+  // Filter items by selected location if specified, and naturally sort by SLOC
+  const filteredItems = (items || [])
+    .filter((item: any) => {
+      if (selectedLocation !== 'ALL') {
+        return (item.lokasi || '') === selectedLocation;
+      }
+      return true;
+    })
+    .sort((a: any, b: any) => {
+      const locDiff = compareLocations(a.lokasi, b.lokasi);
+      if (locDiff !== 0) return locDiff;
+      return (a.namaItem || '').trim().localeCompare((b.namaItem || '').trim(), undefined, { numeric: true, sensitivity: 'base' });
+    });
 
   return (
     <div className="mtc-print-container">
@@ -257,7 +264,7 @@ export default function MtcOpnamePrintPage({ params }: { params: { id: string } 
             >
               <option value="ALL">Semua Rak / Lokasi ({items.length} Item)</option>
               {locations.map((loc: string) => (
-                <option key={loc} value={loc}>Rak: {loc}</option>
+                <option key={loc} value={loc}>{loc === '-' || !loc ? 'Tanpa Rak / Sloc (-)' : `Rak: ${loc}`}</option>
               ))}
             </select>
           )}
