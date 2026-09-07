@@ -704,42 +704,100 @@ export default function MtcOpnameDetailPage({ params }: { params: { id: string }
           )}
         </div>
 
-        {/* Audit Stats Summary Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 16 }}>
-          <div style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: 12, textAlign: 'center', borderTop: '3px solid #0284c7' }}>
-            <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700 }}>🎯 AKURASI DATA</div>
-            <div style={{ fontSize: 18, fontWeight: 900, color: '#38bdf8', marginTop: 2 }}>
-              {stats?.accuracyPct !== undefined ? stats.accuracyPct : (stats?.countedItems > 0 ? ((stats.totalMatchingCount / stats.countedItems) * 100).toFixed(1) : 0)}%
-            </div>
-            <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 2 }}>{stats?.totalMatchingCount} / {stats?.countedItems} Sesuai</div>
-          </div>
+        {/* Audit Stats Summary Cards with Percentage Breakdown */}
+        {(() => {
+          const counted = stats?.countedItems || 0;
+          const matchCount = stats?.totalMatchingCount || 0;
+          const plusCount = stats?.totalPlusCount ?? items.filter((i: any) => i.isCounted && i.selisih > 0).length;
+          const minusCount = stats?.totalMinusCount ?? items.filter((i: any) => i.isCounted && i.selisih < 0).length;
 
-          <div style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: 12, textAlign: 'center', borderTop: '3px solid #22c55e' }}>
-            <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700 }}>🟢 SESUAI (0)</div>
-            <div style={{ fontSize: 18, fontWeight: 900, color: '#4ade80', marginTop: 2 }}>{stats?.totalMatchingCount}</div>
-            <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 2 }}>Item Cocok</div>
-          </div>
+          const matchPct = counted > 0 ? (stats?.matchingPct ?? Number(((matchCount / counted) * 100).toFixed(1))) : 0;
+          const plusPct = counted > 0 ? (stats?.plusPct ?? Number(((plusCount / counted) * 100).toFixed(1))) : 0;
+          const minusPct = counted > 0 ? (stats?.minusPct ?? Number(((minusCount / counted) * 100).toFixed(1))) : 0;
 
-          <div style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: 12, textAlign: 'center', borderTop: '3px solid #ef4444' }}>
-            <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700 }}>🔴 MINUS (-QTY)</div>
-            <div style={{ fontSize: 18, fontWeight: 900, color: '#f87171', marginTop: 2 }}>-{stats?.totalMinusQty} Pcs</div>
-            <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 2 }}>{fmtCurrency(stats?.totalMinusValue || 0)}</div>
-          </div>
+          return (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 12 }}>
+                {/* Card 1: Akurasi Data */}
+                <div style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: 12, textAlign: 'center', borderTop: '3px solid #0284c7' }}>
+                  <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700 }}>🎯 AKURASI DATA</div>
+                  <div style={{ fontSize: 20, fontWeight: 900, color: '#38bdf8', marginTop: 2 }}>
+                    {matchPct}%
+                  </div>
+                  <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 2 }}>{matchCount} / {counted} Sesuai</div>
+                </div>
 
-          <div style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: 12, textAlign: 'center', borderTop: '3px solid #3b82f6' }}>
-            <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700 }}>🔵 PLUS (+QTY)</div>
-            <div style={{ fontSize: 18, fontWeight: 900, color: '#60a5fa', marginTop: 2 }}>+{stats?.totalPlusQty} Pcs</div>
-            <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 2 }}>{fmtCurrency(stats?.totalPlusValue || 0)}</div>
-          </div>
+                {/* Card 2: Sesuai */}
+                <div style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: 12, textAlign: 'center', borderTop: '3px solid #22c55e' }}>
+                  <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700 }}>🟢 SESUAI ({matchPct}%)</div>
+                  <div style={{ fontSize: 20, fontWeight: 900, color: '#4ade80', marginTop: 2 }}>{matchCount} Item</div>
+                  <div style={{ fontSize: 9, color: '#4ade80', marginTop: 2 }}>0 Selisih (Stok Pas)</div>
+                </div>
 
-          <div style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: 12, textAlign: 'center', borderTop: '3px solid #a855f7' }}>
-            <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700 }}>📊 NET VARIAN (RP)</div>
-            <div style={{ fontSize: 15, fontWeight: 900, color: (stats?.netVarianceValue || 0) < 0 ? '#f87171' : (stats?.netVarianceValue || 0) > 0 ? '#60a5fa' : '#4ade80', marginTop: 2 }}>
-              {fmtCurrency(stats?.netVarianceValue || 0)}
-            </div>
-            <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 2 }}>Total Selisih Rp</div>
-          </div>
-        </div>
+                {/* Card 3: Minus */}
+                <div style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: 12, textAlign: 'center', borderTop: '3px solid #ef4444' }}>
+                  <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700 }}>🔴 MINUS ({minusPct}%)</div>
+                  <div style={{ fontSize: 20, fontWeight: 900, color: '#f87171', marginTop: 2 }}>{minusCount} Item</div>
+                  <div style={{ fontSize: 9, color: '#f87171', marginTop: 2 }}>-{stats?.totalMinusQty || 0} Pcs · {fmtCurrency(stats?.totalMinusValue || 0)}</div>
+                </div>
+
+                {/* Card 4: Plus */}
+                <div style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: 12, textAlign: 'center', borderTop: '3px solid #3b82f6' }}>
+                  <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700 }}>🔵 PLUS ({plusPct}%)</div>
+                  <div style={{ fontSize: 20, fontWeight: 900, color: '#60a5fa', marginTop: 2 }}>{plusCount} Item</div>
+                  <div style={{ fontSize: 9, color: '#60a5fa', marginTop: 2 }}>+{stats?.totalPlusQty || 0} Pcs · {fmtCurrency(stats?.totalPlusValue || 0)}</div>
+                </div>
+
+                {/* Card 5: Net Varian */}
+                <div style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: 12, textAlign: 'center', borderTop: '3px solid #a855f7' }}>
+                  <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700 }}>📊 NET VARIAN (RP)</div>
+                  <div style={{ fontSize: 15, fontWeight: 900, color: (stats?.netVarianceValue || 0) < 0 ? '#f87171' : (stats?.netVarianceValue || 0) > 0 ? '#60a5fa' : '#4ade80', marginTop: 2 }}>
+                    {fmtCurrency(stats?.netVarianceValue || 0)}
+                  </div>
+                  <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 2 }}>
+                    Net Qty: {((stats?.totalPlusQty || 0) - (stats?.totalMinusQty || 0)) > 0 ? '+' : ''}{(stats?.totalPlusQty || 0) - (stats?.totalMinusQty || 0)} Pcs
+                  </div>
+                </div>
+              </div>
+
+              {/* Visual Multi-segment Distribution Bar */}
+              {counted > 0 && (
+                <div style={{
+                  background: '#1e293b',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: 12,
+                  padding: '10px 14px',
+                  marginBottom: 16
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, flexWrap: 'wrap', gap: 6 }}>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span>📊</span> <span>Bedah Akurasi & Selisih ({counted} Item Terhitung):</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 12, fontSize: 10.5, fontWeight: 700, flexWrap: 'wrap' }}>
+                      <span style={{ color: '#4ade80' }}>🟢 Sesuai: <strong>{matchPct}%</strong> ({matchCount} Item)</span>
+                      <span style={{ color: '#f87171' }}>🔴 Minus: <strong>{minusPct}%</strong> ({minusCount} Item)</span>
+                      <span style={{ color: '#60a5fa' }}>🔵 Plus: <strong>{plusPct}%</strong> ({plusCount} Item)</span>
+                    </div>
+                  </div>
+                  <div style={{ width: '100%', height: 8, background: 'rgba(255,255,255,0.06)', borderRadius: 4, overflow: 'hidden', display: 'flex' }}>
+                    <div
+                      style={{ width: `${matchPct}%`, background: '#22c55e', transition: 'width 0.3s' }}
+                      title={`Sesuai (Akurasi): ${matchPct}% (${matchCount} Item)`}
+                    />
+                    <div
+                      style={{ width: `${minusPct}%`, background: '#ef4444', transition: 'width 0.3s' }}
+                      title={`Minus: ${minusPct}% (${minusCount} Item · -${stats?.totalMinusQty || 0} Pcs)`}
+                    />
+                    <div
+                      style={{ width: `${plusPct}%`, background: '#3b82f6', transition: 'width 0.3s' }}
+                      title={`Plus: ${plusPct}% (${plusCount} Item · +${stats?.totalPlusQty || 0} Pcs)`}
+                    />
+                  </div>
+                </div>
+              )}
+            </>
+          );
+        })()}
 
         {/* Filter & View Toolbar */}
         <div style={{
@@ -810,13 +868,23 @@ export default function MtcOpnameDetailPage({ params }: { params: { id: string }
           {/* Row 2: Status Tabs, Location Filter, and Sorting */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
             <div style={{ display: 'flex', gap: 4, overflowX: 'auto', paddingBottom: 2 }}>
-              {[
-                { id: 'ALL', label: `Semua (${stats?.totalItems || items.length})` },
-                { id: 'PENDING', label: `Belum (${(stats?.totalItems || items.length) - (stats?.countedItems || 0)})` },
-                { id: 'MATCH', label: `Sesuai (${stats?.totalMatchingCount || 0})` },
-                { id: 'MINUS', label: `Minus (-)` },
-                { id: 'PLUS', label: `Plus (+)` },
-              ].map(tab => (
+              {(() => {
+                const counted = stats?.countedItems || 0;
+                const matchCount = stats?.totalMatchingCount || 0;
+                const plusCount = stats?.totalPlusCount ?? items.filter((i: any) => i.isCounted && i.selisih > 0).length;
+                const minusCount = stats?.totalMinusCount ?? items.filter((i: any) => i.isCounted && i.selisih < 0).length;
+                const matchPct = counted > 0 ? (stats?.matchingPct ?? Number(((matchCount / counted) * 100).toFixed(1))) : 0;
+                const plusPct = counted > 0 ? (stats?.plusPct ?? Number(((plusCount / counted) * 100).toFixed(1))) : 0;
+                const minusPct = counted > 0 ? (stats?.minusPct ?? Number(((minusCount / counted) * 100).toFixed(1))) : 0;
+
+                return [
+                  { id: 'ALL', label: `Semua (${stats?.totalItems || items.length})` },
+                  { id: 'PENDING', label: `Belum (${(stats?.totalItems || items.length) - counted})` },
+                  { id: 'MATCH', label: `🟢 Sesuai (${matchCount}) · ${matchPct}%` },
+                  { id: 'MINUS', label: `🔴 Minus (${minusCount}) · ${minusPct}%` },
+                  { id: 'PLUS', label: `🔵 Plus (${plusCount}) · ${plusPct}%` },
+                ];
+              })().map(tab => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}

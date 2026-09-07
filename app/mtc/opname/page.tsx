@@ -285,7 +285,7 @@ export default function MtcOpnameStandaloneDashboardPage() {
                     </div>
 
                     {/* Progress Bar */}
-                    <div style={{ marginTop: 10, maxWidth: 400 }}>
+                    <div style={{ marginTop: 10, maxWidth: 420 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, fontWeight: 700, color: 'var(--tx3, #94a3b8)', marginBottom: 2 }}>
                         <span>Progres Audit: {s.countedItems}/{s.totalItems} Item</span>
                         <span>{s.progressPct}%</span>
@@ -299,6 +299,16 @@ export default function MtcOpnameStandaloneDashboardPage() {
                           transition: 'width 0.3s'
                         }} />
                       </div>
+
+                      {/* Accuracy Breakdown Tag */}
+                      {s.countedItems > 0 && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 10, fontWeight: 700, marginTop: 6, flexWrap: 'wrap' }}>
+                          <span style={{ color: '#38bdf8' }}>🎯 Akurasi: <strong>{s.accuracyPct ?? 0}%</strong></span>
+                          <span style={{ color: '#4ade80' }}>🟢 {s.matchingPct ?? 0}%</span>
+                          <span style={{ color: '#f87171' }}>🔴 {s.minusPct ?? 0}%</span>
+                          <span style={{ color: '#60a5fa' }}>🔵 {s.plusPct ?? 0}%</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 

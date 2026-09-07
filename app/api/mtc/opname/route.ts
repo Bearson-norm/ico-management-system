@@ -33,6 +33,13 @@ export async function GET(req: NextRequest) {
         const totalPlus = items.filter(i => i.selisih > 0).reduce((acc, i) => acc + i.selisih, 0);
         const totalMinus = items.filter(i => i.selisih < 0).reduce((acc, i) => acc + Math.abs(i.selisih), 0);
         const totalMatching = items.filter(i => i.qtyFisik !== null && i.selisih === 0).length;
+        const totalPlusCount = items.filter(i => i.qtyFisik !== null && i.selisih > 0).length;
+        const totalMinusCount = items.filter(i => i.qtyFisik !== null && i.selisih < 0).length;
+
+        const accuracyPct = countedItems > 0 ? Math.round((totalMatching / countedItems) * 1000) / 10 : 0;
+        const matchingPct = accuracyPct;
+        const plusPct = countedItems > 0 ? Math.round((totalPlusCount / countedItems) * 1000) / 10 : 0;
+        const minusPct = countedItems > 0 ? Math.round((totalMinusCount / countedItems) * 1000) / 10 : 0;
 
         return {
           ...session,
@@ -41,7 +48,13 @@ export async function GET(req: NextRequest) {
           progressPct,
           totalPlus,
           totalMinus,
-          totalMatching
+          totalMatching,
+          totalPlusCount,
+          totalMinusCount,
+          accuracyPct,
+          matchingPct,
+          plusPct,
+          minusPct
         };
       })
     );

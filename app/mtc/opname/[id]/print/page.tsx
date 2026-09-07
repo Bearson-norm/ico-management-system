@@ -465,40 +465,66 @@ export default function MtcOpnamePrintPage({ params }: { params: { id: string } 
             <div style={{ fontWeight: 'bold', fontSize: 10.5, marginBottom: 4, borderBottom: '1px solid #d1d5db', paddingBottom: 3 }}>
               📊 RINGKASAN REKAPITULASI HASIL OPNAME
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 8, textAlign: 'center', fontSize: 10 }}>
-              <div>
-                <div style={{ color: '#555' }}>Total Item Audit</div>
-                <div style={{ fontWeight: 'bold', fontSize: 13 }}>{stats.totalItems} Item</div>
-                <div style={{ fontSize: 8.5, color: '#555' }}>({stats.countedItems} Dihitung)</div>
-              </div>
-              <div>
-                <div>🎯 Akurasi Data</div>
-                <div style={{ fontWeight: 'bold', fontSize: 13 }}>
-                  {stats.accuracyPct !== undefined ? stats.accuracyPct : (stats.totalItems > 0 ? ((stats.totalMatchingCount / (stats.countedItems || stats.totalItems)) * 100).toFixed(1) : 0)}%
-                </div>
-                <div style={{ fontSize: 8.5 }}>({stats.totalMatchingCount} Sesuai)</div>
-              </div>
-              <div>
-                <div>🟢 Sesuai (0)</div>
-                <div style={{ fontWeight: 'bold', fontSize: 13 }}>{stats.totalMatchingCount} Item</div>
-              </div>
-              <div>
-                <div>🔴 Total Minus (-Qty)</div>
-                <div style={{ fontWeight: 'bold', fontSize: 13 }}>-{stats.totalMinusQty} Pcs</div>
-                <div style={{ fontSize: 8.5 }}>({fmtCurrency(stats.totalMinusValue)})</div>
-              </div>
-              <div>
-                <div>🔵 Total Plus (+Qty)</div>
-                <div style={{ fontWeight: 'bold', fontSize: 13 }}>+{stats.totalPlusQty} Pcs</div>
-                <div style={{ fontSize: 8.5 }}>({fmtCurrency(stats.totalPlusValue)})</div>
-              </div>
-              <div>
-                <div>Net Varian Rp</div>
-                <div style={{ fontWeight: 'bold', fontSize: 12 }}>
-                  {fmtCurrency(stats.netVarianceValue)}
-                </div>
-              </div>
-            </div>
+            {(() => {
+              const counted = stats.countedItems || 0;
+              const matchCount = stats.totalMatchingCount || 0;
+              const plusCount = stats.totalPlusCount ?? (items || []).filter((i: any) => i.isCounted && i.selisih > 0).length;
+              const minusCount = stats.totalMinusCount ?? (items || []).filter((i: any) => i.isCounted && i.selisih < 0).length;
+              const matchPct = counted > 0 ? (stats.matchingPct ?? Number(((matchCount / counted) * 100).toFixed(1))) : 0;
+              const plusPct = counted > 0 ? (stats.plusPct ?? Number(((plusCount / counted) * 100).toFixed(1))) : 0;
+              const minusPct = counted > 0 ? (stats.minusPct ?? Number(((minusCount / counted) * 100).toFixed(1))) : 0;
+
+              return (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 8, textAlign: 'center', fontSize: 10 }}>
+                    <div>
+                      <div style={{ color: '#555' }}>Total Item Audit</div>
+                      <div style={{ fontWeight: 'bold', fontSize: 13 }}>{stats.totalItems} Item</div>
+                      <div style={{ fontSize: 8.5, color: '#555' }}>({counted} Dihitung)</div>
+                    </div>
+                    <div>
+                      <div>🎯 Akurasi Data</div>
+                      <div style={{ fontWeight: 'bold', fontSize: 13, color: '#0284c7' }}>
+                        {matchPct}%
+                      </div>
+                      <div style={{ fontSize: 8.5 }}>({matchCount} Sesuai)</div>
+                    </div>
+                    <div>
+                      <div>🟢 Sesuai ({matchPct}%)</div>
+                      <div style={{ fontWeight: 'bold', fontSize: 13, color: '#16a34a' }}>{matchCount} Item</div>
+                      <div style={{ fontSize: 8.5, color: '#16a34a' }}>0 Selisih</div>
+                    </div>
+                    <div>
+                      <div>🔴 Minus ({minusPct}%)</div>
+                      <div style={{ fontWeight: 'bold', fontSize: 13, color: '#dc2626' }}>{minusCount} Item</div>
+                      <div style={{ fontSize: 8.5 }}>-{stats.totalMinusQty} Pcs ({fmtCurrency(stats.totalMinusValue)})</div>
+                    </div>
+                    <div>
+                      <div>🔵 Plus ({plusPct}%)</div>
+                      <div style={{ fontWeight: 'bold', fontSize: 13, color: '#2563eb' }}>{plusCount} Item</div>
+                      <div style={{ fontSize: 8.5 }}>+{stats.totalPlusQty} Pcs ({fmtCurrency(stats.totalPlusValue)})</div>
+                    </div>
+                    <div>
+                      <div>Net Varian Rp</div>
+                      <div style={{ fontWeight: 'bold', fontSize: 12 }}>
+                        {fmtCurrency(stats.netVarianceValue)}
+                      </div>
+                      <div style={{ fontSize: 8.5, color: '#555' }}>
+                        Net: {((stats.totalPlusQty || 0) - (stats.totalMinusQty || 0)) > 0 ? '+' : ''}{(stats.totalPlusQty || 0) - (stats.totalMinusQty || 0)} Pcs
+                      </div>
+                    </div>
+                  </div>
+                  {counted > 0 && (
+                    <div style={{ marginTop: 8, paddingTop: 6, borderTop: '1px dashed #d1d5db', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 8.5 }}>
+                      <span><strong>Bedah Komposisi Akurasi:</strong></span>
+                      <span style={{ color: '#16a34a', fontWeight: 'bold' }}>🟢 Sesuai: {matchPct}% ({matchCount} Item)</span>
+                      <span style={{ color: '#dc2626', fontWeight: 'bold' }}>🔴 Minus: {minusPct}% ({minusCount} Item)</span>
+                      <span style={{ color: '#2563eb', fontWeight: 'bold' }}>🔵 Plus: {plusPct}% ({plusCount} Item)</span>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
 
           {/* Detailed Items Table */}

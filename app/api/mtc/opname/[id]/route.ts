@@ -36,6 +36,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     let totalPlusQty = 0;
     let totalMinusQty = 0;
     let totalMatchingCount = 0;
+    let totalPlusCount = 0;
+    let totalMinusCount = 0;
     let totalPlusValue = 0;
     let totalMinusValue = 0;
 
@@ -51,9 +53,11 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
       if (isCounted) {
         if (selisih > 0) {
+          totalPlusCount++;
           totalPlusQty += selisih;
           totalPlusValue += nilaiVarian;
         } else if (selisih < 0) {
+          totalMinusCount++;
           totalMinusQty += Math.abs(selisih);
           totalMinusValue += Math.abs(nilaiVarian);
         } else {
@@ -99,10 +103,15 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
         totalPlusQty,
         totalMinusQty,
         totalMatchingCount,
+        totalPlusCount,
+        totalMinusCount,
         totalPlusValue,
         totalMinusValue,
         netVarianceValue: totalPlusValue - totalMinusValue,
-        accuracyPct: countedItems > 0 ? Math.round((totalMatchingCount / countedItems) * 1000) / 10 : 0
+        accuracyPct: countedItems > 0 ? Math.round((totalMatchingCount / countedItems) * 1000) / 10 : 0,
+        matchingPct: countedItems > 0 ? Math.round((totalMatchingCount / countedItems) * 1000) / 10 : 0,
+        plusPct: countedItems > 0 ? Math.round((totalPlusCount / countedItems) * 1000) / 10 : 0,
+        minusPct: countedItems > 0 ? Math.round((totalMinusCount / countedItems) * 1000) / 10 : 0,
       },
       locations,
       categories,
