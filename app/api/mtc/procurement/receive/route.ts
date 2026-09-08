@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     return err('Format JSON tidak valid', 400);
   }
 
-  const { id, tanggalTerima, isStocked, harga, vendor, qtyPerPack, receivedParts } = body;
+  const { id, tanggalTerima, isStocked, harga, vendor, qtyPerPack, receivedParts, qty } = body;
 
   if (!id) return err('ID pengadaan wajib diisi', 400);
   if (!tanggalTerima) return err('Tanggal terima wajib diisi', 400);
@@ -33,6 +33,17 @@ export async function POST(req: NextRequest) {
 
     const finalHarga = harga !== undefined ? Number(harga) : Number(tracking.harga || 0);
     const finalVendor = vendor !== undefined ? vendor : tracking.vendor;
+
+    const rawQty = qty !== undefined && qty !== null ? Number(qty) : tracking.qty;
+    if (isNaN(rawQty) || rawQty <= 0) {
+      return err('Jumlah (qty) diterima harus lebih besar dari 0', 400);
+    }
+    if (rawQty > tracking.qty) {
+      return err(`Jumlah diterima (${rawQty}) tidak boleh melebihi total pesanan (${tracking.qty})`, 400);
+    }
+    const actualReceiveQty = rawQty;
+    const isPartial = actualReceiveQty < tracking.qty;
+    const remainingQty = tracking.qty - actualReceiveQty;
 
     // Hitung elapsed lead time dalam hari
     const elapsedMs = tDate.getTime() - new Date(tracking.tanggalList).getTime();
@@ -131,9 +142,9 @@ export async function POST(req: NextRequest) {
       return ok({ msg: `Berhasil menerima paket gabungan '${tracking.originalName}' ke dalam ${isStocked ? 'stok gudang' : 'pemakaian langsung'} MTC.` });
     }
 
-    // B. JIKA SATU ITEM (BISA DENGAN KONVERSI KEMASAN)
+    // B. JIKA SATU ITEM (BISA DENGAN KONVERSI KEMASAN & PENERIMAAN PARSIAL)
     const multiplier = qtyPerPack && Number(qtyPerPack) > 0 ? Number(qtyPerPack) : 1;
-    const movementQty = tracking.qty * multiplier;
+    const movementQty = actualReceiveQty * multiplier;
     const movementHarga = finalHarga / multiplier;
 
     if (isStocked) {
@@ -150,7 +161,7 @@ export async function POST(req: NextRequest) {
         if (!sp) throw new Error('Master Suku Cadang tidak ditemukan');
 
         // 1. Cek apakah StockMovement untuk pengadaan ini sudah pernah dibuat sebelumnya (Anti-Double)
-        const docKeteranganPrefix = `[Penerimaan Pengadaan #${tracking.id} PR: ${tracking.nomorPr || '—'} / PO: ${tracking.nomorPo || '—'}]`;
+        const docKeteranganPrefix = `[Penerimaan Pengadaan #${tracking.id}${isPartial ? ` (Parsial: ${actualReceiveQty}/${tracking.qty} Pcs)` : ''} PR: ${tracking.nomorPr || '—'} / PO: ${tracking.nomorPo || '—'}]`;
         const existingMov = await tx.stockMovement.findFirst({
           where: {
             sparepartId: sp.id,
@@ -175,7 +186,7 @@ export async function POST(req: NextRequest) {
               harga: movementHarga,
               lokasi: sp.lokasi,
               vendor: finalVendor,
-              keterangan: docKeteranganPrefix + (multiplier > 1 ? ` (Kemasan: ${tracking.qty} x ${multiplier})` : ''),
+              keterangan: docKeteranganPrefix + (multiplier > 1 ? ` (Kemasan: ${actualReceiveQty} x ${multiplier})` : ''),
               tanggal: tDate,
             },
           });
@@ -191,7 +202,7 @@ export async function POST(req: NextRequest) {
               lokasi: sp.lokasi,
               purchaseType: 'PO',
               vendor: finalVendor,
-              keterangan: docKeteranganPrefix + (multiplier > 1 ? ` (Kemasan: ${tracking.qty} x ${multiplier})` : ''),
+              keterangan: docKeteranganPrefix + (multiplier > 1 ? ` (Kemasan: ${actualReceiveQty} x ${multiplier})` : ''),
               tanggal: tDate,
             },
           });
@@ -204,36 +215,85 @@ export async function POST(req: NextRequest) {
         const calculatedMaxLeadTime = Math.max(sp.maxLeadTime, Math.round(elapsedDays));
 
         // 3. Update Master Sparepart
+        const newPurchasingQty = isPartial
+          ? Math.max(0, (sp.purchasingQty || tracking.qty) - actualReceiveQty)
+          : 0;
+        const newPurchasingStatus = isPartial && newPurchasingQty > 0 ? 'PO' : 'NONE';
+
         await tx.sparepart.update({
           where: { id: sp.id },
           data: {
             harga: movementHarga,
-            purchasingStatus: 'NONE',
-            purchasingQty: 0,
-            prDate: null,
-            poDate: null,
+            purchasingStatus: newPurchasingStatus,
+            purchasingQty: newPurchasingQty,
+            ...(newPurchasingStatus === 'NONE' ? { prDate: null, poDate: null } : {}),
             avgLeadTime: calculatedAvgLeadTime,
             maxLeadTime: calculatedMaxLeadTime,
           },
         });
 
-        // 4. Update data pelacakan
+        // 4. Update data pelacakan yang diterima
         await tx.procurementTracking.update({
           where: { id: tracking.id },
           data: {
+            qty: actualReceiveQty,
             tanggalTerima: tDate,
             isStocked: true,
             harga: finalHarga,
             vendor: finalVendor,
           },
         });
+
+        // 5. Jika Penerimaan Parsial (Sebagian), buat record sisa pesanan yang masih ditunggu
+        if (isPartial) {
+          await tx.procurementTracking.create({
+            data: {
+              fbIndex: tracking.fbIndex,
+              originalName: tracking.originalName,
+              sparepartId: tracking.sparepartId,
+              keterangan: tracking.keterangan,
+              penggunaanBulan: tracking.penggunaanBulan,
+              kontrak3Bulan: tracking.kontrak3Bulan,
+              tanggalList: tracking.tanggalList,
+              qty: remainingQty,
+              productCategory: tracking.productCategory,
+              reason: tracking.reason,
+              urgency: tracking.urgency,
+              linkReferences: tracking.linkReferences,
+              vendor: finalVendor,
+              harga: finalHarga,
+              nomorPr: tracking.nomorPr,
+              statusPr: tracking.statusPr,
+              statusPa: tracking.statusPa,
+              statusPo: tracking.statusPo,
+              nomorPo: tracking.nomorPo,
+              nomorTe: tracking.nomorTe,
+              poApproved: tracking.poApproved,
+              etaFoom: tracking.etaFoom,
+              linkGr: null,
+              tanggalTerima: null,
+              isStocked: false,
+              sheetId: tracking.sheetId,
+              odooNotes: tracking.odooNotes
+                ? `${tracking.odooNotes}\n[Penerimaan Parsial: ${actualReceiveQty} diterima tgl ${tanggalTerima}, sisa ${remainingQty} Pcs menunggu]`
+                : `[Penerimaan Parsial: ${actualReceiveQty} diterima tgl ${tanggalTerima}, sisa ${remainingQty} Pcs menunggu]`,
+              linkedPartsJson: tracking.linkedPartsJson,
+            },
+          });
+        }
       });
 
-      return ok({ msg: `Berhasil menerima ${tracking.originalName} ke dalam stok gudang MTC.` });
+      const msg = isPartial
+        ? `✓ Berhasil menerima sebagian: ${actualReceiveQty} Pcs ${tracking.originalName} ke dalam stok gudang MTC. Sisa ${remainingQty} Pcs tetap aktif dalam status PO.`
+        : `✓ Berhasil menerima ${tracking.originalName} (${actualReceiveQty} Pcs) ke dalam stok gudang MTC.`;
+
+      return ok({ msg });
     } else {
       // OPSI B: Langsung Pakai (Non-Stok)
       await prisma.$transaction(async (tx) => {
-        const logKeterangan = `[Penerimaan Pengadaan #${tracking.id} - Langsung Pakai]` + (multiplier > 1 ? ` (Kemasan: ${tracking.qty} x ${multiplier})` : '') + ` Alasan: ${tracking.reason || 'Kebutuhan pemakaian langsung'}`;
+        const logKeterangan = `[Penerimaan Pengadaan #${tracking.id}${isPartial ? ` (Parsial: ${actualReceiveQty}/${tracking.qty} Pcs)` : ''} - Langsung Pakai]` +
+          (multiplier > 1 ? ` (Kemasan: ${actualReceiveQty} x ${multiplier})` : '') +
+          ` Alasan: ${tracking.reason || 'Kebutuhan pemakaian langsung'}`;
 
         // Cek apakah StockMovement tipe LOG untuk pengadaan ini sudah pernah dibuat sebelumnya (Anti-Double)
         const existingLog = await tx.stockMovement.findFirst({
@@ -289,13 +349,17 @@ export async function POST(req: NextRequest) {
               : Number((sp.avgLeadTime * 0.8 + elapsedDays * 0.2).toFixed(2));
             const calculatedMaxLeadTime = Math.max(sp.maxLeadTime, Math.round(elapsedDays));
 
+            const newPurchasingQty = isPartial
+              ? Math.max(0, (sp.purchasingQty || tracking.qty) - actualReceiveQty)
+              : 0;
+            const newPurchasingStatus = isPartial && newPurchasingQty > 0 ? 'PO' : 'NONE';
+
             await tx.sparepart.update({
               where: { id: sp.id },
               data: {
-                purchasingStatus: 'NONE',
-                purchasingQty: 0,
-                prDate: null,
-                poDate: null,
+                purchasingStatus: newPurchasingStatus,
+                purchasingQty: newPurchasingQty,
+                ...(newPurchasingStatus === 'NONE' ? { prDate: null, poDate: null } : {}),
                 avgLeadTime: calculatedAvgLeadTime,
                 maxLeadTime: calculatedMaxLeadTime,
               },
@@ -303,19 +367,62 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        // 3. Update data pelacakan
+        // 3. Update data pelacakan saat ini
         await tx.procurementTracking.update({
           where: { id: tracking.id },
           data: {
+            qty: actualReceiveQty,
             tanggalTerima: tDate,
             isStocked: false,
             harga: finalHarga,
             vendor: finalVendor,
           },
         });
+
+        // 4. Jika Penerimaan Parsial, buat record sisa pesanan yang masih ditunggu
+        if (isPartial) {
+          await tx.procurementTracking.create({
+            data: {
+              fbIndex: tracking.fbIndex,
+              originalName: tracking.originalName,
+              sparepartId: tracking.sparepartId,
+              keterangan: tracking.keterangan,
+              penggunaanBulan: tracking.penggunaanBulan,
+              kontrak3Bulan: tracking.kontrak3Bulan,
+              tanggalList: tracking.tanggalList,
+              qty: remainingQty,
+              productCategory: tracking.productCategory,
+              reason: tracking.reason,
+              urgency: tracking.urgency,
+              linkReferences: tracking.linkReferences,
+              vendor: finalVendor,
+              harga: finalHarga,
+              nomorPr: tracking.nomorPr,
+              statusPr: tracking.statusPr,
+              statusPa: tracking.statusPa,
+              statusPo: tracking.statusPo,
+              nomorPo: tracking.nomorPo,
+              nomorTe: tracking.nomorTe,
+              poApproved: tracking.poApproved,
+              etaFoom: tracking.etaFoom,
+              linkGr: null,
+              tanggalTerima: null,
+              isStocked: false,
+              sheetId: tracking.sheetId,
+              odooNotes: tracking.odooNotes
+                ? `${tracking.odooNotes}\n[Penerimaan Parsial: ${actualReceiveQty} diterima tgl ${tanggalTerima}, sisa ${remainingQty} Pcs menunggu]`
+                : `[Penerimaan Parsial: ${actualReceiveQty} diterima tgl ${tanggalTerima}, sisa ${remainingQty} Pcs menunggu]`,
+              linkedPartsJson: tracking.linkedPartsJson,
+            },
+          });
+        }
       });
 
-      return ok({ msg: `Berhasil menerima ${tracking.originalName} sebagai pemakaian langsung (Non-Stok).` });
+      const msg = isPartial
+        ? `✓ Berhasil menerima sebagian: ${actualReceiveQty} Pcs ${tracking.originalName} sebagai pemakaian langsung (Non-Stok). Sisa ${remainingQty} Pcs tetap aktif dalam status PO.`
+        : `✓ Berhasil menerima ${tracking.originalName} (${actualReceiveQty} Pcs) sebagai pemakaian langsung (Non-Stok).`;
+
+      return ok({ msg });
     }
   } catch (e: any) {
     console.error('[POST /api/mtc/procurement/receive]', e);

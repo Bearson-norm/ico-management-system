@@ -96,6 +96,7 @@ export default function ProcurementTrackingPage() {
   const [receiveDate, setReceiveDate] = useState(new Date().toISOString().split('T')[0]);
   const [receivePrice, setReceivePrice] = useState(0);
   const [receiveVendor, setReceiveVendor] = useState('');
+  const [receiveQty, setReceiveQty] = useState<number>(1);
   const [isStocked, setIsStocked] = useState(true);
 
   // Edit SCM Modal States
@@ -308,11 +309,12 @@ export default function ProcurementTrackingPage() {
           isStocked: isStocked && receivingItem.sparepartId != null,
           harga: receivePrice,
           vendor: receiveVendor,
+          qty: receiveQty,
         }),
       });
       const json = await res.json();
       if (json.success) {
-        alert('Penerimaan berhasil dicatat ke stok gudang!');
+        alert(json.data?.msg || 'Penerimaan berhasil dicatat!');
         setShowReceiveModal(false);
         setReceivingItem(null);
         await fetchData();
@@ -501,6 +503,7 @@ export default function ProcurementTrackingPage() {
     setReceiveVendor(item.vendor || '');
     setReceiveDate(new Date().toISOString().split('T')[0]);
     setIsStocked(item.isStocked || item.sparepartId != null);
+    setReceiveQty(item.qty || 1);
     setShowReceiveModal(true);
   }
 
@@ -924,6 +927,8 @@ export default function ProcurementTrackingPage() {
         setReceivePrice={setReceivePrice}
         receiveVendor={receiveVendor}
         setReceiveVendor={setReceiveVendor}
+        receiveQty={receiveQty}
+        setReceiveQty={setReceiveQty}
         isStocked={isStocked}
         setIsStocked={setIsStocked}
         handleReceiveSubmit={handleReceiveSubmit}
