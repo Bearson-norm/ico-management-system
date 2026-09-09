@@ -1933,35 +1933,123 @@ export async function POST(req: NextRequest) {
                 updateData.harga = amountTotal;
               }
 
-              // Hitung jumlah qty yang sudah di-GR sebelumnya untuk item ini
-              const siblingItems = await tx.procurementTracking.findMany({
+              // 1. Deteksi apakah item ini sudah pernah diterima secara fisik di gudang
+              let physicallyReceivedDate: Date | null = item.tanggalTerima ? new Date(item.tanggalTerima) : null;
+              let physicallyReceivedQty: number = 0;
+
+              // Cari bukti mutasi fisik (StockMovement) untuk item pengadaan ini
+              let physicalMovement = await tx.stockMovement.findFirst({
                 where: {
-                  nomorPo: poName,
-                  originalName: item.originalName,
-                  nomorPr: item.nomorPr
-                }
+                  OR: [
+                    { keterangan: { contains: `[Penerimaan Pengadaan #${item.id}` } },
+                    { keterangan: { contains: `[Penerimaan Paket #${item.id}` } },
+                  ]
+                },
+                orderBy: { id: 'desc' }
               });
 
-              const alreadyReceivedQty = siblingItems
-                .filter((sib: any) => sib.statusPo === 'DONE' && sib.id !== item.id)
-                .reduce((sum: number, sib: any) => sum + sib.qty, 0);
+              // Fallback untuk format keterangan historis (tanpa #ID)
+              if (!physicalMovement && item.sparepartId && (item.nomorPo || item.nomorPr)) {
+                const legacyMov = await tx.stockMovement.findFirst({
+                  where: {
+                    sparepartId: item.sparepartId,
+                    tipe: { in: ['IN', 'LOG'] },
+                    ...(item.nomorPo ? { keterangan: { contains: `PO: ${item.nomorPo}` } } : {}),
+                    ...(item.nomorPr ? { keterangan: { contains: `PR: ${item.nomorPr}` } } : {})
+                  },
+                  orderBy: { id: 'desc' }
+                });
+                if (legacyMov && !legacyMov.keterangan.includes('[Penerimaan Pengadaan #') && !legacyMov.keterangan.includes('[Penerimaan Paket #')) {
+                  physicalMovement = legacyMov;
+                }
+              }
+
+              if (physicalMovement) {
+                if (!physicallyReceivedDate) {
+                  physicallyReceivedDate = physicalMovement.tanggal ? new Date(physicalMovement.tanggal) : new Date();
+                }
+                physicallyReceivedQty = physicalMovement.qty || 0;
+              } else if (item.tanggalTerima) {
+                physicallyReceivedQty = item.qty;
+              }
+
+              const isItemPhysicallyReceived = !!physicallyReceivedDate;
+
+              // 2. Deteksi sibling items (jika item dipecah/split karena penerimaan parsial)
+              const siblingWhere: any = {
+                nomorPo: poName,
+                originalName: item.originalName,
+              };
+              if (item.nomorPr) {
+                siblingWhere.nomorPr = item.nomorPr;
+              }
+              const siblingItems = await tx.procurementTracking.findMany({
+                where: siblingWhere
+              });
+
+              // Cari sibling lain yang sudah diterima (DONE, tanggalTerima, atau punya StockMovement)
+              let alreadyReceivedQty = 0;
+              for (const sib of siblingItems) {
+                if (sib.id === item.id) continue;
+                if (sib.statusPo === 'DONE' || sib.tanggalTerima) {
+                  alreadyReceivedQty += (sib.qty || 0);
+                } else {
+                  let sibMov = await tx.stockMovement.findFirst({
+                    where: {
+                      OR: [
+                        { keterangan: { contains: `[Penerimaan Pengadaan #${sib.id}` } },
+                        { keterangan: { contains: `[Penerimaan Paket #${sib.id}` } },
+                      ]
+                    }
+                  });
+                  if (!sibMov && sib.sparepartId && (sib.nomorPo || sib.nomorPr)) {
+                    const legacySibMov = await tx.stockMovement.findFirst({
+                      where: {
+                        sparepartId: sib.sparepartId,
+                        tipe: { in: ['IN', 'LOG'] },
+                        ...(sib.nomorPo ? { keterangan: { contains: `PO: ${sib.nomorPo}` } } : {}),
+                        ...(sib.nomorPr ? { keterangan: { contains: `PR: ${sib.nomorPr}` } } : {})
+                      },
+                      orderBy: { id: 'desc' }
+                    });
+                    if (legacySibMov && !legacySibMov.keterangan.includes('[Penerimaan Pengadaan #') && !legacySibMov.keterangan.includes('[Penerimaan Paket #')) {
+                      sibMov = legacySibMov;
+                    }
+                  }
+                  if (sibMov) {
+                    alreadyReceivedQty += (sibMov.qty || sib.qty || 0);
+                  }
+                }
+              }
 
               const newReceiptQty = qtyReceived - alreadyReceivedQty;
               let finalIsGrDone = isGrDone;
-
-              // Check if Odoo shows this is a partial delivery line (some received, but not all)
               const isPartialOdooGr = !!(matchedLine && qtyReceived > 0 && qtyReceived < matchedQty);
 
-              // Set final fixed quantity & price from PO line (PO line in Odoo defines final agreed qty & price)
-              if (matchedQty > 0) {
-                updateData.qty = Math.round(matchedQty);
+              // 3. Penentuan Quantity aman (Perlindungan Split Items)
+              if (siblingItems.length > 1) {
+                if (isItemPhysicallyReceived) {
+                  // Item ini adalah porsi yang sudah diterima
+                  updateData.qty = physicallyReceivedQty > 0 ? physicallyReceivedQty : item.qty;
+                } else {
+                  // Item ini adalah sisa pending pesanan
+                  const remainingFromPo = matchedQty > 0 ? Math.max(0, Math.round(matchedQty) - alreadyReceivedQty) : item.qty;
+                  updateData.qty = remainingFromPo > 0 ? remainingFromPo : item.qty;
+                }
+              } else {
+                // Item tunggal (belum pernah di-split)
+                if (matchedQty > 0) {
+                  updateData.qty = Math.round(matchedQty);
+                }
               }
 
+              // 4. Status PO dan tanggalTerima
               if (odooState === 'cancel') {
                 updateData.statusPr = 'CANCELLED';
                 updateData.statusPo = 'CANCELLED';
-              } else if (isPartialOdooGr && newReceiptQty > 0 && newReceiptQty < item.qty && item.statusPo !== 'DONE') {
-                // SPLIT GR HANDLING: Baru diterima sebagian dari porsi pending saat ini
+                finalIsGrDone = false;
+              } else if (isPartialOdooGr && newReceiptQty > 0 && newReceiptQty < item.qty && item.statusPo !== 'DONE' && !isItemPhysicallyReceived && siblingItems.length === 1) {
+                // SPLIT GR HANDLING DARI ODOO: Baru diterima sebagian di Odoo untuk item tunggal lokal
                 updateData.qty = newReceiptQty;
                 updateData.statusPo = 'DONE';
                 if (odooGrDate) updateData.tanggalTerima = odooGrDate;
@@ -1994,19 +2082,30 @@ export async function POST(req: NextRequest) {
                   }
                 });
                 logDebug(`Split GR untuk Item ID ${item.id}: ${newReceiptQty} diterima baru (updated), ${remainingQty} sisa pending (created)`);
-              } else if (newReceiptQty >= item.qty || (newReceiptQty > 0 && isGrDone && !isPartialOdooGr) || (matchedLine && matchedLine.qty_received >= matchedLine.product_qty && matchedLine.product_qty > 0)) {
-                // Porsi pending saat ini sudah terisi penuh, PO overall selesai, atau qty_received >= product_qty di Odoo
+              } else if (
+                (matchedLine && matchedLine.qty_received >= matchedLine.product_qty && matchedLine.product_qty > 0) ||
+                (isGrDone && !isPartialOdooGr) ||
+                (newReceiptQty >= item.qty && qtyReceived > 0)
+              ) {
+                // Dokumen GR Odoo sudah resmi DONE
                 updateData.statusPo = 'DONE';
-                updateData.tanggalTerima = odooGrDate || item.tanggalTerima || new Date();
+                updateData.tanggalTerima = odooGrDate || physicallyReceivedDate || item.tanggalTerima || new Date();
                 if (odooGrLink) {
                   updateData.linkGr = odooGrLink;
                   updateData.linkReferences = combinePrAndPoLinks(updateData.linkReferences || item.linkReferences, odooGrLink, 'gr');
                 }
                 finalIsGrDone = true;
               } else {
-                // Item BELUM diterima (Good Received di Odoo masih draft atau qty_received == 0)
+                // Dokumen GR di Odoo masih DRAFT atau belum divalidasi
                 updateData.statusPo = (localStatusPr === 'APPROVED' || localStatusPr === 'PO') ? 'PO' : localStatusPr;
-                updateData.tanggalTerima = null;
+
+                // JANGAN hapus tanggalTerima jika barang sudah diterima fisik di gudang!
+                if (physicallyReceivedDate) {
+                  updateData.tanggalTerima = physicallyReceivedDate;
+                } else {
+                  updateData.tanggalTerima = null;
+                }
+
                 if (odooGrLink) {
                   updateData.linkGr = odooGrLink;
                   updateData.linkReferences = combinePrAndPoLinks(updateData.linkReferences || item.linkReferences, odooGrLink, 'gr');
@@ -2022,44 +2121,60 @@ export async function POST(req: NextRequest) {
                   where: { id: item.id },
                   data: updateData
                 });
+              }
 
-                if (updatedItem.sparepartId) {
-                  const spUpdate: any = {
-                    purchasingStatus: finalIsGrDone ? 'NONE' : localStatusPr,
-                    purchasingNoPr: finalIsGrDone ? null : updatedItem.nomorPr,
-                    purchasingNoPo: finalIsGrDone ? null : updatedItem.nomorPo,
-                    odooNotes: updatedItem.odooNotes,
-                    purchasingQty: finalIsGrDone ? 0 : updatedItem.qty,
-                    ...(matchedPrice > 0 ? { harga: matchedPrice } : {})
-                  };
+              // 5. Update Master Sparepart (hanya jika item memiliki link sparepartId)
+              if (updatedItem.sparepartId) {
+                // Hitung seluruh item pengadaan yang MASIH pending (belum diterima fisik dan belum DONE)
+                const pendingItems = await tx.procurementTracking.findMany({
+                  where: {
+                    sparepartId: updatedItem.sparepartId,
+                    tanggalTerima: null,
+                    statusPo: { notIn: ['DONE', 'CANCELLED'] },
+                    statusPr: { notIn: ['CANCELLED', 'REJECTED'] }
+                  }
+                });
 
-                  if (finalIsGrDone) {
-                    const sp = await tx.sparepart.findUnique({ where: { id: updatedItem.sparepartId } });
-                    if (sp) {
-                      if (odooGrDate) {
-                        const elapsedMs = odooGrDate.getTime() - new Date(updatedItem.tanggalList).getTime();
-                        const elapsedDays = Math.max(1, elapsedMs / (1000 * 60 * 60 * 24));
-                        const calculatedAvgLeadTime = sp.avgLeadTime === 0
-                          ? elapsedDays
-                          : Number((sp.avgLeadTime * 0.8 + elapsedDays * 0.2).toFixed(2));
-                        const calculatedMaxLeadTime = Math.max(sp.maxLeadTime, Math.round(elapsedDays));
-                        
-                        spUpdate.avgLeadTime = calculatedAvgLeadTime;
-                        spUpdate.maxLeadTime = calculatedMaxLeadTime;
-                        spUpdate.prDate = null;
-                        spUpdate.poDate = null;
-                      }
+                const totalPendingQty = pendingItems.reduce((sum: number, p: any) => sum + (p.qty || 0), 0);
+                const hasPendingPo = pendingItems.some((p: any) => p.nomorPo);
+                const firstPending = pendingItems[0];
 
-                      // Catatan: Sinkronisasi Odoo TIDAK BOLEH otomatis membuat StockMovement ke gudang secara diam-diam.
-                      // Penambahan stok fisik HANYA dilakukan saat user mengklik "Terima Barang" di web.
+                const spUpdate: any = {
+                  purchasingStatus: totalPendingQty > 0 ? (hasPendingPo ? 'PO' : (firstPending?.statusPr || 'PR')) : 'NONE',
+                  purchasingNoPr: totalPendingQty > 0 ? firstPending?.nomorPr || null : null,
+                  purchasingNoPo: totalPendingQty > 0 ? pendingItems.find((p: any) => p.nomorPo)?.nomorPo || null : null,
+                  odooNotes: updatedItem.odooNotes,
+                  purchasingQty: totalPendingQty,
+                  ...(matchedPrice > 0 ? { harga: matchedPrice } : {})
+                };
+
+                if (totalPendingQty === 0) {
+                  spUpdate.prDate = null;
+                  spUpdate.poDate = null;
+                }
+
+                if (finalIsGrDone || updatedItem.tanggalTerima) {
+                  const sp = await tx.sparepart.findUnique({ where: { id: updatedItem.sparepartId } });
+                  if (sp) {
+                    const receiptDate = (odooGrDate || updatedItem.tanggalTerima) ? new Date(odooGrDate || updatedItem.tanggalTerima) : null;
+                    if (receiptDate && updatedItem.tanggalList) {
+                      const elapsedMs = receiptDate.getTime() - new Date(updatedItem.tanggalList).getTime();
+                      const elapsedDays = Math.max(1, elapsedMs / (1000 * 60 * 60 * 24));
+                      const calculatedAvgLeadTime = sp.avgLeadTime === 0
+                        ? elapsedDays
+                        : Number((sp.avgLeadTime * 0.8 + elapsedDays * 0.2).toFixed(2));
+                      const calculatedMaxLeadTime = Math.max(sp.maxLeadTime, Math.round(elapsedDays));
+                      
+                      spUpdate.avgLeadTime = calculatedAvgLeadTime;
+                      spUpdate.maxLeadTime = calculatedMaxLeadTime;
                     }
                   }
-
-                  await tx.sparepart.update({
-                    where: { id: updatedItem.sparepartId },
-                    data: spUpdate
-                  });
                 }
+
+                await tx.sparepart.update({
+                  where: { id: updatedItem.sparepartId },
+                  data: spUpdate
+                });
               }
             }
           }, { timeout: 60000, maxWait: 10000 });
