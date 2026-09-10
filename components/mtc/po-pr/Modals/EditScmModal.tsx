@@ -33,6 +33,7 @@ type EditScmModalProps = {
   setEditUrgency: (val: string) => void;
   handleEditSubmit: (e: React.FormEvent) => void;
   actionLoading: string | null;
+  handleUnreceive?: (item: TrackingItem) => void;
 };
 
 export const EditScmModal: React.FC<EditScmModalProps> = ({
@@ -67,6 +68,7 @@ export const EditScmModal: React.FC<EditScmModalProps> = ({
   setEditUrgency,
   handleEditSubmit,
   actionLoading,
+  handleUnreceive,
 }) => {
   if (!showEditModal || !editingItem) return null;
 
@@ -137,6 +139,59 @@ export const EditScmModal: React.FC<EditScmModalProps> = ({
               {editingItem.originalName}
             </div>
           </div>
+
+          {editingItem.tanggalTerima && handleUnreceive && (
+            <div
+              style={{
+                padding: '10px 14px',
+                background: 'rgba(239, 68, 68, 0.08)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                borderRadius: 8,
+                marginBottom: 16,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+              }}
+            >
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#ef4444' }}>
+                  📦 Tercatat Diterima (Tgl:{' '}
+                  {new Date(editingItem.tanggalTerima).toLocaleDateString('id-ID', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                  })}
+                  )
+                </div>
+                <div style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 2 }}>
+                  Jika barang ini sebenarnya belum pernah Anda terima, batalkan penerimaan untuk mengembalikan tombol Terima Barang & hapus mutasi stok terkait.
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                disabled={actionLoading !== null}
+                onClick={() => {
+                  setShowEditModal(false);
+                  handleUnreceive(editingItem);
+                }}
+                style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  padding: '5px 10px',
+                  background: '#ef4444',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                ↩️ Batal Terima
+              </button>
+            </div>
+          )}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
             <div className="form-group">

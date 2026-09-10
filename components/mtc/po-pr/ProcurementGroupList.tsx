@@ -32,6 +32,7 @@ type ProcurementGroupListProps = {
   handleUnlinkItem: (item: TrackingItem) => void;
   actionLoading: string | null;
   activeTab: string;
+  handleUnreceive?: (item: TrackingItem) => void;
 };
 
 interface OdooChatterMessage {
@@ -382,6 +383,7 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
   handleUnlinkItem,
   actionLoading,
   activeTab,
+  handleUnreceive,
 }) => {
   function renderFormattedItemName(name: string) {
     if (!name) return '—';
@@ -1405,31 +1407,53 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
                                         )}
                                       </div>
                                     ) : isStockReceived ? (
-                                      <div style={{ textAlign: 'right' }}>
-                                        <span
-                                          className="badge"
-                                          style={{
-                                            padding: '4px 8px',
-                                            fontSize: 10,
-                                            fontWeight: 700,
-                                            background: '#fffbeb',
-                                            color: '#b45309',
-                                            border: '1px solid #fde68a',
-                                          }}
-                                          title="Barang fisik sudah diterima di gudang, namun dokumen Good Received (GR) resmi di Odoo belum terbit."
-                                        >
-                                          📦 Diterima (Belum GR)
-                                        </span>
-                                        {item.tanggalTerima && (
-                                          <div style={{ fontSize: 8, color: '#b45309', marginTop: 2 }}>
-                                            Tgl Terima:{' '}
-                                            {new Date(item.tanggalTerima).toLocaleDateString('id-ID', {
-                                              day: '2-digit',
-                                              month: '2-digit',
-                                            })}
-                                          </div>
-                                        )}
-                                      </div>
+                                       <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
+                                         <span
+                                           className="badge"
+                                           style={{
+                                             padding: '4px 8px',
+                                             fontSize: 10,
+                                             fontWeight: 700,
+                                             background: '#fffbeb',
+                                             color: '#b45309',
+                                             border: '1px solid #fde68a',
+                                           }}
+                                           title="Barang fisik sudah diterima di gudang, namun dokumen Good Received (GR) resmi di Odoo belum terbit."
+                                         >
+                                           📦 Diterima (Belum GR)
+                                         </span>
+                                         {item.tanggalTerima && (
+                                           <div style={{ fontSize: 8, color: '#b45309' }}>
+                                             Tgl Terima:{' '}
+                                             {new Date(item.tanggalTerima).toLocaleDateString('id-ID', {
+                                               day: '2-digit',
+                                               month: '2-digit',
+                                             })}
+                                           </div>
+                                         )}
+                                         {handleUnreceive && (
+                                           <button
+                                             type="button"
+                                             className="btn btn-ghost btn-sm"
+                                             disabled={actionLoading !== null}
+                                             onClick={() => handleUnreceive(item)}
+                                             style={{
+                                               padding: '2px 6px',
+                                               fontSize: 9,
+                                               height: 'auto',
+                                               border: '1px solid rgba(239, 68, 68, 0.3)',
+                                               borderRadius: 4,
+                                               color: '#ef4444',
+                                               background: 'rgba(239, 68, 68, 0.05)',
+                                               cursor: 'pointer',
+                                               marginTop: 2,
+                                             }}
+                                             title="Batalkan Penerimaan: Kembalikan status barang ke PO Terbit dan hapus mutasi stok terkait"
+                                           >
+                                             ↩️ Batal Terima
+                                           </button>
+                                         )}
+                                       </div>
                                     ) : item.statusPr === 'READY_ODOO' && item.sparepartId ? (
                                       <button
                                         type="button"

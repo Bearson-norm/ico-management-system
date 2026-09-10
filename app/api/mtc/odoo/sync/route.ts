@@ -1959,7 +1959,8 @@ export async function POST(req: NextRequest) {
                   },
                   orderBy: { id: 'desc' }
                 });
-                if (legacyMov && !legacyMov.keterangan.includes('[Penerimaan Pengadaan #') && !legacyMov.keterangan.includes('[Penerimaan Paket #')) {
+                const movKet = legacyMov?.keterangan || '';
+                if (legacyMov && !movKet.includes('[Penerimaan Pengadaan #') && !movKet.includes('[Penerimaan Paket #') && !movKet.includes('[Odoo Sync Penerimaan')) {
                   physicalMovement = legacyMov;
                 }
               }
@@ -2012,7 +2013,8 @@ export async function POST(req: NextRequest) {
                       },
                       orderBy: { id: 'desc' }
                     });
-                    if (legacySibMov && !legacySibMov.keterangan.includes('[Penerimaan Pengadaan #') && !legacySibMov.keterangan.includes('[Penerimaan Paket #')) {
+                    const sibKet = legacySibMov?.keterangan || '';
+                    if (legacySibMov && !sibKet.includes('[Penerimaan Pengadaan #') && !sibKet.includes('[Penerimaan Paket #') && !sibKet.includes('[Odoo Sync Penerimaan')) {
                       sibMov = legacySibMov;
                     }
                   }

@@ -429,3 +429,90 @@ export async function POST(req: NextRequest) {
     return err(`Gagal memproses penerimaan: ${e.message}`, 500);
   }
 }
+
+// DELETE /api/mtc/procurement/receive (Batalkan Penerimaan Barang / Revert to PO)
+export async function DELETE(req: NextRequest) {
+  const session = await requireMtcEditor();
+  if (!session) return err('Akses ditolak', 403);
+
+  const { searchParams } = new URL(req.url);
+  const idStr = searchParams.get('id');
+  if (!idStr) return err('ID pengadaan wajib disertakan', 400);
+
+  const id = Number(idStr);
+
+  try {
+    const tracking = await prisma.procurementTracking.findUnique({
+      where: { id },
+    });
+
+    if (!tracking) {
+      return err('Data pengadaan tidak ditemukan', 404);
+    }
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Hapus mutasi stok (StockMovement) terkait item pengadaan ini jika ada
+      await tx.stockMovement.deleteMany({
+        where: {
+          OR: [
+            { keterangan: { contains: `[Penerimaan Pengadaan #${tracking.id}` } },
+            { keterangan: { contains: `[Penerimaan Paket #${tracking.id}` } },
+            { keterangan: { contains: `[Penerimaan Langsung Pakai Pengadaan #${tracking.id}` } },
+            ...(tracking.sparepartId && tracking.nomorPo ? [{
+              sparepartId: tracking.sparepartId,
+              keterangan: { contains: `[Odoo Sync Penerimaan PR: ${tracking.nomorPr || '—'} / PO: ${tracking.nomorPo}]` }
+            }] : []),
+          ]
+        }
+      });
+
+      // 2. Kembalikan status tracking ke PO (atau status PR sebelumnya jika belum ada PO)
+      const targetStatusPo = tracking.nomorPo ? 'PO' : null;
+      const targetStatusPr = tracking.statusPr === 'RECEIVED' ? (tracking.nomorPo ? 'PO' : 'APPROVED') : tracking.statusPr;
+
+      await tx.procurementTracking.update({
+        where: { id },
+        data: {
+          tanggalTerima: null,
+          statusPo: targetStatusPo,
+          statusPr: targetStatusPr,
+          isStocked: false,
+        }
+      });
+
+      // 3. Perbarui status master sparepart jika terhubung
+      if (tracking.sparepartId) {
+        const pendingItems = await tx.procurementTracking.findMany({
+          where: {
+            sparepartId: tracking.sparepartId,
+            tanggalTerima: null,
+            statusPo: { notIn: ['DONE', 'CANCELLED'] },
+            statusPr: { notIn: ['CANCELLED', 'REJECTED'] }
+          }
+        });
+
+        const totalPendingQty = pendingItems.reduce((sum: number, p: any) => sum + (p.qty || 0), 0);
+        const hasPendingPo = pendingItems.some((p: any) => p.nomorPo);
+        const firstPending = pendingItems[0];
+
+        await tx.sparepart.update({
+          where: { id: tracking.sparepartId },
+          data: {
+            purchasingStatus: totalPendingQty > 0 ? (hasPendingPo ? 'PO' : (firstPending?.statusPr || 'PR')) : 'NONE',
+            purchasingNoPr: totalPendingQty > 0 ? firstPending?.nomorPr || null : null,
+            purchasingNoPo: totalPendingQty > 0 ? pendingItems.find((p: any) => p.nomorPo)?.nomorPo || null : null,
+            purchasingQty: totalPendingQty,
+          }
+        });
+      }
+    });
+
+    return ok({
+      msg: `✓ Penerimaan barang "${tracking.originalName}" berhasil dibatalkan. Status dikembalikan ke PO dan mutasi stok telah dibatalkan.`
+    });
+  } catch (e: any) {
+    console.error('[DELETE /api/mtc/procurement/receive]', e);
+    return err(`Gagal membatalkan penerimaan: ${e.message}`, 500);
+  }
+}
+

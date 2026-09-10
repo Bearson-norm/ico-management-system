@@ -328,6 +328,33 @@ export default function ProcurementTrackingPage() {
     }
   }
 
+  async function handleUnreceive(item: TrackingItem) {
+    if (
+      !confirm(
+        `Batalkan penerimaan untuk "${item.originalName}"?\n\nStatus barang akan dikembalikan ke PO Terbit dan catatan mutasi stok terkait akan dibatalkan/dihapus.`
+      )
+    ) {
+      return;
+    }
+    setActionLoading(`unreceive-${item.id}`);
+    try {
+      const res = await fetch(`/api/mtc/procurement/receive?id=${item.id}`, {
+        method: 'DELETE',
+      });
+      const json = await res.json();
+      if (json.success) {
+        alert(json.data?.msg || 'Penerimaan berhasil dibatalkan!');
+        await fetchData();
+      } else {
+        alert(`Gagal: ${json.error}`);
+      }
+    } catch (err) {
+      alert('Terjadi kesalahan koneksi saat membatalkan penerimaan.');
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
   async function handleLinkSparepart(sparepartId: string) {
     if (!linkingItem) return;
     setActionLoading(`link-${linkingItem.id}`);
@@ -868,6 +895,7 @@ export default function ProcurementTrackingPage() {
             handleUnlinkItem={handleUnlinkItem}
             actionLoading={actionLoading}
             activeTab={activeTab}
+            handleUnreceive={handleUnreceive}
           />
         )}
       </div>
@@ -967,6 +995,7 @@ export default function ProcurementTrackingPage() {
         setEditUrgency={setEditUrgency}
         handleEditSubmit={handleEditSubmit}
         actionLoading={actionLoading}
+        handleUnreceive={handleUnreceive}
       />
 
       <OdooProcessedModal
