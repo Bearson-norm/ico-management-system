@@ -31,9 +31,11 @@ interface SpClassification {
   totalOut12m: number;
   totalOut6m: number;
   totalOut3m: number;
+  totalOut1m?: number;
   avgMonthly12m: number;
   avgMonthly6m: number;
   avgMonthly3m: number;
+  avgMonthly1m?: number;
   spikeTrend: 'SPIKE_UP' | 'NEW_USAGE' | 'TREND_DOWN' | 'STABLE';
   spikePercentage: string;
   monthlyBreakdown: MonthlyBreakdownItem[];
@@ -41,6 +43,8 @@ interface SpClassification {
   avgMonthlyUsage: number;
   dailyUsage: number;
   leadTime: number;
+  avgLeadTime?: number;
+  maxLeadTime?: number;
   jalur: 'Jalur A (Normal)' | 'Jalur B (Kritis-Slow)';
   min: number;
   max: number;
@@ -146,12 +150,32 @@ export default function StockClassificationPage() {
   return (
     <>
       <div className="page-header">
-        <div className="flex-between page-header-row">
+        <div className="flex-between page-header-row" style={{ flexWrap: 'wrap', gap: 12 }}>
           <div>
             <div className="page-title">⚡ Analisis Pemakaian Bulanan &amp; Deteksi Lonjakan (Spike &amp; Noise)</div>
             <div className="page-sub">
-              Filter pemakaian per-bulan &amp; per-tahun untuk mendeteksi transaksi lonjakan pemakaian pada bulan spesifik
+              Analisis konsumsi multi-periode (1M, 3M, 6M, 12M), lead time pengadaan riil, dan kalkulasi reorder point (ROP)
             </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <a
+              href={`/api/mtc/stock-classification/export?format=xlsx&mode=${mode}&slowThreshold=${slowThreshold}&search=${encodeURIComponent(search)}&filterJalur=${encodeURIComponent(filterJalur)}&filterPeruntukan=${encodeURIComponent(filterPeruntukan)}&onlyWajibPr=${onlyWajibPr}`}
+              download
+              className="btn btn-primary"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, textDecoration: 'none' }}
+              title="Download Data Analisis Lead Time & Konsumsi (Excel .xlsx)"
+            >
+              📥 Download Analisis (.xlsx)
+            </a>
+            <a
+              href={`/api/mtc/stock-classification/export?format=csv&mode=${mode}&slowThreshold=${slowThreshold}&search=${encodeURIComponent(search)}&filterJalur=${encodeURIComponent(filterJalur)}&filterPeruntukan=${encodeURIComponent(filterPeruntukan)}&onlyWajibPr=${onlyWajibPr}`}
+              download
+              className="btn btn-ghost"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}
+              title="Download Format CSV"
+            >
+              📄 CSV
+            </a>
           </div>
         </div>
       </div>
@@ -509,7 +533,7 @@ export default function StockClassificationPage() {
                   <th>Nama Sparepart</th>
                   <th>Peruntukan / Mesin</th>
                   <th>Klasifikasi Dampak</th>
-                  <th style={{ textAlign: 'center' }}>Pemakaian 12M vs 6M vs 3M</th>
+                  <th style={{ textAlign: 'center' }}>Pemakaian (12M / 6M / 3M / 1M)</th>
                   <th style={{ textAlign: 'center' }}>Deteksi Lonjakan</th>
                   <th style={{ textAlign: 'center' }}>Rincian Bulanan</th>
                   <th style={{ textAlign: 'center' }}>Lead Time</th>
@@ -553,29 +577,17 @@ export default function StockClassificationPage() {
                         <td data-label="Item ID" className="text-mono text-tiny text-muted">{sp.id}</td>
 
                         <td data-label="Nama Sparepart">
-                          <div style={{ fontWeight: 700, color: 'var(--tx)' }}>{sp.nama}</div>
-                          {hasSpecificMonthYearFilter && selectedQty > 0 && (
-                            <div style={{ fontSize: 10, color: '#f97316', marginTop: 2, fontWeight: 700 }}>
-                              📌 Pemakaian Periode Ini: {selectedQty} {sp.uom}
-                            </div>
-                          )}
+                          <div style={{ fontWeight: 600, color: 'var(--tx)' }}>{sp.nama}</div>
+                          <div style={{ fontSize: 11, color: 'var(--tx3)' }}>{sp.lokasi} • Rp {sp.harga.toLocaleString('id-ID')}</div>
                         </td>
 
                         <td data-label="Peruntukan / Mesin">
-                          {sp.isMesinProduksi ? (
-                            <div>
-                              <span className="badge" style={{ fontSize: 10, background: sp.isVital ? 'rgba(239,68,68,0.12)' : 'rgba(59,130,246,0.12)', color: sp.isVital ? '#ef4444' : '#60a5fa', border: sp.isVital ? '1px solid rgba(239,68,68,0.3)' : '1px solid rgba(59,130,246,0.3)', fontWeight: 700 }}>
-                                🏭 Mesin Produksi
-                              </span>
-                              <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 3 }}>
-                                {sp.vitalMesins.length > 0 ? sp.vitalMesins.join(', ') : sp.mesins.map(m => m.nama).join(', ')}
-                              </div>
-                            </div>
-                          ) : (
-                            <span className="badge" style={{ fontSize: 10, background: 'var(--sf2)', color: 'var(--tx3)', border: '1px solid var(--br)' }}>
-                              🛠️ CONSUMABLE
-                            </span>
-                          )}
+                          <div style={{ fontSize: 11, fontWeight: 600, color: sp.isVital ? '#ef4444' : 'var(--tx)' }}>
+                            {sp.tipePeruntukan}
+                          </div>
+                          <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 2 }}>
+                            {sp.mesins.length > 0 ? sp.mesins.map((m) => m.nama).join(', ') : 'Tidak tertaut ke mesin'}
+                          </div>
                         </td>
 
                         <td data-label="Klasifikasi Dampak">
@@ -594,14 +606,18 @@ export default function StockClassificationPage() {
                           )}
                         </td>
 
-                        <td data-label="Pemakaian 12M vs 6M vs 3M" style={{ textAlign: 'center' }}>
-                          <div style={{ fontSize: 11, display: 'flex', gap: 6, justifyContent: 'center', fontFamily: 'monospace' }}>
-                            <span title="Rata-rata 12 Bulan" style={{ color: 'var(--tx3)' }}>12M: <strong>{sp.avgMonthly12m}</strong></span>
+                        <td data-label="Pemakaian (12M / 6M / 3M / 1M)" style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: 11, display: 'flex', gap: 4, justifyContent: 'center', fontFamily: 'monospace' }}>
+                            <span title="Rata-rata 12 Bulan" style={{ color: 'var(--tx3)' }}>12M:<strong>{sp.avgMonthly12m}</strong></span>
                             <span>|</span>
-                            <span title="Rata-rata 6 Bulan" style={{ color: 'var(--tx2)' }}>6M: <strong>{sp.avgMonthly6m}</strong></span>
+                            <span title="Rata-rata 6 Bulan" style={{ color: 'var(--tx2)' }}>6M:<strong>{sp.avgMonthly6m}</strong></span>
                             <span>|</span>
                             <span title="Rata-rata 3 Bulan" style={{ color: sp.spikeTrend === 'SPIKE_UP' ? '#f97316' : 'var(--tx)', fontWeight: 700 }}>
-                              3M: {sp.avgMonthly3m}
+                              3M:<strong>{sp.avgMonthly3m}</strong>
+                            </span>
+                            <span>|</span>
+                            <span title="Konsumsi 1 Bulan Terakhir" style={{ color: '#10b981', fontWeight: 700 }}>
+                              1M:<strong>{sp.avgMonthly1m ?? '-'}</strong>
                             </span>
                           </div>
                           <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 2 }}>
@@ -641,8 +657,13 @@ export default function StockClassificationPage() {
                         </td>
 
                         <td data-label="Lead Time" style={{ textAlign: 'center' }}>
-                          <span className="badge badge-gray" style={{ fontSize: 11 }}>
-                            {sp.leadTime} Hari
+                          <span
+                            className="badge badge-gray"
+                            style={{ fontSize: 11 }}
+                            title={`Lead Time Rata-rata: ${sp.avgLeadTime || sp.leadTime} hari, Maks: ${sp.maxLeadTime || sp.leadTime} hari`}
+                          >
+                            Avg: {sp.avgLeadTime ? `${sp.avgLeadTime}h` : `${sp.leadTime}h`}
+                            {sp.maxLeadTime && sp.maxLeadTime > 0 ? ` (Max ${sp.maxLeadTime}h)` : ''}
                           </span>
                         </td>
 

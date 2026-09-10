@@ -58,6 +58,12 @@ export async function GET(req: NextRequest) {
       where.purchasingStatus = pengadaanFilter;
     }
 
+    const now = new Date();
+    const startDate12m = new Date(now); startDate12m.setMonth(now.getMonth() - 12);
+    const startDate6m  = new Date(now); startDate6m.setMonth(now.getMonth() - 6);
+    const startDate3m  = new Date(now); startDate3m.setMonth(now.getMonth() - 3);
+    const startDate1m  = new Date(now); startDate1m.setMonth(now.getMonth() - 1);
+
     const rows = await prisma.sparepart.findMany({
       where,
       include: {
@@ -68,7 +74,7 @@ export async function GET(req: NextRequest) {
             tipe: { in: ['IN', 'OUT'] },
             OR: [{ purchaseType: null }, { purchaseType: { not: 'histori-sheets' } }],
           },
-          select: { tipe: true, qty: true },
+          select: { tipe: true, qty: true, tanggal: true, purchaseType: true, keterangan: true },
         },
       },
       orderBy: { id: 'asc' },
@@ -80,6 +86,23 @@ export async function GET(req: NextRequest) {
       const currentStock = totalIn - totalOut;
       const hargaNum = Number(sp.harga) || 0;
       const totalNilai = currentStock * hargaNum;
+
+      const outMovs = sp.movements.filter((m) => {
+        if (m.tipe !== 'OUT') return false;
+        if (m.purchaseType === 'opname_adjustment' || m.purchaseType === 'opname' || m.purchaseType === 'adjustment') return false;
+        const lower = (m.keterangan || '').toLowerCase();
+        return !lower.includes('[opname]') && !lower.includes('opname adjustment') && !lower.includes('hasil audit sesi') && !lower.includes('[adjust');
+      });
+
+      const totalOut12m = outMovs.filter((m) => new Date(m.tanggal) >= startDate12m).reduce((s, m) => s + m.qty, 0);
+      const totalOut6m  = outMovs.filter((m) => new Date(m.tanggal) >= startDate6m).reduce((s, m) => s + m.qty, 0);
+      const totalOut3m  = outMovs.filter((m) => new Date(m.tanggal) >= startDate3m).reduce((s, m) => s + m.qty, 0);
+      const totalOut1m  = outMovs.filter((m) => new Date(m.tanggal) >= startDate1m).reduce((s, m) => s + m.qty, 0);
+
+      const avgMonthly12m = Math.round((totalOut12m / 12) * 100) / 100;
+      const avgMonthly6m  = Math.round((totalOut6m / 6) * 100) / 100;
+      const avgMonthly3m  = Math.round((totalOut3m / 3) * 100) / 100;
+      const avgMonthly1m  = Math.round(totalOut1m * 100) / 100;
 
       return {
         'No': idx + 1,
@@ -93,6 +116,13 @@ export async function GET(req: NextRequest) {
         'Min Qty': sp.minQty ?? 0,
         'Harga Satuan (Rp)': hargaNum,
         'Total Nilai Stok (Rp)': totalNilai,
+        'Avg Lead Time (Hari)': sp.avgLeadTime || 0,
+        'Max Lead Time (Hari)': sp.maxLeadTime || 0,
+        'Avg Consume 1 Bulan (1M)': avgMonthly1m,
+        'Avg Consume 3 Bulan (3M)': avgMonthly3m,
+        'Avg Consume 6 Bulan (6M)': avgMonthly6m,
+        'Avg Consume 12 Bulan (12M)': avgMonthly12m,
+        'Total Pakai 12 Bulan': totalOut12m,
         'Status': sp.aktif ? 'Aktif' : 'Nonaktif',
         'Mesin Terkait': sp.mesins.map((m) => m.nama).join(', '),
         'Status Pengadaan': sp.purchasingStatus || 'NONE',
@@ -101,8 +131,6 @@ export async function GET(req: NextRequest) {
         'Tanggal PR': formatDate(sp.prDate),
         'No PO': sp.purchasingNoPo || '',
         'Tanggal PO': formatDate(sp.poDate),
-        'Max Lead Time (Hari)': sp.maxLeadTime || 0,
-        'Avg Lead Time (Hari)': sp.avgLeadTime || 0,
         'Link Referensi': sp.linkReference || '',
         'Alasan / Catatan': sp.alasan || '',
       };

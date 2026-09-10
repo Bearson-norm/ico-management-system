@@ -48,6 +48,7 @@ export async function GET(req: NextRequest) {
   const startDate12m = new Date(now); startDate12m.setMonth(now.getMonth() - 12);
   const startDate6m  = new Date(now); startDate6m.setMonth(now.getMonth() - 6);
   const startDate3m  = new Date(now); startDate3m.setMonth(now.getMonth() - 3);
+  const startDate1m  = new Date(now); startDate1m.setMonth(now.getMonth() - 1);
 
   const spareparts = await prisma.sparepart.findMany({
     where: { aktif: true },
@@ -85,16 +86,18 @@ export async function GET(req: NextRequest) {
     const totalOut = stockMovements.filter((m) => m.tipe === 'OUT').reduce((sum, m) => sum + m.qty, 0);
     const currentStock = totalIn - totalOut;
 
-    // 2. Multi-period OUT movements (12m, 6m, 3m) - Exclude Opname Adjustments
+    // 2. Multi-period OUT movements (12m, 6m, 3m, 1m) - Exclude Opname Adjustments
     const outMovements = sp.movements.filter((m) => m.tipe === 'OUT' && !isOpnameAdjustment(m));
     
     const totalOut12m = outMovements.filter((m) => new Date(m.tanggal) >= startDate12m).reduce((s, m) => s + m.qty, 0);
     const totalOut6m  = outMovements.filter((m) => new Date(m.tanggal) >= startDate6m).reduce((s, m) => s + m.qty, 0);
     const totalOut3m  = outMovements.filter((m) => new Date(m.tanggal) >= startDate3m).reduce((s, m) => s + m.qty, 0);
+    const totalOut1m  = outMovements.filter((m) => new Date(m.tanggal) >= startDate1m).reduce((s, m) => s + m.qty, 0);
 
     const avgMonthly12m = Math.round((totalOut12m / 12) * 100) / 100;
     const avgMonthly6m  = Math.round((totalOut6m / 6) * 100) / 100;
     const avgMonthly3m  = Math.round((totalOut3m / 3) * 100) / 100;
+    const avgMonthly1m  = Math.round(totalOut1m * 100) / 100;
 
     // 2b. Build 12-month month-by-month usage breakdown
     const monthNamesIndo = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agus', 'Sep', 'Okt', 'Nov', 'Des'];
@@ -262,9 +265,11 @@ export async function GET(req: NextRequest) {
       totalOut12m,
       totalOut6m,
       totalOut3m,
+      totalOut1m,
       avgMonthly12m,
       avgMonthly6m,
       avgMonthly3m,
+      avgMonthly1m,
       spikeTrend,
       spikePercentage,
       monthlyBreakdown,
@@ -272,6 +277,8 @@ export async function GET(req: NextRequest) {
       avgMonthlyUsage: Math.round(avgMonthlyUsage * 100) / 100,
       dailyUsage: Math.round(dailyUsage * 1000) / 1000,
       leadTime,
+      avgLeadTime: sp.avgLeadTime || 0,
+      maxLeadTime: sp.maxLeadTime || 0,
       jalur,
       min,
       max,
