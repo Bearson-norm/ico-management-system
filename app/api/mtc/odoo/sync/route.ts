@@ -247,112 +247,155 @@ const getMatchTokens = (str: any) => {
   return str.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !MATCH_STOP_WORDS.has(w));
 };
 
-// Intelligent best match line item helper using name, substring, token overlap, digits, and quantity scoring
-function findBestMatchedLine(lines: any[], item: any): any {
-  if (!lines || lines.length === 0) return null;
+// Calculate match score between a candidate line and a local tracking item
+function computeLineMatchScore(line: any, item: any, totalLines: number, totalItems: number): number {
+  if (!line || !item) return 0;
 
   const odooItemName = (typeof item.sparepart?.nama === 'string') ? item.sparepart.nama.toLowerCase().trim() : '';
   const originalName = (typeof item.originalName === 'string') ? item.originalName.toLowerCase().trim() : '';
   const targetQty = Number(item.qty) || 0;
 
-  // Extract all digits from originalName for sequence/specs matching (e.g. "isi 2" -> ["2"])
+  const rawProdName = Array.isArray(line.product_id) ? line.product_id[1] : '';
+  const prodName = (typeof rawProdName === 'string') ? rawProdName.toLowerCase().trim() : '';
+  const lineName = (typeof line.name === 'string') ? line.name.toLowerCase().trim() : '';
+  const lineQty = Number(line.product_qty) || 0;
+
   const originalDigits = originalName.match(/\b\d+\b/g) || [];
 
-  let bestLine = null;
-  let bestScore = -1;
+  let score = 0;
 
-  for (const line of lines) {
-    const rawProdName = Array.isArray(line.product_id) ? line.product_id[1] : '';
-    const prodName = (typeof rawProdName === 'string') ? rawProdName.toLowerCase().trim() : '';
-    const lineName = (typeof line.name === 'string') ? line.name.toLowerCase().trim() : '';
-    const lineQty = Number(line.product_qty) || 0;
+  // 1. Exact Match (highest priority)
+  if (originalName && (originalName === prodName || originalName === lineName)) {
+    score += 100;
+  }
+  if (odooItemName && (odooItemName === prodName || odooItemName === lineName)) {
+    score += 80;
+  }
 
-    let score = 0;
-
-    // 1. Exact Match (highest priority)
-    if (originalName && (originalName === prodName || originalName === lineName)) {
-      score += 100;
+  // 2. Substring Match
+  if (prodName && prodName.length > 3) {
+    if (originalName.includes(prodName) || prodName.includes(originalName)) {
+      score += 25;
     }
-    if (odooItemName && (odooItemName === prodName || odooItemName === lineName)) {
-      score += 80;
-    }
-
-    // 2. Substring Match (safeguarded against empty/short strings to prevent bug)
-    if (prodName && prodName.length > 3) {
-      if (originalName.includes(prodName) || prodName.includes(originalName)) {
-        score += 20;
-      }
-      if (odooItemName && (odooItemName.includes(prodName) || prodName.includes(odooItemName))) {
-        score += 15;
-      }
-    }
-
-    if (lineName && lineName.length > 3) {
-      if (originalName.includes(lineName) || lineName.includes(originalName)) {
-        score += 20;
-      }
-      if (odooItemName && (odooItemName.includes(lineName) || lineName.includes(odooItemName))) {
-        score += 15;
-      }
-    }
-
-    // 3. Word Token Overlap Match (handles variation in packaging specs e.g. 25kg vs 50kg)
-    const origTokens = getMatchTokens(originalName);
-    const itemTokens = getMatchTokens(odooItemName);
-    const lineTokens = getMatchTokens(lineName);
-    const prodTokens = getMatchTokens(prodName);
-
-    let maxCommonWords = 0;
-    for (const targetTokens of [origTokens, itemTokens]) {
-      if (targetTokens.length === 0) continue;
-      for (const refTokens of [lineTokens, prodTokens]) {
-        if (refTokens.length === 0) continue;
-        const common = targetTokens.filter(t => refTokens.includes(t));
-        if (common.length > maxCommonWords) {
-          maxCommonWords = common.length;
-        }
-      }
-    }
-
-    if (maxCommonWords >= 1) {
-      score += Math.min(maxCommonWords * 10, 40);
-    }
-
-    // 4. Digit/Number Sequence Match (crucial tie-breaker ONLY when names/tokens overlap)
-    if (score > 0 && originalDigits.length > 0) {
-      let digitMatchCount = 0;
-      for (const d of originalDigits) {
-        const regex = new RegExp('\\b' + d + '\\b');
-        if (regex.test(prodName) || regex.test(lineName)) {
-          digitMatchCount++;
-        }
-      }
-      score += digitMatchCount * 12;
-    }
-
-    // 5. Quantity Match (only if score > 0 or line description is generic)
-    const isLineDescriptionGeneric = isGenericName(lineName) || (!lineName && isGenericName(prodName));
-    if (targetQty > 0 && targetQty === lineQty) {
-      if (score > 0 || (lines.length === 1 && isLineDescriptionGeneric && isGenericName(originalName))) {
-        score += 8;
-      }
-    }
-
-    // 6. Single Item Fallback: If PO has only 1 line, or line description contains core keywords of originalName
-    if (score === 0 && lines.length === 1) {
-      score += 25; // High confidence for single line PO match
-    } else if (score === 0 && isLineDescriptionGeneric && isGenericName(originalName)) {
-      score += 15;
-    }
-
-    // Update best matched line candidate
-    if (score > 0 && score > bestScore) {
-      bestScore = score;
-      bestLine = line;
+    if (odooItemName && (odooItemName.includes(prodName) || prodName.includes(odooItemName))) {
+      score += 20;
     }
   }
 
-  return (bestLine && bestScore >= 15) ? bestLine : null;
+  if (lineName && lineName.length > 3) {
+    if (originalName.includes(lineName) || lineName.includes(originalName)) {
+      score += 25;
+    }
+    if (odooItemName && (odooItemName.includes(lineName) || lineName.includes(odooItemName))) {
+      score += 20;
+    }
+  }
+
+  // 3. Word Token Overlap Match
+  const origTokens = getMatchTokens(originalName);
+  const itemTokens = getMatchTokens(odooItemName);
+  const lineTokens = getMatchTokens(lineName);
+  const prodTokens = getMatchTokens(prodName);
+
+  let maxCommonWords = 0;
+  for (const targetTokens of [origTokens, itemTokens]) {
+    if (targetTokens.length === 0) continue;
+    for (const refTokens of [lineTokens, prodTokens]) {
+      if (refTokens.length === 0) continue;
+      const common = targetTokens.filter(t => refTokens.includes(t));
+      if (common.length > maxCommonWords) {
+        maxCommonWords = common.length;
+      }
+    }
+  }
+
+  if (maxCommonWords >= 1) {
+    score += Math.min(maxCommonWords * 10, 40);
+  }
+
+  // 4. Digit/Number Sequence Match
+  if (score > 0 && originalDigits.length > 0) {
+    let digitMatchCount = 0;
+    for (const d of originalDigits) {
+      const regex = new RegExp('\\b' + d + '\\b');
+      if (regex.test(prodName) || regex.test(lineName)) {
+        digitMatchCount++;
+      }
+    }
+    score += digitMatchCount * 12;
+  }
+
+  // 5. Quantity Match
+  const isLineDescriptionGeneric = isGenericName(lineName) || (!lineName && isGenericName(prodName));
+  if (targetQty > 0 && targetQty === lineQty) {
+    if (score > 0) {
+      score += 8;
+    } else if (totalLines === 1 && totalItems === 1 && isLineDescriptionGeneric && isGenericName(originalName)) {
+      score += 20;
+    }
+  }
+
+  // 6. Single Item Fallback ONLY IF both group and PO have exactly 1 item!
+  if (score === 0 && totalLines === 1 && totalItems === 1) {
+    if (isLineDescriptionGeneric || isGenericName(originalName)) {
+      score += 25;
+    }
+  }
+
+  return score;
+}
+
+// Global Bipartite 1-to-1 Matcher:
+// Ensures each local item matches at most 1 Odoo line, and each Odoo line is claimed by at most 1 local item.
+function matchItemsToLines(items: any[], lines: any[]): Map<number, any> {
+  const result = new Map<number, any>();
+  if (!items || items.length === 0 || !lines || lines.length === 0) return result;
+
+  const candidates: { item: any; line: any; score: number }[] = [];
+  for (const item of items) {
+    for (const line of lines) {
+      const score = computeLineMatchScore(line, item, lines.length, items.length);
+      if (score >= 20) {
+        candidates.push({ item, line, score });
+      }
+    }
+  }
+
+  // Sort descending by score
+  candidates.sort((a, b) => b.score - a.score);
+
+  const usedItemIds = new Set<number>();
+  const usedLineIds = new Set<any>();
+
+  for (const cand of candidates) {
+    const itemId = cand.item.id;
+    const lineKey = cand.line.id !== undefined ? cand.line.id : cand.line;
+
+    if (!usedItemIds.has(itemId) && !usedLineIds.has(lineKey)) {
+      usedItemIds.add(itemId);
+      usedLineIds.add(lineKey);
+      result.set(itemId, cand.line);
+    }
+  }
+
+  // Strict 1-to-1 fallback: only if exactly 1 item and 1 line
+  if (items.length === 1 && lines.length === 1 && result.size === 0) {
+    const singleItem = items[0];
+    const singleLine = lines[0];
+    const score = computeLineMatchScore(singleLine, singleItem, 1, 1);
+    const lineDesc = singleLine.name || (Array.isArray(singleLine.product_id) ? singleLine.product_id[1] : '');
+    if (score > 0 || isGenericName(lineDesc) || isGenericName(singleItem.originalName)) {
+      result.set(singleItem.id, singleLine);
+    }
+  }
+
+  return result;
+}
+
+function findBestMatchedLine(lines: any[], item: any): any {
+  if (!lines || lines.length === 0 || !item) return null;
+  const res = matchItemsToLines([item], lines);
+  return res.get(item.id) || null;
 }
 
 // Helper to fetch and format Chatter logs for a specific document model
@@ -1717,17 +1760,15 @@ export async function POST(req: NextRequest) {
 
           await prisma.$transaction(async (tx) => {
             const priceField = isRequisition ? 'price_unit' : 'estimated_cost';
+            const matchedPrMap = matchItemsToLines(items, prLines || []);
 
             for (const item of items) {
               let matchedPrice = 0;
               let matchedQty = 0;
-              let matchedLine = null;
-              if (prLines && prLines.length > 0) {
-                matchedLine = findBestMatchedLine(prLines, item);
-                if (matchedLine) {
-                  matchedPrice = matchedLine[priceField] || 0;
-                  matchedQty = matchedLine.product_qty || 0;
-                }
+              const matchedLine = matchedPrMap.get(item.id) || null;
+              if (matchedLine) {
+                matchedPrice = matchedLine[priceField] || 0;
+                matchedQty = matchedLine.product_qty || 0;
               }
 
               const reqId = matchedPR.id;
@@ -1812,47 +1853,40 @@ export async function POST(req: NextRequest) {
           // PO update
           const { odooPos, allPoLines, poGrStatusMap, prCreateDate, chatterNotes } = data;
 
+          const matchedPoMap = matchItemsToLines(items, allPoLines || []);
+
           await prisma.$transaction(async (tx) => {
             for (const item of items) {
-              let matchedLine = null;
-              if (allPoLines.length > 0) {
-                matchedLine = findBestMatchedLine(allPoLines, item);
-                if (!matchedLine && items.length === 1 && allPoLines.length === 1) {
-                  matchedLine = allPoLines[0];
-                }
-              }
+              const matchedLine = matchedPoMap.get(item.id) || null;
 
-              // If item doesn't match any PO line, check if single item fallback or if Odoo PO exists
+              // If item doesn't match any PO line, it was NOT ordered in this PO!
               if (!matchedLine) {
-                if (odooPos && odooPos.length > 0 && items.length === 1) {
-                  matchedLine = allPoLines[0] || { parentPoId: odooPos[0].id, product_qty: item.qty, qty_received: 0 };
-                } else {
-                  // Only update non-PO fields (notes, date) for unmatched items
-                  const unlinkedUpdate: any = {
-                    odooNotes: chatterNotes || null,
-                  };
-                  if (prCreateDate) {
-                    unlinkedUpdate.tanggalList = prCreateDate;
-                  }
-                  // Clear wrongly-assigned PO if it was set to one of the POs for this PR
-                  const odooPoNames = odooPos.map((p: any) => p.name);
-                  if ((item.nomorPo && odooPoNames.includes(item.nomorPo)) || !item.nomorPo) {
-                    unlinkedUpdate.nomorPo = null;
-                    unlinkedUpdate.statusPo = null;
-                    unlinkedUpdate.linkGr = null;
-                    unlinkedUpdate.vendor = null;
-                    if (item.statusPr === 'RECEIVED' && !item.tanggalTerima) {
-                      unlinkedUpdate.statusPr = 'APPROVED';
-                    }
-                  }
-                  if (hasActualChanges(item, unlinkedUpdate)) {
-                    await tx.procurementTracking.update({
-                      where: { id: item.id },
-                      data: unlinkedUpdate
-                    });
-                  }
-                  continue;
+                // Only update non-PO fields (notes, date) for unmatched items
+                const unlinkedUpdate: any = {
+                  odooNotes: chatterNotes || null,
+                };
+                if (prCreateDate) {
+                  unlinkedUpdate.tanggalList = prCreateDate;
                 }
+                // Clear wrongly-assigned PO if it was set to one of the POs for this PR
+                const odooPoNames = odooPos.map((p: any) => p.name);
+                if ((item.nomorPo && odooPoNames.includes(item.nomorPo)) || !item.nomorPo) {
+                  unlinkedUpdate.nomorPo = null;
+                  unlinkedUpdate.statusPo = null;
+                  unlinkedUpdate.linkGr = null;
+                  unlinkedUpdate.vendor = null;
+                  unlinkedUpdate.tanggalTerima = null;
+                  if (item.statusPr === 'RECEIVED' || item.statusPr === 'PO') {
+                    unlinkedUpdate.statusPr = 'APPROVED';
+                  }
+                }
+                if (hasActualChanges(item, unlinkedUpdate)) {
+                  await tx.procurementTracking.update({
+                    where: { id: item.id },
+                    data: unlinkedUpdate
+                  });
+                }
+                continue;
               }
 
               const targetPo = (matchedLine && matchedLine.parentPoId)
@@ -2091,6 +2125,7 @@ export async function POST(req: NextRequest) {
               ) {
                 // Dokumen GR Odoo sudah resmi DONE
                 updateData.statusPo = 'DONE';
+                updateData.statusPr = 'RECEIVED';
                 updateData.tanggalTerima = odooGrDate || physicallyReceivedDate || item.tanggalTerima || new Date();
                 if (odooGrLink) {
                   updateData.linkGr = odooGrLink;
