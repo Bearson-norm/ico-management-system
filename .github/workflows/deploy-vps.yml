@@ -41,6 +41,11 @@ jobs:
             export NODE_ENV=production
             export NODE_OPTIONS="--max-old-space-size=2048"
 
+            # 1. Mutex file lock: mencegah tabrakan jika ada 2 deployment/proses bersamaan
+            exec 200>/tmp/ico_vps_deploy.lock
+            echo ">>> Acquiring deployment lock (menunggu jika ada proses lain)..."
+            flock -x -w 300 200 || { echo "ERR: Gagal mendapatkan deploy lock setelah 5 menit"; exit 1; }
+
             echo ">>> Deploy cwd: $(pwd)"
             echo ">>> SSH user: $(whoami)"
 
@@ -48,8 +53,12 @@ jobs:
               git config --global --add safe.directory "$APP_PATH"
             fi
 
-            rm -f .git/refs/remotes/origin/main.lock .git/index.lock odoo_sync_debug.txt || true
-            git fetch origin
+            # 2. Bersihkan seluruh stale lock files secara tuntas
+            find .git -name "*.lock" -type f -delete 2>/dev/null || true
+            rm -f odoo_sync_debug.txt || true
+
+            # 3. Fetch dengan retry jika koneksi berkedip
+            git fetch origin || (sleep 3 && git fetch origin)
 
             if [ "${{ github.event_name }}" = "workflow_run" ]; then
               TARGET_BRANCH="${{ github.event.workflow_run.head_branch }}"
