@@ -73,6 +73,33 @@ export const HeaderSection: React.FC<HeaderSectionProps> = ({
           )}
         </button>
 
+        <a
+          href="/api/mtc/procurement/export?format=xlsx"
+          download
+          className="btn"
+          style={{
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            height: 40,
+            padding: '0 16px',
+            fontSize: 13,
+            border: '1px solid var(--br)',
+            background: 'var(--sf2)',
+            color: 'var(--tx)',
+            borderRadius: 8,
+            cursor: 'pointer',
+            textDecoration: 'none',
+            transition: 'all 0.15s',
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--sf3)')}
+          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'var(--sf2)')}
+          title="Download Rekap Excel PO, PR, dan TE untuk Follow Up ke Atasan"
+        >
+          <span>📥</span> Rekap PO-PR-TE (.xlsx)
+        </a>
+
         <button
           type="button"
           onClick={openSettingsModal}
