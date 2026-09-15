@@ -83,9 +83,9 @@ function HistoryContent() {
   const [dateTo, setDateTo] = useState('');
   const [sort, setSort] = useState<'desc' | 'asc'>('desc');
 
-  // Batch action state
+  // Bulk category selection
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const [bulkCategory, setBulkCategory] = useState<string>('Maintenance Produksi');
+  const [bulkCategory, setBulkCategory] = useState<string>('Maintenance');
   const [bulkSaving, setBulkSaving] = useState(false);
   const [inlineSavingId, setInlineSavingId] = useState<number | null>(null);
 
@@ -185,7 +185,6 @@ function HistoryContent() {
 
   useEffect(() => {
     fetchData();
-    // clear selection on filter or page change
     setSelectedIds([]);
   }, [page, search, tipe, kategoriOut, dateFrom, dateTo, sort]);
 
@@ -217,7 +216,6 @@ function HistoryContent() {
     setInlineSavingId(id);
     const prevCat = data.find((d) => d.id === id)?.kategoriOut;
 
-    // Optimistic update
     setData((prev) =>
       prev.map((item) => (item.id === id ? { ...item, kategoriOut: newCat || null } : item))
     );
@@ -230,7 +228,6 @@ function HistoryContent() {
       });
       const json = await res.json();
       if (!res.ok || !json.success) {
-        // Rollback
         setData((prev) =>
           prev.map((item) => (item.id === id ? { ...item, kategoriOut: prevCat } : item))
         );
@@ -240,11 +237,9 @@ function HistoryContent() {
           type: 'success',
           message: newCat ? `Kategori diubah menjadi: ${newCat}` : 'Kategori dihapus',
         });
-        // refresh summary silently
         fetchData();
       }
     } catch {
-      // Rollback
       setData((prev) =>
         prev.map((item) => (item.id === id ? { ...item, kategoriOut: prevCat } : item))
       );
@@ -288,7 +283,7 @@ function HistoryContent() {
   }
 
   // Selection handlers
-  const outData = data.filter((d) => d.tipe === 'OUT');
+  const outData = data.filter((d) => d.tipe === 'OUT' && !d.isAdjustment);
   const allOutSelected =
     outData.length > 0 && outData.every((d) => selectedIds.includes(d.id));
 
@@ -349,7 +344,7 @@ function HistoryContent() {
       harga: item.harga ? Number(item.harga) : 0,
       noReport: item.noReport || '',
       keterangan: item.keterangan || '',
-      kategoriOut: item.kategoriOut || '',
+      kategoriOut: item.kategoriOut === 'Maintenance Produksi' ? 'Maintenance' : (item.kategoriOut || ''),
       vendor: item.vendor || '',
       purchaseType: item.purchaseType || '',
     });
@@ -534,13 +529,14 @@ function HistoryContent() {
                   <div style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 4 }}>Tipe Transaksi</div>
                   <select
                     className="form-input form-select"
-                    style={{ minWidth: 150 }}
+                    style={{ minWidth: 160 }}
                     value={expTipe}
                     onChange={(e) => setExpTipe(e.target.value)}
                   >
                     <option value="OUT">OUT Saja (Pengeluaran)</option>
-                    <option value="">Semua (IN + OUT + LOG)</option>
+                    <option value="">Semua (IN + OUT + ADJUSTMENT + LOG)</option>
                     <option value="IN">IN saja</option>
+                    <option value="ADJUSTMENT">ADJUSTMENT Saja (Stock Opname)</option>
                     <option value="LOG">LOG saja</option>
                   </select>
                 </div>
@@ -747,7 +743,7 @@ function HistoryContent() {
                 marginTop: 8,
               }}
             >
-              {/* Maintenance Produksi */}
+              {/* Maintenance */}
               <div
                 style={{
                   background: 'var(--sf)',
@@ -758,14 +754,14 @@ function HistoryContent() {
                 }}
               >
                 <div style={{ fontSize: 12, fontWeight: 700, color: '#3b82f6', marginBottom: 4 }}>
-                  🔵 Maintenance Produksi
+                  🔵 Maintenance
                 </div>
                 <div style={{ fontSize: 16, fontWeight: 800 }}>
-                  {fmtRupiah(summary.byCategory?.['Maintenance Produksi']?.totalRp || 0)}
+                  {fmtRupiah(summary.byCategory?.['Maintenance']?.totalRp || 0)}
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 2 }}>
-                  {summary.byCategory?.['Maintenance Produksi']?.count || 0} transaksi ·{' '}
-                  {summary.byCategory?.['Maintenance Produksi']?.qty || 0} pcs
+                  {summary.byCategory?.['Maintenance']?.count || 0} transaksi ·{' '}
+                  {summary.byCategory?.['Maintenance']?.qty || 0} pcs
                 </div>
               </div>
 
@@ -810,6 +806,28 @@ function HistoryContent() {
                 <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 2 }}>
                   {summary.byCategory?.['WO']?.count || 0} transaksi ·{' '}
                   {summary.byCategory?.['WO']?.qty || 0} pcs
+                </div>
+              </div>
+
+              {/* Produksi */}
+              <div
+                style={{
+                  background: 'var(--sf)',
+                  padding: 12,
+                  borderRadius: 8,
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  borderLeft: '4px solid #10b981',
+                }}
+              >
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#059669', marginBottom: 4 }}>
+                  🟢 Produksi
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 800 }}>
+                  {fmtRupiah(summary.byCategory?.['Produksi']?.totalRp || 0)}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 2 }}>
+                  {summary.byCategory?.['Produksi']?.count || 0} transaksi ·{' '}
+                  {summary.byCategory?.['Produksi']?.qty || 0} pcs
                 </div>
               </div>
 
@@ -914,7 +932,7 @@ function HistoryContent() {
               {/* Tipe Selector */}
               <select
                 className="form-input form-select"
-                style={{ flex: '0 0 auto', minWidth: 110 }}
+                style={{ flex: '0 0 auto', minWidth: 140 }}
                 value={tipe}
                 onChange={(e) => {
                   setTipe(e.target.value);
@@ -924,6 +942,7 @@ function HistoryContent() {
                 <option value="">Semua Tipe</option>
                 <option value="IN">IN</option>
                 <option value="OUT">OUT</option>
+                <option value="ADJUSTMENT">ADJUSTMENT (SO)</option>
                 <option value="LOG">LOG</option>
               </select>
 
@@ -1146,7 +1165,7 @@ function HistoryContent() {
                     >
                       {/* Checkbox */}
                       <td style={{ textAlign: 'center' }}>
-                        {d.tipe === 'OUT' ? (
+                        {d.tipe === 'OUT' && !d.isAdjustment ? (
                           <input
                             type="checkbox"
                             checked={isSelected}
@@ -1168,14 +1187,46 @@ function HistoryContent() {
 
                       {/* Tipe */}
                       <td>
-                        {d.tipe === 'IN' && <span className="badge badge-grn">IN</span>}
-                        {d.tipe === 'OUT' && <span className="badge badge-ylw">OUT</span>}
-                        {d.tipe === 'LOG' && <span className="badge badge-pur">LOG</span>}
+                        {d.isAdjustment ? (
+                          <span
+                            className="badge badge-org"
+                            style={{
+                              background: 'rgba(245, 158, 11, 0.15)',
+                              color: '#d97706',
+                              border: '1px solid rgba(245, 158, 11, 0.4)',
+                              fontWeight: 700,
+                            }}
+                          >
+                            ADJUSTMENT
+                          </span>
+                        ) : d.tipe === 'IN' ? (
+                          <span className="badge badge-grn">IN</span>
+                        ) : d.tipe === 'OUT' ? (
+                          <span className="badge badge-ylw">OUT</span>
+                        ) : (
+                          <span className="badge badge-pur">LOG</span>
+                        )}
                       </td>
 
                       {/* Kategori Pengeluaran (Interactive Dropdown for OUT) */}
                       <td>
-                        {d.tipe === 'OUT' ? (
+                        {d.isAdjustment ? (
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              fontSize: 11,
+                              padding: '2px 8px',
+                              borderRadius: 4,
+                              background: 'rgba(245, 158, 11, 0.08)',
+                              color: '#d97706',
+                              fontWeight: 600,
+                            }}
+                          >
+                            Stock Opname
+                          </span>
+                        ) : d.tipe === 'OUT' ? (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                             <select
                               className="form-input form-select"
@@ -1184,24 +1235,28 @@ function HistoryContent() {
                                 padding: '3px 8px',
                                 height: 28,
                                 fontWeight: 600,
-                                minWidth: 155,
+                                minWidth: 145,
                                 borderColor: !d.kategoriOut ? 'var(--red)' : undefined,
                                 background: !d.kategoriOut
                                   ? 'rgba(239, 68, 68, 0.08)'
-                                  : d.kategoriOut === 'Maintenance Produksi'
+                                  : d.kategoriOut === 'Maintenance' || d.kategoriOut === 'Maintenance Produksi'
                                   ? 'rgba(59, 130, 246, 0.1)'
                                   : d.kategoriOut === 'Utility'
                                   ? 'rgba(245, 158, 11, 0.1)'
-                                  : 'rgba(168, 85, 247, 0.1)',
+                                  : d.kategoriOut === 'WO'
+                                  ? 'rgba(168, 85, 247, 0.1)'
+                                  : 'rgba(16, 185, 129, 0.1)',
                                 color: !d.kategoriOut
                                   ? 'var(--red)'
-                                  : d.kategoriOut === 'Maintenance Produksi'
+                                  : d.kategoriOut === 'Maintenance' || d.kategoriOut === 'Maintenance Produksi'
                                   ? '#2563eb'
                                   : d.kategoriOut === 'Utility'
                                   ? '#d97706'
-                                  : '#9333ea',
+                                  : d.kategoriOut === 'WO'
+                                  ? '#9333ea'
+                                  : '#059669',
                               }}
-                              value={d.kategoriOut || ''}
+                              value={d.kategoriOut === 'Maintenance Produksi' ? 'Maintenance' : (d.kategoriOut || '')}
                               disabled={inlineSavingId === d.id}
                               onChange={(e) => handleInlineKategoriChange(d.id, e.target.value)}
                             >
@@ -1242,7 +1297,7 @@ function HistoryContent() {
                         style={{
                           textAlign: 'right',
                           fontWeight: 700,
-                          color: d.tipe === 'OUT' && totalBiaya > 0 ? 'var(--ylw)' : undefined,
+                          color: d.tipe === 'OUT' && !d.isAdjustment && totalBiaya > 0 ? 'var(--ylw)' : undefined,
                         }}
                       >
                         {totalBiaya > 0 ? fmtRupiah(totalBiaya) : '—'}
@@ -1380,8 +1435,8 @@ function HistoryContent() {
                   </div>
                 </div>
 
-                {/* Kategori Pengeluaran (jika transaksi OUT) */}
-                {editItem.tipe === 'OUT' && (
+                {/* Kategori Pengeluaran (jika transaksi OUT bukan Adjustment) */}
+                {editItem.tipe === 'OUT' && !editItem.isAdjustment && (
                   <div>
                     <label className="form-label">
                       Kategori Pengeluaran (OUT) <span className="req">*</span>

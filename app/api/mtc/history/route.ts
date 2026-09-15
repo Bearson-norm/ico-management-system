@@ -27,14 +27,40 @@ export async function GET(req: NextRequest) {
       ],
     };
   } else if (kategoriOut) {
-    kategoriFilter = { kategoriOut };
+    if (kategoriOut === 'Maintenance') {
+      kategoriFilter = {
+        OR: [
+          { kategoriOut: 'Maintenance' },
+          { kategoriOut: 'Maintenance Produksi' },
+        ],
+      };
+    } else {
+      kategoriFilter = { kategoriOut };
+    }
+  }
+
+  const notConditions: any[] = [
+    { keterangan: { contains: '[SILENT]' } },
+  ];
+
+  let tipeCondition: any = {};
+  if (tipe === 'OUT') {
+    tipeCondition = { tipe: 'OUT' };
+    notConditions.push({ keterangan: { contains: '[OPNAME]' } });
+  } else if (tipe === 'IN') {
+    tipeCondition = { tipe: 'IN' };
+    notConditions.push({ keterangan: { contains: '[OPNAME]' } });
+  } else if (tipe === 'ADJUSTMENT') {
+    tipeCondition = {
+      keterangan: { contains: '[OPNAME]' },
+    };
+  } else if (tipe === 'LOG') {
+    tipeCondition = { tipe: 'LOG' };
   }
 
   const where = {
-    NOT: {
-      keterangan: { contains: '[SILENT]' },
-    },
-    ...(tipe ? { tipe: tipe as 'IN' | 'OUT' | 'LOG' } : {}),
+    NOT: notConditions,
+    ...tipeCondition,
     ...kategoriFilter,
     ...(dateFrom || dateTo
       ? {
@@ -68,6 +94,20 @@ export async function GET(req: NextRequest) {
     prisma.stockMovement.count({ where }),
   ]);
 
+  const formattedData = data.map((item) => {
+    const isAdjustment = !!(item.keterangan && item.keterangan.includes('[OPNAME]'));
+    let cat = item.kategoriOut;
+    if (cat === 'Maintenance Produksi') {
+      cat = 'Maintenance';
+    }
+    return {
+      ...item,
+      isAdjustment,
+      displayTipe: isAdjustment ? 'ADJUSTMENT' : item.tipe,
+      kategoriOut: cat,
+    };
+  });
+
   let summary: any = null;
   if (tipe === 'OUT') {
     const outMovements = await prisma.stockMovement.findMany({
@@ -83,9 +123,10 @@ export async function GET(req: NextRequest) {
     let totalOutRp = 0;
     let totalOutQty = 0;
     const byCategory: Record<string, { count: number; qty: number; totalRp: number }> = {
-      'Maintenance Produksi': { count: 0, qty: 0, totalRp: 0 },
+      'Maintenance': { count: 0, qty: 0, totalRp: 0 },
       'Utility': { count: 0, qty: 0, totalRp: 0 },
       'WO': { count: 0, qty: 0, totalRp: 0 },
+      'Produksi': { count: 0, qty: 0, totalRp: 0 },
       'Belum Dikategorikan': { count: 0, qty: 0, totalRp: 0 },
     };
 
@@ -96,7 +137,8 @@ export async function GET(req: NextRequest) {
       totalOutQty += q;
       totalOutRp += subtotal;
 
-      const cat = m.kategoriOut || 'Belum Dikategorikan';
+      let cat = m.kategoriOut || 'Belum Dikategorikan';
+      if (cat === 'Maintenance Produksi') cat = 'Maintenance';
       if (!byCategory[cat]) {
         byCategory[cat] = { count: 0, qty: 0, totalRp: 0 };
       }
@@ -113,5 +155,5 @@ export async function GET(req: NextRequest) {
     };
   }
 
-  return ok({ data, total, page, limit, summary });
+  return ok({ data: formattedData, total, page, limit, summary });
 }

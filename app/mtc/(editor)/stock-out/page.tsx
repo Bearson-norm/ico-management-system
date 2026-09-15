@@ -28,7 +28,7 @@ export default function StockOutPage() {
   const [form, setForm] = useState({
     tanggal: new Date().toISOString().split('T')[0],
     picId: '',
-    kategoriOut: 'Maintenance Produksi',
+    kategoriOut: 'Maintenance',
     noReport: '',
     keterangan: '',
     items: [] as StockOutItem[],
@@ -170,7 +170,7 @@ export default function StockOutPage() {
         setForm({
           tanggal: new Date().toISOString().split('T')[0],
           picId: '',
-          kategoriOut: 'Maintenance Produksi',
+          kategoriOut: 'Maintenance',
           noReport: '',
           keterangan: '',
           items: [],
@@ -257,9 +257,10 @@ export default function StockOutPage() {
                   value={form.kategoriOut}
                   onChange={(e) => setForm({ ...form, kategoriOut: e.target.value })}
                 >
-                  <option value="Maintenance Produksi">Maintenance Produksi</option>
+                  <option value="Maintenance">Maintenance</option>
                   <option value="Utility">Utility</option>
                   <option value="WO">WO (Work Order)</option>
+                  <option value="Produksi">Produksi</option>
                 </select>
               </div>
               <div className="form-group">

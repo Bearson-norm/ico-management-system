@@ -1,7 +1,8 @@
 export const KATEGORI_OUT_OPTIONS = [
-  'Maintenance Produksi',
+  'Maintenance',
   'Utility',
   'WO',
+  'Produksi',
 ] as const;
 
 export type KategoriOut = (typeof KATEGORI_OUT_OPTIONS)[number];

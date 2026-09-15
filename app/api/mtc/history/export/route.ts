@@ -23,14 +23,40 @@ export async function GET(req: NextRequest) {
       ],
     };
   } else if (kategoriOut) {
-    kategoriFilter = { kategoriOut };
+    if (kategoriOut === 'Maintenance') {
+      kategoriFilter = {
+        OR: [
+          { kategoriOut: 'Maintenance' },
+          { kategoriOut: 'Maintenance Produksi' },
+        ],
+      };
+    } else {
+      kategoriFilter = { kategoriOut };
+    }
+  }
+
+  const notConditions: any[] = [
+    { keterangan: { contains: '[SILENT]' } },
+  ];
+
+  let tipeCondition: any = {};
+  if (tipe === 'OUT') {
+    tipeCondition = { tipe: 'OUT' };
+    notConditions.push({ keterangan: { contains: '[OPNAME]' } });
+  } else if (tipe === 'IN') {
+    tipeCondition = { tipe: 'IN' };
+    notConditions.push({ keterangan: { contains: '[OPNAME]' } });
+  } else if (tipe === 'ADJUSTMENT') {
+    tipeCondition = {
+      keterangan: { contains: '[OPNAME]' },
+    };
+  } else if (tipe === 'LOG') {
+    tipeCondition = { tipe: 'LOG' };
   }
 
   const where = {
-    NOT: {
-      keterangan: { contains: '[SILENT]' },
-    },
-    ...(tipe ? { tipe: tipe as 'IN' | 'OUT' | 'LOG' } : {}),
+    NOT: notConditions,
+    ...tipeCondition,
     ...kategoriFilter,
     ...(dateFrom || dateTo
       ? {
@@ -59,12 +85,21 @@ export async function GET(req: NextRequest) {
     const hargaSatuan = d.harga ? Number(d.harga) : 0;
     const totalBiaya = hargaSatuan * d.qty;
 
+    const isAdjustment = !!(d.keterangan && d.keterangan.includes('[OPNAME]'));
+    const displayTipe = isAdjustment ? 'ADJUSTMENT' : d.tipe;
+    let catOut = d.kategoriOut === 'Maintenance Produksi' ? 'Maintenance' : d.kategoriOut;
+    if (isAdjustment) {
+      catOut = 'Adjustment SO';
+    } else if (d.tipe === 'OUT' && !catOut) {
+      catOut = 'Belum Dikategorikan';
+    }
+
     return {
       'No': i + 1,
       'Tanggal': new Date(d.tanggal).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' }),
       'Waktu': new Date(d.createdAt).toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' }),
-      'Tipe': d.tipe,
-      'Kategori OUT': d.kategoriOut || (d.tipe === 'OUT' ? 'Belum Dikategorikan' : ''),
+      'Tipe': displayTipe,
+      'Kategori OUT': catOut || '',
       'ID Sparepart': d.sparepartId ?? '',
       'Nama Item': d.sparepart?.nama ?? d.namaItem ?? '',
       'Qty': d.qty,
@@ -118,7 +153,7 @@ export async function GET(req: NextRequest) {
     { wch: 5 },  // No
     { wch: 13 }, // Tanggal
     { wch: 8 },  // Waktu
-    { wch: 6 },  // Tipe
+    { wch: 12 }, // Tipe
     { wch: 22 }, // Kategori OUT
     { wch: 14 }, // ID SP
     { wch: 40 }, // Nama Item
@@ -136,11 +171,12 @@ export async function GET(req: NextRequest) {
   XLSX.utils.book_append_sheet(wb, ws, 'Riwayat Transaksi');
 
   // Sheet 2: Rekap Mingguan OUT (Rekapitulasi Pengeluaran)
-  const outRows = data.filter((d) => d.tipe === 'OUT');
+  const outRows = data.filter((d) => d.tipe === 'OUT' && !d.keterangan?.includes('[OPNAME]'));
   const catStats: Record<string, { count: number; qty: number; totalRp: number }> = {
-    'Maintenance Produksi': { count: 0, qty: 0, totalRp: 0 },
+    'Maintenance': { count: 0, qty: 0, totalRp: 0 },
     'Utility': { count: 0, qty: 0, totalRp: 0 },
     'WO': { count: 0, qty: 0, totalRp: 0 },
+    'Produksi': { count: 0, qty: 0, totalRp: 0 },
     'Belum Dikategorikan': { count: 0, qty: 0, totalRp: 0 },
   };
 
@@ -154,7 +190,8 @@ export async function GET(req: NextRequest) {
     grandTotalQty += q;
     grandTotalRp += subtotal;
 
-    const cat = d.kategoriOut || 'Belum Dikategorikan';
+    let cat = d.kategoriOut || 'Belum Dikategorikan';
+    if (cat === 'Maintenance Produksi') cat = 'Maintenance';
     if (!catStats[cat]) {
       catStats[cat] = { count: 0, qty: 0, totalRp: 0 };
     }
@@ -165,11 +202,11 @@ export async function GET(req: NextRequest) {
 
   const recapData: any[] = [
     {
-      'Kategori Pengeluaran': 'Maintenance Produksi',
-      'Jml Transaksi': catStats['Maintenance Produksi'].count,
-      'Total Qty': catStats['Maintenance Produksi'].qty,
-      'Total Biaya (Rp)': catStats['Maintenance Produksi'].totalRp,
-      'Persentase': grandTotalRp > 0 ? `${((catStats['Maintenance Produksi'].totalRp / grandTotalRp) * 100).toFixed(1)}%` : '0%',
+      'Kategori Pengeluaran': 'Maintenance',
+      'Jml Transaksi': catStats['Maintenance'].count,
+      'Total Qty': catStats['Maintenance'].qty,
+      'Total Biaya (Rp)': catStats['Maintenance'].totalRp,
+      'Persentase': grandTotalRp > 0 ? `${((catStats['Maintenance'].totalRp / grandTotalRp) * 100).toFixed(1)}%` : '0%',
     },
     {
       'Kategori Pengeluaran': 'Utility',
@@ -184,6 +221,13 @@ export async function GET(req: NextRequest) {
       'Total Qty': catStats['WO'].qty,
       'Total Biaya (Rp)': catStats['WO'].totalRp,
       'Persentase': grandTotalRp > 0 ? `${((catStats['WO'].totalRp / grandTotalRp) * 100).toFixed(1)}%` : '0%',
+    },
+    {
+      'Kategori Pengeluaran': 'Produksi',
+      'Jml Transaksi': catStats['Produksi'].count,
+      'Total Qty': catStats['Produksi'].qty,
+      'Total Biaya (Rp)': catStats['Produksi'].totalRp,
+      'Persentase': grandTotalRp > 0 ? `${((catStats['Produksi'].totalRp / grandTotalRp) * 100).toFixed(1)}%` : '0%',
     },
   ];
 
