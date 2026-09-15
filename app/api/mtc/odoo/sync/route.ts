@@ -1175,6 +1175,14 @@ export async function POST(req: NextRequest) {
                   }
                 }
               }
+
+              // Bersihkan draf lokal yatim yang tidak ada di baris Odoo untuk PR ini
+              for (const leftover of localItems) {
+                if (!leftover.nomorPo) {
+                  logDebug(`[Requisition Sync] Menghapus orphan draft ID ${leftover.id} (${leftover.originalName}) karena tidak ada di Odoo ${prName}`);
+                  await tx.procurementTracking.delete({ where: { id: leftover.id } }).catch(() => {});
+                }
+              }
             }, { timeout: 60000, maxWait: 10000 });
           }
         }
@@ -1365,6 +1373,14 @@ export async function POST(req: NextRequest) {
                     });
                     importedPrCount++;
                   }
+                }
+              }
+
+              // Bersihkan draf lokal yatim yang tidak ada di baris Odoo untuk PR ini
+              for (const leftover of localItems) {
+                if (!leftover.nomorPo) {
+                  logDebug(`[Request Sync] Menghapus orphan draft ID ${leftover.id} (${leftover.originalName}) karena tidak ada di Odoo ${prName}`);
+                  await tx.procurementTracking.delete({ where: { id: leftover.id } }).catch(() => {});
                 }
               }
             }, { timeout: 60000, maxWait: 10000 });
