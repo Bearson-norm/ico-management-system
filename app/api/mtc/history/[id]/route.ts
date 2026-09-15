@@ -31,7 +31,7 @@ export async function PUT(req: NextRequest, ctx: RouteCtx) {
   if (isNaN(id)) return err('ID transaksi tidak valid', 400);
 
   const body = await req.json();
-  const { qty, picId, tanggal, keterangan, noReport, vendor, purchaseType, harga } = body;
+  const { qty, picId, tanggal, keterangan, noReport, vendor, purchaseType, harga, kategoriOut } = body;
 
   const movement = await prisma.stockMovement.findUnique({
     where: { id },
@@ -73,6 +73,7 @@ export async function PUT(req: NextRequest, ctx: RouteCtx) {
     ...(vendor !== undefined ? { vendor: vendor || null } : {}),
     ...(purchaseType !== undefined ? { purchaseType: purchaseType || null } : {}),
     ...(harga !== undefined ? { harga: parseFloat(String(harga)) || 0 } : {}),
+    ...(kategoriOut !== undefined ? { kategoriOut: kategoriOut ? String(kategoriOut).trim() : null } : {}),
   };
 
   const updatedMovement = await prisma.stockMovement.update({

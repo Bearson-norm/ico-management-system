@@ -28,6 +28,7 @@ export default function StockOutPage() {
   const [form, setForm] = useState({
     tanggal: new Date().toISOString().split('T')[0],
     picId: '',
+    kategoriOut: 'Maintenance Produksi',
     noReport: '',
     keterangan: '',
     items: [] as StockOutItem[],
@@ -142,6 +143,7 @@ export default function StockOutPage() {
     const payload = {
       tanggal: form.tanggal,
       picId: parseInt(form.picId),
+      kategoriOut: form.kategoriOut,
       noReport: form.noReport,
       keterangan: form.keterangan,
       items: form.items.map((i) => ({
@@ -149,6 +151,7 @@ export default function StockOutPage() {
         qty: i.qty,
         mesinNama: i.mesinNama,
         keterangan: i.keterangan,
+        kategoriOut: form.kategoriOut,
       })),
     };
 
@@ -167,6 +170,7 @@ export default function StockOutPage() {
         setForm({
           tanggal: new Date().toISOString().split('T')[0],
           picId: '',
+          kategoriOut: 'Maintenance Produksi',
           noReport: '',
           keterangan: '',
           items: [],
@@ -244,6 +248,21 @@ export default function StockOutPage() {
             </div>
             <div className="form-grid-2">
               <div className="form-group">
+                <label className="form-label">
+                  Kategori Pengeluaran (OUT) <span className="req">*</span>
+                </label>
+                <select
+                  className="form-input form-select"
+                  required
+                  value={form.kategoriOut}
+                  onChange={(e) => setForm({ ...form, kategoriOut: e.target.value })}
+                >
+                  <option value="Maintenance Produksi">Maintenance Produksi</option>
+                  <option value="Utility">Utility</option>
+                  <option value="WO">WO (Work Order)</option>
+                </select>
+              </div>
+              <div className="form-group">
                 <label className="form-label">No Report (Opsional)</label>
                 <input
                   type="text"
@@ -253,16 +272,16 @@ export default function StockOutPage() {
                   onChange={(e) => setForm({ ...form, noReport: e.target.value })}
                 />
               </div>
-              <div className="form-group">
-                <label className="form-label">Keterangan Umum / Catatan (Opsional)</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="Keterangan tambahan transaksi..."
-                  value={form.keterangan}
-                  onChange={(e) => setForm({ ...form, keterangan: e.target.value })}
-                />
-              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Keterangan Umum / Catatan (Opsional)</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Keterangan tambahan transaksi..."
+                value={form.keterangan}
+                onChange={(e) => setForm({ ...form, keterangan: e.target.value })}
+              />
             </div>
 
             <div className="divider" />

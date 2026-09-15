@@ -6,6 +6,7 @@ lib/generated
 .venv
 exports/
 *.sql
+!prisma/**/migration.sql
 *.log
 *.csv
 odoo_sync_debug.txt

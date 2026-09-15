@@ -1,13 +1,14 @@
 'use client';
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { KATEGORI_OUT_OPTIONS } from '@/lib/constants/stockOut';
 
 function fmtRupiah(value: number): string {
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',
     currency: 'IDR',
     minimumFractionDigits: 0,
-    maximumFractionDigits: 0
+    maximumFractionDigits: 0,
   }).format(value);
 }
 
@@ -16,6 +17,20 @@ function getPresetRange(preset: string): { from: string; to: string } {
   const pad = (n: number) => String(n).padStart(2, '0');
   const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
+  if (preset === '1-week') {
+    const from = new Date(now);
+    from.setDate(now.getDate() - 6);
+    return { from: fmt(from), to: fmt(now) };
+  }
+  if (preset === 'this-week') {
+    const currentDay = now.getDay(); // 0 is Sunday, 1 is Monday
+    const diffToMonday = (currentDay === 0 ? -6 : 1) - currentDay;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diffToMonday);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    return { from: fmt(monday), to: fmt(sunday) };
+  }
   if (preset === 'this-month') {
     const from = new Date(now.getFullYear(), now.getMonth(), 1);
     const to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
@@ -57,18 +72,28 @@ function HistoryContent() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [teknisis, setTeknisis] = useState<any[]>([]);
+  const [summary, setSummary] = useState<any | null>(null);
 
   // Table filters
   const [search, setSearch] = useState('');
   const [tipe, setTipe] = useState('');
+  const [kategoriOut, setKategoriOut] = useState('');
+  const [datePreset, setDatePreset] = useState('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [sort, setSort] = useState<'desc' | 'asc'>('desc');
 
+  // Batch action state
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [bulkCategory, setBulkCategory] = useState<string>('Maintenance Produksi');
+  const [bulkSaving, setBulkSaving] = useState(false);
+  const [inlineSavingId, setInlineSavingId] = useState<number | null>(null);
+
   // Export state
   const [showExport, setShowExport] = useState(false);
-  const [expTipe, setExpTipe] = useState('');
-  const [expPreset, setExpPreset] = useState('this-month');
+  const [expTipe, setExpTipe] = useState('OUT');
+  const [expKategori, setExpKategori] = useState('');
+  const [expPreset, setExpPreset] = useState('1-week');
   const [expFrom, setExpFrom] = useState('');
   const [expTo, setExpTo] = useState('');
   const [expFormat, setExpFormat] = useState<'xlsx' | 'csv'>('xlsx');
@@ -83,6 +108,7 @@ function HistoryContent() {
     harga: number;
     noReport: string;
     keterangan: string;
+    kategoriOut: string;
     vendor: string;
     purchaseType: string;
   }>({
@@ -92,6 +118,7 @@ function HistoryContent() {
     harga: 0,
     noReport: '',
     keterangan: '',
+    kategoriOut: '',
     vendor: '',
     purchaseType: '',
   });
@@ -122,6 +149,20 @@ function HistoryContent() {
     }
   }
 
+  // Sync date preset for table filter
+  function handleDatePresetChange(preset: string) {
+    setDatePreset(preset);
+    if (preset === 'all') {
+      setDateFrom('');
+      setDateTo('');
+    } else if (preset !== 'custom') {
+      const { from, to } = getPresetRange(preset);
+      setDateFrom(from);
+      setDateTo(to);
+    }
+    setPage(1);
+  }
+
   // Sync preset → date range for export
   useEffect(() => {
     if (expPreset !== 'custom') {
@@ -134,12 +175,19 @@ function HistoryContent() {
   // Sync with query parameter `tipe`
   useEffect(() => {
     const qTipe = searchParams.get('tipe') || '';
-    setTipe(qTipe);
+    if (qTipe) {
+      setTipe(qTipe);
+      if (qTipe === 'OUT') {
+        setExpTipe('OUT');
+      }
+    }
   }, [searchParams]);
 
   useEffect(() => {
     fetchData();
-  }, [page, search, tipe, dateFrom, dateTo, sort]);
+    // clear selection on filter or page change
+    setSelectedIds([]);
+  }, [page, search, tipe, kategoriOut, dateFrom, dateTo, sort]);
 
   async function fetchData() {
     setLoading(true);
@@ -147,18 +195,120 @@ function HistoryContent() {
       const q = new URLSearchParams({ page: String(page) });
       if (search) q.set('search', search);
       if (tipe) q.set('tipe', tipe);
+      if (kategoriOut) q.set('kategoriOut', kategoriOut);
       if (dateFrom) q.set('dateFrom', dateFrom);
       if (dateTo) q.set('dateTo', dateTo);
       q.set('sort', sort);
+
       const res = await fetch('/api/mtc/history?' + q.toString());
       const json = await res.json();
       if (json.success) {
         setData(json.data.data);
         setTotal(json.data.total);
+        setSummary(json.data.summary || null);
       }
     } finally {
       setLoading(false);
     }
+  }
+
+  // Inline category update
+  async function handleInlineKategoriChange(id: number, newCat: string) {
+    setInlineSavingId(id);
+    const prevCat = data.find((d) => d.id === id)?.kategoriOut;
+
+    // Optimistic update
+    setData((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, kategoriOut: newCat || null } : item))
+    );
+
+    try {
+      const res = await fetch(`/api/mtc/history/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kategoriOut: newCat || null }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        // Rollback
+        setData((prev) =>
+          prev.map((item) => (item.id === id ? { ...item, kategoriOut: prevCat } : item))
+        );
+        setToast({ type: 'error', message: json.error || 'Gagal mengubah kategori' });
+      } else {
+        setToast({
+          type: 'success',
+          message: newCat ? `Kategori diubah menjadi: ${newCat}` : 'Kategori dihapus',
+        });
+        // refresh summary silently
+        fetchData();
+      }
+    } catch {
+      // Rollback
+      setData((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, kategoriOut: prevCat } : item))
+      );
+      setToast({ type: 'error', message: 'Terjadi kesalahan jaringan' });
+    } finally {
+      setInlineSavingId(null);
+    }
+  }
+
+  // Bulk category update
+  async function handleBulkApply() {
+    if (selectedIds.length === 0) return;
+    setBulkSaving(true);
+    setToast(null);
+
+    try {
+      const res = await fetch('/api/mtc/history/bulk-categorize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ids: selectedIds,
+          kategoriOut: bulkCategory,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setToast({ type: 'error', message: json.error || 'Gagal mengupdate kategori' });
+      } else {
+        setToast({
+          type: 'success',
+          message: `✅ Berhasil menetapkan kategori "${bulkCategory}" ke ${json.data.count} transaksi OUT!`,
+        });
+        setSelectedIds([]);
+        fetchData();
+      }
+    } catch {
+      setToast({ type: 'error', message: 'Terjadi kesalahan jaringan' });
+    } finally {
+      setBulkSaving(false);
+    }
+  }
+
+  // Selection handlers
+  const outData = data.filter((d) => d.tipe === 'OUT');
+  const allOutSelected =
+    outData.length > 0 && outData.every((d) => selectedIds.includes(d.id));
+
+  function toggleSelectAllOut() {
+    if (allOutSelected) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(outData.map((d) => d.id));
+    }
+  }
+
+  function selectAllUncategorized() {
+    const uncat = outData.filter((d) => !d.kategoriOut).map((d) => d.id);
+    setSelectedIds(uncat);
+  }
+
+  function toggleSelectItem(id: number) {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
   }
 
   async function handleExport() {
@@ -166,12 +316,16 @@ function HistoryContent() {
     try {
       const q = new URLSearchParams();
       if (expTipe) q.set('tipe', expTipe);
+      if (expKategori) q.set('kategoriOut', expKategori);
       if (expFrom) q.set('dateFrom', expFrom);
       if (expTo) q.set('dateTo', expTo);
       q.set('format', expFormat);
 
       const res = await fetch('/api/mtc/history/export?' + q.toString());
-      if (!res.ok) { alert('Gagal export'); return; }
+      if (!res.ok) {
+        alert('Gagal export');
+        return;
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -195,6 +349,7 @@ function HistoryContent() {
       harga: item.harga ? Number(item.harga) : 0,
       noReport: item.noReport || '',
       keterangan: item.keterangan || '',
+      kategoriOut: item.kategoriOut || '',
       vendor: item.vendor || '',
       purchaseType: item.purchaseType || '',
     });
@@ -223,6 +378,7 @@ function HistoryContent() {
           harga: editForm.harga,
           noReport: editForm.noReport,
           keterangan: editForm.keterangan,
+          kategoriOut: editForm.kategoriOut || null,
           vendor: editForm.vendor,
           purchaseType: editForm.purchaseType,
         }),
@@ -234,7 +390,10 @@ function HistoryContent() {
         return;
       }
 
-      setToast({ type: 'success', message: 'Berhasil memperbarui transaksi dan menyesuaikan stok!' });
+      setToast({
+        type: 'success',
+        message: 'Berhasil memperbarui transaksi dan menyesuaikan stok!',
+      });
       setEditItem(null);
       fetchData();
     } catch {
@@ -261,7 +420,12 @@ function HistoryContent() {
         return;
       }
 
-      setToast({ type: 'success', message: json.data?.message || 'Transaksi berhasil dibatalkan dan stok dikembalikan.' });
+      setToast({
+        type: 'success',
+        message:
+          json.data?.message ||
+          'Transaksi berhasil dibatalkan dan stok dikembalikan.',
+      });
       setDeleteItem(null);
       fetchData();
     } catch {
@@ -271,35 +435,87 @@ function HistoryContent() {
     }
   }
 
+  const uncatCountOnPage = outData.filter((d) => !d.kategoriOut).length;
+
   return (
     <>
       <div className="page-header">
         <div style={{ flex: 1 }}>
-          <div className="page-title">Riwayat INOUT</div>
-          <div className="page-sub">Audit trail pergerakan stok &amp; koreksi riwayat</div>
+          <div className="page-title">Riwayat INOUT &amp; Rekap Pengeluaran</div>
+          <div className="page-sub">
+            Audit pergerakan stok, kategorisasi pengeluaran, dan ekspor rekap mingguan
+          </div>
         </div>
-        <button
-          className="btn btn-primary btn-sm"
-          style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-          onClick={() => setShowExport(v => !v)}
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/>
-            <line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
-          {showExport ? 'Tutup Export' : 'Export'}
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            className={`btn btn-sm ${tipe === 'OUT' ? 'btn-ylw' : 'btn-ghost'}`}
+            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+            onClick={() => {
+              if (tipe === 'OUT') {
+                setTipe('');
+              } else {
+                setTipe('OUT');
+                setDatePreset('1-week');
+                const { from, to } = getPresetRange('1-week');
+                setDateFrom(from);
+                setDateTo(to);
+              }
+              setPage(1);
+            }}
+          >
+            <span>📤</span> {tipe === 'OUT' ? 'Tampilkan Semua Tipe' : 'Fokus Pengeluaran OUT'}
+          </button>
+
+          <button
+            className="btn btn-primary btn-sm"
+            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+            onClick={() => setShowExport((v) => !v)}
+          >
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            {showExport ? 'Tutup Export' : 'Export Rekap'}
+          </button>
+        </div>
       </div>
 
       {toast && (
         <div style={{ margin: '0 24px 16px' }}>
           <div
             className={`badge ${toast.type === 'success' ? 'badge-grn' : 'badge-red'}`}
-            style={{ padding: '10px 16px', borderRadius: 8, fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+            style={{
+              padding: '10px 16px',
+              borderRadius: 8,
+              fontSize: 13,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
           >
-            <span>{toast.type === 'success' ? '✅' : '⚠️'} {toast.message}</span>
-            <button onClick={() => setToast(null)} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontWeight: 'bold' }}>×</button>
+            <span>
+              {toast.type === 'success' ? '✅' : '⚠️'} {toast.message}
+            </span>
+            <button
+              onClick={() => setToast(null)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'inherit',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+              }}
+            >
+              ×
+            </button>
           </div>
         </div>
       )}
@@ -308,27 +524,57 @@ function HistoryContent() {
       {showExport && (
         <div className="page-body" style={{ paddingBottom: 0 }}>
           <div className="card" style={{ borderLeft: '3px solid var(--accent)' }}>
-            <div className="card-header" style={{ display: 'block', padding: '14px 20px' }}>
-              <div style={{ fontWeight: 700, marginBottom: 12, fontSize: 14 }}>
-                📥 Ekspor Riwayat Stok
+            <div className="card-header" style={{ display: 'block', padding: '16px 20px' }}>
+              <div style={{ fontWeight: 700, marginBottom: 12, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>📥 Ekspor Data Riwayat &amp; Rekapitulasi Pengeluaran (1 Minggu)</span>
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end' }}>
-
                 {/* Tipe */}
                 <div>
                   <div style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 4 }}>Tipe Transaksi</div>
-                  <select className="form-input form-select" style={{ minWidth: 160 }} value={expTipe} onChange={e => setExpTipe(e.target.value)}>
+                  <select
+                    className="form-input form-select"
+                    style={{ minWidth: 150 }}
+                    value={expTipe}
+                    onChange={(e) => setExpTipe(e.target.value)}
+                  >
+                    <option value="OUT">OUT Saja (Pengeluaran)</option>
                     <option value="">Semua (IN + OUT + LOG)</option>
                     <option value="IN">IN saja</option>
-                    <option value="OUT">OUT saja</option>
                     <option value="LOG">LOG saja</option>
+                  </select>
+                </div>
+
+                {/* Kategori OUT */}
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 4 }}>Kategori Pengeluaran</div>
+                  <select
+                    className="form-input form-select"
+                    style={{ minWidth: 180 }}
+                    value={expKategori}
+                    onChange={(e) => setExpKategori(e.target.value)}
+                  >
+                    <option value="">Semua Kategori</option>
+                    {KATEGORI_OUT_OPTIONS.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                    <option value="UNCATEGORIZED">⚠️ Belum Dikategorikan</option>
                   </select>
                 </div>
 
                 {/* Preset periode */}
                 <div>
-                  <div style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 4 }}>Periode</div>
-                  <select className="form-input form-select" style={{ minWidth: 170 }} value={expPreset} onChange={e => setExpPreset(e.target.value)}>
+                  <div style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 4 }}>Periode Rekap</div>
+                  <select
+                    className="form-input form-select"
+                    style={{ minWidth: 190 }}
+                    value={expPreset}
+                    onChange={(e) => setExpPreset(e.target.value)}
+                  >
+                    <option value="1-week">⭐ 1 Minggu Terakhir (7 Hari)</option>
+                    <option value="this-week">Minggu ini (Senin - Minggu)</option>
                     <option value="this-month">Bulan ini</option>
                     <option value="last-month">Bulan lalu</option>
                     <option value="3-months">3 Bulan terakhir</option>
@@ -343,12 +589,22 @@ function HistoryContent() {
                   <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6 }}>
                     <div>
                       <div style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 4 }}>Dari</div>
-                      <input type="date" className="form-input" value={expFrom} onChange={e => setExpFrom(e.target.value)} />
+                      <input
+                        type="date"
+                        className="form-input"
+                        value={expFrom}
+                        onChange={(e) => setExpFrom(e.target.value)}
+                      />
                     </div>
                     <span style={{ paddingBottom: 8, color: 'var(--tx3)' }}>s/d</span>
                     <div>
                       <div style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 4 }}>Sampai</div>
-                      <input type="date" className="form-input" value={expTo} onChange={e => setExpTo(e.target.value)} />
+                      <input
+                        type="date"
+                        className="form-input"
+                        value={expTo}
+                        onChange={(e) => setExpTo(e.target.value)}
+                      />
                     </div>
                   </div>
                 )}
@@ -356,8 +612,13 @@ function HistoryContent() {
                 {/* Format */}
                 <div>
                   <div style={{ fontSize: 11, color: 'var(--tx3)', marginBottom: 4 }}>Format File</div>
-                  <select className="form-input form-select" style={{ minWidth: 120 }} value={expFormat} onChange={e => setExpFormat(e.target.value as 'xlsx' | 'csv')}>
-                    <option value="xlsx">Excel (.xlsx)</option>
+                  <select
+                    className="form-input form-select"
+                    style={{ minWidth: 140 }}
+                    value={expFormat}
+                    onChange={(e) => setExpFormat(e.target.value as 'xlsx' | 'csv')}
+                  >
+                    <option value="xlsx">Excel (.xlsx) + Rekap</option>
                     <option value="csv">CSV (.csv)</option>
                   </select>
                 </div>
@@ -366,7 +627,11 @@ function HistoryContent() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, justifyContent: 'flex-end' }}>
                   {(expFrom || expTo) && (
                     <div style={{ fontSize: 11, color: 'var(--tx3)' }}>
-                      {expFrom && expTo ? `${expFrom} s/d ${expTo}` : expFrom ? `Dari ${expFrom}` : `S/d ${expTo}`}
+                      {expFrom && expTo
+                        ? `${expFrom} s/d ${expTo}`
+                        : expFrom
+                        ? `Dari ${expFrom}`
+                        : `S/d ${expTo}`}
                     </div>
                   )}
                   <button
@@ -375,61 +640,491 @@ function HistoryContent() {
                     onClick={handleExport}
                     disabled={exporting}
                   >
-                    {exporting ? '⏳ Mengunduh...' : (
+                    {exporting ? (
+                      '⏳ Mengunduh...'
+                    ) : (
                       <>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                          <polyline points="7 10 12 15 17 10"/>
-                          <line x1="12" y1="15" x2="12" y2="3"/>
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                          <polyline points="7 10 12 15 17 10" />
+                          <line x1="12" y1="15" x2="12" y2="3" />
                         </svg>
                         Download {expFormat.toUpperCase()}
                       </>
                     )}
                   </button>
                 </div>
+              </div>
 
+              {summary?.byCategory?.['Belum Dikategorikan']?.count > 0 && expTipe === 'OUT' && (
+                <div
+                  style={{
+                    marginTop: 12,
+                    padding: '8px 12px',
+                    borderRadius: 6,
+                    background: 'rgba(234, 179, 8, 0.1)',
+                    border: '1px solid rgba(234, 179, 8, 0.3)',
+                    fontSize: 12,
+                    color: 'var(--ylw)',
+                  }}
+                >
+                  ⚠️ <b>Catatan Rekapitulasi:</b> Terdapat{' '}
+                  <b>{summary.byCategory['Belum Dikategorikan'].count} data pengeluaran (OUT)</b>{' '}
+                  yang belum dikategorikan pada rentang waktu ini. Anda dapat melengkapinya pada tabel
+                  di bawah agar laporan rekapitulasi mingguan Anda semakin akurat.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Weekly Recap Banner / Metrics (Displayed when focused on OUT) */}
+      {tipe === 'OUT' && summary && (
+        <div className="page-body" style={{ paddingBottom: 0 }}>
+          <div
+            className="card"
+            style={{
+              padding: '16px 20px',
+              background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.08) 0%, rgba(59, 130, 246, 0.05) 100%)',
+              border: '1px solid rgba(234, 179, 8, 0.3)',
+            }}
+          >
+            <div className="flex-between" style={{ marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span>📊 Rekapitulasi Pengeluaran Stock OUT</span>
+                  {datePreset === '1-week' && (
+                    <span className="badge badge-ylw" style={{ fontSize: 11 }}>
+                      1 Minggu Terakhir
+                    </span>
+                  )}
+                  {datePreset === 'this-week' && (
+                    <span className="badge badge-ylw" style={{ fontSize: 11 }}>
+                      Minggu Ini
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 2 }}>
+                  Periode: {dateFrom && dateTo ? `${dateFrom} s/d ${dateTo}` : 'Seluruh Waktu'} · Total Transaksi:{' '}
+                  <b>{summary.totalCount}</b>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 11, color: 'var(--tx3)', textTransform: 'uppercase' }}>
+                    Total Biaya Pengeluaran
+                  </div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--ylw)' }}>
+                    {fmtRupiah(summary.totalOutRp || 0)}
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right', borderLeft: '1px solid var(--br)', paddingLeft: 16 }}>
+                  <div style={{ fontSize: 11, color: 'var(--tx3)', textTransform: 'uppercase' }}>
+                    Total Qty Keluar
+                  </div>
+                  <div style={{ fontSize: 20, fontWeight: 800 }}>
+                    {summary.totalOutQty || 0} <span style={{ fontSize: 12, fontWeight: 400 }}>pcs</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 3 Categories Breakdown */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gap: 12,
+                marginTop: 8,
+              }}
+            >
+              {/* Maintenance Produksi */}
+              <div
+                style={{
+                  background: 'var(--sf)',
+                  padding: 12,
+                  borderRadius: 8,
+                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  borderLeft: '4px solid #3b82f6',
+                }}
+              >
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#3b82f6', marginBottom: 4 }}>
+                  🔵 Maintenance Produksi
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 800 }}>
+                  {fmtRupiah(summary.byCategory?.['Maintenance Produksi']?.totalRp || 0)}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 2 }}>
+                  {summary.byCategory?.['Maintenance Produksi']?.count || 0} transaksi ·{' '}
+                  {summary.byCategory?.['Maintenance Produksi']?.qty || 0} pcs
+                </div>
+              </div>
+
+              {/* Utility */}
+              <div
+                style={{
+                  background: 'var(--sf)',
+                  padding: 12,
+                  borderRadius: 8,
+                  border: '1px solid rgba(245, 158, 11, 0.3)',
+                  borderLeft: '4px solid #f59e0b',
+                }}
+              >
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#f59e0b', marginBottom: 4 }}>
+                  🟠 Utility
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 800 }}>
+                  {fmtRupiah(summary.byCategory?.['Utility']?.totalRp || 0)}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 2 }}>
+                  {summary.byCategory?.['Utility']?.count || 0} transaksi ·{' '}
+                  {summary.byCategory?.['Utility']?.qty || 0} pcs
+                </div>
+              </div>
+
+              {/* WO */}
+              <div
+                style={{
+                  background: 'var(--sf)',
+                  padding: 12,
+                  borderRadius: 8,
+                  border: '1px solid rgba(168, 85, 247, 0.3)',
+                  borderLeft: '4px solid #a855f7',
+                }}
+              >
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#a855f7', marginBottom: 4 }}>
+                  🟣 WO (Work Order)
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 800 }}>
+                  {fmtRupiah(summary.byCategory?.['WO']?.totalRp || 0)}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 2 }}>
+                  {summary.byCategory?.['WO']?.count || 0} transaksi ·{' '}
+                  {summary.byCategory?.['WO']?.qty || 0} pcs
+                </div>
+              </div>
+
+              {/* Belum Dikategorikan */}
+              <div
+                style={{
+                  background:
+                    (summary.byCategory?.['Belum Dikategorikan']?.count || 0) > 0
+                      ? 'rgba(239, 68, 68, 0.08)'
+                      : 'var(--sf)',
+                  padding: 12,
+                  borderRadius: 8,
+                  border:
+                    (summary.byCategory?.['Belum Dikategorikan']?.count || 0) > 0
+                      ? '1px solid rgba(239, 68, 68, 0.4)'
+                      : '1px solid var(--br)',
+                  borderLeft:
+                    (summary.byCategory?.['Belum Dikategorikan']?.count || 0) > 0
+                      ? '4px solid var(--red)'
+                      : '4px solid var(--tx3)',
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color:
+                      (summary.byCategory?.['Belum Dikategorikan']?.count || 0) > 0
+                        ? 'var(--red)'
+                        : 'var(--tx3)',
+                    marginBottom: 4,
+                  }}
+                >
+                  ⚠️ Belum Dikategorikan
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 800 }}>
+                  {summary.byCategory?.['Belum Dikategorikan']?.count || 0}{' '}
+                  <span style={{ fontSize: 12, fontWeight: 400 }}>transaksi</span>
+                </div>
+                {(summary.byCategory?.['Belum Dikategorikan']?.count || 0) > 0 ? (
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    style={{ fontSize: 11, padding: '2px 6px', marginTop: 4, color: 'var(--red)' }}
+                    onClick={() => {
+                      setKategoriOut('UNCATEGORIZED');
+                      setPage(1);
+                    }}
+                  >
+                    🔍 Filter Belum Dikategorikan
+                  </button>
+                ) : (
+                  <div style={{ fontSize: 11, color: 'var(--grn)', marginTop: 2 }}>
+                    ✅ Semua transaksi OUT telah terkategori!
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </div>
       )}
 
+      {/* Main Table Area */}
       <div className="page-body">
         <div className="card">
           <div className="card-header" style={{ display: 'block', padding: '14px 20px' }}>
-            <div className="filter-row" style={{ marginBottom: 0, width: '100%', display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+            <div
+              className="filter-row"
+              style={{
+                marginBottom: 0,
+                width: '100%',
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 8,
+                alignItems: 'center',
+              }}
+            >
+              {/* Search */}
               <div className="search-bar" style={{ flex: '1 1 200px', minWidth: 180, marginBottom: 0 }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                <input type="text" placeholder="Cari nama barang, report, keterangan..." value={search} onChange={e => {setSearch(e.target.value); setPage(1);}} />
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input
+                  type="text"
+                  placeholder="Cari nama barang, report, keterangan..."
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                  }}
+                />
               </div>
-              <select className="form-input form-select" style={{ flex: '0 0 auto', minWidth: 110 }} value={tipe} onChange={e => {setTipe(e.target.value); setPage(1);}}>
+
+              {/* Tipe Selector */}
+              <select
+                className="form-input form-select"
+                style={{ flex: '0 0 auto', minWidth: 110 }}
+                value={tipe}
+                onChange={(e) => {
+                  setTipe(e.target.value);
+                  setPage(1);
+                }}
+              >
                 <option value="">Semua Tipe</option>
                 <option value="IN">IN</option>
                 <option value="OUT">OUT</option>
                 <option value="LOG">LOG</option>
               </select>
+
+              {/* Filter Kategori OUT */}
+              <select
+                className="form-input form-select"
+                style={{
+                  flex: '0 0 auto',
+                  minWidth: 160,
+                  borderColor: kategoriOut ? 'var(--accent)' : undefined,
+                }}
+                value={kategoriOut}
+                onChange={(e) => {
+                  setKategoriOut(e.target.value);
+                  setPage(1);
+                }}
+              >
+                <option value="">Semua Kategori OUT</option>
+                {KATEGORI_OUT_OPTIONS.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+                <option value="UNCATEGORIZED">⚠️ Belum Dikategorikan</option>
+              </select>
+
+              {/* Quick Period Presets */}
+              <select
+                className="form-input form-select"
+                style={{ flex: '0 0 auto', minWidth: 150 }}
+                value={datePreset}
+                onChange={(e) => handleDatePresetChange(e.target.value)}
+              >
+                <option value="all">Semua Waktu</option>
+                <option value="1-week">⭐ 1 Minggu Terakhir</option>
+                <option value="this-week">Minggu Ini</option>
+                <option value="this-month">Bulan Ini</option>
+                <option value="last-month">Bulan Lalu</option>
+                <option value="custom">Custom Tanggal…</option>
+              </select>
+
+              {/* Date Pickers */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', flex: '0 1 auto' }}>
-                <input type="date" className="form-input" style={{ flex: '1 1 130px', minWidth: 120 }} value={dateFrom} onChange={e => {setDateFrom(e.target.value); setPage(1);}} />
-                <span className="text-muted" style={{ flexShrink: 0 }}>s/d</span>
-                <input type="date" className="form-input" style={{ flex: '1 1 130px', minWidth: 120 }} value={dateTo} onChange={e => {setDateTo(e.target.value); setPage(1);}} />
+                <input
+                  type="date"
+                  className="form-input"
+                  style={{ flex: '1 1 125px', minWidth: 120 }}
+                  value={dateFrom}
+                  onChange={(e) => {
+                    setDateFrom(e.target.value);
+                    setDatePreset('custom');
+                    setPage(1);
+                  }}
+                />
+                <span className="text-muted" style={{ flexShrink: 0 }}>
+                  s/d
+                </span>
+                <input
+                  type="date"
+                  className="form-input"
+                  style={{ flex: '1 1 125px', minWidth: 120 }}
+                  value={dateTo}
+                  onChange={(e) => {
+                    setDateTo(e.target.value);
+                    setDatePreset('custom');
+                    setPage(1);
+                  }}
+                />
               </div>
-              <select className="form-input form-select" style={{ flex: '0 0 auto', minWidth: 160 }} value={sort} onChange={e => {setSort(e.target.value as 'desc' | 'asc'); setPage(1);}}>
+
+              {/* Sort */}
+              <select
+                className="form-input form-select"
+                style={{ flex: '0 0 auto', minWidth: 130 }}
+                value={sort}
+                onChange={(e) => {
+                  setSort(e.target.value as 'desc' | 'asc');
+                  setPage(1);
+                }}
+              >
                 <option value="desc">Terbaru ↓</option>
                 <option value="asc">Terlama ↑</option>
               </select>
             </div>
+
+            {/* Quick Bulk Action Bar (when OUT items are selected) */}
+            {selectedIds.length > 0 && (
+              <div
+                style={{
+                  marginTop: 12,
+                  padding: '10px 14px',
+                  background: 'var(--sf2)',
+                  borderRadius: 8,
+                  border: '1px solid var(--accent)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: 10,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                  <span>
+                    📌 <b>{selectedIds.length}</b> transaksi OUT terpilih
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 12, color: 'var(--tx2)' }}>Tetapkan Kategori:</span>
+                  <select
+                    className="form-input form-select"
+                    style={{ minWidth: 170, fontSize: 12, padding: '4px 8px', height: 32 }}
+                    value={bulkCategory}
+                    onChange={(e) => setBulkCategory(e.target.value)}
+                  >
+                    {KATEGORI_OUT_OPTIONS.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    disabled={bulkSaving}
+                    onClick={handleBulkApply}
+                  >
+                    {bulkSaving ? 'Menyimpan...' : 'Terapkan ke Terpilih'}
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => setSelectedIds([])}
+                  >
+                    Batal Pilihan
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Helper quick select buttons for OUT */}
+            {outData.length > 0 && selectedIds.length === 0 && (
+              <div
+                style={{
+                  marginTop: 10,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  fontSize: 12,
+                  color: 'var(--tx3)',
+                }}
+              >
+                <span>Pilih Cepat:</span>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  style={{ fontSize: 11, padding: '2px 8px' }}
+                  onClick={toggleSelectAllOut}
+                >
+                  Pilih Semua OUT ({outData.length})
+                </button>
+                {uncatCountOnPage > 0 && (
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm text-red"
+                    style={{ fontSize: 11, padding: '2px 8px', color: 'var(--red)' }}
+                    onClick={selectAllUncategorized}
+                  >
+                    ⚠️ Pilih Semua Belum Ada Kategori ({uncatCountOnPage})
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="table-wrap" style={{ overflowX: 'auto' }}>
-            <table style={{ minWidth: 780 }}>
+            <table style={{ minWidth: 920 }}>
               <thead>
                 <tr>
+                  <th style={{ width: 36, textAlign: 'center' }}>
+                    {outData.length > 0 ? (
+                      <input
+                        type="checkbox"
+                        checked={allOutSelected}
+                        onChange={toggleSelectAllOut}
+                        title="Pilih semua transaksi OUT di halaman ini"
+                      />
+                    ) : (
+                      '#'
+                    )}
+                  </th>
                   <th>Tanggal</th>
                   <th>Waktu</th>
                   <th>Tipe</th>
+                  <th>Kategori Pengeluaran</th>
                   <th>Item / Sparepart</th>
                   <th style={{ textAlign: 'right' }}>Qty</th>
-                  <th style={{ textAlign: 'right' }}>Harga</th>
+                  <th style={{ textAlign: 'right' }}>Harga Satuan</th>
+                  <th style={{ textAlign: 'right' }}>Total Biaya</th>
                   <th>PIC</th>
                   <th>No Report</th>
                   <th>Keterangan</th>
@@ -437,51 +1132,159 @@ function HistoryContent() {
                 </tr>
               </thead>
               <tbody style={{ opacity: loading ? 0.5 : 1 }}>
-                {data.map(d => (
-                  <tr key={d.id}>
-                    <td>{new Date(d.tanggal).toLocaleDateString('id-ID')}</td>
-                    <td className="text-muted text-tiny">{new Date(d.createdAt).toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})}</td>
-                    <td>
-                      {d.tipe === 'IN' && <span className="badge badge-grn">IN</span>}
-                      {d.tipe === 'OUT' && <span className="badge badge-ylw">OUT</span>}
-                      {d.tipe === 'LOG' && <span className="badge badge-pur">LOG</span>}
-                    </td>
-                    <td style={{ fontWeight: 600 }}>
-                      {d.namaItem}
-                      {d.sparepartId && <div className="text-tiny text-muted">{d.sparepartId}</div>}
-                    </td>
-                    <td style={{ textAlign: 'right', fontWeight: 700 }}>{d.qty}</td>
-                    <td style={{ textAlign: 'right', fontWeight: 600 }}>
-                      {d.harga && Number(d.harga) > 0 ? fmtRupiah(Number(d.harga)) : '—'}
-                    </td>
-                    <td>{d.pic?.nama || '—'}</td>
-                    <td className="text-mono text-tiny">{d.noReport || '—'}</td>
-                    <td className="text-tiny">{[d.keterangan, d.purchaseType, d.vendor].filter(Boolean).join(' · ') || '—'}</td>
-                    <td style={{ textAlign: 'center' }}>
-                      <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
-                        <button
-                          type="button"
-                          className="btn btn-ghost btn-sm"
-                          style={{ padding: '4px 8px', fontSize: 11 }}
-                          onClick={() => openEditModal(d)}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-ghost btn-sm text-red"
-                          style={{ padding: '4px 8px', fontSize: 11, color: 'var(--red)' }}
-                          onClick={() => setDeleteItem(d)}
-                        >
-                          Batal
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {data.map((d) => {
+                  const isSelected = selectedIds.includes(d.id);
+                  const hargaNum = d.harga ? Number(d.harga) : 0;
+                  const totalBiaya = hargaNum * (d.qty || 0);
+
+                  return (
+                    <tr
+                      key={d.id}
+                      style={{
+                        background: isSelected ? 'rgba(59, 130, 246, 0.08)' : undefined,
+                      }}
+                    >
+                      {/* Checkbox */}
+                      <td style={{ textAlign: 'center' }}>
+                        {d.tipe === 'OUT' ? (
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleSelectItem(d.id)}
+                          />
+                        ) : (
+                          <span className="text-tiny text-muted">—</span>
+                        )}
+                      </td>
+
+                      {/* Tanggal & Waktu */}
+                      <td>{new Date(d.tanggal).toLocaleDateString('id-ID')}</td>
+                      <td className="text-muted text-tiny">
+                        {new Date(d.createdAt).toLocaleTimeString('id-ID', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </td>
+
+                      {/* Tipe */}
+                      <td>
+                        {d.tipe === 'IN' && <span className="badge badge-grn">IN</span>}
+                        {d.tipe === 'OUT' && <span className="badge badge-ylw">OUT</span>}
+                        {d.tipe === 'LOG' && <span className="badge badge-pur">LOG</span>}
+                      </td>
+
+                      {/* Kategori Pengeluaran (Interactive Dropdown for OUT) */}
+                      <td>
+                        {d.tipe === 'OUT' ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <select
+                              className="form-input form-select"
+                              style={{
+                                fontSize: 11,
+                                padding: '3px 8px',
+                                height: 28,
+                                fontWeight: 600,
+                                minWidth: 155,
+                                borderColor: !d.kategoriOut ? 'var(--red)' : undefined,
+                                background: !d.kategoriOut
+                                  ? 'rgba(239, 68, 68, 0.08)'
+                                  : d.kategoriOut === 'Maintenance Produksi'
+                                  ? 'rgba(59, 130, 246, 0.1)'
+                                  : d.kategoriOut === 'Utility'
+                                  ? 'rgba(245, 158, 11, 0.1)'
+                                  : 'rgba(168, 85, 247, 0.1)',
+                                color: !d.kategoriOut
+                                  ? 'var(--red)'
+                                  : d.kategoriOut === 'Maintenance Produksi'
+                                  ? '#2563eb'
+                                  : d.kategoriOut === 'Utility'
+                                  ? '#d97706'
+                                  : '#9333ea',
+                              }}
+                              value={d.kategoriOut || ''}
+                              disabled={inlineSavingId === d.id}
+                              onChange={(e) => handleInlineKategoriChange(d.id, e.target.value)}
+                            >
+                              <option value="">⚠️ Pilih Kategori...</option>
+                              {KATEGORI_OUT_OPTIONS.map((cat) => (
+                                <option key={cat} value={cat}>
+                                  {cat}
+                                </option>
+                              ))}
+                            </select>
+                            {inlineSavingId === d.id && (
+                              <span style={{ fontSize: 11 }}>⏳</span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-muted text-tiny">—</span>
+                        )}
+                      </td>
+
+                      {/* Item / Sparepart */}
+                      <td style={{ fontWeight: 600 }}>
+                        {d.namaItem}
+                        {d.sparepartId && (
+                          <div className="text-tiny text-muted">{d.sparepartId}</div>
+                        )}
+                      </td>
+
+                      {/* Qty */}
+                      <td style={{ textAlign: 'right', fontWeight: 700 }}>{d.qty}</td>
+
+                      {/* Harga Satuan */}
+                      <td style={{ textAlign: 'right', fontWeight: 500 }}>
+                        {hargaNum > 0 ? fmtRupiah(hargaNum) : '—'}
+                      </td>
+
+                      {/* Total Biaya */}
+                      <td
+                        style={{
+                          textAlign: 'right',
+                          fontWeight: 700,
+                          color: d.tipe === 'OUT' && totalBiaya > 0 ? 'var(--ylw)' : undefined,
+                        }}
+                      >
+                        {totalBiaya > 0 ? fmtRupiah(totalBiaya) : '—'}
+                      </td>
+
+                      {/* PIC, Report, Keterangan */}
+                      <td>{d.pic?.nama || '—'}</td>
+                      <td className="text-mono text-tiny">{d.noReport || '—'}</td>
+                      <td className="text-tiny" style={{ maxWidth: 220, wordBreak: 'break-word' }}>
+                        {[d.keterangan, d.purchaseType, d.vendor].filter(Boolean).join(' · ') || '—'}
+                      </td>
+
+                      {/* Aksi */}
+                      <td style={{ textAlign: 'center' }}>
+                        <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-sm"
+                            style={{ padding: '4px 8px', fontSize: 11 }}
+                            onClick={() => openEditModal(d)}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-sm text-red"
+                            style={{ padding: '4px 8px', fontSize: 11, color: 'var(--red)' }}
+                            onClick={() => setDeleteItem(d)}
+                          >
+                            Batal
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
                 {data.length === 0 && !loading && (
                   <tr>
-                    <td colSpan={10} style={{ textAlign: 'center', padding: '40px', color: 'var(--tx3)' }}>
+                    <td
+                      colSpan={13}
+                      style={{ textAlign: 'center', padding: '40px', color: 'var(--tx3)' }}
+                    >
                       Tidak ada riwayat ditemukan
                     </td>
                   </tr>
@@ -490,10 +1293,32 @@ function HistoryContent() {
             </table>
           </div>
 
-          <div className="card-header" style={{ borderTop: '1px solid var(--br)', borderBottom: 'none', justifyContent: 'center', gap: '10px' }}>
-            <button className="btn btn-ghost btn-sm" disabled={page === 1} onClick={() => setPage(p => p - 1)}>← Prev</button>
-            <span className="text-tiny text-muted">Halaman {page} dari {Math.ceil(total / 30) || 1} · Total {total} data</span>
-            <button className="btn btn-ghost btn-sm" disabled={page >= Math.ceil(total / 30)} onClick={() => setPage(p => p + 1)}>Next →</button>
+          <div
+            className="card-header"
+            style={{
+              borderTop: '1px solid var(--br)',
+              borderBottom: 'none',
+              justifyContent: 'center',
+              gap: '10px',
+            }}
+          >
+            <button
+              className="btn btn-ghost btn-sm"
+              disabled={page === 1}
+              onClick={() => setPage((p) => p - 1)}
+            >
+              ← Prev
+            </button>
+            <span className="text-tiny text-muted">
+              Halaman {page} dari {Math.ceil(total / 30) || 1} · Total {total} data
+            </span>
+            <button
+              className="btn btn-ghost btn-sm"
+              disabled={page >= Math.ceil(total / 30)}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Next →
+            </button>
           </div>
         </div>
       </div>
@@ -501,7 +1326,11 @@ function HistoryContent() {
       {/* Edit Transaction Modal */}
       {editItem && (
         <div className="modal-backdrop" onClick={() => setEditItem(null)}>
-          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 500, width: '90%' }}>
+          <div
+            className="modal"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: 520, width: '90%' }}
+          >
             <div className="modal-header">
               <div>
                 <div className="modal-title">Edit Transaksi Riwayat</div>
@@ -509,22 +1338,27 @@ function HistoryContent() {
                   [{editItem.tipe}] {editItem.namaItem}
                 </div>
               </div>
-              <button className="btn-close" onClick={() => setEditItem(null)}>✕</button>
+              <button className="btn-close" onClick={() => setEditItem(null)}>
+                ✕
+              </button>
             </div>
 
             <form onSubmit={handleSaveEdit}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                
                 {/* Qty & Tanggal */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
-                    <label className="form-label">Qty {editItem.sparepart?.uom ? `(${editItem.sparepart.uom})` : ''}</label>
+                    <label className="form-label">
+                      Qty {editItem.sparepart?.uom ? `(${editItem.sparepart.uom})` : ''}
+                    </label>
                     <input
                       type="number"
                       className="form-input"
                       min={1}
                       value={editForm.qty}
-                      onChange={e => setEditForm({ ...editForm, qty: parseInt(e.target.value, 10) || 0 })}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, qty: parseInt(e.target.value, 10) || 0 })
+                      }
                       required
                     />
                     {editItem.sparepart && (
@@ -540,11 +1374,34 @@ function HistoryContent() {
                       type="date"
                       className="form-input"
                       value={editForm.tanggal}
-                      onChange={e => setEditForm({ ...editForm, tanggal: e.target.value })}
+                      onChange={(e) => setEditForm({ ...editForm, tanggal: e.target.value })}
                       required
                     />
                   </div>
                 </div>
+
+                {/* Kategori Pengeluaran (jika transaksi OUT) */}
+                {editItem.tipe === 'OUT' && (
+                  <div>
+                    <label className="form-label">
+                      Kategori Pengeluaran (OUT) <span className="req">*</span>
+                    </label>
+                    <select
+                      className="form-input form-select"
+                      value={editForm.kategoriOut}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, kategoriOut: e.target.value })
+                      }
+                    >
+                      <option value="">-- Belum Dipilih / Uncategorized --</option>
+                      {KATEGORI_OUT_OPTIONS.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 {/* PIC Dropdown */}
                 <div>
@@ -552,11 +1409,13 @@ function HistoryContent() {
                   <select
                     className="form-input form-select"
                     value={editForm.picId}
-                    onChange={e => setEditForm({ ...editForm, picId: e.target.value })}
+                    onChange={(e) => setEditForm({ ...editForm, picId: e.target.value })}
                   >
                     <option value="">-- Pilih PIC --</option>
                     {teknisis.map((t: any) => (
-                      <option key={t.id} value={t.id}>{t.nama}</option>
+                      <option key={t.id} value={t.id}>
+                        {t.nama}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -569,7 +1428,7 @@ function HistoryContent() {
                     className="form-input text-mono"
                     placeholder="Contoh: CM-202607-001"
                     value={editForm.noReport}
-                    onChange={e => setEditForm({ ...editForm, noReport: e.target.value })}
+                    onChange={(e) => setEditForm({ ...editForm, noReport: e.target.value })}
                   />
                 </div>
 
@@ -583,7 +1442,9 @@ function HistoryContent() {
                         className="form-input"
                         min={0}
                         value={editForm.harga}
-                        onChange={e => setEditForm({ ...editForm, harga: parseFloat(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, harga: parseFloat(e.target.value) || 0 })
+                        }
                       />
                     </div>
                     <div>
@@ -593,7 +1454,9 @@ function HistoryContent() {
                         className="form-input"
                         placeholder="PR / PO / Direct"
                         value={editForm.purchaseType}
-                        onChange={e => setEditForm({ ...editForm, purchaseType: e.target.value })}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, purchaseType: e.target.value })
+                        }
                       />
                     </div>
                   </div>
@@ -607,18 +1470,29 @@ function HistoryContent() {
                     rows={2}
                     placeholder="Catatan tambahan atau nama mesin penggunaan..."
                     value={editForm.keterangan}
-                    onChange={e => setEditForm({ ...editForm, keterangan: e.target.value })}
+                    onChange={(e) => setEditForm({ ...editForm, keterangan: e.target.value })}
                   />
                 </div>
 
-                <div className="card" style={{ background: 'var(--bg3)', padding: 10, borderRadius: 6, fontSize: 11, color: 'var(--tx2)' }}>
-                  ℹ️ Mengubah Qty transaksi akan secara otomatis menyesuaikan nilai stok barang yang tersisa di inventory.
+                <div
+                  className="card"
+                  style={{
+                    background: 'var(--bg3)',
+                    padding: 10,
+                    borderRadius: 6,
+                    fontSize: 11,
+                    color: 'var(--tx2)',
+                  }}
+                >
+                  ℹ️ Mengubah Qty transaksi akan secara otomatis menyesuaikan nilai stok barang
+                  yang tersisa di inventory.
                 </div>
-
               </div>
 
               <div className="modal-footer">
-                <button type="button" className="btn btn-ghost" onClick={() => setEditItem(null)}>Batal</button>
+                <button type="button" className="btn btn-ghost" onClick={() => setEditItem(null)}>
+                  Batal
+                </button>
                 <button type="submit" className="btn btn-primary" disabled={savingEdit}>
                   {savingEdit ? 'Menyimpan...' : 'Simpan Perubahan'}
                 </button>
@@ -631,13 +1505,21 @@ function HistoryContent() {
       {/* Delete / Void Confirmation Modal */}
       {deleteItem && (
         <div className="modal-backdrop" onClick={() => setDeleteItem(null)}>
-          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 450, width: '90%' }}>
+          <div
+            className="modal"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: 450, width: '90%' }}
+          >
             <div className="modal-header">
               <div>
-                <div className="modal-title" style={{ color: 'var(--red)' }}>Batalkan Transaksi Riwayat</div>
+                <div className="modal-title" style={{ color: 'var(--red)' }}>
+                  Batalkan Transaksi Riwayat
+                </div>
                 <div className="modal-sub">Konfirmasi pembatalan pergerakan stok</div>
               </div>
-              <button className="btn-close" onClick={() => setDeleteItem(null)}>✕</button>
+              <button className="btn-close" onClick={() => setDeleteItem(null)}>
+                ✕
+              </button>
             </div>
 
             <div className="modal-body">
@@ -645,25 +1527,49 @@ function HistoryContent() {
                 Apakah Anda yakin ingin membatalkan transaksi berikut?
               </p>
 
-              <div className="card" style={{ padding: 14, background: 'var(--bg3)', marginBottom: 16 }}>
+              <div
+                className="card"
+                style={{ padding: 14, background: 'var(--bg3)', marginBottom: 16 }}
+              >
                 <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>
                   [{deleteItem.tipe}] {deleteItem.namaItem}
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--tx2)' }}>
-                  Qty: <b>{deleteItem.qty}</b> · Tanggal: {new Date(deleteItem.tanggal).toLocaleDateString('id-ID')}
+                  Qty: <b>{deleteItem.qty}</b> · Tanggal:{' '}
+                  {new Date(deleteItem.tanggal).toLocaleDateString('id-ID')}
                 </div>
                 {deleteItem.pic?.nama && (
                   <div style={{ fontSize: 12, color: 'var(--tx2)', marginTop: 2 }}>
                     PIC: {deleteItem.pic.nama}
                   </div>
                 )}
+                {deleteItem.kategoriOut && (
+                  <div style={{ fontSize: 12, color: 'var(--tx2)', marginTop: 2 }}>
+                    Kategori: <b>{deleteItem.kategoriOut}</b>
+                  </div>
+                )}
               </div>
 
-              <div style={{ fontSize: 12, color: 'var(--ylw)', background: 'rgba(234, 179, 8, 0.1)', padding: 10, borderRadius: 6, border: '1px solid rgba(234, 179, 8, 0.3)' }}>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: 'var(--ylw)',
+                  background: 'rgba(234, 179, 8, 0.1)',
+                  padding: 10,
+                  borderRadius: 6,
+                  border: '1px solid rgba(234, 179, 8, 0.3)',
+                }}
+              >
                 {deleteItem.tipe === 'OUT' ? (
-                  <span>⚠️ Membatalkan transaksi <b>Stock OUT</b> ini akan mengembalikan <b>+{deleteItem.qty} item</b> ke dalam stok barang.</span>
+                  <span>
+                    ⚠️ Membatalkan transaksi <b>Stock OUT</b> ini akan mengembalikan{' '}
+                    <b>+{deleteItem.qty} item</b> ke dalam stok barang.
+                  </span>
                 ) : deleteItem.tipe === 'IN' ? (
-                  <span>⚠️ Membatalkan transaksi <b>Stock IN</b> ini akan menarik <b>-{deleteItem.qty} item</b> dari stok barang.</span>
+                  <span>
+                    ⚠️ Membatalkan transaksi <b>Stock IN</b> ini akan menarik{' '}
+                    <b>-{deleteItem.qty} item</b> dari stok barang.
+                  </span>
                 ) : (
                   <span>⚠️ Transaksi log ini akan dihapus dari riwayat audit trail.</span>
                 )}
@@ -671,7 +1577,9 @@ function HistoryContent() {
             </div>
 
             <div className="modal-footer">
-              <button type="button" className="btn btn-ghost" onClick={() => setDeleteItem(null)}>Tutup</button>
+              <button type="button" className="btn btn-ghost" onClick={() => setDeleteItem(null)}>
+                Tutup
+              </button>
               <button
                 type="button"
                 className="btn btn-red"
@@ -691,17 +1599,21 @@ function HistoryContent() {
 
 export default function HistoryPage() {
   return (
-    <Suspense fallback={
-      <>
-        <div className="page-header">
-          <div className="page-title">Riwayat INOUT</div>
-          <div className="page-sub">Memuat data riwayat...</div>
-        </div>
-        <div className="page-body">
-          <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--tx3)' }}>Memuat…</div>
-        </div>
-      </>
-    }>
+    <Suspense
+      fallback={
+        <>
+          <div className="page-header">
+            <div className="page-title">Riwayat INOUT</div>
+            <div className="page-sub">Memuat data riwayat...</div>
+          </div>
+          <div className="page-body">
+            <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--tx3)' }}>
+              Memuat…
+            </div>
+          </div>
+        </>
+      }
+    >
       <HistoryContent />
     </Suspense>
   );

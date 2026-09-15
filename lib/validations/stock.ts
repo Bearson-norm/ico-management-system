@@ -2,15 +2,17 @@ import { z } from 'zod';
 
 // ─── Stock OUT ────────────────────────────────────────────────────────────────
 export const StockOutSchema = z.object({
-  tanggal:    z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  picId:      z.number().int().positive('PIC wajib dipilih'),
-  noReport:   z.string().optional().default(''),
-  keterangan: z.string().optional().default(''),
+  tanggal:     z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  picId:       z.number().int().positive('PIC wajib dipilih'),
+  noReport:    z.string().optional().default(''),
+  keterangan:  z.string().optional().default(''),
+  kategoriOut: z.string().optional().nullable(),
   items: z.array(z.object({
     sparepartId: z.string().min(1, 'Item ID wajib diisi'),
     qty:         z.number().int().positive('Qty harus > 0'),
     mesinNama:   z.string().optional().default(''),
     keterangan:  z.string().optional().default(''),
+    kategoriOut: z.string().optional().nullable(),
   })).min(1, 'Tambah minimal 1 barang'),
 });
 

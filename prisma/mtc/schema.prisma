@@ -151,6 +151,7 @@ model StockMovement {
   purchaseType String?      @map("purchase_type")
   vendor       String?
   keterangan   String?
+  kategoriOut  String?      @map("kategori_out")
   tanggal      DateTime     @default(now())
   createdAt    DateTime     @default(now()) @map("created_at")
 
@@ -162,6 +163,7 @@ model StockMovement {
   @@index([tipe])
   @@index([tanggal])
   @@index([noReport])
+  @@index([kategoriOut])
   @@map("stock_movement")
 }
 

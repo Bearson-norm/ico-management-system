@@ -56,6 +56,7 @@ export async function POST(req: NextRequest) {
         const mesinTag = it.mesinNama?.trim() ? `[Mesin: ${it.mesinNama.trim()}]` : '';
         const userKet = it.keterangan?.trim() || p.keterangan?.trim() || '';
         const finalKeterangan = [mesinTag, userKet].filter(Boolean).join(' ') || null;
+        const itemKategori = it.kategoriOut?.trim() || p.kategoriOut?.trim() || null;
 
         await tx.stockMovement.create({
           data: {
@@ -68,6 +69,7 @@ export async function POST(req: NextRequest) {
             picId: p.picId,
             noReport: p.noReport || null,
             keterangan: finalKeterangan,
+            kategoriOut: itemKategori,
             tanggal,
           },
         });

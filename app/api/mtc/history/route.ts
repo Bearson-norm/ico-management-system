@@ -13,15 +13,29 @@ export async function GET(req: NextRequest) {
   const limit = parseInt(searchParams.get('limit') ?? '30');
   const search = searchParams.get('search') ?? '';
   const tipe = searchParams.get('tipe') ?? '';
+  const kategoriOut = searchParams.get('kategoriOut') ?? '';
   const dateFrom = searchParams.get('dateFrom');
   const dateTo = searchParams.get('dateTo');
   const sort = parseHistorySort(searchParams);
+
+  let kategoriFilter = {};
+  if (kategoriOut === 'UNCATEGORIZED' || kategoriOut === 'Belum Dikategorikan') {
+    kategoriFilter = {
+      OR: [
+        { kategoriOut: null },
+        { kategoriOut: '' },
+      ],
+    };
+  } else if (kategoriOut) {
+    kategoriFilter = { kategoriOut };
+  }
 
   const where = {
     NOT: {
       keterangan: { contains: '[SILENT]' },
     },
     ...(tipe ? { tipe: tipe as 'IN' | 'OUT' | 'LOG' } : {}),
+    ...kategoriFilter,
     ...(dateFrom || dateTo
       ? {
           tanggal: {
@@ -54,5 +68,50 @@ export async function GET(req: NextRequest) {
     prisma.stockMovement.count({ where }),
   ]);
 
-  return ok({ data, total, page, limit });
+  let summary: any = null;
+  if (tipe === 'OUT') {
+    const outMovements = await prisma.stockMovement.findMany({
+      where,
+      select: {
+        id: true,
+        qty: true,
+        harga: true,
+        kategoriOut: true,
+      },
+    });
+
+    let totalOutRp = 0;
+    let totalOutQty = 0;
+    const byCategory: Record<string, { count: number; qty: number; totalRp: number }> = {
+      'Maintenance Produksi': { count: 0, qty: 0, totalRp: 0 },
+      'Utility': { count: 0, qty: 0, totalRp: 0 },
+      'WO': { count: 0, qty: 0, totalRp: 0 },
+      'Belum Dikategorikan': { count: 0, qty: 0, totalRp: 0 },
+    };
+
+    for (const m of outMovements) {
+      const q = m.qty || 0;
+      const h = m.harga ? Number(m.harga) : 0;
+      const subtotal = q * h;
+      totalOutQty += q;
+      totalOutRp += subtotal;
+
+      const cat = m.kategoriOut || 'Belum Dikategorikan';
+      if (!byCategory[cat]) {
+        byCategory[cat] = { count: 0, qty: 0, totalRp: 0 };
+      }
+      byCategory[cat].count += 1;
+      byCategory[cat].qty += q;
+      byCategory[cat].totalRp += subtotal;
+    }
+
+    summary = {
+      totalOutRp,
+      totalOutQty,
+      totalCount: outMovements.length,
+      byCategory,
+    };
+  }
+
+  return ok({ data, total, page, limit, summary });
 }
