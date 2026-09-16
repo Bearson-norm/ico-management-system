@@ -73,6 +73,7 @@ export async function GET(req: NextRequest) {
     ...(search
       ? {
           OR: [
+            { sparepartId: { contains: search, mode: 'insensitive' as const } },
             { namaItem: { contains: search, mode: 'insensitive' as const } },
             { noReport: { contains: search, mode: 'insensitive' as const } },
             { keterangan: { contains: search, mode: 'insensitive' as const } },

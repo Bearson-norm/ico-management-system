@@ -31,7 +31,7 @@ export async function PUT(req: NextRequest, ctx: RouteCtx) {
   if (isNaN(id)) return err('ID transaksi tidak valid', 400);
 
   const body = await req.json();
-  const { qty, picId, tanggal, keterangan, noReport, vendor, purchaseType, harga, kategoriOut } = body;
+  const { qty, picId, tanggal, keterangan, noReport, vendor, purchaseType, harga, kategoriOut, sparepartId, namaItem } = body;
 
   const movement = await prisma.stockMovement.findUnique({
     where: { id },
@@ -45,9 +45,51 @@ export async function PUT(req: NextRequest, ctx: RouteCtx) {
     return err('Qty harus angka bulat positif (> 0)', 400);
   }
 
-  // If sparepart exists, check stock boundaries
-  if (movement.sparepartId && movement.sparepart) {
-    const stockWithoutThis = await calculateCurrentStock(movement.sparepartId, movement.id);
+  let targetSparepart = movement.sparepart;
+  let newSparepartId: string | null = movement.sparepartId;
+
+  if (sparepartId !== undefined) {
+    const rawTarget = sparepartId ? String(sparepartId).trim() : '';
+    newSparepartId = rawTarget || null;
+
+    if (newSparepartId !== movement.sparepartId) {
+      // 1. If old sparepart exists and movement was IN, ensure removing it doesn't make old sparepart stock negative
+      if (movement.sparepartId && movement.sparepart && movement.tipe === 'IN') {
+        const oldStockWithoutThis = await calculateCurrentStock(movement.sparepartId, movement.id);
+        if (oldStockWithoutThis < 0) {
+          return err(
+            `Gagal memindahkan sparepart: Melepas stok dari ${movement.sparepart.nama} menyebabkan stoknya menjadi minus (${oldStockWithoutThis}).`,
+            400
+          );
+        }
+      }
+
+      // 2. If new sparepart is specified, check that it exists
+      if (newSparepartId) {
+        const found = await prisma.sparepart.findUnique({ where: { id: newSparepartId } });
+        if (!found) return err(`Sparepart ${newSparepartId} tidak ditemukan`, 404);
+        targetSparepart = found;
+
+        // If movement is OUT, ensure new sparepart has enough stock
+        if (movement.tipe === 'OUT') {
+          const newStockWithoutThis = await calculateCurrentStock(newSparepartId, movement.id);
+          const projected = newStockWithoutThis - newQty;
+          if (projected < 0) {
+            return err(
+              `Gagal mengubah transaksi: Stok ${found.nama} tidak mencukupi untuk pengeluaran ${newQty} Pcs (Stok saat ini: ${newStockWithoutThis} Pcs).`,
+              400
+            );
+          }
+        }
+      } else {
+        targetSparepart = null;
+      }
+    }
+  }
+
+  // If sparepart is set and unchanged, check standard boundaries
+  if (newSparepartId && targetSparepart && newSparepartId === movement.sparepartId) {
+    const stockWithoutThis = await calculateCurrentStock(newSparepartId, movement.id);
 
     let projectedStock = stockWithoutThis;
     if (movement.tipe === 'IN') {
@@ -58,7 +100,7 @@ export async function PUT(req: NextRequest, ctx: RouteCtx) {
 
     if (projectedStock < 0) {
       return err(
-        `Gagal mengubah transaksi: Qty baru (${newQty}) menyebabkan stok barang (${movement.sparepart.nama}) menjadi minus (${projectedStock}).`,
+        `Gagal mengubah transaksi: Qty baru (${newQty}) menyebabkan stok barang (${targetSparepart.nama}) menjadi minus (${projectedStock}).`,
         400
       );
     }
@@ -66,6 +108,18 @@ export async function PUT(req: NextRequest, ctx: RouteCtx) {
 
   const updateData: any = {
     qty: newQty,
+    ...(sparepartId !== undefined
+      ? {
+          sparepartId: newSparepartId,
+          ...(targetSparepart
+            ? {
+                namaItem: targetSparepart.nama,
+                ...(targetSparepart.lokasi ? { lokasi: targetSparepart.lokasi } : {}),
+              }
+            : {}),
+        }
+      : {}),
+    ...(namaItem ? { namaItem: String(namaItem).trim() } : {}),
     ...(picId !== undefined ? { picId: picId ? parseInt(String(picId), 10) : null } : {}),
     ...(tanggal ? { tanggal: new Date(tanggal + 'T00:00:00') } : {}),
     ...(keterangan !== undefined ? { keterangan: keterangan || null } : {}),

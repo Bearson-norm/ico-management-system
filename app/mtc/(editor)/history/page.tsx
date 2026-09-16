@@ -72,6 +72,7 @@ function HistoryContent() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [teknisis, setTeknisis] = useState<any[]>([]);
+  const [spareparts, setSpareparts] = useState<any[]>([]);
   const [summary, setSummary] = useState<any | null>(null);
 
   // Table filters
@@ -103,6 +104,7 @@ function HistoryContent() {
   const [editItem, setEditItem] = useState<any | null>(null);
   const [editForm, setEditForm] = useState<{
     qty: number;
+    sparepartId: string;
     picId: string;
     tanggal: string;
     harga: number;
@@ -113,6 +115,7 @@ function HistoryContent() {
     purchaseType: string;
   }>({
     qty: 1,
+    sparepartId: '',
     picId: '',
     tanggal: '',
     harga: 0,
@@ -133,6 +136,7 @@ function HistoryContent() {
 
   useEffect(() => {
     fetchTeknisis();
+    fetchSpareparts();
   }, []);
 
   async function fetchTeknisis() {
@@ -143,6 +147,18 @@ function HistoryContent() {
         setTeknisis(json.data);
       } else if (Array.isArray(json)) {
         setTeknisis(json);
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  async function fetchSpareparts() {
+    try {
+      const res = await fetch('/api/mtc/master/sparepart?simple=true');
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        setSpareparts(json.data);
       }
     } catch {
       // ignore
@@ -339,6 +355,7 @@ function HistoryContent() {
     setEditItem(item);
     setEditForm({
       qty: item.qty || 1,
+      sparepartId: item.sparepartId || '',
       picId: item.picId ? String(item.picId) : '',
       tanggal: formatDateForInput(item.tanggal),
       harga: item.harga ? Number(item.harga) : 0,
@@ -368,6 +385,7 @@ function HistoryContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           qty: editForm.qty,
+          sparepartId: editForm.sparepartId || null,
           picId: editForm.picId ? parseInt(editForm.picId, 10) : null,
           tanggal: editForm.tanggal,
           harga: editForm.harga,
@@ -1400,6 +1418,42 @@ function HistoryContent() {
 
             <form onSubmit={handleSaveEdit}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {/* Hubungkan ke Master Sparepart */}
+                <div>
+                  <label className="form-label">
+                    Hubungkan ke Master Sparepart
+                  </label>
+                  <select
+                    className="form-input form-select"
+                    value={editForm.sparepartId || ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const sp = spareparts.find((s: any) => s.id === val);
+                      setEditForm({
+                        ...editForm,
+                        sparepartId: val,
+                        ...(sp && !editForm.harga && sp.harga ? { harga: Number(sp.harga) } : {}),
+                      });
+                    }}
+                  >
+                    <option value="">-- Tidak Terhubung ke Master (Non-Master / Log) --</option>
+                    {spareparts.map((sp: any) => (
+                      <option key={sp.id} value={sp.id}>
+                        {sp.id} — {sp.nama} {sp.lokasi ? `(${sp.lokasi})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {editForm.sparepartId ? (
+                    <div className="text-tiny text-muted" style={{ marginTop: 4 }}>
+                      Item ID: <b>{editForm.sparepartId}</b>
+                    </div>
+                  ) : (
+                    <div className="text-tiny" style={{ marginTop: 4, color: 'var(--ylw)' }}>
+                      ⚠️ Transaksi ini saat ini belum terhubung ke master sparepart (ID riwayat kosong).
+                    </div>
+                  )}
+                </div>
+
                 {/* Qty & Tanggal */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
