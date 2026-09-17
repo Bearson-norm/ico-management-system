@@ -983,10 +983,23 @@ export async function POST(req: NextRequest) {
 
       const processedPrFromRequisitions = new Set<string>();
 
+      // Cari nomor PR yang masih berstatus terbuka di DB lokal agar tidak pernah tertinggal meski > 60 hari
+      const openLocalPRs = await prisma.procurementTracking.findMany({
+        where: {
+          statusPr: { in: ['DRAFT', 'TO_APPROVE', 'APPROVED'] },
+          nomorPr: { not: null }
+        },
+        select: { nomorPr: true },
+        distinct: ['nomorPr']
+      });
+      const openPrNames = openLocalPRs.map(p => p.nomorPr!.trim()).filter(Boolean);
+
       // Import/Sync from purchase.requisition
       try {
-        logDebug(`Mencari purchase.requisition di Odoo sejak ${thirtyDaysAgoStr} untuk UID ${parsedUid}...`);
-        const reqDomain: any[] = [['create_date', '>=', thirtyDaysAgoStr]];
+        logDebug(`Mencari purchase.requisition di Odoo sejak ${thirtyDaysAgoStr} untuk UID ${parsedUid}... (open PRs: ${openPrNames.length})`);
+        const reqDomain: any[] = openPrNames.length > 0
+          ? ['|', ['create_date', '>=', thirtyDaysAgoStr], '|', ['origin', 'in', openPrNames], ['name', 'in', openPrNames]]
+          : [['create_date', '>=', thirtyDaysAgoStr]];
         if (parsedUid) {
           reqDomain.push('|');
           reqDomain.push(['user_id', '=', parsedUid]);
@@ -1098,6 +1111,14 @@ export async function POST(req: NextRequest) {
                 // If prodName is generic but localItems has remaining items for this PR, reuse local item
                 if (targetIndex === -1 && isGenericName(prodName) && localItems.length > 0) {
                   targetIndex = 0;
+                } else if (targetIndex === -1 && localItems.length > 0) {
+                  // Fallback: match by exact price or single remaining item
+                  const priceMatchIndex = localItems.findIndex(l => price > 0 && Number(l.harga) > 0 && Math.abs(Number(l.harga) - price) < 10);
+                  if (priceMatchIndex !== -1) {
+                    targetIndex = priceMatchIndex;
+                  } else if (reqLines.length === 1 && localItems.length === 1) {
+                    targetIndex = 0;
+                  }
                 }
 
                 if (targetIndex !== -1) {
@@ -1116,7 +1137,7 @@ export async function POST(req: NextRequest) {
                     ...(teNumber ? { nomorTe: teNumber } : {}),
                   };
 
-                  if (isGenericName(matchedItem.originalName) && !isGenericName(prodName)) {
+                  if (!isGenericName(prodName) && matchedItem.originalName !== prodName) {
                     updateData.originalName = prodName;
                   }
 
@@ -1193,8 +1214,10 @@ export async function POST(req: NextRequest) {
 
       // Import/Sync from purchase.request
       try {
-        logDebug(`Mencari purchase.request di Odoo sejak ${thirtyDaysAgoStr} untuk UID ${parsedUid}...`);
-        const requestDomain: any[] = [['create_date', '>=', thirtyDaysAgoStr]];
+        logDebug(`Mencari purchase.request di Odoo sejak ${thirtyDaysAgoStr} untuk UID ${parsedUid}... (open PRs: ${openPrNames.length})`);
+        const requestDomain: any[] = openPrNames.length > 0
+          ? ['|', ['create_date', '>=', thirtyDaysAgoStr], ['name', 'in', openPrNames]]
+          : [['create_date', '>=', thirtyDaysAgoStr]];
         if (parsedUid) {
           requestDomain.push('|');
           requestDomain.push(['requested_by', '=', parsedUid]);
@@ -1304,6 +1327,14 @@ export async function POST(req: NextRequest) {
                 // If prodName is generic but localItems has remaining items for this PR, reuse local item
                 if (targetIndex === -1 && isGenericName(prodName) && localItems.length > 0) {
                   targetIndex = 0;
+                } else if (targetIndex === -1 && localItems.length > 0) {
+                  // Fallback: match by exact price or single remaining item
+                  const priceMatchIndex = localItems.findIndex(l => price > 0 && Number(l.harga) > 0 && Math.abs(Number(l.harga) - price) < 10);
+                  if (priceMatchIndex !== -1) {
+                    targetIndex = priceMatchIndex;
+                  } else if (reqLines.length === 1 && localItems.length === 1) {
+                    targetIndex = 0;
+                  }
                 }
 
                 if (targetIndex !== -1) {
@@ -1320,7 +1351,7 @@ export async function POST(req: NextRequest) {
                     isStocked: resolvedSpId ? true : undefined,
                   };
 
-                  if (isGenericName(matchedItem.originalName) && !isGenericName(prodName)) {
+                  if (!isGenericName(prodName) && matchedItem.originalName !== prodName) {
                     updateData.originalName = prodName;
                   }
 
