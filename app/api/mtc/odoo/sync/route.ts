@@ -982,6 +982,7 @@ export async function POST(req: NextRequest) {
       let importedPrCount = 0;
 
       const processedPrFromRequisitions = new Set<string>();
+      const foundOdooPrNames = new Set<string>();
 
       // Cari nomor PR yang masih berstatus terbuka di DB lokal agar tidak pernah tertinggal meski > 60 hari
       const openLocalPRs = await prisma.procurementTracking.findMany({
@@ -1016,6 +1017,10 @@ export async function POST(req: NextRequest) {
 
         if (recentRequisitions && recentRequisitions.length > 0) {
           logDebug(`Ditemukan ${recentRequisitions.length} purchase.requisition di Odoo.`);
+          for (const r of recentRequisitions) {
+            if (r.name) foundOdooPrNames.add(String(r.name).trim());
+            if (r.origin) foundOdooPrNames.add(String(r.origin).trim());
+          }
           
           const reqIds = recentRequisitions.map((r: any) => r.id);
           const prNames = recentRequisitions
@@ -1234,6 +1239,9 @@ export async function POST(req: NextRequest) {
 
         if (recentRequests && recentRequests.length > 0) {
           logDebug(`Ditemukan ${recentRequests.length} purchase.request di Odoo.`);
+          for (const r of recentRequests) {
+            if (r.name) foundOdooPrNames.add(String(r.name).trim());
+          }
           
           const reqIds = recentRequests.map((r: any) => r.id);
           const prNames = recentRequests.map((r: any) => r.name?.trim()).filter(Boolean);
@@ -1420,6 +1428,102 @@ export async function POST(req: NextRequest) {
       } catch (errReqImport) {
         console.error('Gagal mengimpor purchase.request baru dari Odoo:', errReqImport);
         logDebug(`Error request import: ${errReqImport}`);
+      }
+
+      // 2b. Auto-cleanup: Hapus draft PR di DB lokal yang sudah dihapus permanen di Odoo (dan belum ada PO)
+      try {
+        const openDraftPrs = await prisma.procurementTracking.findMany({
+          where: {
+            nomorPr: { not: null },
+            statusPr: { in: ['DRAFT', 'TO_APPROVE', 'APPROVED'] },
+            OR: [
+              { nomorPo: null },
+              { nomorPo: '' }
+            ]
+          },
+          select: { nomorPr: true },
+          distinct: ['nomorPr']
+        });
+
+        const suspectedDeletedPrs = openDraftPrs
+          .map(p => p.nomorPr!.trim())
+          .filter(pr => pr && !foundOdooPrNames.has(pr));
+
+        if (suspectedDeletedPrs.length > 0) {
+          logDebug(`[Auto-Cleanup] Memeriksa ${suspectedDeletedPrs.length} PR draft yang tidak ditemukan dalam sync rutin: ${suspectedDeletedPrs.join(', ')}`);
+          
+          // Verifikasi langsung ke Odoo tanpa batasan tanggal atau UID
+          const verifiedReqs = await queryOdoo(
+            'purchase.request',
+            'search_read',
+            [[['name', 'in', suspectedDeletedPrs]]],
+            { fields: ['id', 'name'] },
+            odooOptions
+          ).catch(() => null);
+
+          const verifiedRequisitions = await queryOdoo(
+            'purchase.requisition',
+            'search_read',
+            [['|', ['name', 'in', suspectedDeletedPrs], ['origin', 'in', suspectedDeletedPrs]]],
+            { fields: ['id', 'name', 'origin'] },
+            odooOptions
+          ).catch(() => null);
+
+          // Safety check: jika query Odoo gagal (network/timeout), jangan hapus apa pun
+          if (verifiedReqs !== null && verifiedRequisitions !== null) {
+            const stillAliveInOdoo = new Set<string>();
+            if (Array.isArray(verifiedReqs)) {
+              verifiedReqs.forEach((r: any) => { if (r.name) stillAliveInOdoo.add(r.name.trim()); });
+            }
+            if (Array.isArray(verifiedRequisitions)) {
+              verifiedRequisitions.forEach((r: any) => {
+                if (r.name) stillAliveInOdoo.add(r.name.trim());
+                if (r.origin) stillAliveInOdoo.add(r.origin.trim());
+              });
+            }
+
+            const trulyDeletedPrs = suspectedDeletedPrs.filter(pr => !stillAliveInOdoo.has(pr));
+
+            for (const pr of trulyDeletedPrs) {
+              // Safety check: pastikan tidak ada PO di Odoo yang mengacu pada PR ini
+              const existingPo = await queryOdoo(
+                'purchase.order',
+                'search_read',
+                [[['origin', 'ilike', pr]]],
+                { fields: ['id', 'name', 'origin'], limit: 1 },
+                odooOptions
+              ).catch(() => null);
+
+              if (existingPo && Array.isArray(existingPo) && existingPo.length > 0) {
+                logDebug(`[Auto-Cleanup] PR ${pr} tidak dihapus karena ternyata sudah memiliki PO di Odoo (${existingPo[0].name})`);
+                continue;
+              }
+
+              // Double safety check: jika existingPo null (query error), lewati demi keamanan
+              if (existingPo === null) {
+                logDebug(`[Auto-Cleanup] Gagal memverifikasi PO Odoo untuk PR ${pr}, melewati.`);
+                continue;
+              }
+
+              logDebug(`[Auto-Cleanup] PR ${pr} terkonfirmasi telah dihapus dari Odoo dan tidak memiliki PO. Menghapus dari DB lokal.`);
+              const deleteRes = await prisma.procurementTracking.deleteMany({
+                where: {
+                  nomorPr: pr,
+                  OR: [
+                    { nomorPo: null },
+                    { nomorPo: '' }
+                  ]
+                }
+              });
+              logDebug(`[Auto-Cleanup] Berhasil menghapus ${deleteRes.count} baris untuk PR ${pr}`);
+            }
+          } else {
+            logDebug(`[Auto-Cleanup] Query Odoo gagal atau timeout saat verifikasi, melewati auto-cleanup.`);
+          }
+        }
+      } catch (errCleanup) {
+        console.error('Error saat auto-cleanup PR yang dihapus di Odoo:', errCleanup);
+        logDebug(`Error auto-cleanup: ${errCleanup}`);
       }
 
       const checkDaysAgo = new Date();
