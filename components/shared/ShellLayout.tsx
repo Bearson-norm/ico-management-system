@@ -20,6 +20,7 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
     ...(isEditor
       ? [
           { href: '/mtc/dashboard', icon: '📊', label: 'Dashboard', section: 'Overview' },
+          { href: '/mtc/trend', icon: '📈', label: 'Trend Penggunaan', section: 'Overview' },
           { href: '/mtc/po-pr', icon: '⏳', label: 'Manajemen PO & PR', section: 'Overview' },
           { href: '/mtc/report', icon: '📋', label: 'Report & SP', section: 'Maintenance' },
           { href: '/mtc/stock-out', icon: '📤', label: 'Stock Out', section: 'Inventory' },

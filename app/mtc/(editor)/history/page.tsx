@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { KATEGORI_OUT_OPTIONS } from '@/lib/constants/stockOut';
 
 function fmtRupiah(value: number): string {
@@ -1298,7 +1299,26 @@ function HistoryContent() {
                       <td style={{ fontWeight: 600 }}>
                         {d.namaItem}
                         {d.sparepartId && (
-                          <div className="text-tiny text-muted">{d.sparepartId}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                            <span className="text-tiny text-muted">{d.sparepartId}</span>
+                            <Link
+                              href={`/mtc/trend?sp=${encodeURIComponent(d.sparepartId)}`}
+                              className="badge badge-pur"
+                              style={{
+                                fontSize: 10,
+                                padding: '1px 6px',
+                                textDecoration: 'none',
+                                borderRadius: 4,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 2,
+                                fontWeight: 700,
+                              }}
+                              title="Lihat grafik tren penggunaan sparepart ini"
+                            >
+                              📈 Tren
+                            </Link>
+                          </div>
                         )}
                       </td>
 
