@@ -53,8 +53,8 @@ export default async function middleware(req: NextRequest) {
   const tenant = (token?.tenant as string) || '';
 
   if (pathname.startsWith('/api/mtc')) {
-    // Stok viewer publik (tanpa login), sama seperti V2 /api/stock
-    if (req.method === 'GET' && pathname === '/api/mtc/stock') {
+    // Stok viewer & Trend analytics publik (tanpa login), sama seperti V2 /api/stock
+    if (req.method === 'GET' && (pathname === '/api/mtc/stock' || pathname === '/api/mtc/trend')) {
       return NextResponse.next();
     }
     
@@ -74,7 +74,7 @@ export default async function middleware(req: NextRequest) {
     const role = (token.role as string) || 'viewer';
     if (role === 'viewer') {
       const method = req.method;
-      if (!(method === 'GET' && pathname === '/api/mtc/stock')) {
+      if (!(method === 'GET' && (pathname === '/api/mtc/stock' || pathname === '/api/mtc/trend'))) {
         return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
       }
     }
