@@ -1,4 +1,4 @@
-/** Trigger browser download of GA opname worksheet PDF. Returns false if fetch failed. */
+/** Trigger browser download of GA opname recap/report PDF. Returns false if fetch failed. */
 export async function downloadOpnamePdf(sessionId: number): Promise<boolean> {
   try {
     const res = await fetch(`/api/ga/opname/${sessionId}/export`);
@@ -7,7 +7,7 @@ export async function downloadOpnamePdf(sessionId: number): Promise<boolean> {
     const blob = await res.blob();
     const disposition = res.headers.get('Content-Disposition') || '';
     const match = disposition.match(/filename="([^"]+)"/);
-    const filename = match?.[1] || `opname-ga-${sessionId}.pdf`;
+    const filename = match?.[1] || `laporan-opname-ga-${sessionId}.pdf`;
 
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');

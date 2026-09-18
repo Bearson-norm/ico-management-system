@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
-import { downloadOpnamePdf } from '@/lib/ga/downloadOpnamePdf';
 
 type SessionRow = {
   id: number;
@@ -86,10 +85,6 @@ export default function GaOpnameListPage() {
       setModal(false);
       setForm({ periodeNama: '', tanggal: form.tanggal });
       const sessionId = j.data.session.id as number;
-      const pdfOk = await downloadOpnamePdf(sessionId);
-      if (!pdfOk) {
-        alert('Sesi berhasil dibuat, tetapi PDF lembar kerja gagal diunduh. Anda bisa unduh dari halaman detail opname.');
-      }
       window.location.href = `/ga/opname/${sessionId}`;
     } else {
       setMsg(j.error || 'Gagal membuat sesi');

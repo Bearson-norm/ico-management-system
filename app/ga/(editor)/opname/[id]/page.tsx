@@ -331,7 +331,7 @@ export default function GaOpnameDetailPage() {
     setDownloadingPdf(true);
     try {
       const ok = await downloadOpnamePdf(session.id);
-      if (!ok) alert('Gagal mengunduh PDF lembar kerja opname.');
+      if (!ok) alert('Gagal mengunduh PDF laporan hasil opname.');
     } finally {
       setDownloadingPdf(false);
     }
@@ -507,7 +507,7 @@ export default function GaOpnameDetailPage() {
               onClick={handleDownloadPdf}
               disabled={downloadingPdf}
             >
-              {downloadingPdf ? 'Mengunduh…' : 'Unduh PDF'}
+              {downloadingPdf ? 'Mengunduh…' : 'Unduh Laporan'}
             </button>
             {isDraft && (
               <>
