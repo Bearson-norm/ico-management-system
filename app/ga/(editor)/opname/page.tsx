@@ -186,7 +186,7 @@ export default function GaOpnameListPage() {
                             href={`/ga/opname/${s.id}/print`}
                             target="_blank"
                             className="btn btn-ghost btn-sm"
-                            title="Cetak Form SO 4 TTD"
+                            title="Cetak Form Fisik"
                           >
                             🖨️ Form SO
                           </Link>

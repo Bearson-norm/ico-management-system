@@ -499,7 +499,7 @@ export default function GaOpnameDetailPage() {
               className="btn btn-ghost"
               style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
             >
-              🖨️ Form SO (Cetak)
+              🖨️ Cetak Form Fisik
             </Link>
             <button
               type="button"
