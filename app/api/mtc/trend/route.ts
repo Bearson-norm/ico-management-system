@@ -4,10 +4,7 @@ import { requireMtcAuth } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await requireMtcAuth();
-    if (!session) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-    }
+    const session = await requireMtcAuth().catch(() => null);
 
     const { searchParams } = new URL(req.url);
     const sparepartId = (searchParams.get('sparepartId') ?? '').trim();
