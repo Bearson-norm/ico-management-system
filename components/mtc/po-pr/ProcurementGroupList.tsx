@@ -1304,10 +1304,45 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
 
                                 {/* Quantity */}
                                 <td style={{ textAlign: 'center', fontWeight: 800, fontSize: 12 }}>
-                                  {item.qty}{' '}
-                                  <span style={{ fontSize: 9, fontWeight: 400, color: 'var(--tx3)' }}>
-                                    {item.sparepart?.uom || 'Pcs'}
-                                  </span>
+                                  {(() => {
+                                    let packInfo: any = null;
+                                    if (item.linkedPartsJson) {
+                                      try {
+                                        const p = JSON.parse(item.linkedPartsJson);
+                                        if (p && (p.type === 'pack' || p.isPackMode) && Number(p.qtyPerPack) > 1) {
+                                          packInfo = p;
+                                        }
+                                      } catch {}
+                                    }
+                                    return (
+                                      <div>
+                                        <div>
+                                          {item.qty}{' '}
+                                          <span style={{ fontSize: 9, fontWeight: 400, color: 'var(--tx3)' }}>
+                                            {packInfo?.uomUnit || item.sparepart?.uom || 'Pcs'}
+                                          </span>
+                                        </div>
+                                        {packInfo && (
+                                          <div style={{ marginTop: 2 }}>
+                                            <span
+                                              style={{
+                                                fontSize: 8.5,
+                                                fontWeight: 600,
+                                                color: '#38bdf8',
+                                                background: 'rgba(56, 189, 248, 0.12)',
+                                                padding: '1px 5px',
+                                                borderRadius: 4,
+                                                whiteSpace: 'nowrap',
+                                              }}
+                                              title={`Kemasan: 1 ${packInfo.uomPack || 'Pack'} isi ${packInfo.qtyPerPack} ${packInfo.uomUnit || 'Pcs'}`}
+                                            >
+                                              📦 @{packInfo.qtyPerPack}/{packInfo.uomPack || 'Pack'}
+                                            </span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
                                 </td>
 
                                 {/* Price */}

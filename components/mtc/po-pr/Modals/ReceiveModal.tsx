@@ -15,6 +15,14 @@ type ReceiveModalProps = {
   setReceiveQty: (val: number) => void;
   isStocked: boolean;
   setIsStocked: (val: boolean) => void;
+  isPackMode: boolean;
+  setIsPackMode: (val: boolean) => void;
+  qtyPerPack: number;
+  setQtyPerPack: (val: number) => void;
+  uomPack: string;
+  setUomPack: (val: string) => void;
+  uomUnit: string;
+  setUomUnit: (val: string) => void;
   handleReceiveSubmit: (e: React.FormEvent) => void;
   actionLoading: string | null;
 };
@@ -33,10 +41,22 @@ export const ReceiveModal: React.FC<ReceiveModalProps> = ({
   setReceiveQty,
   isStocked,
   setIsStocked,
+  isPackMode,
+  setIsPackMode,
+  qtyPerPack,
+  setQtyPerPack,
+  uomPack,
+  setUomPack,
+  uomUnit,
+  setUomUnit,
   handleReceiveSubmit,
   actionLoading,
 }) => {
   if (!showReceiveModal || !receivingItem) return null;
+
+  const multiplier = isPackMode && Number(qtyPerPack) > 1 ? Number(qtyPerPack) : 1;
+  const totalPhysicalUnits = receivingItem.qty * multiplier;
+  const unitPrice = multiplier > 1 ? Math.round((receivePrice || 0) / multiplier) : (receivePrice || 0);
 
   return (
     <div
@@ -58,7 +78,7 @@ export const ReceiveModal: React.FC<ReceiveModalProps> = ({
         className="card"
         style={{
           width: '100%',
-          maxWidth: 520,
+          maxWidth: 540,
           background: 'var(--sf2)',
           border: '1px solid var(--grn)',
           borderRadius: 12,
@@ -93,7 +113,7 @@ export const ReceiveModal: React.FC<ReceiveModalProps> = ({
               padding: 12,
               background: 'var(--sf3)',
               borderRadius: 8,
-              marginBottom: 16,
+              marginBottom: 14,
               border: '1px solid var(--br)',
               fontSize: 11,
             }}
@@ -103,9 +123,137 @@ export const ReceiveModal: React.FC<ReceiveModalProps> = ({
               {receivingItem.originalName}
             </div>
             <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 4 }}>
-              PR: {receivingItem.nomorPr || '—'} · PO: {receivingItem.nomorPo || '—'} · Total Qty Pesanan: <strong>{receivingItem.qty} Pcs</strong>
+              PR: {receivingItem.nomorPr || '—'} · PO: {receivingItem.nomorPo || '—'} · Dokumen Pesanan: <strong>{receivingItem.qty} {isPackMode ? uomPack : 'Pcs'}</strong>
             </div>
           </div>
+
+          {/* Mode Satuan Pembelian (Satuan Biasa vs Kemasan Pack/Box) */}
+          <div style={{ marginBottom: 14 }}>
+            <label className="form-label" style={{ fontWeight: 700, fontSize: 11, marginBottom: 6, display: 'block' }}>
+              Mode Satuan Pembelian
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <button
+                type="button"
+                className={`btn ${!isPackMode ? 'btn-blu' : 'btn-ghost'}`}
+                onClick={() => {
+                  setIsPackMode(false);
+                  setReceiveQty(receivingItem.qty);
+                }}
+                style={{ height: 34, fontSize: 11, fontWeight: 700 }}
+              >
+                🔩 Satuan Biasa (Unit/Pcs)
+              </button>
+              <button
+                type="button"
+                className={`btn ${isPackMode ? 'btn-blu' : 'btn-ghost'}`}
+                onClick={() => {
+                  setIsPackMode(true);
+                  const mult = Math.max(1, qtyPerPack || 1);
+                  setReceiveQty(receivingItem.qty * mult);
+                }}
+                style={{ height: 34, fontSize: 11, fontWeight: 700 }}
+              >
+                📦 Kemasan (Pack/Box/Set)
+              </button>
+            </div>
+          </div>
+
+          {/* Konfigurasi Kemasan jika mode Pack aktif */}
+          {isPackMode && (
+            <div
+              style={{
+                padding: '12px 14px',
+                background: 'rgba(59, 130, 246, 0.08)',
+                border: '1px solid rgba(59, 130, 246, 0.3)',
+                borderRadius: 8,
+                marginBottom: 16,
+              }}
+            >
+              <div style={{ fontWeight: 800, fontSize: 11.5, color: 'var(--blu)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span>📐</span> Konversi Kemasan ke Unit Fisik
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--tx2)', display: 'block', marginBottom: 4 }}>
+                    Satuan Kemasan
+                  </label>
+                  <select
+                    className="form-input"
+                    style={{ height: 32, fontSize: 11 }}
+                    value={uomPack}
+                    onChange={(e) => setUomPack(e.target.value)}
+                  >
+                    <option value="Pack">Pack</option>
+                    <option value="Box">Box</option>
+                    <option value="Set">Set</option>
+                    <option value="Sak">Sak</option>
+                    <option value="Roll">Roll</option>
+                    <option value="Pallet">Pallet</option>
+                    <option value="Lusin">Lusin</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--tx2)', display: 'block', marginBottom: 4 }}>
+                    1 {uomPack} isi berapa? <span style={{ color: 'var(--red)' }}>*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    className="form-input"
+                    style={{ height: 32, fontSize: 11 }}
+                    value={qtyPerPack}
+                    onChange={(e) => {
+                      const val = Math.max(1, Number(e.target.value) || 1);
+                      setQtyPerPack(val);
+                      setReceiveQty(receivingItem.qty * val);
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--tx2)', display: 'block', marginBottom: 4 }}>
+                    Satuan Unit Fisik
+                  </label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    style={{ height: 32, fontSize: 11 }}
+                    value={uomUnit}
+                    onChange={(e) => setUomUnit(e.target.value)}
+                    placeholder="Pcs"
+                  />
+                </div>
+              </div>
+
+              {/* Live Calculator Summary */}
+              <div
+                style={{
+                  marginTop: 10,
+                  padding: '8px 10px',
+                  background: 'var(--sf3)',
+                  borderRadius: 6,
+                  fontSize: 10.5,
+                  border: '1px solid var(--br)',
+                  lineHeight: 1.5,
+                }}
+              >
+                <div style={{ color: 'var(--tx2)' }}>
+                  Pesanan Dokumen: <strong>{receivingItem.qty} {uomPack}</strong> × {multiplier} = <strong>{totalPhysicalUnits} {uomUnit}</strong> fisik.
+                </div>
+                <div style={{ color: 'var(--tx2)', marginTop: 2 }}>
+                  Harga Dokumen: Rp {receivePrice.toLocaleString('id-ID')} / {uomPack} ➔ Estimasi Satuan: <strong style={{ color: 'var(--grn)' }}>Rp {unitPrice.toLocaleString('id-ID')} / {uomUnit}</strong>
+                </div>
+                <div style={{ color: '#38bdf8', marginTop: 2, fontWeight: 600 }}>
+                  Diterima Saat Ini: {receiveQty} {uomUnit} (Total Rp {(receiveQty * unitPrice).toLocaleString('id-ID')})
+                  {receiveQty < totalPhysicalUnits && (
+                    <span style={{ color: '#f59e0b', marginLeft: 6 }}>
+                      | Sisa: {totalPhysicalUnits - receiveQty} {uomUnit} (Rp {((totalPhysicalUnits - receiveQty) * unitPrice).toLocaleString('id-ID')})
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 12 }}>
             <div className="form-group">
@@ -124,31 +272,31 @@ export const ReceiveModal: React.FC<ReceiveModalProps> = ({
             <div className="form-group">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>
-                  Qty Diterima <span style={{ color: 'var(--red)' }}>*</span>
+                  Qty Diterima ({isPackMode ? uomUnit : 'Pcs'}) <span style={{ color: 'var(--red)' }}>*</span>
                 </label>
-                {receiveQty < receivingItem.qty && (
+                {receiveQty < totalPhysicalUnits && (
                   <span style={{ fontSize: 9.5, color: '#f59e0b', fontWeight: 700 }}>
-                    Parsial ({receiveQty}/{receivingItem.qty})
+                    Parsial ({receiveQty}/{totalPhysicalUnits})
                   </span>
                 )}
               </div>
               <input
                 type="number"
                 min="1"
-                max={receivingItem.qty}
+                max={totalPhysicalUnits}
                 className="form-input"
                 required
                 value={receiveQty}
                 onChange={(e) => {
-                  const val = Math.max(1, Math.min(receivingItem.qty, Number(e.target.value) || 1));
+                  const val = Math.max(1, Math.min(totalPhysicalUnits, Number(e.target.value) || 1));
                   setReceiveQty(val);
                 }}
               />
-              {receivingItem.qty > 1 && receiveQty < receivingItem.qty && (
+              {totalPhysicalUnits > 1 && receiveQty < totalPhysicalUnits && (
                 <div style={{ marginTop: 3, textAlign: 'right' }}>
                   <button
                     type="button"
-                    onClick={() => setReceiveQty(receivingItem.qty)}
+                    onClick={() => setReceiveQty(totalPhysicalUnits)}
                     style={{
                       background: 'none',
                       border: 'none',
@@ -159,7 +307,7 @@ export const ReceiveModal: React.FC<ReceiveModalProps> = ({
                       textDecoration: 'underline',
                     }}
                   >
-                    Terima Semua ({receivingItem.qty} Pcs)
+                    Terima Semua ({totalPhysicalUnits} {isPackMode ? uomUnit : 'Pcs'})
                   </button>
                 </div>
               )}
@@ -167,7 +315,7 @@ export const ReceiveModal: React.FC<ReceiveModalProps> = ({
           </div>
 
           {/* Alert jika Penerimaan Parsial (Sebagian) */}
-          {receiveQty < receivingItem.qty && (
+          {receiveQty < totalPhysicalUnits && (
             <div
               style={{
                 padding: '8px 12px',
@@ -186,7 +334,7 @@ export const ReceiveModal: React.FC<ReceiveModalProps> = ({
               <div>
                 <strong>Penerimaan Sebagian (Partial Receipt):</strong>
                 <div style={{ fontSize: 10.5, marginTop: 2, color: 'rgba(255,255,255,0.85)' }}>
-                  Sebanyak <strong>{receiveQty} Pcs</strong> dicatat tiba hari ini. Sisa <strong>{receivingItem.qty - receiveQty} Pcs</strong> otomatis tetap aktif di daftar PO menunggu sisa barang tiba.
+                  Sebanyak <strong>{receiveQty} {isPackMode ? uomUnit : 'Pcs'}</strong> dicatat tiba hari ini. Sisa <strong>{totalPhysicalUnits - receiveQty} {isPackMode ? uomUnit : 'Pcs'}</strong> otomatis tetap aktif di daftar PO menunggu sisa barang tiba.
                 </div>
               </div>
             </div>
@@ -195,7 +343,7 @@ export const ReceiveModal: React.FC<ReceiveModalProps> = ({
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div className="form-group">
               <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>
-                Harga Satuan Final (Rp)
+                {isPackMode ? `Harga Dokumen PO (per ${uomPack})` : 'Harga Satuan Final (Rp)'}
               </label>
               <input
                 type="number"
@@ -204,6 +352,11 @@ export const ReceiveModal: React.FC<ReceiveModalProps> = ({
                 value={receivePrice}
                 onChange={(e) => setReceivePrice(Number(e.target.value) || 0)}
               />
+              {isPackMode && multiplier > 1 && (
+                <div style={{ fontSize: 10, color: 'var(--grn)', marginTop: 3 }}>
+                  = Rp {unitPrice.toLocaleString('id-ID')} / {uomUnit} (yang masuk ke kartu stok)
+                </div>
+              )}
             </div>
 
             <div className="form-group">

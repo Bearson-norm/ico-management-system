@@ -38,10 +38,20 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         }
       });
 
-      // 2. Create StockMovement adjustments for items with variance
+      // 2. Batch fetch sparepart prices for financial valuation accuracy
+      const spIds = itemsToAdjust.map(i => i.sparepartId).filter(Boolean) as string[];
+      const spareparts = spIds.length > 0 ? await tx.sparepart.findMany({
+        where: { id: { in: spIds } },
+        select: { id: true, harga: true, lokasi: true }
+      }) : [];
+      const spMap = new Map(spareparts.map(s => [s.id, s]));
+
+      // 3. Create StockMovement adjustments for items with variance
       for (const item of itemsToAdjust) {
         const isPlus = item.selisih > 0;
         const movementQty = Math.abs(item.selisih);
+        const sp = item.sparepartId ? spMap.get(item.sparepartId) : null;
+        const itemHarga = sp ? Number(sp.harga) : 0;
 
         await tx.stockMovement.create({
           data: {
@@ -49,7 +59,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
             sparepartId: item.sparepartId || null,
             namaItem: item.namaItem,
             qty: movementQty,
-            lokasi: item.lokasi || 'Gudang MTC',
+            harga: itemHarga,
+            lokasi: item.lokasi || sp?.lokasi || 'Gudang MTC',
             keterangan: `[OPNAME] Adjustment Hasil Audit Sesi #${sessionId} - "${session.judul}" (${isPlus ? '+' : '-'}${movementQty} ${item.uom})`,
             tanggal: new Date()
           }

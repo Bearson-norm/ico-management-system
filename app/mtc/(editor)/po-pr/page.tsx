@@ -98,6 +98,10 @@ export default function ProcurementTrackingPage() {
   const [receiveVendor, setReceiveVendor] = useState('');
   const [receiveQty, setReceiveQty] = useState<number>(1);
   const [isStocked, setIsStocked] = useState(true);
+  const [isPackMode, setIsPackMode] = useState(false);
+  const [qtyPerPack, setQtyPerPack] = useState<number>(1);
+  const [uomPack, setUomPack] = useState('Pack');
+  const [uomUnit, setUomUnit] = useState('Pcs');
 
   // Edit SCM Modal States
   const [showEditModal, setShowEditModal] = useState(false);
@@ -310,6 +314,10 @@ export default function ProcurementTrackingPage() {
           harga: receivePrice,
           vendor: receiveVendor,
           qty: receiveQty,
+          isPackMode,
+          qtyPerPack: isPackMode ? qtyPerPack : 1,
+          uomPack,
+          uomUnit,
         }),
       });
       const json = await res.json();
@@ -530,7 +538,31 @@ export default function ProcurementTrackingPage() {
     setReceiveVendor(item.vendor || '');
     setReceiveDate(new Date().toISOString().split('T')[0]);
     setIsStocked(item.isStocked || item.sparepartId != null);
-    setReceiveQty(item.qty || 1);
+
+    let hasPackMeta = false;
+    let initialPackQty = 1;
+    let initialUomPack = 'Pack';
+    let initialUomUnit = item.sparepart?.uom || 'Pcs';
+
+    if (item.linkedPartsJson) {
+      try {
+        const meta = JSON.parse(item.linkedPartsJson);
+        if (meta && (meta.type === 'pack' || meta.isPackMode)) {
+          hasPackMeta = true;
+          initialPackQty = Number(meta.qtyPerPack) || 1;
+          initialUomPack = meta.uomPack || 'Pack';
+          initialUomUnit = meta.uomUnit || item.sparepart?.uom || 'Pcs';
+        }
+      } catch {}
+    }
+
+    setIsPackMode(hasPackMeta);
+    setQtyPerPack(initialPackQty);
+    setUomPack(initialUomPack);
+    setUomUnit(initialUomUnit);
+
+    const initialUnits = hasPackMeta ? (item.qty * initialPackQty) : (item.qty || 1);
+    setReceiveQty(initialUnits);
     setShowReceiveModal(true);
   }
 
@@ -959,6 +991,14 @@ export default function ProcurementTrackingPage() {
         setReceiveQty={setReceiveQty}
         isStocked={isStocked}
         setIsStocked={setIsStocked}
+        isPackMode={isPackMode}
+        setIsPackMode={setIsPackMode}
+        qtyPerPack={qtyPerPack}
+        setQtyPerPack={setQtyPerPack}
+        uomPack={uomPack}
+        setUomPack={setUomPack}
+        uomUnit={uomUnit}
+        setUomUnit={setUomUnit}
         handleReceiveSubmit={handleReceiveSubmit}
         actionLoading={actionLoading}
       />

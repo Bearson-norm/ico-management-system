@@ -19,9 +19,60 @@ def run_cmd(cmd):
         print("ERR:", err.encode('ascii', errors='backslashreplace').decode('ascii'))
     return out
 
-run_cmd("cat /etc/nginx/sites-enabled/* 2>/dev/null || cat /etc/nginx/conf.d/* 2>/dev/null")
-run_cmd("ps aux | grep node")
-run_cmd("PGPASSWORD=admin123 psql -h 127.0.0.1 -p 5432 -U admin -d mtc_db -c 'SELECT count(*) FROM mesin;' || true")
-run_cmd("PGPASSWORD=Admin123 psql -h 127.0.0.1 -p 5433 -U admin -d mtc_db -c 'SELECT count(*) FROM mesin;' || true")
+test_node = """
+const fs = require('fs');
+const { encode } = require('next-auth/jwt');
+const { PrismaClient } = require('./lib/generated/mtc');
+const prisma = new PrismaClient();
+
+// Parse .env
+const envText = fs.readFileSync('.env', 'utf-8');
+let secret = '';
+let nextAuthUrl = '';
+for (const line of envText.split('\\n')) {
+  const m1 = line.match(/^NEXTAUTH_SECRET=(.*)$/);
+  if (m1) secret = m1[1].trim().replace(/^["']|["']$/g, '');
+  const m2 = line.match(/^NEXTAUTH_URL=(.*)$/);
+  if (m2) nextAuthUrl = m2[1].trim().replace(/^["']|["']$/g, '');
+}
+
+async function testAuth() {
+  const user = await prisma.user.findFirst({ where: { role: 'editor', aktif: true } });
+  console.log('User found:', user ? user.username : 'none');
+  console.log('Secret found:', secret ? 'YES' : 'NO');
+  console.log('NEXTAUTH_URL:', nextAuthUrl);
+  const isSecure = nextAuthUrl.startsWith('https://');
+  const cookieName = (isSecure ? '__Secure-' : '') + 'next-auth.session-token.mtc';
+  console.log('Cookie name:', cookieName);
+
+  const token = {
+    id: String(user.id),
+    name: user.namaLengkap,
+    email: user.username,
+    role: 'editor',
+    tenant: 'mtc',
+  };
+  const sessionToken = await encode({ token, secret });
+
+  // Test calling GET /api/mtc/procurement
+  const res = await fetch('http://127.0.0.1:1325/api/mtc/procurement?limit=1', {
+    headers: {
+      'Cookie': `${cookieName}=${sessionToken}; next-auth.session-token.mtc=${sessionToken}`
+    }
+  });
+  console.log('API Status:', res.status);
+  const json = await res.json();
+  console.log('API Response success:', json.success);
+}
+testAuth().catch(console.error).finally(() => prisma.$disconnect());
+"""
+
+sftp = ssh.open_sftp()
+with sftp.file('/var/www/ico-management-system/scratch_auth_test.js', 'w') as f:
+    f.write(test_node)
+sftp.close()
+
+run_cmd("cd /var/www/ico-management-system && node scratch_auth_test.js")
+run_cmd("rm -f /var/www/ico-management-system/scratch_auth_test.js")
 
 ssh.close()

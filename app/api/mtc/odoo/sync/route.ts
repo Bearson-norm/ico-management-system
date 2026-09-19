@@ -241,6 +241,17 @@ function combinePrAndPoLinks(existingRef: string | null | undefined, newUrl: str
   return newUrl;
 }
 
+function getPackMultiplier(linkedPartsJson: string | null | undefined): number {
+  if (!linkedPartsJson) return 1;
+  try {
+    const parsed = JSON.parse(linkedPartsJson);
+    if (parsed && (parsed.type === 'pack' || parsed.isPackMode) && Number(parsed.qtyPerPack) > 0) {
+      return Number(parsed.qtyPerPack);
+    }
+  } catch {}
+  return 1;
+}
+
 const MATCH_STOP_WORDS = new Set(['per', 'isi', 'sak', 'untuk', 'kg', 'pcs', 'dan', 'atau', 'dengan', 'filter', 'air', 'gedung', 'sumur', 'kotor', 'pam', 'repeat', 'order', 'kebutuhan']);
 const getMatchTokens = (str: any) => {
   if (!str || typeof str !== 'string') return [];
@@ -662,6 +673,39 @@ export async function POST(req: NextRequest) {
   if (!isAuthorized) {
     return err('Akses ditolak', 403);
   }
+
+  // Check atomic sync lock to prevent concurrent executions
+  let lockAcquired = false;
+  try {
+    const lock = await prisma.mtcSetting.findUnique({ where: { key: 'odoo_sync_lock' } });
+    if (lock) {
+      try {
+        const lockData = JSON.parse(lock.value);
+        const lockAgeMs = Date.now() - Number(lockData.lockedAt);
+        // If locked less than 10 minutes ago, consider it actively running
+        if (lockAgeMs < 10 * 60 * 1000) {
+          logDebug(`[Sync Lock] Sinkronisasi sedang berlangsung (usia lock: ${Math.round(lockAgeMs / 1000)} detik). Skipping duplicate sync.`);
+          return ok({
+            sheets: { success: true, message: 'Sinkronisasi sebelumnya masih berjalan di latar belakang.', error: null },
+            odoo: { success: true, message: 'Sinkronisasi Odoo sedang berlangsung, silakan tunggu.', error: null },
+            isLocked: true,
+          });
+        }
+      } catch (e) {
+        // Invalid JSON in lock, overwrite
+      }
+    }
+    await prisma.mtcSetting.upsert({
+      where: { key: 'odoo_sync_lock' },
+      update: { value: JSON.stringify({ lockedAt: Date.now() }) },
+      create: { key: 'odoo_sync_lock', value: JSON.stringify({ lockedAt: Date.now() }) },
+    });
+    lockAcquired = true;
+  } catch (lockErr) {
+    console.warn('[Sync Lock] Failed to acquire lock, proceeding anyway:', lockErr);
+  }
+
+  try {
 
   let body: any = {};
   try {
@@ -1985,14 +2029,16 @@ export async function POST(req: NextRequest) {
                 });
 
                 if (updatedItem.sparepartId) {
+                  const packMultiplier = getPackMultiplier(updatedItem.linkedPartsJson);
+                  const effectiveUnitPrice = packMultiplier > 1 ? (matchedPrice / packMultiplier) : matchedPrice;
                   await tx.sparepart.update({
                     where: { id: updatedItem.sparepartId },
                     data: {
                       purchasingStatus: localStatusPr,
                       purchasingNoPr: updatedItem.nomorPr,
                       odooNotes: chatterNotes || null,
-                      purchasingQty: updatedItem.qty,
-                      ...(matchedPrice > 0 ? { harga: matchedPrice } : {})
+                      purchasingQty: updatedItem.qty * packMultiplier,
+                      ...(effectiveUnitPrice > 0 && !updatedItem.tanggalTerima ? { harga: effectiveUnitPrice } : {})
                     }
                   });
                 }
@@ -2026,8 +2072,11 @@ export async function POST(req: NextRequest) {
                   unlinkedUpdate.statusPo = null;
                   unlinkedUpdate.linkGr = null;
                   unlinkedUpdate.vendor = null;
-                  unlinkedUpdate.tanggalTerima = null;
-                  if (item.statusPr === 'RECEIVED' || item.statusPr === 'PO') {
+                  // JANGAN HAPUS tanggalTerima jika barang sudah pernah diterima fisik di gudang!
+                  if (!item.tanggalTerima) {
+                    unlinkedUpdate.tanggalTerima = null;
+                  }
+                  if (item.statusPr === 'PO' && !item.tanggalTerima) {
                     unlinkedUpdate.statusPr = 'APPROVED';
                   }
                 }
@@ -2288,10 +2337,8 @@ export async function POST(req: NextRequest) {
                 updateData.statusPo = (localStatusPr === 'APPROVED' || localStatusPr === 'PO') ? 'PO' : localStatusPr;
 
                 // JANGAN hapus tanggalTerima jika barang sudah diterima fisik di gudang!
-                if (physicallyReceivedDate) {
-                  updateData.tanggalTerima = physicallyReceivedDate;
-                } else {
-                  updateData.tanggalTerima = null;
+                if (physicallyReceivedDate || item.tanggalTerima) {
+                  updateData.tanggalTerima = physicallyReceivedDate || item.tanggalTerima;
                 }
 
                 if (odooGrLink) {
@@ -2323,9 +2370,15 @@ export async function POST(req: NextRequest) {
                   }
                 });
 
-                const totalPendingQty = pendingItems.reduce((sum: number, p: any) => sum + (p.qty || 0), 0);
+                const totalPendingQty = pendingItems.reduce((sum: number, p: any) => {
+                  const m = getPackMultiplier(p.linkedPartsJson);
+                  return sum + ((p.qty || 0) * m);
+                }, 0);
                 const hasPendingPo = pendingItems.some((p: any) => p.nomorPo);
                 const firstPending = pendingItems[0];
+
+                const packMultiplier = getPackMultiplier(updatedItem.linkedPartsJson);
+                const effectiveUnitPrice = packMultiplier > 1 ? (matchedPrice / packMultiplier) : matchedPrice;
 
                 const spUpdate: any = {
                   purchasingStatus: totalPendingQty > 0 ? (hasPendingPo ? 'PO' : (firstPending?.statusPr || 'PR')) : 'NONE',
@@ -2333,12 +2386,18 @@ export async function POST(req: NextRequest) {
                   purchasingNoPo: totalPendingQty > 0 ? pendingItems.find((p: any) => p.nomorPo)?.nomorPo || null : null,
                   odooNotes: updatedItem.odooNotes,
                   purchasingQty: totalPendingQty,
-                  ...(matchedPrice > 0 ? { harga: matchedPrice } : {})
                 };
+
+                // Proteksi harga: jangan menimpa harga sparepart yang sudah diterima fisik di gudang
+                if (effectiveUnitPrice > 0 && !updatedItem.tanggalTerima) {
+                  spUpdate.harga = effectiveUnitPrice;
+                }
 
                 if (totalPendingQty === 0) {
                   spUpdate.prDate = null;
                   spUpdate.poDate = null;
+                  spUpdate.purchasingStatus = 'NONE';
+                  spUpdate.purchasingQty = 0;
                 }
 
                 if (finalIsGrDone || updatedItem.tanggalTerima) {
@@ -2487,4 +2546,9 @@ export async function POST(req: NextRequest) {
       error: odooErrorStr || null
     }
   });
+  } finally {
+    if (lockAcquired) {
+      await prisma.mtcSetting.delete({ where: { key: 'odoo_sync_lock' } }).catch(() => {});
+    }
+  }
 }
