@@ -53,6 +53,10 @@ interface SpClassification {
   isWajibPr: boolean;
   catatan: string | null;
   alasanMax?: string;
+  tipeUkur?: string;
+  dapatDibeliUlang?: boolean;
+  totalPanjangSisa?: number;
+  remnantAlert?: string | null;
 }
 
 export default function StockClassificationPage() {
@@ -696,18 +700,24 @@ export default function StockClassificationPage() {
                         </td>
 
                         <td data-label="ROP" style={{ textAlign: 'right' }}>
-                          <span
-                            style={{
-                              fontWeight: 800,
-                              fontSize: 14,
-                              color: sp.isWajibPr ? '#ef4444' : 'var(--pur)',
-                              background: sp.isWajibPr ? 'rgba(239,68,68,0.12)' : 'rgba(168,85,247,0.1)',
-                              padding: '2px 8px',
-                              borderRadius: 6,
-                            }}
-                          >
-                            {sp.rop} {sp.uom}
-                          </span>
+                          {sp.dapatDibeliUlang === false ? (
+                            <span style={{ fontSize: 11, color: 'var(--tx3)', fontStyle: 'italic' }}>
+                              — (Remnant)
+                            </span>
+                          ) : (
+                            <span
+                              style={{
+                                fontWeight: 800,
+                                fontSize: 14,
+                                color: sp.isWajibPr ? '#ef4444' : 'var(--pur)',
+                                background: sp.isWajibPr ? 'rgba(239,68,68,0.12)' : 'rgba(168,85,247,0.1)',
+                                padding: '2px 8px',
+                                borderRadius: 6,
+                              }}
+                            >
+                              {sp.rop} {sp.uom}
+                            </span>
+                          )}
                         </td>
 
                         <td data-label="Stok Saat Ini" style={{ textAlign: 'right' }}>
@@ -715,15 +725,60 @@ export default function StockClassificationPage() {
                             style={{
                               fontWeight: 800,
                               fontSize: 14,
-                              color: sp.isWajibPr ? '#ef4444' : 'var(--grn)',
+                              color: sp.isWajibPr
+                                ? '#ef4444'
+                                : sp.remnantAlert
+                                ? '#f97316'
+                                : 'var(--grn)',
                             }}
                           >
                             {sp.currentStock} {sp.uom}
                           </div>
+                          {sp.tipeUkur === 'bulk' && (
+                            <div style={{ fontSize: 9, color: 'var(--pur)', fontWeight: 600 }}>
+                              🧵 Bulk/Panjang
+                            </div>
+                          )}
                         </td>
 
                         <td data-label="Status &amp; Rekomendasi PR">
-                          {sp.isWajibPr ? (
+                          {sp.dapatDibeliUlang === false ? (
+                            <div>
+                              {sp.remnantAlert ? (
+                                <span
+                                  className="badge"
+                                  style={{
+                                    background: '#f97316',
+                                    color: '#fff',
+                                    fontSize: 10,
+                                    fontWeight: 800,
+                                    padding: '3px 8px',
+                                    boxShadow: '0 1px 4px rgba(249,115,22,0.4)',
+                                  }}
+                                >
+                                  ⚠️ Sisa menipis, tidak akan direstock
+                                </span>
+                              ) : (
+                                <span
+                                  className="badge"
+                                  style={{
+                                    background: 'rgba(16,185,129,0.15)',
+                                    color: '#10b981',
+                                    border: '1px solid rgba(16,185,129,0.3)',
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  ✓ Sisa Aman (Tidak Direstock)
+                                </span>
+                              )}
+                              {sp.catatan && !sp.remnantAlert && (
+                                <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 4 }}>
+                                  {sp.catatan}
+                                </div>
+                              )}
+                            </div>
+                          ) : sp.isWajibPr ? (
                             <div>
                               <span
                                 className="badge"

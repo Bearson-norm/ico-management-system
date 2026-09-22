@@ -7,6 +7,9 @@ type StockOutItem = {
   nama: string;
   stok: number;
   uom: string;
+  tipeUkur?: string;
+  potonganId?: number | null;
+  potonganFisiks?: any[];
   mesins: { id: number; nama: string }[];
   mesinNama: string;
   isCustomMesin: boolean;
@@ -66,6 +69,17 @@ export default function StockOutPage() {
     if (form.items.find((s) => s.sparepartId === sp.id)) return alert('Sudah ada di daftar');
     if (sp.currentStock <= 0) return alert('Stok kosong (0).');
 
+    const isBulk = sp.tipeUkur === 'bulk';
+    const activePieces = sp.potonganFisiks || [];
+    if (isBulk && activePieces.length === 0) {
+      return alert(`Barang "${sp.nama}" bertipe bulk/potongan tapi tidak memiliki baris potongan fisik aktif.`);
+    }
+
+    const defaultPotonganId = isBulk && activePieces.length > 0 ? activePieces[0].id : null;
+    const initialStok = isBulk
+      ? (activePieces.find((p: any) => p.id === defaultPotonganId)?.panjangSisa || sp.currentStock)
+      : sp.currentStock;
+
     // Auto-select mesin dari BOM jika ada
     const defaultMesin = sp.mesins && sp.mesins.length > 0 ? sp.mesins[0].nama : '';
 
@@ -77,8 +91,11 @@ export default function StockOutPage() {
           sparepartId: sp.id,
           qty: 1,
           nama: sp.nama,
-          stok: sp.currentStock,
+          stok: initialStok,
           uom: sp.uom,
+          tipeUkur: sp.tipeUkur || 'unit',
+          potonganId: defaultPotonganId,
+          potonganFisiks: activePieces,
           mesins: sp.mesins || [],
           mesinNama: defaultMesin,
           isCustomMesin: false,
@@ -93,13 +110,30 @@ export default function StockOutPage() {
   const removeItem = (id: string) =>
     setForm((p) => ({ ...p, items: p.items.filter((s) => s.sparepartId !== id) }));
 
+  const updateItemPotongan = (id: string, potId: number) => {
+    setForm((p) => ({
+      ...p,
+      items: p.items.map((item) => {
+        if (item.sparepartId !== id) return item;
+        const pot = item.potonganFisiks?.find((x: any) => x.id === potId);
+        const potStok = pot ? pot.panjangSisa : item.stok;
+        return {
+          ...item,
+          potonganId: potId,
+          stok: potStok,
+          qty: Math.min(item.qty, potStok),
+        };
+      }),
+    }));
+  };
+
   const updateQty = (id: string, delta: number) => {
     setForm((p) => ({
       ...p,
       items: p.items.map((s) => {
         if (s.sparepartId === id) {
-          const newQty = s.qty + delta;
-          if (newQty < 1) return s;
+          const newQty = Math.round((s.qty + delta) * 100) / 100;
+          if (newQty <= 0) return s;
           if (newQty > s.stok) {
             alert(`Maksimal ${s.stok}`);
             return s;
@@ -137,6 +171,16 @@ export default function StockOutPage() {
     e.preventDefault();
     if (form.items.length === 0) return alert('Pilih minimal 1 barang');
 
+    // Validasi pemilihan potongan fisik untuk barang bulk
+    for (const item of form.items) {
+      if (item.tipeUkur === 'bulk' && !item.potonganId) {
+        return alert(`Barang "${item.nama}" bertipe bulk/potongan: wajib memilih 1 baris potongan fisik spesifik.`);
+      }
+      if (item.qty > item.stok) {
+        return alert(`Qty untuk "${item.nama}" (${item.qty}) melebihi stok potongan (${item.stok}).`);
+      }
+    }
+
     setSubmitting(true);
     setMessage(null);
 
@@ -148,7 +192,8 @@ export default function StockOutPage() {
       keterangan: form.keterangan,
       items: form.items.map((i) => ({
         sparepartId: i.sparepartId,
-        qty: i.qty,
+        qty: Number(i.qty),
+        potonganId: i.potonganId || undefined,
         mesinNama: i.mesinNama,
         keterangan: i.keterangan,
         kategoriOut: form.kategoriOut,
@@ -335,6 +380,22 @@ export default function StockOutPage() {
                         <div className="sp-info">
                           <div className="sp-name" style={{ fontSize: 15, fontWeight: 700 }}>
                             {sp.nama}
+                            {sp.tipeUkur === 'bulk' && (
+                              <span
+                                style={{
+                                  marginLeft: 8,
+                                  fontSize: 10,
+                                  background: 'rgba(168,85,247,0.15)',
+                                  color: 'var(--pur)',
+                                  padding: '2px 6px',
+                                  borderRadius: 4,
+                                  fontWeight: 700,
+                                  border: '1px solid rgba(168,85,247,0.3)',
+                                }}
+                              >
+                                🧵 BULK / POTONGAN
+                              </span>
+                            )}
                             {isBomMatch && (
                               <span
                                 style={{
@@ -352,7 +413,7 @@ export default function StockOutPage() {
                             )}
                           </div>
                           <div className="sp-sub" style={{ fontSize: 12, marginTop: 2 }}>
-                            ID: {sp.sparepartId} · Stok Tersedia:{' '}
+                            ID: {sp.sparepartId} · {sp.tipeUkur === 'bulk' ? 'Sisa Potongan Dipilih:' : 'Stok Tersedia:'}{' '}
                             <strong style={{ color: 'var(--grn)' }}>{sp.stok}</strong> {sp.uom}
                           </div>
                         </div>
@@ -365,6 +426,43 @@ export default function StockOutPage() {
                           ×
                         </button>
                       </div>
+
+                      {/* Baris Khusus Bulk: Pilihan Potongan Fisik Spesifik */}
+                      {sp.tipeUkur === 'bulk' && (
+                        <div
+                          style={{
+                            background: 'rgba(168,85,247,0.06)',
+                            border: '1px solid rgba(168,85,247,0.25)',
+                            padding: '10px 12px',
+                            borderRadius: 6,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 6,
+                          }}
+                        >
+                          <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--pur)', textTransform: 'uppercase', letterSpacing: '.5px' }}>
+                            ✂️ Pilih Potongan Fisik Spesifik (Wajib):
+                          </label>
+                          {sp.potonganFisiks && sp.potonganFisiks.length > 0 ? (
+                            <select
+                              className="form-input form-select"
+                              style={{ fontSize: 13, background: 'var(--sf)' }}
+                              value={sp.potonganId || ''}
+                              onChange={(e) => updateItemPotongan(sp.sparepartId, Number(e.target.value))}
+                            >
+                              {sp.potonganFisiks.map((pf: any) => (
+                                <option key={pf.id} value={pf.id}>
+                                  [#{pf.id}] Asal: &quot;{pf.asal}&quot; — Sisa: {pf.panjangSisa} {sp.uom}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <div style={{ color: 'var(--red)', fontSize: 12, fontWeight: 600 }}>
+                              ⚠️ Tidak ada baris potongan fisik aktif untuk barang ini.
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       {/* Baris Tengah: Pilihan Mesin & Qty */}
                       <div
@@ -470,14 +568,15 @@ export default function StockOutPage() {
                             </button>
                             <input
                               type="number"
-                              min={1}
+                              step="any"
+                              min={0.01}
                               max={sp.stok}
                               className="qty-val"
                               value={sp.qty}
                               onChange={(e) => {
-                                const val = parseInt(e.target.value, 10);
+                                const val = parseFloat(e.target.value);
                                 if (!isNaN(val)) {
-                                  const clamped = Math.min(Math.max(1, val), sp.stok);
+                                  const clamped = Math.min(Math.max(0.01, val), sp.stok);
                                   setForm((p) => ({
                                     ...p,
                                     items: p.items.map((item) =>
@@ -493,7 +592,7 @@ export default function StockOutPage() {
                                   }));
                                 }
                               }}
-                              style={{ width: 55, textAlign: 'center' }}
+                              style={{ width: 65, textAlign: 'center' }}
                             />
                             <button
                               type="button"

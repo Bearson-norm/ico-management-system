@@ -22,6 +22,11 @@ export async function GET(req: NextRequest) {
       procurementTrackings: {
         select: { nomorPr: true, nomorPo: true, linkReferences: true, statusPr: true, statusPo: true }
       },
+      potonganFisiks: {
+        where: { status: 'aktif' },
+        orderBy: [{ tanggalMasuk: 'asc' }, { id: 'asc' }],
+        select: { id: true, panjangAwal: true, panjangSisa: true, asal: true, tanggalMasuk: true },
+      },
       movements: {
         where: {
           tipe: { in: ['IN', 'OUT'] },
@@ -37,7 +42,16 @@ export async function GET(req: NextRequest) {
     .map((sp) => {
       const totalIn  = sp.movements.filter((m) => m.tipe === 'IN').reduce((s, m) => s + m.qty, 0);
       const totalOut = sp.movements.filter((m) => m.tipe === 'OUT').reduce((s, m) => s + Math.abs(m.qty), 0);
-      const currentStock = totalIn - totalOut;
+      
+      let currentStock: number;
+      let totalPanjangSisa = 0;
+
+      if (sp.tipeUkur === 'bulk') {
+        totalPanjangSisa = sp.potonganFisiks.reduce((s, p) => s + p.panjangSisa, 0);
+        currentStock = totalPanjangSisa;
+      } else {
+        currentStock = totalIn - totalOut;
+      }
 
       let stockStatus: 'safe' | 'low' | 'habis';
       if (currentStock <= 0)          stockStatus = 'habis';
@@ -65,6 +79,10 @@ export async function GET(req: NextRequest) {
         uom:          sp.uom,
         harga:        Number(sp.harga),
         minQty:       sp.minQty,
+        tipeUkur:     sp.tipeUkur,
+        dapatDibeliUlang: sp.dapatDibeliUlang,
+        potonganFisiks: sp.potonganFisiks,
+        totalPanjangSisa,
         totalIn,
         totalOut,
         currentStock,

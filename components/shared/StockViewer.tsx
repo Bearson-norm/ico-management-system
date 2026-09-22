@@ -8,6 +8,9 @@ type StockItem = {
   status: 'safe' | 'low' | 'habis' | 'overstock';
   movementClass?: 'slow' | 'fast';
   qtyOut30d?: number;
+  tipeUkur?: 'unit' | 'bulk';
+  dapatDibeliUlang?: boolean;
+  potonganFisiks?: { id: number; panjangAwal: number; panjangSisa: number; asal?: string | null }[];
   purchasingStatus?: string;
   purchasingNoPr?: string | null;
   purchasingNoPo?: string | null;
@@ -720,6 +723,8 @@ function KolomCard({ kolom, items }: { kolom: string; items: StockItem[] }) {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                   <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.nama}</span>
+                  {item.tipeUkur === 'bulk' && <span className="badge" style={{ fontSize: 9, padding: '1px 6px', fontWeight: 700, background: 'var(--pur-d)', color: 'var(--pur)', border: '1px solid var(--pur)' }}>🧵 Bulk</span>}
+                  {item.dapatDibeliUlang === false && <span className="badge" style={{ fontSize: 9, padding: '1px 6px', fontWeight: 700, background: 'rgba(239,68,68,0.1)', color: 'var(--red)', border: '1px solid var(--red)' }}>⛔ Non-Restock</span>}
                   {item.purchasingStatus === 'PR' && <span className="badge badge-ylw" style={{ fontSize: 9, padding: '1px 6px', fontWeight: 800 }}>⏳ PR</span>}
                   {item.purchasingStatus === 'PO' && <span className="badge badge-blu" style={{ fontSize: 9, padding: '1px 6px', fontWeight: 800 }}>📦 PO</span>}
                   <MovementClassBadge movementClass={item.movementClass} />
@@ -841,6 +846,8 @@ function StockItemTableRow({
           <div className={highlightName ? 'stock-item-name stock-item-name--highlight' : ''} style={{ fontWeight: 600 }}>
             {item.nama}
           </div>
+          {item.tipeUkur === 'bulk' && <span className="badge" style={{ fontSize: 9, padding: '1px 6px', fontWeight: 700, background: 'var(--pur-d)', color: 'var(--pur)', border: '1px solid var(--pur)' }}>🧵 Bulk</span>}
+          {item.dapatDibeliUlang === false && <span className="badge" style={{ fontSize: 9, padding: '1px 6px', fontWeight: 700, background: 'rgba(239,68,68,0.1)', color: 'var(--red)', border: '1px solid var(--red)' }}>⛔ Non-Restock</span>}
           {item.purchasingNoPo ? (
             <span className="badge badge-blu" style={{ fontSize: 9, padding: '1px 6px', fontWeight: 800 }}>📦 PO: {item.purchasingNoPo}</span>
           ) : item.purchasingNoPr ? (
@@ -906,6 +913,8 @@ function StockItemCard({
         <div className={`stock-item-card__name${highlightName ? ' stock-item-name--highlight' : ''}`} style={{ flex: 1, minWidth: 0 }}>
           {item.nama}
         </div>
+        {item.tipeUkur === 'bulk' && <span className="badge" style={{ fontSize: 9, padding: '1px 6px', fontWeight: 700, background: 'var(--pur-d)', color: 'var(--pur)', border: '1px solid var(--pur)', flexShrink: 0 }}>🧵 Bulk</span>}
+        {item.dapatDibeliUlang === false && <span className="badge" style={{ fontSize: 9, padding: '1px 6px', fontWeight: 700, background: 'rgba(239,68,68,0.1)', color: 'var(--red)', border: '1px solid var(--red)', flexShrink: 0 }}>⛔ Non-Restock</span>}
         {item.purchasingStatus === 'PR' && <span className="badge badge-ylw" style={{ fontSize: 9, padding: '1px 6px', fontWeight: 800, flexShrink: 0 }}>⏳ Sedang PR</span>}
         {item.purchasingStatus === 'PO' && <span className="badge badge-blu" style={{ fontSize: 9, padding: '1px 6px', fontWeight: 800, flexShrink: 0 }}>📦 Sudah PO</span>}
       </div>

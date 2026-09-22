@@ -37,35 +37,88 @@ export async function POST(req: NextRequest) {
   const p = parsed.data;
   const tanggal = new Date(p.tanggal + 'T12:00:00');
 
-  for (const it of p.items) {
-    const stok = await getCurrentStock(it.sparepartId);
-    if (stok < it.qty) {
-      const item = await prisma.sparepart.findUnique({ where: { id: it.sparepartId } });
-      return err(`Stok ${item?.nama ?? it.sparepartId} tidak cukup (sisa: ${stok})`);
-    }
-  }
-
   try {
     await prisma.$transaction(async (tx) => {
       const details = await tx.sparepart.findMany({
         where: { id: { in: p.items.map((i) => i.sparepartId) } },
       });
+
       for (const it of p.items) {
         const sp = details.find((d) => d.id === it.sparepartId);
+        if (!sp) {
+          throw new Error(`Sparepart ID ${it.sparepartId} tidak ditemukan`);
+        }
+
+        let potonganTag = '';
+
+        if (sp.tipeUkur === 'bulk') {
+          // Kalau tipeUkur === 'bulk', wajib pilih potongan fisik spesifik
+          if (!it.potonganId) {
+            throw new Error(`Item "${sp.nama}" bertipe bulk/potongan: wajib pilih potongan fisik spesifik.`);
+          }
+
+          const pot = await tx.potonganFisik.findUnique({
+            where: { id: it.potonganId },
+          });
+
+          if (!pot || pot.sparepartId !== sp.id || pot.status !== 'aktif') {
+            throw new Error(`Potongan fisik #${it.potonganId} untuk "${sp.nama}" tidak ditemukan atau sudah habis.`);
+          }
+
+          if (pot.panjangSisa < it.qty) {
+            throw new Error(
+              `Panjang potongan fisik "${pot.asal}" tidak mencukupi (sisa: ${pot.panjangSisa} ${sp.uom}, diminta: ${it.qty} ${sp.uom}).`
+            );
+          }
+
+          const newPanjangSisa = Math.round((pot.panjangSisa - it.qty) * 100) / 100;
+          potonganTag = `[Potongan Asal: "${pot.asal}", Pakai: ${it.qty} ${sp.uom}, Sisa: ${Math.max(0, newPanjangSisa)} ${sp.uom}]`;
+
+          // Kalau panjangSisa mencapai 0, status jadi "habis" dan baris dihapus
+          if (newPanjangSisa <= 0) {
+            await tx.potonganFisik.delete({
+              where: { id: pot.id },
+            });
+          } else {
+            await tx.potonganFisik.update({
+              where: { id: pot.id },
+              data: { panjangSisa: newPanjangSisa },
+            });
+          }
+
+          // Otomatis set Sparepart.aktif = false jika semua potongan habis DAN dapatDibeliUlang === false
+          if (!sp.dapatDibeliUlang) {
+            const activePotonganCount = await tx.potonganFisik.count({
+              where: { sparepartId: sp.id, status: 'aktif' },
+            });
+            if (activePotonganCount === 0) {
+              await tx.sparepart.update({
+                where: { id: sp.id },
+                data: { aktif: false },
+              });
+            }
+          }
+        } else {
+          // Item unit biasa: cek stok akumulasi
+          const stok = await getCurrentStock(it.sparepartId);
+          if (stok < it.qty) {
+            throw new Error(`Stok ${sp.nama} tidak cukup (sisa: ${stok})`);
+          }
+        }
 
         const mesinTag = it.mesinNama?.trim() ? `[Mesin: ${it.mesinNama.trim()}]` : '';
         const userKet = it.keterangan?.trim() || p.keterangan?.trim() || '';
-        const finalKeterangan = [mesinTag, userKet].filter(Boolean).join(' ') || null;
+        const finalKeterangan = [mesinTag, potonganTag, userKet].filter(Boolean).join(' ') || null;
         const itemKategori = it.kategoriOut?.trim() || p.kategoriOut?.trim() || null;
 
         await tx.stockMovement.create({
           data: {
             tipe: 'OUT',
             sparepartId: it.sparepartId,
-            namaItem: sp?.nama ?? it.sparepartId,
-            qty: it.qty,
-            harga: sp?.harga ?? 0,
-            lokasi: sp?.lokasi ?? '',
+            namaItem: sp.nama,
+            qty: Math.max(1, Math.round(it.qty)),
+            harga: sp.harga ?? 0,
+            lokasi: sp.lokasi ?? '',
             picId: p.picId,
             noReport: p.noReport || null,
             keterangan: finalKeterangan,
@@ -75,9 +128,10 @@ export async function POST(req: NextRequest) {
         });
       }
     });
+
     return ok({ count: p.items.length });
-  } catch (e) {
+  } catch (e: any) {
     console.error('[POST /api/mtc/stock/out]', e);
-    return err('Gagal stock out', 500);
+    return err(e.message || 'Gagal stock out', 400);
   }
 }

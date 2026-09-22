@@ -36,7 +36,7 @@ export default function StockInPage() {
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
   // Tabs
-  const [activeTab, setActiveTab] = useState<'existing' | 'new' | 'log'>('existing');
+  const [activeTab, setActiveTab] = useState<'existing' | 'new' | 'log' | 'remnant'>('existing');
 
   // Modal
   const [spModalOpen, setSpModalOpen] = useState(false);
@@ -61,6 +61,19 @@ export default function StockInPage() {
   });
 
   const [logItems, setLogItems] = useState<{ nama: string; qty: number; harga: number; kebutuhan: string; kebutuhanDetail: string }[]>([]);
+
+  // Remnant (Non-PO Manual In)
+  const [remnantForm, setRemnantForm] = useState({
+    sparepartId: '',
+    nama: '',
+    panjang: '',
+    asal: '',
+    kategoriId: '',
+    lokasi: '',
+    uom: 'Meter',
+    harga: '',
+    tanggalMasuk: new Date().toISOString().split('T')[0],
+  });
 
   const handleAddLogItem = () => {
     if (!logForm.nama.trim()) return alert('Nama barang / deskripsi wajib diisi');
@@ -205,6 +218,51 @@ export default function StockInPage() {
         harga: item.harga,
         keterangan: `[${item.kebutuhan}] ${item.kebutuhanDetail}`
       }));
+    } else if (activeTab === 'remnant') {
+      const parsedPanjang = parseFloat(remnantForm.panjang);
+      if (isNaN(parsedPanjang) || parsedPanjang <= 0) {
+        setSubmitting(false);
+        return alert('Panjang fisik sisa harus lebih dari 0');
+      }
+      if (!remnantForm.asal.trim()) {
+        setSubmitting(false);
+        return alert('Asal barang sisa (misal: Sisa Project A) wajib diisi');
+      }
+
+      try {
+        const res = await fetch('/api/mtc/stock/in-manual', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...remnantForm,
+            panjang: parsedPanjang,
+          }),
+        });
+        const json = await res.json();
+        if (json.success) {
+          setMessage({ type: 'success', text: `✅ ${json.data.msg}` });
+          setRemnantForm({
+            sparepartId: '',
+            nama: '',
+            panjang: '',
+            asal: '',
+            kategoriId: '',
+            lokasi: '',
+            uom: 'Meter',
+            harga: '',
+            tanggalMasuk: new Date().toISOString().split('T')[0],
+          });
+          fetch('/api/mtc/stock').then(r => r.json()).then(rs => { if (rs.success) setSpareparts(rs.data); });
+          window.scrollTo(0, 0);
+        } else {
+          setMessage({ type: 'error', text: `❌ ${json.error}` });
+        }
+      } catch (err: any) {
+        setMessage({ type: 'error', text: `❌ ${err.message}` });
+      } finally {
+        setSubmitting(false);
+      }
+      return;
     }
 
     try {
@@ -272,33 +330,57 @@ export default function StockInPage() {
           >
             📝 Catat Langsung Pakai (Non-Stok)
           </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'remnant'}
+            className={`ntab ${activeTab === 'remnant' ? 'act-pur' : ''}`}
+            onClick={() => setActiveTab('remnant')}
+          >
+            🧵 Sisa Proyek / Remnant (Non-PO)
+          </button>
         </div>
 
         <form onSubmit={handleSubmit} className="card" style={{ maxWidth: 800, margin: '0 auto' }}>
-          {/* BASE INFO (selalu tampil) */}
-          <div className="card-header"><div className="card-title">Informasi Pembelian</div></div>
-          <div className="card-body form-grid">
-            <div className="form-grid-3">
-              <div className="form-group">
-                <label className="form-label">Tanggal <span className="req">*</span></label>
-                <input type="date" className="form-input" required value={baseForm.tanggal} onChange={e => setBaseForm({...baseForm, tanggal: e.target.value})} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Jenis Pembelian</label>
-                <select className="form-input form-select" value={baseForm.purchaseType} onChange={e => setBaseForm({...baseForm, purchaseType: e.target.value})}>
-                  <option value="">Pilih...</option>
-                  <option value="Cash">Cash (Kasbon)</option>
-                  <option value="PO">Purchase Order (PO)</option>
-                  <option value="Online">E-Commerce / Online</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Vendor / Toko</label>
-                <input type="text" className="form-input" placeholder="Nama toko..." value={baseForm.vendor} onChange={e => setBaseForm({...baseForm, vendor: e.target.value})} />
-              </div>
+          {/* HEADER */}
+          {activeTab !== 'remnant' ? (
+            <div className="card-header"><div className="card-title">Informasi Pembelian</div></div>
+          ) : (
+            <div className="card-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div className="card-title">🧵 Intake Potongan Sisa / Remnant (Non-PO)</div>
+              <span className="badge" style={{ background: 'var(--pur-d)', color: 'var(--pur)', border: '1px solid var(--pur)' }}>
+                Tipe Ukur Bulk · Non-Restock
+              </span>
             </div>
+          )}
 
-            <div className="divider" />
+          <div className="card-body form-grid">
+            {/* BASE INFO (hanya jika bukan remnant) */}
+            {activeTab !== 'remnant' && (
+              <>
+                <div className="form-grid-3">
+                  <div className="form-group">
+                    <label className="form-label">Tanggal <span className="req">*</span></label>
+                    <input type="date" className="form-input" required value={baseForm.tanggal} onChange={e => setBaseForm({...baseForm, tanggal: e.target.value})} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Jenis Pembelian</label>
+                    <select className="form-input form-select" value={baseForm.purchaseType} onChange={e => setBaseForm({...baseForm, purchaseType: e.target.value})}>
+                      <option value="">Pilih...</option>
+                      <option value="Cash">Cash (Kasbon)</option>
+                      <option value="PO">Purchase Order (PO)</option>
+                      <option value="Online">E-Commerce / Online</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Vendor / Toko</label>
+                    <input type="text" className="form-input" placeholder="Nama toko..." value={baseForm.vendor} onChange={e => setBaseForm({...baseForm, vendor: e.target.value})} />
+                  </div>
+                </div>
+
+                <div className="divider" />
+              </>
+            )}
 
             {/* TAB 1: EXISTING */}
             {activeTab === 'existing' && (
@@ -549,11 +631,159 @@ export default function StockInPage() {
                 </div>
               </>
             )}
+
+            {/* TAB 4: REMNANT */}
+            {activeTab === 'remnant' && (
+              <>
+                <div className="alert alert-pur" style={{ marginBottom: 16 }}>
+                  🧵 <strong>Penerimaan Barang Sisa / Remnant (Non-PO)</strong>: Mencatat potongan fisik (kabel, pipa, besi, selang) dari sisa proyek atau bongkaran. Barang otomatis diset dengan tipe ukur <em>Bulk</em>, status <em>Non-Restock</em>, dan mutasi IN Non-PO tanpa mempengaruhi laporan pengadaan PO resmi.
+                </div>
+
+                <div className="form-grid-2" style={{ marginBottom: 12 }}>
+                  <div className="form-group">
+                    <label className="form-label">Tanggal Masuk <span className="req">*</span></label>
+                    <input 
+                      type="date" 
+                      className="form-input" 
+                      required 
+                      value={remnantForm.tanggalMasuk} 
+                      onChange={e => setRemnantForm({...remnantForm, tanggalMasuk: e.target.value})} 
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Pilih dari Master Barang yang Ada (Opsional)</label>
+                    <select 
+                      className="form-input form-select"
+                      value={remnantForm.sparepartId}
+                      onChange={(e) => {
+                        const id = e.target.value;
+                        const sp = spareparts.find(s => s.id === id);
+                        if (sp) {
+                          setRemnantForm(prev => ({
+                            ...prev,
+                            sparepartId: sp.id,
+                            nama: sp.nama,
+                            kategoriId: sp.kategoriId ? String(sp.kategoriId) : '',
+                            lokasi: sp.lokasi || '',
+                            uom: sp.uom || 'Meter',
+                            harga: sp.harga ? String(sp.harga) : '',
+                          }));
+                        } else {
+                          setRemnantForm(prev => ({ ...prev, sparepartId: '', nama: '', uom: 'Meter', lokasi: '', harga: '' }));
+                        }
+                      }}
+                    >
+                      <option value="">— Buat Master Barang Baru Otomatis —</option>
+                      {spareparts.map(sp => (
+                        <option key={sp.id} value={sp.id}>
+                          {sp.id} — {sp.nama} ({sp.uom})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {!remnantForm.sparepartId && (
+                  <div className="form-grid-2" style={{ marginBottom: 16, background: 'var(--sf2)', padding: 14, borderRadius: 8, border: '1px solid var(--br)' }}>
+                    <div className="form-group">
+                      <label className="form-label">Nama Barang Sisa <span className="req">*</span></label>
+                      <input 
+                        type="text" 
+                        className="form-input" 
+                        required 
+                        placeholder="Contoh: Kabel NYY 3x2.5mm Remnant" 
+                        value={remnantForm.nama} 
+                        onChange={e => setRemnantForm({...remnantForm, nama: e.target.value})} 
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Satuan / UoM</label>
+                      <input 
+                        type="text" 
+                        className="form-input" 
+                        placeholder="Meter" 
+                        value={remnantForm.uom} 
+                        onChange={e => setRemnantForm({...remnantForm, uom: e.target.value})} 
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Lokasi / SLOC Rak</label>
+                      <input 
+                        type="text" 
+                        className="form-input" 
+                        placeholder="Misal: Rak Sisa Proyek" 
+                        value={remnantForm.lokasi} 
+                        onChange={e => setRemnantForm({...remnantForm, lokasi: e.target.value})} 
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Kategori</label>
+                      <select 
+                        className="form-input form-select" 
+                        value={remnantForm.kategoriId} 
+                        onChange={e => setRemnantForm({...remnantForm, kategoriId: e.target.value})}
+                      >
+                        <option value="">Tanpa Kategori</option>
+                        {kategoris.map(k => <option key={k.id} value={k.id}>{k.nama}</option>)}
+                      </select>
+                    </div>
+                    <div className="form-group" style={{ gridColumn: '1/-1' }}>
+                      <label className="form-label">Estimasi Nilai / Harga Satuan (Rp/{remnantForm.uom || 'Meter'})</label>
+                      <input 
+                        type="number" 
+                        step="any" 
+                        className="form-input" 
+                        placeholder="0" 
+                        value={remnantForm.harga} 
+                        onChange={e => setRemnantForm({...remnantForm, harga: e.target.value})} 
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="form-grid-2">
+                  <div className="form-group">
+                    <label className="form-label">Panjang Sisa Fisik ({remnantForm.uom || 'Meter'}) <span className="req">*</span></label>
+                    <input 
+                      type="number" 
+                      step="any" 
+                      className="form-input" 
+                      min="0.01" 
+                      required 
+                      placeholder="Contoh: 14.5" 
+                      value={remnantForm.panjang} 
+                      onChange={e => setRemnantForm({...remnantForm, panjang: e.target.value})} 
+                    />
+                    <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 4 }}>
+                      *Akan dicatat sebagai potongan fisik aktif baru (panjang awal = sisa).
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Asal Barang Sisa <span className="req">*</span></label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      required 
+                      placeholder="Contoh: Sisa Project Instalasi Line A" 
+                      value={remnantForm.asal} 
+                      onChange={e => setRemnantForm({...remnantForm, asal: e.target.value})} 
+                    />
+                    <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 4 }}>
+                      *Sumber asal fisik (misal: sisa proyek, retur mesin, dll).
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           <div className="card-footer" style={{ padding: 20, borderTop: '1px solid var(--br)', background: 'var(--sf2)' }}>
-            <button type="submit" className={`btn btn-lg ${activeTab === 'log' ? 'btn-ylw' : 'btn-grn'}`} disabled={submitting}>
-              {submitting ? 'Menyimpan...' : activeTab === 'log' ? 'Catat ke Histori' : 'Simpan Stok Masuk'}
+            <button 
+              type="submit" 
+              className={`btn btn-lg ${activeTab === 'log' ? 'btn-ylw' : activeTab === 'remnant' ? 'btn-pur' : 'btn-grn'}`} 
+              disabled={submitting}
+            >
+              {submitting ? 'Menyimpan...' : activeTab === 'log' ? 'Catat ke Histori' : activeTab === 'remnant' ? 'Simpan Potongan Remnant' : 'Simpan Stok Masuk'}
             </button>
           </div>
         </form>

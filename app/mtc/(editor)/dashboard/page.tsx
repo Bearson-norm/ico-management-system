@@ -62,6 +62,12 @@ export default async function DashboardPage() {
       purchasingNoPr: true,
       purchasingNoPo: true,
       harga: true,
+      tipeUkur: true,
+      dapatDibeliUlang: true,
+      potonganFisiks: {
+        where: { status: 'aktif' },
+        select: { panjangSisa: true },
+      },
       kategori: { select: { id: true, nama: true } },
       mesins: { select: { id: true, nama: true, vital: true, area: true } },
       movements: {
@@ -78,7 +84,9 @@ export default async function DashboardPage() {
     const totalIn = sp.movements.filter((m) => m.tipe === 'IN').reduce((sum, m) => sum + m.qty, 0);
     const outMovements = sp.movements.filter((m) => m.tipe === 'OUT');
     const totalOut = outMovements.reduce((sum, m) => sum + m.qty, 0);
-    const currentStock = totalIn - totalOut;
+    const currentStock = sp.tipeUkur === 'bulk'
+      ? sp.potonganFisiks.reduce((sum, p) => sum + p.panjangSisa, 0)
+      : totalIn - totalOut;
 
     const usageByDate: Record<string, number> = {};
     outMovements.forEach((m) => {

@@ -61,6 +61,12 @@ export async function GET(req: NextRequest) {
       uom: true,
       lokasi: true,
       harga: true,
+      tipeUkur: true,
+      dapatDibeliUlang: true,
+      potonganFisiks: {
+        where: { status: 'aktif' },
+        select: { id: true, panjangSisa: true, asal: true },
+      },
       mesins: {
         select: {
           id: true,
@@ -246,8 +252,36 @@ export async function GET(req: NextRequest) {
       alasanMax = `Max ${max} dihitung dari ROP (${rop}) + siklus pemakaian 2 bulan`;
     }
 
-    // 8. Reorder Alert Trigger: Stock <= ROP
-    const isWajibPr = currentStock <= rop;
+    const totalPanjangSisa = sp.tipeUkur === 'bulk'
+      ? sp.potonganFisiks.reduce((sum, p) => sum + p.panjangSisa, 0)
+      : currentStock;
+
+    const displayStock = sp.tipeUkur === 'bulk' ? totalPanjangSisa : currentStock;
+
+    // 8. Reorder Alert Trigger:
+    // Item dengan dapatDibeliUlang === false dikeluarkan total dari perhitungan ROP/PR
+    let isWajibPr = false;
+    let remnantAlert: string | null = null;
+
+    if (!sp.dapatDibeliUlang) {
+      isWajibPr = false;
+      rop = 0;
+      min = sp.minQty;
+      max = Math.max(sp.minQty, displayStock);
+      safetyStock = 0;
+      jalur = 'Remnant (Non-Restock)' as any;
+      alasanMax = 'Barang sisa / remnant proyek: tidak ada pengadaan ulang';
+
+      // Tetap beri alert terpisah kalau totalPanjangSisa di bawah minQty
+      if (totalPanjangSisa < sp.minQty) {
+        remnantAlert = 'Sisa menipis, tidak akan direstock';
+        catatan = 'Sisa menipis, tidak akan direstock';
+      } else {
+        catatan = 'Barang sisa non-restock (tidak dibuatkan PR/PO)';
+      }
+    } else {
+      isWajibPr = displayStock <= rop;
+    }
 
     return {
       id: sp.id,
@@ -255,7 +289,12 @@ export async function GET(req: NextRequest) {
       uom: sp.uom,
       lokasi: sp.lokasi || '-',
       harga: Number(sp.harga || 0),
-      currentStock,
+      currentStock: displayStock,
+      totalPanjangSisa,
+      tipeUkur: sp.tipeUkur,
+      dapatDibeliUlang: sp.dapatDibeliUlang,
+      remnantAlert,
+      potonganFisiks: sp.potonganFisiks,
       isMesinProduksi,
       tipePeruntukan,
       mesins: sp.mesins.map((m) => ({ id: m.id, nama: m.nama, vital: m.vital })),

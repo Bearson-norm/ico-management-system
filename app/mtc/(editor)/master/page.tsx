@@ -11,7 +11,7 @@ export default function MasterPage() {
   // Filters State
   const [filterKategori, setFilterKategori] = useState<string>('');
   const [filterMesin, setFilterMesin] = useState<string>('');
-  const [filterStatus, setFilterStatus] = useState<string>(''); // '', 'aktif', 'nonaktif'
+  const [filterStatus, setFilterStatus] = useState<string>('aktif'); // default 'aktif' agar aktif: false konsisten disembunyikan
   const [filterPengadaan, setFilterPengadaan] = useState<string>(''); // '', 'PR', 'PO', 'NONE'
   const [filterTipeMesin, setFilterTipeMesin] = useState<string>('');
   
@@ -50,20 +50,20 @@ export default function MasterPage() {
   useEffect(() => {
     setFilterKategori('');
     setFilterMesin('');
-    setFilterStatus('');
+    setFilterStatus('aktif');
     setFilterPengadaan('');
     setFilterTipeMesin('');
   }, [activeTab]);
 
   useEffect(() => {
     fetchData();
-  }, [activeTab, search]);
+  }, [activeTab, search, filterStatus]);
 
   async function fetchData() {
     setLoading(true);
     try {
       if (activeTab === 'sparepart') {
-        const res = await fetch('/api/mtc/master/sparepart?search=' + search);
+        const res = await fetch(`/api/mtc/master/sparepart?status=${filterStatus || 'aktif'}&search=${encodeURIComponent(search)}`);
         const json = await res.json();
         if (json.success) setSpareparts(json.data);
       } else if (activeTab === 'mesin') {
@@ -100,7 +100,21 @@ export default function MasterPage() {
     setModalType(type);
     setIsEdit(!!data);
     if (type === 'sparepart') {
-      setForm(data ? { ...data, kategoriId: data.kategoriId || '', purchasingStatus: data.purchasingStatus || 'NONE', mesinIds: data.mesins?.map((m: any) => m.id.toString()) || [], currentStock: data.currentStock ?? 0 } : { purchasingStatus: 'NONE', currentStock: 0 });
+      setForm(data ? {
+        ...data,
+        kategoriId: data.kategoriId || '',
+        purchasingStatus: data.purchasingStatus || 'NONE',
+        tipeUkur: data.tipeUkur || 'unit',
+        dapatDibeliUlang: data.dapatDibeliUlang !== undefined ? data.dapatDibeliUlang : true,
+        mesinIds: data.mesins?.map((m: any) => m.id.toString()) || [],
+        currentStock: data.currentStock ?? 0,
+      } : {
+        purchasingStatus: 'NONE',
+        currentStock: 0,
+        tipeUkur: 'unit',
+        dapatDibeliUlang: true,
+        aktif: true,
+      });
     } else if (type === 'mesin') {
       setForm(data
           ? { ...data, tipe: data.tipe || 'perbaikan', vital: data.vital ?? false }
@@ -536,8 +550,12 @@ export default function MasterPage() {
                           <td data-label="Item ID" className="text-mono text-tiny text-muted">{s.id}</td>
                           <td data-label="Nama Barang" style={{ fontWeight: 600 }}>
                             <div>{s.nama}</div>
-                            {s.purchasingStatus === 'PR' && <span className="badge badge-ylw" style={{ fontSize: 9, marginTop: 4, display: 'inline-block' }}>⏳ Sedang PR</span>}
-                            {s.purchasingStatus === 'PO' && <span className="badge badge-blu" style={{ fontSize: 9, marginTop: 4, display: 'inline-block' }}>📦 Sudah PO</span>}
+                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 4 }}>
+                              {s.tipeUkur === 'bulk' && <span className="badge badge-pur" style={{ fontSize: 9 }}>🧵 Bulk</span>}
+                              {s.dapatDibeliUlang === false && <span className="badge badge-red" style={{ fontSize: 9 }}>⛔ Non-Restock</span>}
+                              {s.purchasingStatus === 'PR' && <span className="badge badge-ylw" style={{ fontSize: 9 }}>⏳ Sedang PR</span>}
+                              {s.purchasingStatus === 'PO' && <span className="badge badge-blu" style={{ fontSize: 9 }}>📦 Sudah PO</span>}
+                            </div>
                           </td>
                           <td data-label="Lokasi"><span className="badge badge-blu" style={{ fontSize: 10 }}>{s.lokasi || '—'}</span></td>
                           <td data-label="Kategori">{s.kategori?.nama || '—'}</td>
@@ -852,6 +870,52 @@ export default function MasterPage() {
                         </select>
                       </div>
                     </div>
+                    <div className="form-grid-2">
+                      <div className="form-group">
+                        <label className="form-label">Tipe Ukuran / Satuan</label>
+                        <select 
+                          className="form-input form-select" 
+                          value={form.tipeUkur || 'unit'} 
+                          onChange={e => setForm({...form, tipeUkur: e.target.value})}
+                        >
+                          <option value="unit">📦 Unit (Pcs, Box, Set - Qty Utuh)</option>
+                          <option value="bulk">🧵 Bulk / Potongan (Meter, Roll, Sisa Fisik)</option>
+                        </select>
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Dapat Dibeli Ulang (Restock)</label>
+                        <select 
+                          className="form-input form-select" 
+                          value={form.dapatDibeliUlang !== false ? 'true' : 'false'} 
+                          onChange={e => setForm({...form, dapatDibeliUlang: e.target.value === 'true'})}
+                        >
+                          <option value="true">✅ Ya (Bisa ROP / PR Pembelian Baru)</option>
+                          <option value="false">⛔ Tidak (Barang Remnant / Sisa Proyek Khusus)</option>
+                        </select>
+                      </div>
+                    </div>
+                    {form.tipeUkur === 'bulk' && isEdit && (
+                      <div className="form-group" style={{ gridColumn: '1/-1', background: 'var(--sf2)', padding: '12px 14px', borderRadius: 8, border: '1px solid var(--br)' }}>
+                        <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span>🧵 Potongan Fisik Aktif ({form.potonganFisiks?.length || 0})</span>
+                          <span style={{ fontSize: 12, color: 'var(--blu)' }}>
+                            Total Sisa: {form.potonganFisiks?.reduce((acc: number, p: any) => acc + Number(p.panjangSisa), 0) || 0} {form.uom || 'm'}
+                          </span>
+                        </div>
+                        {form.potonganFisiks && form.potonganFisiks.length > 0 ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 150, overflowY: 'auto' }}>
+                            {form.potonganFisiks.map((p: any) => (
+                              <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg)', padding: '6px 10px', borderRadius: 6, fontSize: 12, border: '1px solid var(--br)' }}>
+                                <span><strong>#{p.id}</strong> — Asal: {p.asal || '-'} (Awal: {p.panjangAwal} {form.uom})</span>
+                                <span style={{ fontWeight: 700, color: 'var(--grn)' }}>Sisa: {p.panjangSisa} {form.uom}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: 12, color: 'var(--tx3)' }}>Belum ada potongan fisik aktif tercatat.</div>
+                        )}
+                      </div>
+                    )}
                     <div className="form-group" style={{ gridColumn: '1/-1' }}>
                       <label className="form-label">Digunakan Pada Mesin (BOM)</label>
                       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', padding: '10px 12px', background: 'var(--bg)', borderRadius: 8, border: '1px solid var(--br)' }}>

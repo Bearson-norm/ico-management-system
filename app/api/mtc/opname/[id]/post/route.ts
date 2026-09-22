@@ -42,7 +42,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       const spIds = itemsToAdjust.map(i => i.sparepartId).filter(Boolean) as string[];
       const spareparts = spIds.length > 0 ? await tx.sparepart.findMany({
         where: { id: { in: spIds } },
-        select: { id: true, harga: true, lokasi: true }
+        select: { id: true, harga: true, lokasi: true, tipeUkur: true }
       }) : [];
       const spMap = new Map(spareparts.map(s => [s.id, s]));
 
@@ -65,6 +65,20 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
             tanggal: new Date()
           }
         });
+
+        // Jika barang bertipe bulk dan surplus (+), catat potongan fisik baru dari opname
+        if (isPlus && sp && sp.tipeUkur === 'bulk') {
+          await tx.potonganFisik.create({
+            data: {
+              sparepartId: sp.id,
+              panjangAwal: movementQty,
+              panjangSisa: movementQty,
+              asal: `Stock Opname #${sessionId} (${session.judul})`,
+              tanggalMasuk: new Date(),
+              status: 'aktif',
+            },
+          });
+        }
       }
     });
 
@@ -100,7 +114,14 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
         }
       });
 
-      // 2. Reset session status back to DRAFT
+      // 2. Rollback & delete PotonganFisik created by this opname session
+      await tx.potonganFisik.deleteMany({
+        where: {
+          asal: `Stock Opname #${sessionId} (${session.judul})`
+        }
+      });
+
+      // 3. Reset session status back to DRAFT
       await tx.opnameSession.update({
         where: { id: sessionId },
         data: {

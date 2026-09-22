@@ -49,10 +49,12 @@ export async function GET(req: NextRequest) {
     if (mesinFilter) {
       where.mesins = { some: { nama: mesinFilter } };
     }
-    if (statusFilter === 'aktif') {
-      where.aktif = true;
-    } else if (statusFilter === 'nonaktif') {
+    if (statusFilter === 'nonaktif') {
       where.aktif = false;
+    } else if (statusFilter === 'all') {
+      // tampilkan semua
+    } else {
+      where.aktif = true; // default: aktif: false konsisten disembunyikan
     }
     if (pengadaanFilter) {
       where.purchasingStatus = pengadaanFilter;
@@ -69,6 +71,10 @@ export async function GET(req: NextRequest) {
       include: {
         kategori: true,
         mesins: { select: { id: true, nama: true } },
+        potonganFisiks: {
+          where: { status: 'aktif' },
+          select: { panjangSisa: true },
+        },
         movements: {
           where: {
             tipe: { in: ['IN', 'OUT'] },
@@ -81,9 +87,14 @@ export async function GET(req: NextRequest) {
     });
 
     return rows.map((sp, idx) => {
-      const totalIn = sp.movements.filter((m) => m.tipe === 'IN').reduce((s, m) => s + m.qty, 0);
-      const totalOut = sp.movements.filter((m) => m.tipe === 'OUT').reduce((s, m) => s + m.qty, 0);
-      const currentStock = totalIn - totalOut;
+      let currentStock: number;
+      if (sp.tipeUkur === 'bulk') {
+        currentStock = sp.potonganFisiks.reduce((sum, p) => sum + p.panjangSisa, 0);
+      } else {
+        const totalIn = sp.movements.filter((m) => m.tipe === 'IN').reduce((s, m) => s + m.qty, 0);
+        const totalOut = sp.movements.filter((m) => m.tipe === 'OUT').reduce((s, m) => s + m.qty, 0);
+        currentStock = totalIn - totalOut;
+      }
       const hargaNum = Number(sp.harga) || 0;
       const totalNilai = currentStock * hargaNum;
 
@@ -257,8 +268,13 @@ export async function GET(req: NextRequest) {
       where,
       include: {
         spareparts: {
+          where: { aktif: true },
           include: {
             kategori: true,
+            potonganFisiks: {
+              where: { status: 'aktif' },
+              select: { panjangSisa: true },
+            },
             movements: {
               where: {
                 tipe: { in: ['IN', 'OUT'] },
@@ -300,7 +316,9 @@ export async function GET(req: NextRequest) {
         for (const sp of m.spareparts) {
           const totalIn = sp.movements.filter((mv) => mv.tipe === 'IN').reduce((s, mv) => s + mv.qty, 0);
           const totalOut = sp.movements.filter((mv) => mv.tipe === 'OUT').reduce((s, mv) => s + mv.qty, 0);
-          const currentStock = totalIn - totalOut;
+          const currentStock = sp.tipeUkur === 'bulk'
+            ? sp.potonganFisiks.reduce((s, p) => s + p.panjangSisa, 0)
+            : totalIn - totalOut;
 
           rows.push({
             'No': counter++,

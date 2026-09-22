@@ -49,6 +49,12 @@ export async function GET(req: NextRequest) {
       uom: true,
       lokasi: true,
       harga: true,
+      tipeUkur: true,
+      dapatDibeliUlang: true,
+      potonganFisiks: {
+        where: { status: 'aktif' },
+        select: { panjangSisa: true },
+      },
       kategori: { select: { nama: true } },
       mesins: {
         select: {
@@ -159,9 +165,33 @@ export async function GET(req: NextRequest) {
       max = Math.max(rop + 1, Math.ceil(rop + (avgMonthlyUsage * 2)));
     }
 
-    const isWajibPr = currentStock <= rop;
+    const totalPanjangSisa = sp.tipeUkur === 'bulk'
+      ? sp.potonganFisiks.reduce((sum, p) => sum + p.panjangSisa, 0)
+      : currentStock;
+
+    const displayStock = sp.tipeUkur === 'bulk' ? totalPanjangSisa : currentStock;
     const hargaNum = Number(sp.harga) || 0;
-    const totalNilaiStok = currentStock * hargaNum;
+    const totalNilaiStok = displayStock * hargaNum;
+
+    let isWajibPr = false;
+    let statusReorder = 'AMAN';
+
+    if (!sp.dapatDibeliUlang) {
+      isWajibPr = false;
+      rop = 0;
+      min = sp.minQty;
+      max = Math.max(sp.minQty, displayStock);
+      safetyStock = 0;
+      jalur = 'Remnant (Non-Restock)' as any;
+      if (totalPanjangSisa < sp.minQty) {
+        statusReorder = 'SISA MENIPIS (TIDAK RESTOCK)';
+      } else {
+        statusReorder = 'SISA AMAN (TIDAK RESTOCK)';
+      }
+    } else {
+      isWajibPr = displayStock <= rop;
+      statusReorder = isWajibPr ? 'WAJIB REORDER / PR' : 'AMAN';
+    }
 
     return {
       id: sp.id,
@@ -170,7 +200,7 @@ export async function GET(req: NextRequest) {
       uom: sp.uom || 'Pcs',
       lokasi: sp.lokasi || '-',
       harga: hargaNum,
-      currentStock,
+      currentStock: displayStock,
       totalNilaiStok,
       avgLeadTime: sp.avgLeadTime || 0,
       maxLeadTime: sp.maxLeadTime || 0,
@@ -183,11 +213,12 @@ export async function GET(req: NextRequest) {
       totalOut12m,
       avgMonthly12m,
       avgMonthlyUsage: Math.round(avgMonthlyUsage * 100) / 100,
-      rop,
+      rop: sp.dapatDibeliUlang ? rop : 0,
       safetyStock: Math.round(safetyStock * 100) / 100,
       min,
       max,
       isWajibPr,
+      statusReorder,
       jalur,
       tipePeruntukan,
       mesinList: sp.mesins.map((m) => m.nama).join(', ') || '-',
@@ -242,7 +273,7 @@ export async function GET(req: NextRequest) {
     'Safety Stock': item.safetyStock,
     'Min Qty': item.min,
     'Max Qty': item.max,
-    'Status Reorder': item.isWajibPr ? 'WAJIB REORDER / PR' : 'AMAN',
+    'Status Reorder': item.statusReorder,
     'Klasifikasi Stok': item.jalur,
     'Tipe Peruntukan': item.tipePeruntukan,
     'Mesin Terkait': item.mesinList,

@@ -19,7 +19,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     if (session.status === 'POSTED') return err('Sesi sudah di-posting', 400);
 
     const body = await req.json();
-    const { namaItem, kategori, lokasi, uom, qtyFisik, harga, catatan, createMaster } = body;
+    const { namaItem, kategori, lokasi, uom, qtyFisik, harga, catatan, createMaster, tipeUkur, dapatDibeliUlang } = body;
 
     if (!namaItem || !String(namaItem).trim()) {
       return err('Nama barang fisik wajib diisi', 400);
@@ -56,7 +56,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           uom: cleanUom,
           lokasi: cleanLokasi,
           harga: harga ? Number(harga) : 0,
-          aktif: true
+          aktif: true,
+          tipeUkur: tipeUkur === 'bulk' ? 'bulk' : 'unit',
+          dapatDibeliUlang: dapatDibeliUlang !== undefined ? Boolean(dapatDibeliUlang) : true,
         }
       });
       sparepartId = newSp.id;

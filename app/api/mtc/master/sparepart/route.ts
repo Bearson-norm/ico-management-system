@@ -10,24 +10,37 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const search = (searchParams.get('search') ?? '').trim();
   const simple = searchParams.get('simple') === 'true';
+  const status = searchParams.get('status') ?? 'aktif';
+
+  const where: any = {
+    ...(status === 'all'
+      ? {}
+      : status === 'nonaktif'
+      ? { aktif: false }
+      : { aktif: true }),
+    ...(search
+      ? {
+          OR: [
+            { nama: { contains: search, mode: 'insensitive' } },
+            { id: { contains: search, mode: 'insensitive' } },
+            { lokasi: { contains: search, mode: 'insensitive' } },
+            { kategori: { nama: { contains: search, mode: 'insensitive' } } },
+            { mesins: { some: { nama: { contains: search, mode: 'insensitive' } } } },
+          ],
+        }
+      : {}),
+  };
 
   const rows = await prisma.sparepart.findMany({
-    where: {
-      ...(search
-        ? {
-            OR: [
-              { nama: { contains: search, mode: 'insensitive' } },
-              { id: { contains: search, mode: 'insensitive' } },
-              { lokasi: { contains: search, mode: 'insensitive' } },
-              { kategori: { nama: { contains: search, mode: 'insensitive' } } },
-              { mesins: { some: { nama: { contains: search, mode: 'insensitive' } } } },
-            ],
-          }
-        : {}),
-    },
+    where,
     include: {
       kategori: true,
       mesins: { select: { id: true, nama: true } },
+      potonganFisiks: {
+        where: { status: 'aktif' },
+        orderBy: [{ tanggalMasuk: 'asc' }, { id: 'asc' }],
+        select: { id: true, panjangAwal: true, panjangSisa: true, asal: true, tanggalMasuk: true },
+      },
       ...(simple
         ? {}
         : {
@@ -45,13 +58,16 @@ export async function GET(req: NextRequest) {
   });
 
   const data = rows.map((sp) => {
-    if (simple) {
-      return { ...sp, currentStock: 0 };
+    let currentStock = 0;
+    if (sp.tipeUkur === 'bulk') {
+      currentStock = sp.potonganFisiks?.reduce((s, p) => s + p.panjangSisa, 0) ?? 0;
+    } else if (!simple) {
+      const totalIn = sp.movements?.filter((m) => m.tipe === 'IN').reduce((s, m) => s + m.qty, 0) ?? 0;
+      const totalOut = sp.movements?.filter((m) => m.tipe === 'OUT').reduce((s, m) => s + m.qty, 0) ?? 0;
+      currentStock = totalIn - totalOut;
     }
-    const totalIn = sp.movements.filter((m) => m.tipe === 'IN').reduce((s, m) => s + m.qty, 0);
-    const totalOut = sp.movements.filter((m) => m.tipe === 'OUT').reduce((s, m) => s + m.qty, 0);
     const { movements: _movements, ...rest } = sp;
-    return { ...rest, currentStock: totalIn - totalOut };
+    return { ...rest, currentStock };
   });
 
   return ok(data);
@@ -95,6 +111,8 @@ export async function POST(req: NextRequest) {
     maxLeadTime,
     avgLeadTime,
     aktif,
+    tipeUkur,
+    dapatDibeliUlang,
     mesinIds,
     purchasingStatus,
     purchasingQty,
@@ -122,6 +140,8 @@ export async function POST(req: NextRequest) {
         maxLeadTime: maxLeadTime != null ? parseInt(String(maxLeadTime), 10) || 0 : 0,
         avgLeadTime: avgLeadTime != null ? parseFloat(String(avgLeadTime)) || 0 : 0,
         aktif: aktif !== undefined ? Boolean(aktif) : true,
+        tipeUkur: tipeUkur === 'bulk' ? 'bulk' : 'unit',
+        dapatDibeliUlang: dapatDibeliUlang !== undefined ? Boolean(dapatDibeliUlang) : true,
         purchasingStatus: purchasingStatus || 'WAITING_PRICE',
         purchasingQty: purchasingQty != null ? Number(purchasingQty) : 0,
         linkReference: linkReference?.trim() || null,
@@ -153,6 +173,8 @@ export async function PUT(req: NextRequest) {
     maxLeadTime,
     avgLeadTime,
     aktif,
+    tipeUkur,
+    dapatDibeliUlang,
     mesinIds,
     purchasingStatus,
     purchasingQty,
@@ -215,6 +237,8 @@ export async function PUT(req: NextRequest) {
           ? { avgLeadTime: parseFloat(String(avgLeadTime)) || 0 }
           : {}),
         ...(aktif === undefined ? {} : { aktif: Boolean(aktif) }),
+        ...(tipeUkur !== undefined ? { tipeUkur: tipeUkur === 'bulk' ? 'bulk' : 'unit' } : {}),
+        ...(dapatDibeliUlang !== undefined ? { dapatDibeliUlang: Boolean(dapatDibeliUlang) } : {}),
         ...(purchasingStatus !== undefined ? { 
           purchasingStatus: String(purchasingStatus),
           ...(purchasingStatus === 'NONE' ? { purchasingQty: 0, purchasingNoPr: null, purchasingNoPo: null } : {})

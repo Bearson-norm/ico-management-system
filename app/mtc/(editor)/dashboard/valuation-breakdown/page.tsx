@@ -17,6 +17,11 @@ export default async function ValuationBreakdownPage() {
       harga: true,
       uom: true,
       lokasi: true,
+      tipeUkur: true,
+      potonganFisiks: {
+        where: { status: 'aktif' },
+        select: { panjangSisa: true },
+      },
       movements: {
         where: {
           tipe: { in: ['IN', 'OUT'] },
@@ -29,11 +34,20 @@ export default async function ValuationBreakdownPage() {
 
   // Calculate stocks and valuations
   const sparepartsValuation = allSpareparts.map((sp) => {
-    const totalIn = sp.movements.filter((m) => m.tipe === 'IN').reduce((sum, m) => sum + m.qty, 0);
-    const totalOut = sp.movements.filter((m) => m.tipe === 'OUT').reduce((sum, m) => sum + m.qty, 0);
-    const currentStock = totalIn - totalOut;
     const price = Number(sp.harga || 0);
-    const valuation = currentStock > 0 ? currentStock * price : 0;
+    let currentStock: number;
+    let valuation: number;
+
+    if (sp.tipeUkur === 'bulk') {
+      const totalPanjangSisa = sp.potonganFisiks.reduce((sum, p) => sum + p.panjangSisa, 0);
+      currentStock = totalPanjangSisa;
+      valuation = currentStock > 0 ? currentStock * price : 0;
+    } else {
+      const totalIn = sp.movements.filter((m) => m.tipe === 'IN').reduce((sum, m) => sum + m.qty, 0);
+      const totalOut = sp.movements.filter((m) => m.tipe === 'OUT').reduce((sum, m) => sum + m.qty, 0);
+      currentStock = totalIn - totalOut;
+      valuation = currentStock > 0 ? currentStock * price : 0;
+    }
 
     return {
       id: sp.id,

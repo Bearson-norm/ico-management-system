@@ -76,6 +76,8 @@ model Sparepart {
   maxLeadTime  Int       @default(0) @map("max_lead_time")
   avgLeadTime  Float     @default(0) @map("avg_lead_time")
   aktif        Boolean   @default(true)
+  tipeUkur     String    @default("unit") @map("tipe_ukur") // "unit" | "bulk"
+  dapatDibeliUlang Boolean @default(true) @map("dapat_dibeli_ulang")
   purchasingStatus String  @default("NONE") @map("purchasing_status")
   purchasingQty Int       @default(0) @map("purchasing_qty")
   purchasingNoPr String?   @map("purchasing_no_pr")
@@ -94,6 +96,7 @@ model Sparepart {
   movements  StockMovement[]
   procurementTrackings ProcurementTracking[]
   opnameItems OpnameItem[]
+  potonganFisiks PotonganFisik[]
 
   @@map("sparepart")
 }
@@ -252,6 +255,26 @@ model OpnameItem {
   sparepart Sparepart?    @relation(fields: [sparepartId], references: [id])
 
   @@map("opname_item")
+}
+
+// ─── Potongan Fisik (Remnant / Bulk Tracking) ────────────────────────────────
+
+model PotonganFisik {
+  id           Int       @id @default(autoincrement())
+  sparepartId  String    @map("sparepart_id")
+  panjangAwal  Float     @map("panjang_awal")
+  panjangSisa  Float     @map("panjang_sisa")
+  asal         String
+  tanggalMasuk DateTime  @default(now()) @map("tanggal_masuk")
+  status       String    @default("aktif") // "aktif" | "habis"
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  sparepart    Sparepart @relation(fields: [sparepartId], references: [id], onDelete: Cascade)
+
+  @@index([sparepartId])
+  @@index([status])
+  @@map("potongan_fisik")
 }
 
 
