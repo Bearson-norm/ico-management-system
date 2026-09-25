@@ -276,6 +276,71 @@ export async function POST(req: NextRequest) {
           },
         });
 
+        // 3b. Jika Kemasan Roll atau Sparepart Bertipe Bulk, buat baris PotonganFisik per Roll
+        const isRollOrBulk = selectedUomPack.toLowerCase() === 'roll' || sp.tipeUkur === 'bulk';
+        if (isRollOrBulk) {
+          if (sp.tipeUkur !== 'bulk' || (selectedUomUnit && sp.uom !== selectedUomUnit)) {
+            await tx.sparepart.update({
+              where: { id: sp.id },
+              data: {
+                tipeUkur: 'bulk',
+                ...(selectedUomUnit ? { uom: selectedUomUnit } : {}),
+              },
+            });
+          }
+
+          // Bersihkan potongan fisik lama terkait tracking ini jika penerimaan diupdate (Idempotency)
+          await tx.potonganFisik.deleteMany({
+            where: {
+              sparepartId: sp.id,
+              asal: { contains: `#${tracking.id}` },
+            },
+          });
+
+          if (packModeActive && multiplier > 1) {
+            const rollLength = multiplier;
+            const fullRolls = Math.floor(actualReceiveUnits / rollLength);
+            const remainder = actualReceiveUnits % rollLength;
+
+            for (let i = 1; i <= fullRolls; i++) {
+              await tx.potonganFisik.create({
+                data: {
+                  sparepartId: sp.id,
+                  panjangAwal: rollLength,
+                  panjangSisa: rollLength,
+                  asal: `PO ${tracking.nomorPo || '—'} #${tracking.id} (Roll ${i}/${fullRolls}${remainder > 0 ? '+sisa' : ''})`,
+                  tanggalMasuk: tDate,
+                  status: 'aktif',
+                },
+              });
+            }
+
+            if (remainder > 0) {
+              await tx.potonganFisik.create({
+                data: {
+                  sparepartId: sp.id,
+                  panjangAwal: remainder,
+                  panjangSisa: remainder,
+                  asal: `PO ${tracking.nomorPo || '—'} #${tracking.id} (Potongan Sisa ${remainder} ${selectedUomUnit})`,
+                  tanggalMasuk: tDate,
+                  status: 'aktif',
+                },
+              });
+            }
+          } else {
+            await tx.potonganFisik.create({
+              data: {
+                sparepartId: sp.id,
+                panjangAwal: actualReceiveUnits,
+                panjangSisa: actualReceiveUnits,
+                asal: `PO ${tracking.nomorPo || '—'} #${tracking.id} (${actualReceiveUnits} ${selectedUomUnit || sp.uom})`,
+                tanggalMasuk: tDate,
+                status: 'aktif',
+              },
+            });
+          }
+        }
+
         // 4. Update data pelacakan yang diterima
         await tx.procurementTracking.update({
           where: { id: tracking.id },
@@ -506,6 +571,13 @@ export async function DELETE(req: NextRequest) {
             }] : []),
           ]
         }
+      });
+
+      // 1b. Bersihkan potongan fisik terkait jika penerimaan dibatalkan
+      await tx.potonganFisik.deleteMany({
+        where: {
+          asal: { contains: `#${tracking.id}` },
+        },
       });
 
       // 2. Cari apakah ada sibling pending (sisa pecahan parsial yang belum diterima) untuk auto-merge

@@ -261,6 +261,23 @@ export const ReceiveModal: React.FC<ReceiveModalProps> = ({
                     </span>
                   )}
                 </div>
+                {uomPack === 'Roll' && (
+                  <div
+                    style={{
+                      marginTop: 8,
+                      padding: '8px 10px',
+                      background: 'rgba(168, 85, 247, 0.12)',
+                      border: '1px solid rgba(168, 85, 247, 0.35)',
+                      borderRadius: 6,
+                      color: 'var(--pur)',
+                      fontSize: 10.5,
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    🧵 <strong>Sistem Pisah Roll Aktif:</strong> Barang ini akan otomatis dipisah menjadi{' '}
+                    <strong>{Math.floor(receiveQty / (qtyPerPack || 1))} Roll</strong> fisik (@ {qtyPerPack} {uomUnit}) di kartu stok gudang. Saat barang keluar (stock-out), teknisi dapat memilih roll spesifik mana yang dipotong tanpa mengganggu roll lainnya.
+                  </div>
+                )}
               </div>
             </div>
           )}

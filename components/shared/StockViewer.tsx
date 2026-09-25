@@ -730,6 +730,25 @@ function KolomCard({ kolom, items }: { kolom: string; items: StockItem[] }) {
                   <MovementClassBadge movementClass={item.movementClass} />
                 </div>
                 <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 1 }}>{item.id}</div>
+                {item.tipeUkur === 'bulk' && item.potonganFisiks && item.potonganFisiks.length > 0 && (
+                  <div style={{ fontSize: 9.5, color: 'var(--pur)', marginTop: 3, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                    {item.potonganFisiks.map((pf) => (
+                      <span
+                        key={pf.id}
+                        title={`Potongan #${pf.id}: Asal "${pf.asal}"`}
+                        style={{
+                          background: 'rgba(168, 85, 247, 0.1)',
+                          border: '1px solid rgba(168, 85, 247, 0.3)',
+                          borderRadius: 4,
+                          padding: '1px 5px',
+                          fontWeight: 600,
+                        }}
+                      >
+                        Roll #{pf.id}: {pf.panjangSisa} {item.uom}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Stok */}
@@ -859,6 +878,25 @@ function StockItemTableRow({
           ) : null}
         </div>
         <div style={{ fontSize: 10, color: 'var(--tx3)' }}>{item.id}</div>
+        {item.tipeUkur === 'bulk' && item.potonganFisiks && item.potonganFisiks.length > 0 && (
+          <div style={{ fontSize: 9.5, color: 'var(--pur)', marginTop: 4, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+            {item.potonganFisiks.map((pf) => (
+              <span
+                key={pf.id}
+                title={`Potongan #${pf.id}: Asal "${pf.asal}"`}
+                style={{
+                  background: 'rgba(168, 85, 247, 0.1)',
+                  border: '1px solid rgba(168, 85, 247, 0.3)',
+                  borderRadius: 4,
+                  padding: '1px 5px',
+                  fontWeight: 600,
+                }}
+              >
+                Roll #{pf.id}: {pf.panjangSisa} {item.uom}
+              </span>
+            ))}
+          </div>
+        )}
       </td>
       <td>
         <span style={{ fontSize: 11, background: 'var(--sf3)', color: 'var(--tx2)', padding: '2px 8px', borderRadius: 20, fontWeight: 600 }}>
@@ -919,6 +957,25 @@ function StockItemCard({
         {item.purchasingStatus === 'PO' && <span className="badge badge-blu" style={{ fontSize: 9, padding: '1px 6px', fontWeight: 800, flexShrink: 0 }}>📦 Sudah PO</span>}
       </div>
       <div className="stock-item-card__id">{item.id}</div>
+      {item.tipeUkur === 'bulk' && item.potonganFisiks && item.potonganFisiks.length > 0 && (
+        <div style={{ fontSize: 9.5, color: 'var(--pur)', marginTop: 4, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+          {item.potonganFisiks.map((pf) => (
+            <span
+              key={pf.id}
+              title={`Potongan #${pf.id}: Asal "${pf.asal}"`}
+              style={{
+                background: 'rgba(168, 85, 247, 0.1)',
+                border: '1px solid rgba(168, 85, 247, 0.3)',
+                borderRadius: 4,
+                padding: '1px 5px',
+                fontWeight: 600,
+              }}
+            >
+              Roll #{pf.id}: {pf.panjangSisa} {item.uom}
+            </span>
+          ))}
+        </div>
+      )}
 
       <div className="stock-item-card__location">
         <LocationChip parsed={item._parsed!} size="sm" />
