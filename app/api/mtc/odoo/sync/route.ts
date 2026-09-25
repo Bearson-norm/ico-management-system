@@ -162,13 +162,6 @@ function isGenericName(name: string | null | undefined): boolean {
     }
   }
 
-  // All caps + 3+ words + length > 15 = likely analytical account name
-  const isAllCaps = trimmed === trimmed.toUpperCase() && /[A-Z]/.test(trimmed);
-  const wordCount = trimmed.split(/\s+/).length;
-  if (isAllCaps && wordCount >= 3 && trimmed.length > 15) {
-    return true;
-  }
-  
   return false;
 }
 
@@ -386,6 +379,35 @@ function matchItemsToLines(items: any[], lines: any[]): Map<number, any> {
       usedItemIds.add(itemId);
       usedLineIds.add(lineKey);
       result.set(itemId, cand.line);
+    }
+  }
+
+  // Split Siblings Matcher:
+  // If an Odoo line was matched to an item, and there are other items in `items`
+  // that are split siblings of that item (same name/sparepart and same PR/group),
+  // they belong to the SAME Odoo PO line!
+  for (const item of items) {
+    if (result.has(item.id)) continue;
+
+    const matchedSibling = items.find((sib) => {
+      if (sib.id === item.id || !result.has(sib.id)) return false;
+
+      // Match by sparepartId if both have it
+      if (item.sparepartId && sib.sparepartId && item.sparepartId === sib.sparepartId) {
+        return true;
+      }
+
+      // Match by exact originalName (case-insensitive)
+      const nameA = item.originalName?.trim().toLowerCase();
+      const nameB = sib.originalName?.trim().toLowerCase();
+      return nameA && nameB && nameA === nameB;
+    });
+
+    if (matchedSibling) {
+      const siblingLine = result.get(matchedSibling.id);
+      if (siblingLine) {
+        result.set(item.id, siblingLine);
+      }
     }
   }
 
@@ -1413,14 +1435,23 @@ export async function POST(req: NextRequest) {
                       data: updateData
                     });
                   }
-                } else if (!isGenericName(prodName)) {
+                } else {
+                  // Fallback name if generic
+                  let finalProdName = prodName;
+                  if (isGenericName(finalProdName)) {
+                    const desc = (line.description || line.name || '').replace(/<[^>]*>/g, '').trim();
+                    if (desc && !isGenericName(desc)) {
+                      finalProdName = desc;
+                    }
+                  }
+
                   // Double check DB directly to prevent duplicate creation
                   const dbExisting = await tx.procurementTracking.findFirst({
                     where: {
                       nomorPr: prName,
                       OR: [
-                        { originalName: { equals: prodName, mode: 'insensitive' } },
-                        { originalName: { contains: prodName, mode: 'insensitive' } }
+                        { originalName: { equals: finalProdName, mode: 'insensitive' } },
+                        { originalName: { contains: finalProdName, mode: 'insensitive' } }
                       ]
                     }
                   });
@@ -1441,13 +1472,13 @@ export async function POST(req: NextRequest) {
                     // NO MATCH: create new local item
                     await tx.procurementTracking.create({
                       data: {
-                        originalName: prodName,
+                        originalName: finalProdName,
                         qty: Math.round(qty),
                         harga: price,
                         nomorPr: prName,
                         statusPr: localStatusPr,
                         tanggalList: prDate,
-                        keterangan: line.name || null,
+                        keterangan: (line.name && line.name !== finalProdName) ? line.name : (line.description || null),
                         sparepartId,
                         isStocked: sparepartId ? true : false,
                         productCategory: 'Sparepart',
@@ -2162,7 +2193,8 @@ export async function POST(req: NextRequest) {
               updateData.linkReferences = combinePrAndPoLinks(item.linkReferences, odooPoUrl, 'po');
 
               if (matchedPrice > 0) {
-                updateData.harga = matchedPrice;
+                const packM = getPackMultiplier(item.linkedPartsJson);
+                updateData.harga = packM > 1 ? Number((matchedPrice / packM).toFixed(2)) : matchedPrice;
               } else if (amountTotal > 0 && (!item.harga || Number(item.harga) === 0)) {
                 updateData.harga = amountTotal;
               }
@@ -2212,11 +2244,16 @@ export async function POST(req: NextRequest) {
 
               // 2. Deteksi sibling items (jika item dipecah/split karena penerimaan parsial)
               const siblingWhere: any = {
-                nomorPo: poName,
                 originalName: item.originalName,
               };
               if (item.nomorPr) {
                 siblingWhere.nomorPr = item.nomorPr;
+                siblingWhere.OR = [
+                  { nomorPo: poName },
+                  { nomorPo: null }
+                ];
+              } else {
+                siblingWhere.nomorPo = poName;
               }
               const siblingItems = await tx.procurementTracking.findMany({
                 where: siblingWhere
@@ -2258,7 +2295,10 @@ export async function POST(req: NextRequest) {
                 }
               }
 
-              const newReceiptQty = qtyReceived - alreadyReceivedQty;
+              const packM = getPackMultiplier(item.linkedPartsJson);
+              const matchedQtyInUnits = matchedQty * packM;
+              const qtyReceivedInUnits = qtyReceived * packM;
+              const newReceiptQty = qtyReceivedInUnits - alreadyReceivedQty;
               let finalIsGrDone = isGrDone;
               const isPartialOdooGr = !!(matchedLine && qtyReceived > 0 && qtyReceived < matchedQty);
 
@@ -2269,13 +2309,13 @@ export async function POST(req: NextRequest) {
                   updateData.qty = physicallyReceivedQty > 0 ? physicallyReceivedQty : item.qty;
                 } else {
                   // Item ini adalah sisa pending pesanan
-                  const remainingFromPo = matchedQty > 0 ? Math.max(0, Math.round(matchedQty) - alreadyReceivedQty) : item.qty;
+                  const remainingFromPo = matchedQtyInUnits > 0 ? Math.max(0, Math.round(matchedQtyInUnits) - alreadyReceivedQty) : item.qty;
                   updateData.qty = remainingFromPo > 0 ? remainingFromPo : item.qty;
                 }
               } else {
                 // Item tunggal (belum pernah di-split)
                 if (matchedQty > 0) {
-                  updateData.qty = Math.round(matchedQty);
+                  updateData.qty = packM > 1 ? matchedQtyInUnits : Math.round(matchedQty);
                 }
               }
 

@@ -54,7 +54,17 @@ export const ReceiveModal: React.FC<ReceiveModalProps> = ({
 }) => {
   if (!showReceiveModal || !receivingItem) return null;
 
-  const multiplier = isPackMode && Number(qtyPerPack) > 1 ? Number(qtyPerPack) : 1;
+  let isAlreadyInUnits = false;
+  if (receivingItem.linkedPartsJson) {
+    try {
+      const meta = JSON.parse(receivingItem.linkedPartsJson);
+      if (meta && (meta.isConvertedToUnits || meta.originalPackQty !== undefined)) {
+        isAlreadyInUnits = true;
+      }
+    } catch {}
+  }
+
+  const multiplier = isPackMode && !isAlreadyInUnits && Number(qtyPerPack) > 1 ? Number(qtyPerPack) : 1;
   const totalPhysicalUnits = receivingItem.qty * multiplier;
   const unitPrice = multiplier > 1 ? Math.round((receivePrice || 0) / multiplier) : (receivePrice || 0);
 

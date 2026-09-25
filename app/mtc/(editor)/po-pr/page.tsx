@@ -544,6 +544,7 @@ export default function ProcurementTrackingPage() {
     let initialUomPack = 'Pack';
     let initialUomUnit = item.sparepart?.uom || 'Pcs';
 
+    let isAlreadyInUnits = false;
     if (item.linkedPartsJson) {
       try {
         const meta = JSON.parse(item.linkedPartsJson);
@@ -552,6 +553,9 @@ export default function ProcurementTrackingPage() {
           initialPackQty = Number(meta.qtyPerPack) || 1;
           initialUomPack = meta.uomPack || 'Pack';
           initialUomUnit = meta.uomUnit || item.sparepart?.uom || 'Pcs';
+          if (meta.isConvertedToUnits || meta.originalPackQty !== undefined) {
+            isAlreadyInUnits = true;
+          }
         }
       } catch {}
     }
@@ -561,7 +565,7 @@ export default function ProcurementTrackingPage() {
     setUomPack(initialUomPack);
     setUomUnit(initialUomUnit);
 
-    const initialUnits = hasPackMeta ? (item.qty * initialPackQty) : (item.qty || 1);
+    const initialUnits = hasPackMeta && !isAlreadyInUnits ? (item.qty * initialPackQty) : (item.qty || 1);
     setReceiveQty(initialUnits);
     setShowReceiveModal(true);
   }

@@ -46,10 +46,22 @@ export async function POST(req: NextRequest) {
     const finalHarga = harga !== undefined ? Number(harga) : Number(tracking.harga || 0);
     const finalVendor = vendor !== undefined ? vendor : tracking.vendor;
 
-    const packModeActive = Boolean(isPackMode) || (Number(qtyPerPack) > 1);
-    const multiplier = packModeActive && Number(qtyPerPack) > 1 ? Number(qtyPerPack) : 1;
-    const selectedUomPack = (uomPack || 'Pack').trim();
-    const selectedUomUnit = (uomUnit || 'Pcs').trim();
+    let isAlreadyInUnits = false;
+    let existingPackMeta: any = null;
+    if (tracking.linkedPartsJson) {
+      try {
+        existingPackMeta = JSON.parse(tracking.linkedPartsJson);
+        if (existingPackMeta && (existingPackMeta.isConvertedToUnits || existingPackMeta.originalPackQty !== undefined)) {
+          isAlreadyInUnits = true;
+        }
+      } catch {}
+    }
+
+    const packModeActive = Boolean(isPackMode) || (Number(qtyPerPack) > 1) || isAlreadyInUnits;
+    const effectivePackMultiplier = Number(qtyPerPack) > 1 ? Number(qtyPerPack) : (Number(existingPackMeta?.qtyPerPack) || 1);
+    const multiplier = packModeActive && !isAlreadyInUnits && effectivePackMultiplier > 1 ? effectivePackMultiplier : 1;
+    const selectedUomPack = (uomPack || existingPackMeta?.uomPack || 'Pack').trim();
+    const selectedUomUnit = (uomUnit || existingPackMeta?.uomUnit || 'Pcs').trim();
 
     const totalOrderedUnits = tracking.qty * multiplier;
 
@@ -66,17 +78,18 @@ export async function POST(req: NextRequest) {
     const remainingUnits = totalOrderedUnits - actualReceiveUnits;
 
     const movementQty = actualReceiveUnits;
-    const movementHarga = Number((finalHarga / multiplier).toFixed(2));
+    const movementHarga = isAlreadyInUnits ? finalHarga : Number((finalHarga / multiplier).toFixed(2));
 
     const packMetadata = packModeActive
       ? JSON.stringify({
           type: 'pack',
           isPackMode: true,
-          qtyPerPack: multiplier,
+          qtyPerPack: effectivePackMultiplier,
           uomPack: selectedUomPack,
           uomUnit: selectedUomUnit,
-          originalPackQty: tracking.qty,
-          originalPackPrice: finalHarga,
+          originalPackQty: isAlreadyInUnits ? (existingPackMeta?.originalPackQty || tracking.qty) : tracking.qty,
+          originalPackPrice: isAlreadyInUnits ? (existingPackMeta?.originalPackPrice || (finalHarga * effectivePackMultiplier)) : finalHarga,
+          isConvertedToUnits: true,
         })
       : tracking.linkedPartsJson;
 
