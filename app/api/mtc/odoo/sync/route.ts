@@ -1603,21 +1603,32 @@ export async function POST(req: NextRequest) {
       }
 
       const checkDaysAgo = new Date();
-      checkDaysAgo.setDate(checkDaysAgo.getDate() - 90);
+      checkDaysAgo.setDate(checkDaysAgo.getDate() - 180);
 
       // Find all active tracking items that have a PR or PO number,
-      // are relatively recent (list date within the last 90 days),
-      // and are not yet complete (or missing vendor/notes).
+      // are relatively recent (list date within the last 180 days or recent receipt),
+      // or are not yet complete (statusPo != 'DONE' or pending receipt).
       const trackingItems = await prisma.procurementTracking.findMany({
         where: {
           OR: [
             { nomorPr: { not: null } },
             { nomorPo: { not: null } },
           ],
-          tanggalList: { gte: checkDaysAgo },
           NOT: {
             statusPr: 'CANCELLED'
-          }
+          },
+          AND: [
+            {
+              OR: [
+                { tanggalList: { gte: checkDaysAgo } },
+                { tanggalTerima: { gte: checkDaysAgo } },
+                { tanggalTerima: null },
+                { statusPo: { not: 'DONE' } },
+                { linkGr: null },
+                { linkGr: { contains: 'model=good.received' } }
+              ]
+            }
+          ]
         },
         include: {
           sparepart: true
@@ -2244,20 +2255,32 @@ export async function POST(req: NextRequest) {
               const isItemPhysicallyReceived = !!physicallyReceivedDate;
 
               // 2. Deteksi sibling items (jika item dipecah/split karena penerimaan parsial)
-              const siblingWhere: any = {
-                originalName: item.originalName,
-              };
-              if (item.nomorPr) {
-                siblingWhere.nomorPr = item.nomorPr;
-                siblingWhere.OR = [
-                  { nomorPo: poName },
-                  { nomorPo: null }
-                ];
+              const siblingConditions: any[] = [];
+              if (item.sparepartId) {
+                siblingConditions.push({
+                  OR: [
+                    { originalName: item.originalName },
+                    { sparepartId: item.sparepartId }
+                  ]
+                });
               } else {
-                siblingWhere.nomorPo = poName;
+                siblingConditions.push({ originalName: item.originalName });
               }
+
+              if (item.nomorPr) {
+                siblingConditions.push({ nomorPr: item.nomorPr });
+                siblingConditions.push({
+                  OR: [
+                    { nomorPo: poName },
+                    { nomorPo: null }
+                  ]
+                });
+              } else {
+                siblingConditions.push({ nomorPo: poName });
+              }
+
               const siblingItems = await tx.procurementTracking.findMany({
-                where: siblingWhere
+                where: { AND: siblingConditions }
               });
 
               // Cari sibling lain yang sudah diterima (DONE, tanggalTerima, atau punya StockMovement)
