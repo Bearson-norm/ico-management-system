@@ -1458,12 +1458,13 @@ export async function POST(req: NextRequest) {
 
                   if (dbExisting) {
                     const resolvedSpId = sparepartId || dbExisting.sparepartId;
+                    const isAlreadyPastPr = !!(dbExisting.nomorPo || dbExisting.tanggalTerima || dbExisting.linkGr);
                     await tx.procurementTracking.update({
                       where: { id: dbExisting.id },
                       data: {
                         statusPr: localStatusPr,
                         harga: price > 0 ? price : undefined,
-                        qty: Math.round(qty),
+                        ...(!isAlreadyPastPr ? { qty: Math.round(qty) } : {}),
                         sparepartId: resolvedSpId,
                         isStocked: resolvedSpId ? true : undefined,
                       }
@@ -2313,8 +2314,44 @@ export async function POST(req: NextRequest) {
                   updateData.qty = remainingFromPo > 0 ? remainingFromPo : item.qty;
                 }
               } else {
-                // Item tunggal (belum pernah di-split)
-                if (matchedQty > 0) {
+                // Item tunggal (belum ada sibling di database)
+                const actualRcv = physicallyReceivedQty > 0 ? physicallyReceivedQty : (isItemPhysicallyReceived ? item.qty : 0);
+                if (isItemPhysicallyReceived && matchedQtyInUnits > 0 && actualRcv < Math.round(matchedQtyInUnits)) {
+                  // Kasus parsial: Barang diterima sebagian fisik (misal 1 dari 3), tetapi baris sisa PO belum ada di sistem
+                  updateData.qty = actualRcv;
+                  const remainingFromPo = Math.round(matchedQtyInUnits) - actualRcv;
+                  if (remainingFromPo > 0) {
+                    await tx.procurementTracking.create({
+                      data: {
+                        fbIndex: item.fbIndex,
+                        originalName: item.originalName,
+                        sparepartId: item.sparepartId,
+                        keterangan: item.keterangan,
+                        penggunaanBulan: item.penggunaanBulan,
+                        kontrak3Bulan: item.kontrak3Bulan,
+                        tanggalList: prCreateDate || item.tanggalList,
+                        qty: remainingFromPo,
+                        productCategory: item.productCategory,
+                        reason: item.reason,
+                        urgency: item.urgency,
+                        linkReferences: odooPoUrl,
+                        vendor: vendorName || item.vendor,
+                        harga: matchedPrice > 0 ? (packM > 1 ? Number((matchedPrice / packM).toFixed(2)) : matchedPrice) : item.harga,
+                        nomorPr: item.nomorPr,
+                        statusPr: 'PO',
+                        statusPo: 'PO',
+                        nomorPo: poName,
+                        nomorTe: item.nomorTe,
+                        odooNotes: chatterNotes || null,
+                        linkedPartsJson: item.linkedPartsJson,
+                        tanggalTerima: null,
+                        isStocked: false,
+                        linkGr: null
+                      }
+                    });
+                    logDebug(`Auto-split sisa PO untuk Item ID ${item.id}: ${actualRcv} diterima (tetap), ${remainingFromPo} dibuat di PO Terbit`);
+                  }
+                } else if (matchedQty > 0) {
                   updateData.qty = packM > 1 ? matchedQtyInUnits : Math.round(matchedQty);
                 }
               }
