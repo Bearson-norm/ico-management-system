@@ -8,6 +8,7 @@ import { ok, err } from '@/lib/utils';
 import { parse } from 'csv-parse/sync';
 import fs from 'fs';
 import path from 'path';
+import { shouldSkipPartialAutoSplitForBundle } from '@/lib/mtc/bundle-receive';
 
 function logDebug(message: string) {
   try {
@@ -2339,7 +2340,8 @@ export async function POST(req: NextRequest) {
               } else {
                 // Item tunggal (belum ada sibling di database)
                 const actualRcv = physicallyReceivedQty > 0 ? physicallyReceivedQty : (isItemPhysicallyReceived ? item.qty : 0);
-                if (isItemPhysicallyReceived && matchedQtyInUnits > 0 && actualRcv < Math.round(matchedQtyInUnits)) {
+                const isReceivedBundle = shouldSkipPartialAutoSplitForBundle(item.linkedPartsJson, isItemPhysicallyReceived);
+                if (!isReceivedBundle && isItemPhysicallyReceived && matchedQtyInUnits > 0 && actualRcv < Math.round(matchedQtyInUnits)) {
                   // Kasus parsial: Barang diterima sebagian fisik (misal 1 dari 3), tetapi baris sisa PO belum ada di sistem
                   updateData.qty = actualRcv;
                   const remainingFromPo = Math.round(matchedQtyInUnits) - actualRcv;

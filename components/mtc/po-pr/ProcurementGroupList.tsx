@@ -11,6 +11,7 @@ import {
   isPhysicallyReceived,
   isOdooGrDone,
 } from '@/lib/mtc/procurement-utils';
+import { parseBundleParts } from '@/lib/mtc/bundle-receive';
 
 type ProcurementGroupListProps = {
   groupedPrItems: GroupedPrItem[];
@@ -979,6 +980,7 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
                           const effectiveGrLink = parseOdooLinks(item).grUrl || item.linkGr;
                           const effectivePo = getEffectivePoNumber(item);
                           const itemStatus = getItemSimplifiedStatus(item);
+                          const bundleParts = parseBundleParts(item.linkedPartsJson);
 
                           return (
                             <Fragment key={item.id}>
@@ -1138,7 +1140,65 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
 
                                 {/* Odoo Connected Item */}
                                 <td>
-                                  {item.sparepart ? (
+                                  {bundleParts && bundleParts.length > 0 ? (
+                                    <div>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                        <span className="badge badge-pur" style={{ fontSize: 9, padding: '2px 6px', fontWeight: 800 }}>
+                                          Dipecah ({bundleParts.length} Item)
+                                        </span>
+                                        {itemStatus && (
+                                          <span
+                                            className="badge"
+                                            style={{
+                                              fontSize: 8,
+                                              padding: '1px 5px',
+                                              fontWeight: 800,
+                                              ...getStatusBadgeStyles(itemStatus),
+                                            }}
+                                          >
+                                            {getStatusBadgeStyles(itemStatus).label}
+                                          </span>
+                                        )}
+                                        {effectivePo && (
+                                          <span
+                                            className="badge"
+                                            style={{
+                                              fontSize: 8,
+                                              padding: '2px 6px',
+                                              fontWeight: 800,
+                                              background: isGrDone
+                                                ? 'rgba(34, 197, 94, 0.15)'
+                                                : 'rgba(168, 85, 247, 0.15)',
+                                              color: isGrDone ? '#22c55e' : '#c084fc',
+                                              border: isGrDone
+                                                ? '1px solid rgba(34, 197, 94, 0.3)'
+                                                : '1px solid rgba(168, 85, 247, 0.3)',
+                                              marginLeft: 4,
+                                            }}
+                                            title={
+                                              item.nomorPo
+                                                ? `PO Odoo Terdaftar: ${effectivePo}`
+                                                : `PO Terkonfirmasi via Chatter Odoo: ${effectivePo}`
+                                            }
+                                          >
+                                            {isGrDone ? `PO: ${effectivePo}` : `PO: ${effectivePo}${!item.nomorPo ? ' (Notif)' : ''}`}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 6 }}>
+                                        {bundleParts.map((part) => (
+                                          <div key={part.sparepartId} style={{ fontSize: 11, color: 'var(--tx2)' }}>
+                                            <strong>{part.nama}</strong>{' '}
+                                            <span className="text-mono" style={{ fontSize: 9.5, color: 'var(--tx2)' }}>
+                                              ({part.sparepartId})
+                                            </span>{' '}
+                                            | Qty: {part.qty} {part.uom || 'Pcs'}
+                                            {part.harga > 0 ? ` | ${fmtRupiah(part.harga)}` : ''}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  ) : item.sparepart ? (
                                     <div>
                                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                                         <div style={{ fontWeight: 700, color: 'var(--tx2)', fontSize: 12 }}>
@@ -1305,6 +1365,21 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
                                 {/* Quantity */}
                                 <td style={{ textAlign: 'center', fontWeight: 800, fontSize: 12 }}>
                                   {(() => {
+                                    if (bundleParts && bundleParts.length > 0) {
+                                      return (
+                                        <div>
+                                          <div>
+                                            {item.qty}{' '}
+                                            <span style={{ fontSize: 9, fontWeight: 400, color: 'var(--tx2)' }}>
+                                              Pcs
+                                            </span>
+                                          </div>
+                                          <div style={{ marginTop: 2, fontSize: 9, fontWeight: 600, color: '#c4b5fd' }}>
+                                            {bundleParts.length} komponen
+                                          </div>
+                                        </div>
+                                      );
+                                    }
                                     let packInfo: any = null;
                                     if (item.linkedPartsJson) {
                                       try {

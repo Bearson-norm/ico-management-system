@@ -3,6 +3,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Sparepart, TrackingItem, TabType, CardFilterType } from '@/types/mtc/procurement';
 import {
+  BundlePartInput,
+  ReceiveMode,
+  parseBundleParts,
+  validateBundleParts,
+} from '@/lib/mtc/bundle-receive';
+import {
   filterItemByTab,
   isClosedOrDone,
   isOdooGrDone,
@@ -102,6 +108,9 @@ export default function ProcurementTrackingPage() {
   const [qtyPerPack, setQtyPerPack] = useState<number>(1);
   const [uomPack, setUomPack] = useState('Pack');
   const [uomUnit, setUomUnit] = useState('Pcs');
+  const [receiveMode, setReceiveMode] = useState<ReceiveMode>('unit');
+  const [receiveParts, setReceiveParts] = useState<BundlePartInput[]>([]);
+  const [splitError, setSplitError] = useState<string | null>(null);
 
   // Edit SCM Modal States
   const [showEditModal, setShowEditModal] = useState(false);
@@ -299,38 +308,114 @@ export default function ProcurementTrackingPage() {
     }
   }
 
+  function createDefaultSplitParts(item: TrackingItem): BundlePartInput[] {
+    const baseQty = item.qty || 1;
+    const firstPart: BundlePartInput = item.sparepart
+      ? {
+          sparepartId: item.sparepart.id,
+          nama: item.sparepart.nama,
+          qty: baseQty,
+          harga: 0,
+          uom: item.sparepart.uom || 'Pcs',
+          lokasi: item.sparepart.lokasi || null,
+        }
+      : {
+          sparepartId: '',
+          nama: '',
+          qty: baseQty,
+          harga: 0,
+          uom: 'Pcs',
+          lokasi: null,
+        };
+    return [
+      firstPart,
+      {
+        sparepartId: '',
+        nama: '',
+        qty: baseQty,
+        harga: 0,
+        uom: 'Pcs',
+        lokasi: null,
+      },
+    ];
+  }
+
+  function handleReceiveModeChange(mode: ReceiveMode) {
+    setReceiveMode(mode);
+    setSplitError(null);
+    if (mode === 'split') {
+      setIsPackMode(false);
+      if (receivingItem && receiveParts.length < 2) {
+        setReceiveParts(createDefaultSplitParts(receivingItem));
+      }
+      setIsStocked(true);
+    }
+  }
+
   async function handleReceiveSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!receivingItem) return;
+    setSplitError(null);
+
+    let payload: Record<string, unknown>;
+    if (receiveMode === 'split') {
+      const validation = validateBundleParts(receiveParts);
+      if (!validation.valid) {
+        setSplitError(validation.error);
+        return;
+      }
+      payload = {
+        id: receivingItem.id,
+        tanggalTerima: receiveDate,
+        isStocked,
+        harga: receivePrice,
+        vendor: receiveVendor,
+        receivedParts: validation.parts,
+      };
+    } else {
+      payload = {
+        id: receivingItem.id,
+        tanggalTerima: receiveDate,
+        isStocked: isStocked && receivingItem.sparepartId != null,
+        harga: receivePrice,
+        vendor: receiveVendor,
+        qty: receiveQty,
+        isPackMode: receiveMode === 'pack',
+        qtyPerPack: receiveMode === 'pack' ? qtyPerPack : 1,
+        uomPack,
+        uomUnit,
+      };
+    }
+
     setActionLoading(`receive-${receivingItem.id}`);
     try {
       const res = await fetch('/api/mtc/procurement/receive', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: receivingItem.id,
-          tanggalTerima: receiveDate,
-          isStocked: isStocked && receivingItem.sparepartId != null,
-          harga: receivePrice,
-          vendor: receiveVendor,
-          qty: receiveQty,
-          isPackMode,
-          qtyPerPack: isPackMode ? qtyPerPack : 1,
-          uomPack,
-          uomUnit,
-        }),
+        body: JSON.stringify(payload),
       });
       const json = await res.json();
       if (json.success) {
         alert(json.data?.msg || 'Penerimaan berhasil dicatat!');
         setShowReceiveModal(false);
         setReceivingItem(null);
+        setReceiveParts([]);
+        setSplitError(null);
         await fetchData();
+        await fetchSpareparts();
       } else {
-        alert(`Gagal: ${json.error}`);
+        if (receiveMode === 'split') {
+          setSplitError(json.error || 'Gagal mencatat penerimaan.');
+        } else {
+          alert(`Gagal: ${json.error}`);
+        }
       }
     } catch (err) {
-      alert('Terjadi kesalahan koneksi.');
+      if (receiveMode === 'split') {
+        setSplitError('Terjadi kesalahan koneksi.');
+      } else {
+        alert('Terjadi kesalahan koneksi.');
+      }
     } finally {
       setActionLoading(null);
     }
@@ -537,6 +622,22 @@ export default function ProcurementTrackingPage() {
     setReceivePrice(Number(item.harga) || 0);
     setReceiveVendor(item.vendor || '');
     setReceiveDate(new Date().toISOString().split('T')[0]);
+    setSplitError(null);
+
+    const existingBundle = parseBundleParts(item.linkedPartsJson);
+    if (existingBundle && existingBundle.length > 0) {
+      setReceiveMode('split');
+      setReceiveParts(existingBundle);
+      setIsPackMode(false);
+      setQtyPerPack(1);
+      setUomPack('Pack');
+      setUomUnit(item.sparepart?.uom || 'Pcs');
+      setReceiveQty(item.qty || 1);
+      setIsStocked(item.isStocked || existingBundle.every((p) => Boolean(p.sparepartId)));
+      setShowReceiveModal(true);
+      return;
+    }
+
     setIsStocked(item.isStocked || item.sparepartId != null);
 
     let hasPackMeta = false;
@@ -560,10 +661,12 @@ export default function ProcurementTrackingPage() {
       } catch {}
     }
 
+    setReceiveMode(hasPackMeta ? 'pack' : 'unit');
     setIsPackMode(hasPackMeta);
     setQtyPerPack(initialPackQty);
     setUomPack(initialUomPack);
     setUomUnit(initialUomUnit);
+    setReceiveParts(createDefaultSplitParts(item));
 
     const initialUnits = hasPackMeta && !isAlreadyInUnits ? (item.qty * initialPackQty) : (item.qty || 1);
     setReceiveQty(initialUnits);
@@ -1003,6 +1106,13 @@ export default function ProcurementTrackingPage() {
         setUomPack={setUomPack}
         uomUnit={uomUnit}
         setUomUnit={setUomUnit}
+        receiveMode={receiveMode}
+        setReceiveMode={handleReceiveModeChange}
+        receiveParts={receiveParts}
+        setReceiveParts={setReceiveParts}
+        dbCategories={dbCategories}
+        onSparepartCreated={fetchSpareparts}
+        splitError={splitError}
         handleReceiveSubmit={handleReceiveSubmit}
         actionLoading={actionLoading}
       />

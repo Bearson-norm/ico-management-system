@@ -285,41 +285,41 @@ export async function PATCH(req: NextRequest) {
     // Catatan Penting: Menghubungkan sparepart (Linking) TIDAK BOLEH membuat StockMovement baru!
     // Mutasi stok HANYA boleh dibuat melalui aksi "Terima Barang" (/api/mtc/procurement/receive).
     // Jika mutasi sudah ada sebelumnya dan user mengubah tipe stok (isStocked), baru update mutasi yang ada:
-    if (isStocked !== undefined && existing.isStocked !== Boolean(isStocked) && updated.sparepartId) {
-      const existingMov = await prisma.stockMovement.findFirst({
+    if (isStocked !== undefined && existing.isStocked !== Boolean(isStocked)) {
+      const existingMovs = await prisma.stockMovement.findMany({
         where: {
           OR: [
             { keterangan: { contains: `[Penerimaan Pengadaan #${updated.id}` } },
             { keterangan: { contains: `[Penerimaan Paket #${updated.id}` } },
-            {
-              sparepartId: updated.sparepartId,
-              OR: [
-                { keterangan: { contains: updated.nomorPo ? `PO: ${updated.nomorPo}` : 'Penerimaan' } },
-                { keterangan: { contains: updated.nomorPr ? `PR: ${updated.nomorPr}` : 'Penerimaan' } }
-              ]
-            }
-          ]
-        }
+            ...(updated.sparepartId
+              ? [
+                  {
+                    sparepartId: updated.sparepartId,
+                    OR: [
+                      { keterangan: { contains: updated.nomorPo ? `PO: ${updated.nomorPo}` : 'Penerimaan' } },
+                      { keterangan: { contains: updated.nomorPr ? `PR: ${updated.nomorPr}` : 'Penerimaan' } },
+                    ],
+                  },
+                ]
+              : []),
+          ],
+        },
+        include: {
+          sparepart: { select: { lokasi: true } },
+        },
       });
 
-      if (existingMov) {
+      if (existingMovs.length > 0) {
         const targetTipe = Boolean(isStocked) ? 'IN' : 'LOG';
-        let lokasiVal = null;
-        if (targetTipe === 'IN') {
-          const sp = await prisma.sparepart.findUnique({
-            where: { id: updated.sparepartId },
-            select: { lokasi: true },
+        for (const mov of existingMovs) {
+          await prisma.stockMovement.update({
+            where: { id: mov.id },
+            data: {
+              tipe: targetTipe,
+              lokasi: targetTipe === 'IN' ? mov.sparepart?.lokasi || null : null,
+            },
           });
-          lokasiVal = sp?.lokasi || null;
         }
-
-        await prisma.stockMovement.update({
-          where: { id: existingMov.id },
-          data: {
-            tipe: targetTipe,
-            lokasi: lokasiVal,
-          },
-        });
       }
     }
 

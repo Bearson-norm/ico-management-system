@@ -1,3 +1,5 @@
+export type { BundlePartInput, ReceiveMode } from '@/lib/mtc/bundle-receive';
+
 export type Sparepart = {
   id: string;
   nama: string;

@@ -2,6 +2,40 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireMtcEditor } from '@/lib/auth';
 import { ok, err } from '@/lib/utils';
+import {
+  BundlePartInput,
+  collectAffectedBundleSparepartIds,
+  getStaleBundleSparepartIds,
+  serializeBundleParts,
+  validateBundleParts,
+} from '@/lib/mtc/bundle-receive';
+
+type TxClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+
+async function recalculateSparepartPurchasingStatus(tx: TxClient, sparepartId: string) {
+  const pendingItems = await tx.procurementTracking.findMany({
+    where: {
+      sparepartId,
+      tanggalTerima: null,
+      statusPo: { notIn: ['DONE', 'CANCELLED'] },
+      statusPr: { notIn: ['CANCELLED', 'REJECTED'] },
+    },
+  });
+
+  const totalPendingQty = pendingItems.reduce((sum: number, p: any) => sum + (p.qty || 0), 0);
+  const hasPendingPo = pendingItems.some((p: any) => p.nomorPo);
+  const firstPending = pendingItems[0];
+
+  await tx.sparepart.update({
+    where: { id: sparepartId },
+    data: {
+      purchasingStatus: totalPendingQty > 0 ? (hasPendingPo ? 'PO' : firstPending?.statusPr || 'PR') : 'NONE',
+      purchasingNoPr: totalPendingQty > 0 ? firstPending?.nomorPr || null : null,
+      purchasingNoPo: totalPendingQty > 0 ? pendingItems.find((p: any) => p.nomorPo)?.nomorPo || null : null,
+      purchasingQty: totalPendingQty,
+    },
+  });
+}
 
 // POST /api/mtc/procurement/receive
 export async function POST(req: NextRequest) {
@@ -98,39 +132,75 @@ export async function POST(req: NextRequest) {
     const elapsedDays = Math.max(1, elapsedMs / (1000 * 60 * 60 * 24));
 
     // A. JIKA PAKETAN GABUNGAN (MULTI-ITEM)
-    if (receivedParts && Array.isArray(receivedParts) && receivedParts.length > 0) {
-      await prisma.$transaction(async (tx) => {
-        for (const part of receivedParts) {
-          const partSpId = part.sparepartId;
-          const partQty = Number(part.qty) || 1;
-          const partHarga = Number(part.harga) || 0;
+    if (receivedParts !== undefined) {
+      const validation = validateBundleParts(receivedParts);
+      if (!validation.valid) {
+        return err(validation.error, 400);
+      }
 
+      const validatedParts = validation.parts;
+
+      await prisma.$transaction(async (tx) => {
+        const existingBundleMovs = await tx.stockMovement.findMany({
+          where: {
+            OR: [
+              { keterangan: { contains: `[Penerimaan Paket #${tracking.id}` } },
+              ...(tracking.nomorPr || tracking.nomorPo
+                ? [
+                    {
+                      keterangan: {
+                        startsWith: `[Penerimaan Paket PR: ${tracking.nomorPr || '-'} / PO: ${tracking.nomorPo || '-'}]`,
+                      },
+                    },
+                  ]
+                : []),
+            ],
+          },
+        });
+
+        const staleSparepartIds = getStaleBundleSparepartIds(
+          existingBundleMovs.map((m) => m.sparepartId),
+          validatedParts
+        );
+
+        if (staleSparepartIds.length > 0) {
+          const staleMovIds = existingBundleMovs
+            .filter((m) => m.sparepartId && staleSparepartIds.includes(m.sparepartId))
+            .map((m) => m.id);
+
+          if (staleMovIds.length > 0) {
+            await tx.stockMovement.deleteMany({
+              where: { id: { in: staleMovIds } },
+            });
+          }
+
+          for (const staleId of staleSparepartIds) {
+            await recalculateSparepartPurchasingStatus(tx, staleId);
+          }
+        }
+
+        const resolvedParts: BundlePartInput[] = [];
+
+        for (const part of validatedParts) {
           const sp = await tx.sparepart.findUnique({
-            where: { id: partSpId },
+            where: { id: part.sparepartId },
           });
 
-          if (!sp) throw new Error(`Master Suku Cadang '${partSpId}' tidak ditemukan.`);
+          if (!sp) throw new Error(`Master Suku Cadang '${part.sparepartId}' tidak ditemukan.`);
 
-          const partKeterangan = `[Penerimaan Paket #${tracking.id} PR: ${tracking.nomorPr || '—'} / PO: ${tracking.nomorPo || '—'}] Bagian dari paket: ${tracking.originalName}`;
+          const partKeterangan = `[Penerimaan Paket #${tracking.id} PR: ${tracking.nomorPr || '-'} / PO: ${tracking.nomorPo || '-'}] Bagian dari paket: ${tracking.originalName}`;
 
           // Cek apakah mutasi untuk part ini pada pengadaan ini sudah pernah dibuat sebelumnya (Anti-Double)
-          const existingPartMov = await tx.stockMovement.findFirst({
-            where: {
-              sparepartId: sp.id,
-              OR: [
-                { keterangan: { contains: `[Penerimaan Paket #${tracking.id}` } },
-                { keterangan: { startsWith: `[Penerimaan Paket PR: ${tracking.nomorPr || '—'} / PO: ${tracking.nomorPo || '—'}]` } },
-              ],
-            },
-          });
+          const existingPartMov = existingBundleMovs.find((m) => m.sparepartId === sp.id);
 
           if (existingPartMov) {
             await tx.stockMovement.update({
               where: { id: existingPartMov.id },
               data: {
                 tipe: isStocked ? 'IN' : 'LOG',
-                qty: partQty,
-                harga: partHarga,
+                namaItem: sp.nama,
+                qty: part.qty,
+                harga: part.harga,
                 lokasi: isStocked ? sp.lokasi : null,
                 vendor: finalVendor,
                 keterangan: partKeterangan,
@@ -143,8 +213,8 @@ export async function POST(req: NextRequest) {
                 tipe: isStocked ? 'IN' : 'LOG',
                 sparepartId: sp.id,
                 namaItem: sp.nama,
-                qty: partQty,
-                harga: partHarga,
+                qty: part.qty,
+                harga: part.harga,
                 lokasi: isStocked ? sp.lokasi : null,
                 purchaseType: 'PO',
                 vendor: finalVendor,
@@ -164,7 +234,7 @@ export async function POST(req: NextRequest) {
           await tx.sparepart.update({
             where: { id: sp.id },
             data: {
-              harga: partHarga,
+              harga: part.harga,
               purchasingStatus: 'NONE',
               purchasingQty: 0,
               prDate: null,
@@ -173,9 +243,18 @@ export async function POST(req: NextRequest) {
               maxLeadTime: calculatedMaxLeadTime,
             },
           });
+
+          resolvedParts.push({
+            sparepartId: sp.id,
+            nama: sp.nama,
+            qty: part.qty,
+            harga: part.harga,
+            uom: sp.uom,
+            lokasi: sp.lokasi,
+          });
         }
 
-        // 4. Update data pelacakan utama
+        // 4. Update data pelacakan utama & simpan daftar komponen pecahan
         await tx.procurementTracking.update({
           where: { id: tracking.id },
           data: {
@@ -183,11 +262,14 @@ export async function POST(req: NextRequest) {
             isStocked: Boolean(isStocked),
             harga: finalHarga,
             vendor: finalVendor,
+            linkedPartsJson: serializeBundleParts(resolvedParts),
           },
         });
       });
 
-      return ok({ msg: `Berhasil menerima paket gabungan '${tracking.originalName}' ke dalam ${isStocked ? 'stok gudang' : 'pemakaian langsung'} MTC.` });
+      return ok({
+        msg: `Berhasil mencatat penerimaan pecahan '${tracking.originalName}' (${validatedParts.length} item) ke dalam ${isStocked ? 'stok gudang' : 'pemakaian langsung'} MTC.`,
+      });
     }
 
     // B. JIKA SATU ITEM (DENGAN KONVERSI KEMASAN & PENERIMAAN PARSIAL)
@@ -627,30 +709,13 @@ export async function DELETE(req: NextRequest) {
         });
       }
 
-      // 3. Perbarui status master sparepart jika terhubung
-      if (tracking.sparepartId) {
-        const pendingItems = await tx.procurementTracking.findMany({
-          where: {
-            sparepartId: tracking.sparepartId,
-            tanggalTerima: null,
-            statusPo: { notIn: ['DONE', 'CANCELLED'] },
-            statusPr: { notIn: ['CANCELLED', 'REJECTED'] }
-          }
-        });
-
-        const totalPendingQty = pendingItems.reduce((sum: number, p: any) => sum + (p.qty || 0), 0);
-        const hasPendingPo = pendingItems.some((p: any) => p.nomorPo);
-        const firstPending = pendingItems[0];
-
-        await tx.sparepart.update({
-          where: { id: tracking.sparepartId },
-          data: {
-            purchasingStatus: totalPendingQty > 0 ? (hasPendingPo ? 'PO' : (firstPending?.statusPr || 'PR')) : 'NONE',
-            purchasingNoPr: totalPendingQty > 0 ? firstPending?.nomorPr || null : null,
-            purchasingNoPo: totalPendingQty > 0 ? pendingItems.find((p: any) => p.nomorPo)?.nomorPo || null : null,
-            purchasingQty: totalPendingQty,
-          }
-        });
+      // 3. Perbarui status seluruh master sparepart terkait (termasuk pecahan multi-item)
+      const affectedSpIds = collectAffectedBundleSparepartIds(
+        tracking.sparepartId,
+        tracking.linkedPartsJson
+      );
+      for (const spId of affectedSpIds) {
+        await recalculateSparepartPurchasingStatus(tx, spId);
       }
     });
 
