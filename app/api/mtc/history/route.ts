@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireMtcAuth } from '@/lib/auth';
 import { ok, err } from '@/lib/utils';
 import { historyOrderBy, parseHistorySort } from '@/lib/historySort';
+import { buildMtcHistoryWhere } from '@/lib/mtc/stock-utils';
 
 export async function GET(req: NextRequest) {
   const session = await requireMtcAuth();
@@ -11,78 +12,20 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const page = parseInt(searchParams.get('page') ?? '1');
   const limit = parseInt(searchParams.get('limit') ?? '30');
-  const search = searchParams.get('search') ?? '';
+  const search = (searchParams.get('search') ?? '').trim();
   const tipe = searchParams.get('tipe') ?? '';
   const kategoriOut = searchParams.get('kategoriOut') ?? '';
   const dateFrom = searchParams.get('dateFrom');
   const dateTo = searchParams.get('dateTo');
   const sort = parseHistorySort(searchParams);
 
-  let kategoriFilter = {};
-  if (kategoriOut === 'UNCATEGORIZED' || kategoriOut === 'Belum Dikategorikan') {
-    kategoriFilter = {
-      OR: [
-        { kategoriOut: null },
-        { kategoriOut: '' },
-      ],
-    };
-  } else if (kategoriOut) {
-    if (kategoriOut === 'Maintenance') {
-      kategoriFilter = {
-        OR: [
-          { kategoriOut: 'Maintenance' },
-          { kategoriOut: 'Maintenance Produksi' },
-        ],
-      };
-    } else {
-      kategoriFilter = { kategoriOut };
-    }
-  }
-
-  const notConditions: any[] = [
-    { keterangan: { contains: '[SILENT]' } },
-  ];
-
-  let tipeCondition: any = {};
-  if (tipe === 'OUT') {
-    tipeCondition = { tipe: 'OUT' };
-    notConditions.push({ keterangan: { contains: '[OPNAME]' } });
-  } else if (tipe === 'IN') {
-    tipeCondition = { tipe: 'IN' };
-    notConditions.push({ keterangan: { contains: '[OPNAME]' } });
-  } else if (tipe === 'ADJUSTMENT') {
-    tipeCondition = {
-      keterangan: { contains: '[OPNAME]' },
-    };
-  } else if (tipe === 'LOG') {
-    tipeCondition = { tipe: 'LOG' };
-  }
-
-  const where = {
-    NOT: notConditions,
-    ...tipeCondition,
-    ...kategoriFilter,
-    ...(dateFrom || dateTo
-      ? {
-          tanggal: {
-            ...(dateFrom ? { gte: new Date(dateFrom + 'T00:00:00') } : {}),
-            ...(dateTo ? { lte: new Date(dateTo + 'T23:59:59') } : {}),
-          },
-        }
-      : {}),
-    ...(search
-      ? {
-          OR: [
-            { sparepartId: { contains: search, mode: 'insensitive' as const } },
-            { namaItem: { contains: search, mode: 'insensitive' as const } },
-            { noReport: { contains: search, mode: 'insensitive' as const } },
-            { keterangan: { contains: search, mode: 'insensitive' as const } },
-            { sparepart: { nama: { contains: search, mode: 'insensitive' as const } } },
-            { pic: { nama: { contains: search, mode: 'insensitive' as const } } },
-          ],
-        }
-      : {}),
-  };
+  const where = buildMtcHistoryWhere({
+    tipe,
+    kategoriOut,
+    dateFrom,
+    dateTo,
+    search,
+  });
 
   const [data, total] = await Promise.all([
     prisma.stockMovement.findMany({
@@ -132,7 +75,7 @@ export async function GET(req: NextRequest) {
     };
 
     for (const m of outMovements) {
-      const q = m.qty || 0;
+      const q = Math.abs(m.qty || 0);
       const h = m.harga ? Number(m.harga) : 0;
       const subtotal = q * h;
       totalOutQty += q;

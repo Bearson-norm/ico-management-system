@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { ok, err, compareLocations } from '@/lib/utils';
 import { requireMtcEditor } from '@/lib/auth';
+import { computeSparepartCurrentStock, NOT_HISTORI_SHEETS_WHERE } from '@/lib/mtc/stock-utils';
 
 // GET /api/mtc/opname/[id] - Get details of a single Stock Opname session
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
@@ -233,34 +234,40 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       });
 
       const allSpareparts = await prisma.sparepart.findMany({
-        include: { kategori: true }
+        include: {
+          kategori: true,
+          potonganFisiks: {
+            where: { status: 'aktif' },
+            select: { panjangSisa: true },
+          },
+          movements: {
+            where: {
+              tipe: { in: ['IN', 'OUT'] },
+              ...NOT_HISTORI_SHEETS_WHERE,
+            },
+            select: { tipe: true, qty: true },
+          },
+        }
       });
       const spMapById = new Map<string, typeof allSpareparts[0]>();
       const spMapByName = new Map<string, typeof allSpareparts[0]>();
+      const stockMap = new Map<string, number>();
 
       for (const sp of allSpareparts) {
         spMapById.set(sp.id, sp);
         spMapByName.set(sp.nama.trim().toLowerCase(), sp);
+        stockMap.set(
+          sp.id,
+          Math.round(
+            computeSparepartCurrentStock({
+              tipeUkur: sp.tipeUkur,
+              movements: sp.movements,
+              potonganFisiks: sp.potonganFisiks,
+              excludeHistoriSheets: false,
+            })
+          )
+        );
       }
-
-      // Calculate latest system stock from stock movements (excluding histori-sheets)
-      const allMovements = await prisma.stockMovement.findMany({
-        where: {
-          OR: [{ purchaseType: null }, { purchaseType: { not: 'histori-sheets' } }],
-        },
-        select: {
-          sparepartId: true,
-          tipe: true,
-          qty: true
-        }
-      });
-      const stockMap = new Map<string, number>();
-      allMovements.forEach(m => {
-        if (!m.sparepartId) return;
-        const current = stockMap.get(m.sparepartId) || 0;
-        if (m.tipe === 'IN') stockMap.set(m.sparepartId, current + m.qty);
-        else if (m.tipe === 'OUT') stockMap.set(m.sparepartId, current - m.qty);
-      });
 
       let updatedCount = 0;
       for (const item of itemsInSession) {

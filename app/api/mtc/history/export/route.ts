@@ -2,71 +2,30 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireMtcAuth } from '@/lib/auth';
 import * as XLSX from 'xlsx';
+import { buildMtcHistoryWhere } from '@/lib/mtc/stock-utils';
+
+function formatDate(d: Date | string | null | undefined): string {
+  if (!d) return '';
+  return new Date(d).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' });
+}
 
 export async function GET(req: NextRequest) {
   const session = await requireMtcAuth();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
-  const tipe = searchParams.get('tipe') ?? ''; // '', 'IN', 'OUT', 'LOG'
+  const tipe = searchParams.get('tipe') ?? ''; // '', 'IN', 'OUT', 'ADJUSTMENT', 'LOG'
   const kategoriOut = searchParams.get('kategoriOut') ?? '';
   const dateFrom = searchParams.get('dateFrom');
   const dateTo = searchParams.get('dateTo');
   const format = searchParams.get('format') ?? 'xlsx'; // 'xlsx' | 'csv'
 
-  let kategoriFilter = {};
-  if (kategoriOut === 'UNCATEGORIZED' || kategoriOut === 'Belum Dikategorikan') {
-    kategoriFilter = {
-      OR: [
-        { kategoriOut: null },
-        { kategoriOut: '' },
-      ],
-    };
-  } else if (kategoriOut) {
-    if (kategoriOut === 'Maintenance') {
-      kategoriFilter = {
-        OR: [
-          { kategoriOut: 'Maintenance' },
-          { kategoriOut: 'Maintenance Produksi' },
-        ],
-      };
-    } else {
-      kategoriFilter = { kategoriOut };
-    }
-  }
-
-  const notConditions: any[] = [
-    { keterangan: { contains: '[SILENT]' } },
-  ];
-
-  let tipeCondition: any = {};
-  if (tipe === 'OUT') {
-    tipeCondition = { tipe: 'OUT' };
-    notConditions.push({ keterangan: { contains: '[OPNAME]' } });
-  } else if (tipe === 'IN') {
-    tipeCondition = { tipe: 'IN' };
-    notConditions.push({ keterangan: { contains: '[OPNAME]' } });
-  } else if (tipe === 'ADJUSTMENT') {
-    tipeCondition = {
-      keterangan: { contains: '[OPNAME]' },
-    };
-  } else if (tipe === 'LOG') {
-    tipeCondition = { tipe: 'LOG' };
-  }
-
-  const where = {
-    NOT: notConditions,
-    ...tipeCondition,
-    ...kategoriFilter,
-    ...(dateFrom || dateTo
-      ? {
-          tanggal: {
-            ...(dateFrom ? { gte: new Date(dateFrom + 'T00:00:00') } : {}),
-            ...(dateTo ? { lte: new Date(dateTo + 'T23:59:59') } : {}),
-          },
-        }
-      : {}),
-  };
+  const where = buildMtcHistoryWhere({
+    tipe,
+    kategoriOut,
+    dateFrom,
+    dateTo,
+  });
 
   const data = await prisma.stockMovement.findMany({
     where,
@@ -96,7 +55,7 @@ export async function GET(req: NextRequest) {
 
     return {
       'No': i + 1,
-      'Tanggal': new Date(d.tanggal).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' }),
+      'Tanggal': formatDate(d.tanggal),
       'Waktu': new Date(d.createdAt).toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' }),
       'Tipe': displayTipe,
       'Kategori OUT': catOut || '',
@@ -171,7 +130,9 @@ export async function GET(req: NextRequest) {
   XLSX.utils.book_append_sheet(wb, ws, 'Riwayat Transaksi');
 
   // Sheet 2: Rekap Mingguan OUT (Rekapitulasi Pengeluaran)
-  const outRows = data.filter((d) => d.tipe === 'OUT' && !d.keterangan?.includes('[OPNAME]'));
+  const outRows = data.filter(
+    (d) => d.tipe === 'OUT' && !d.keterangan?.includes('[OPNAME]') && !d.keterangan?.includes('[SILENT]')
+  );
   const catStats: Record<string, { count: number; qty: number; totalRp: number }> = {
     'Maintenance': { count: 0, qty: 0, totalRp: 0 },
     'Utility': { count: 0, qty: 0, totalRp: 0 },

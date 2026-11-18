@@ -1,6 +1,12 @@
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import DashboardCriticalSection from '@/components/mtc/DashboardCriticalSection';
+import {
+  computeMovementStockTotals,
+  computeSparepartCurrentStock,
+  NOT_HISTORI_SHEETS_WHERE,
+  NOT_SILENT_WHERE,
+} from '@/lib/mtc/stock-utils';
 
 
 function fmtRupiah(value: number): string {
@@ -19,6 +25,7 @@ export default async function DashboardPage() {
   const [totalReportHariIni, recentMovements, recentProcurements] = await Promise.all([
     prisma.maintenanceReport.count({ where: { tanggal: { gte: today } } }),
     prisma.stockMovement.findMany({
+      where: NOT_SILENT_WHERE,
       take: 5,
       orderBy: { createdAt: 'desc' },
       include: { pic: true },
@@ -73,7 +80,7 @@ export default async function DashboardPage() {
       movements: {
         where: {
           tipe: { in: ['IN', 'OUT'] },
-          OR: [{ purchaseType: null }, { purchaseType: { not: 'histori-sheets' } }],
+          ...NOT_HISTORI_SHEETS_WHERE,
         },
         select: { tipe: true, qty: true, tanggal: true },
       },
@@ -81,12 +88,16 @@ export default async function DashboardPage() {
   });
 
   const sparepartsWithStock = allSpareparts.map((sp) => {
-    const totalIn = sp.movements.filter((m) => m.tipe === 'IN').reduce((sum, m) => sum + m.qty, 0);
     const outMovements = sp.movements.filter((m) => m.tipe === 'OUT');
-    const totalOut = outMovements.reduce((sum, m) => sum + m.qty, 0);
-    const currentStock = sp.tipeUkur === 'bulk'
-      ? sp.potonganFisiks.reduce((sum, p) => sum + p.panjangSisa, 0)
-      : totalIn - totalOut;
+    const { totalOut } = computeMovementStockTotals(sp.movements, {
+      excludeHistoriSheets: false,
+    });
+    const currentStock = computeSparepartCurrentStock({
+      tipeUkur: sp.tipeUkur,
+      movements: sp.movements,
+      potonganFisiks: sp.potonganFisiks,
+      excludeHistoriSheets: false,
+    });
 
     const usageByDate: Record<string, number> = {};
     outMovements.forEach((m) => {
@@ -190,6 +201,7 @@ export default async function DashboardPage() {
 
     const ket = (m.keterangan || '').toLowerCase();
     if (
+      ket.includes('[silent]') ||
       ket.includes('[opname]') ||
       ket.includes('opname adjustment') ||
       ket.includes('hasil audit') ||
@@ -211,7 +223,7 @@ export default async function DashboardPage() {
       totalQty: 0,
       txCount: 0,
     };
-    existing.totalQty += m.qty;
+    existing.totalQty += Math.abs(m.qty);
     existing.txCount += 1;
     aggregatedMap.set(spId, existing);
   });

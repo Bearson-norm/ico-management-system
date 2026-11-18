@@ -3,6 +3,11 @@ import { prisma } from '@/lib/prisma';
 import { ok } from '@/lib/utils';
 import { deriveSparepartProcurementSummary } from '@/lib/mtc/procurement-utils';
 import { PENDING_ARRIVAL_WHERE } from '@/lib/mtc/procurement-server';
+import {
+  computeMovementStockTotals,
+  computeSparepartCurrentStock,
+  NOT_HISTORI_SHEETS_WHERE,
+} from '@/lib/mtc/stock-utils';
 
 // GET /api/mtc/stock — publik (viewer tanpa login), sama seperti V2
 export async function GET(req: NextRequest) {
@@ -43,7 +48,7 @@ export async function GET(req: NextRequest) {
       movements: {
         where: {
           tipe: { in: ['IN', 'OUT'] },
-          OR: [{ purchaseType: null }, { purchaseType: { not: 'histori-sheets' } }],
+          ...NOT_HISTORI_SHEETS_WHERE,
         },
         select: { tipe: true, qty: true },
       },
@@ -53,18 +58,19 @@ export async function GET(req: NextRequest) {
 
   const result = spareparts
     .map((sp) => {
-      const totalIn  = sp.movements.filter((m) => m.tipe === 'IN').reduce((s, m) => s + m.qty, 0);
-      const totalOut = sp.movements.filter((m) => m.tipe === 'OUT').reduce((s, m) => s + Math.abs(m.qty), 0);
-      
-      let currentStock: number;
-      let totalPanjangSisa = 0;
-
-      if (sp.tipeUkur === 'bulk') {
-        totalPanjangSisa = sp.potonganFisiks.reduce((s, p) => s + p.panjangSisa, 0);
-        currentStock = totalPanjangSisa;
-      } else {
-        currentStock = totalIn - totalOut;
-      }
+      const { totalIn, totalOut } = computeMovementStockTotals(sp.movements, {
+        excludeHistoriSheets: false,
+      });
+      const totalPanjangSisa =
+        sp.tipeUkur === 'bulk'
+          ? sp.potonganFisiks.reduce((s, p) => s + p.panjangSisa, 0)
+          : 0;
+      const currentStock = computeSparepartCurrentStock({
+        tipeUkur: sp.tipeUkur,
+        movements: sp.movements,
+        potonganFisiks: sp.potonganFisiks,
+        excludeHistoriSheets: false,
+      });
 
       let stockStatus: 'safe' | 'low' | 'habis';
       if (currentStock <= 0)          stockStatus = 'habis';

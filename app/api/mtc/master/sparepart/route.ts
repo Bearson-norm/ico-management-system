@@ -2,6 +2,11 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireMtcEditor } from '@/lib/auth';
 import { ok, err, generateItemId } from '@/lib/utils';
+import {
+  computeMovementStockTotals,
+  computeSparepartCurrentStock,
+  NOT_HISTORI_SHEETS_WHERE,
+} from '@/lib/mtc/stock-utils';
 
 export async function GET(req: NextRequest) {
   const session = await requireMtcEditor();
@@ -47,7 +52,7 @@ export async function GET(req: NextRequest) {
             movements: {
               where: {
                 tipe: { in: ['IN', 'OUT'] },
-                OR: [{ purchaseType: null }, { purchaseType: { not: 'histori-sheets' } }],
+                ...NOT_HISTORI_SHEETS_WHERE,
               },
               select: { tipe: true, qty: true },
             },
@@ -58,14 +63,15 @@ export async function GET(req: NextRequest) {
   });
 
   const data = rows.map((sp) => {
-    let currentStock = 0;
-    if (sp.tipeUkur === 'bulk') {
-      currentStock = sp.potonganFisiks?.reduce((s, p) => s + p.panjangSisa, 0) ?? 0;
-    } else if (!simple) {
-      const totalIn = sp.movements?.filter((m) => m.tipe === 'IN').reduce((s, m) => s + m.qty, 0) ?? 0;
-      const totalOut = sp.movements?.filter((m) => m.tipe === 'OUT').reduce((s, m) => s + m.qty, 0) ?? 0;
-      currentStock = totalIn - totalOut;
-    }
+    const currentStock =
+      sp.tipeUkur === 'bulk' || !simple
+        ? computeSparepartCurrentStock({
+            tipeUkur: sp.tipeUkur,
+            movements: sp.movements ?? [],
+            potonganFisiks: sp.potonganFisiks,
+            excludeHistoriSheets: false,
+          })
+        : 0;
     const { movements: _movements, ...rest } = sp;
     return { ...rest, currentStock };
   });
@@ -194,7 +200,14 @@ export async function PUT(req: NextRequest) {
   await prisma.$transaction(async (tx) => {
     const currentSp = await tx.sparepart.findUnique({
       where: { id: String(id) },
-      select: { purchasingStatus: true, prDate: true, poDate: true, purchasingNoPr: true, purchasingNoPo: true },
+      select: {
+        tipeUkur: true,
+        purchasingStatus: true,
+        prDate: true,
+        poDate: true,
+        purchasingNoPr: true,
+        purchasingNoPo: true,
+      },
     });
 
     let prDateVal: Date | null | undefined = undefined;
@@ -270,19 +283,28 @@ export async function PUT(req: NextRequest) {
       }
     });
 
-    if (body.currentStock !== undefined && body.currentStock !== null && body.currentStock !== '' && !isNaN(Number(body.currentStock))) {
-      const targetStock = Number(body.currentStock);
+    const effectiveTipeUkur =
+      tipeUkur !== undefined ? (tipeUkur === 'bulk' ? 'bulk' : 'unit') : (currentSp?.tipeUkur ?? 'unit');
+
+    if (
+      effectiveTipeUkur !== 'bulk' &&
+      body.currentStock !== undefined &&
+      body.currentStock !== null &&
+      body.currentStock !== '' &&
+      !isNaN(Number(body.currentStock))
+    ) {
+      const targetStock = Math.round(Number(body.currentStock));
       const spMovements = await tx.stockMovement.findMany({
         where: {
           sparepartId: String(id),
           tipe: { in: ['IN', 'OUT'] },
-          OR: [{ purchaseType: null }, { purchaseType: { not: 'histori-sheets' } }],
+          ...NOT_HISTORI_SHEETS_WHERE,
         },
         select: { tipe: true, qty: true },
       });
-      const totalIn = spMovements.filter((m) => m.tipe === 'IN').reduce((s, m) => s + m.qty, 0);
-      const totalOut = spMovements.filter((m) => m.tipe === 'OUT').reduce((s, m) => s + m.qty, 0);
-      const actualStock = totalIn - totalOut;
+      const actualStock = computeMovementStockTotals(spMovements, {
+        excludeHistoriSheets: false,
+      }).netStock;
       const diff = targetStock - actualStock;
 
       if (diff !== 0) {

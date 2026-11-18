@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireMtcEditor } from '@/lib/auth';
 import { ReportSchema } from '@/lib/validations/report';
 import { calcDurasiMenit, generateNoReport, ok, err } from '@/lib/utils';
+import { computeMovementStockTotals, NOT_HISTORI_SHEETS_WHERE } from '@/lib/mtc/stock-utils';
 
 export async function POST(req: NextRequest) {
   const session = await requireMtcEditor();
@@ -21,16 +22,22 @@ export async function POST(req: NextRequest) {
   }
   const p = parsed.data;
 
-  for (const sp of p.spareparts) {
-    const stok = await getCurrentStock(sp.sparepartId);
-    if (stok < sp.qty) {
-      const item = await prisma.sparepart.findUnique({ where: { id: sp.sparepartId } });
-      return err(`Stok ${item?.nama ?? sp.sparepartId} tidak cukup (sisa: ${stok})`);
-    }
-  }
-
   try {
     const result = await prisma.$transaction(async (tx) => {
+      if (p.spareparts.length > 0) {
+        const requestedBySp = new Map<string, number>();
+        for (const sp of p.spareparts) {
+          requestedBySp.set(sp.sparepartId, (requestedBySp.get(sp.sparepartId) ?? 0) + sp.qty);
+        }
+        for (const [sparepartId, reqQty] of requestedBySp.entries()) {
+          const stok = await getCurrentStock(tx, sparepartId);
+          if (stok < reqQty) {
+            const item = await tx.sparepart.findUnique({ where: { id: sparepartId } });
+            throw new InsufficientStockError(`Stok ${item?.nama ?? sparepartId} tidak cukup (sisa: ${stok})`);
+          }
+        }
+      }
+
       const noReport = await generateNoReport(tx, p.tipe);
       const durasiMenit = calcDurasiMenit(p.start, p.finish);
 
@@ -80,6 +87,9 @@ export async function POST(req: NextRequest) {
 
     return ok(result, 201);
   } catch (e) {
+    if (e instanceof InsufficientStockError) {
+      return err(e.message, 400);
+    }
     console.error('[POST /api/mtc/report]', e);
     return err('Gagal menyimpan report', 500);
   }
@@ -122,17 +132,19 @@ export async function GET(req: NextRequest) {
   return ok({ data, total, page, limit });
 }
 
-async function getCurrentStock(sparepartId: string): Promise<number> {
-  const agg = await prisma.stockMovement.groupBy({
-    by: ['tipe'],
+class InsufficientStockError extends Error {}
+
+async function getCurrentStock(
+  db: typeof prisma | Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+  sparepartId: string
+): Promise<number> {
+  const movements = await db.stockMovement.findMany({
     where: {
       sparepartId,
       tipe: { in: ['IN', 'OUT'] },
-      OR: [{ purchaseType: null }, { purchaseType: { not: 'histori-sheets' } }],
+      ...NOT_HISTORI_SHEETS_WHERE,
     },
-    _sum: { qty: true },
+    select: { tipe: true, qty: true },
   });
-  const totalIn = agg.find((r) => r.tipe === 'IN')?._sum.qty ?? 0;
-  const totalOut = agg.find((r) => r.tipe === 'OUT')?._sum.qty ?? 0;
-  return totalIn - totalOut;
+  return computeMovementStockTotals(movements, { excludeHistoriSheets: false }).netStock;
 }

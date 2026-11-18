@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireMtcAuth } from '@/lib/auth';
 import * as XLSX from 'xlsx';
+import { computeSparepartCurrentStock, NOT_HISTORI_SHEETS_WHERE } from '@/lib/mtc/stock-utils';
 
 function formatDate(d: Date | string | null | undefined): string {
   if (!d) return '';
@@ -78,7 +79,7 @@ export async function GET(req: NextRequest) {
         movements: {
           where: {
             tipe: { in: ['IN', 'OUT'] },
-            OR: [{ purchaseType: null }, { purchaseType: { not: 'histori-sheets' } }],
+            ...NOT_HISTORI_SHEETS_WHERE,
           },
           select: { tipe: true, qty: true, tanggal: true, purchaseType: true, keterangan: true },
         },
@@ -87,14 +88,12 @@ export async function GET(req: NextRequest) {
     });
 
     return rows.map((sp, idx) => {
-      let currentStock: number;
-      if (sp.tipeUkur === 'bulk') {
-        currentStock = sp.potonganFisiks.reduce((sum, p) => sum + p.panjangSisa, 0);
-      } else {
-        const totalIn = sp.movements.filter((m) => m.tipe === 'IN').reduce((s, m) => s + m.qty, 0);
-        const totalOut = sp.movements.filter((m) => m.tipe === 'OUT').reduce((s, m) => s + m.qty, 0);
-        currentStock = totalIn - totalOut;
-      }
+      const currentStock = computeSparepartCurrentStock({
+        tipeUkur: sp.tipeUkur,
+        movements: sp.movements,
+        potonganFisiks: sp.potonganFisiks,
+        excludeHistoriSheets: false,
+      });
       const hargaNum = Number(sp.harga) || 0;
       const totalNilai = currentStock * hargaNum;
 
@@ -278,7 +277,7 @@ export async function GET(req: NextRequest) {
             movements: {
               where: {
                 tipe: { in: ['IN', 'OUT'] },
-                OR: [{ purchaseType: null }, { purchaseType: { not: 'histori-sheets' } }],
+                ...NOT_HISTORI_SHEETS_WHERE,
               },
               select: { tipe: true, qty: true },
             },
@@ -314,11 +313,12 @@ export async function GET(req: NextRequest) {
         });
       } else {
         for (const sp of m.spareparts) {
-          const totalIn = sp.movements.filter((mv) => mv.tipe === 'IN').reduce((s, mv) => s + mv.qty, 0);
-          const totalOut = sp.movements.filter((mv) => mv.tipe === 'OUT').reduce((s, mv) => s + mv.qty, 0);
-          const currentStock = sp.tipeUkur === 'bulk'
-            ? sp.potonganFisiks.reduce((s, p) => s + p.panjangSisa, 0)
-            : totalIn - totalOut;
+          const currentStock = computeSparepartCurrentStock({
+            tipeUkur: sp.tipeUkur,
+            movements: sp.movements,
+            potonganFisiks: sp.potonganFisiks,
+            excludeHistoriSheets: false,
+          });
 
           rows.push({
             'No': counter++,

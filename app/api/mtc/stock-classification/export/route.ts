@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireMtcAuth } from '@/lib/auth';
 import * as XLSX from 'xlsx';
+import { computeSparepartCurrentStock } from '@/lib/mtc/stock-utils';
 
 function isOpnameAdjustment(m: { keterangan?: string | null; purchaseType?: string | null }): boolean {
   if (m.purchaseType === 'opname_adjustment' || m.purchaseType === 'opname' || m.purchaseType === 'adjustment') {
@@ -75,10 +76,12 @@ export async function GET(req: NextRequest) {
   });
 
   const processedData = spareparts.map((sp) => {
-    const stockMovements = sp.movements.filter((m) => m.purchaseType !== 'histori-sheets');
-    const totalIn = stockMovements.filter((m) => m.tipe === 'IN').reduce((sum, m) => sum + m.qty, 0);
-    const totalOut = stockMovements.filter((m) => m.tipe === 'OUT').reduce((sum, m) => sum + m.qty, 0);
-    const currentStock = totalIn - totalOut;
+    const currentStock = computeSparepartCurrentStock({
+      tipeUkur: sp.tipeUkur,
+      movements: sp.movements,
+      potonganFisiks: sp.potonganFisiks,
+      excludeHistoriSheets: true,
+    });
 
     const outMovements = sp.movements.filter((m) => m.tipe === 'OUT' && !isOpnameAdjustment(m));
     

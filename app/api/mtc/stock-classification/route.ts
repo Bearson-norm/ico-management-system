@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireMtcEditor } from '@/lib/auth';
 import { ok, err } from '@/lib/utils';
+import { computeSparepartCurrentStock } from '@/lib/mtc/stock-utils';
 
 const KLASIFIKASI_SORT_ORDER: Record<string, number> = {
   'KRITIS - STOK MINIMAL (asuransi)': 0,
@@ -87,10 +88,12 @@ export async function GET(req: NextRequest) {
 
   const result = spareparts.map((sp) => {
     // 1. Current physical stock (identical to Inventory Master & Stock List)
-    const stockMovements = sp.movements.filter((m) => m.purchaseType !== 'histori-sheets');
-    const totalIn = stockMovements.filter((m) => m.tipe === 'IN').reduce((sum, m) => sum + m.qty, 0);
-    const totalOut = stockMovements.filter((m) => m.tipe === 'OUT').reduce((sum, m) => sum + m.qty, 0);
-    const currentStock = totalIn - totalOut;
+    const currentStock = computeSparepartCurrentStock({
+      tipeUkur: sp.tipeUkur,
+      movements: sp.movements,
+      potonganFisiks: sp.potonganFisiks,
+      excludeHistoriSheets: true,
+    });
 
     // 2. Multi-period OUT movements (12m, 6m, 3m, 1m) - Exclude Opname Adjustments
     const outMovements = sp.movements.filter((m) => m.tipe === 'OUT' && !isOpnameAdjustment(m));

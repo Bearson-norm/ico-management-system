@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@/lib/generated/mtc';
 import { isRecognizedSparepartId } from '@/lib/sparepart/masterCsv';
+import { computeMovementStockTotals, NOT_HISTORI_SHEETS_WHERE } from '@/lib/mtc/stock-utils';
 
 export type MtcStockInitialImportRow = {
   sparepartId: string;
@@ -83,9 +84,7 @@ export function recordToMtcStockInitialRow(row: Record<string, string>): MtcStoc
 }
 
 function currentStock(movements: { tipe: string; qty: number }[]): number {
-  const totalIn = movements.filter((m) => m.tipe === 'IN').reduce((s, m) => s + m.qty, 0);
-  const totalOut = movements.filter((m) => m.tipe === 'OUT').reduce((s, m) => s + m.qty, 0);
-  return totalIn - totalOut;
+  return computeMovementStockTotals(movements, { excludeHistoriSheets: false }).netStock;
 }
 
 function formatMessage(report: Omit<ImportMtcStockInitialReport, 'message'>): string {
@@ -163,7 +162,13 @@ export async function importMtcStockInitialBatch(
       const sp = await prisma.sparepart.findUnique({
         where: { id: row.sparepartId },
         include: {
-          movements: { where: { tipe: { in: ['IN', 'OUT'] } }, select: { tipe: true, qty: true } },
+          movements: {
+            where: {
+              tipe: { in: ['IN', 'OUT'] },
+              ...NOT_HISTORI_SHEETS_WHERE,
+            },
+            select: { tipe: true, qty: true },
+          },
         },
       });
 

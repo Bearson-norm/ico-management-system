@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireMtcAuth, requireMtcEditor } from '@/lib/auth';
 import { ok, err } from '@/lib/utils';
+import { computeMovementStockTotals, NOT_HISTORI_SHEETS_WHERE } from '@/lib/mtc/stock-utils';
 
 type RouteCtx = { params: Promise<{ id: string }> | { id: string } };
 
@@ -10,15 +11,13 @@ async function calculateCurrentStock(sparepartId: string, excludeMovementId?: nu
     where: {
       sparepartId,
       tipe: { in: ['IN', 'OUT'] },
-      OR: [{ purchaseType: null }, { purchaseType: { not: 'histori-sheets' } }],
+      ...NOT_HISTORI_SHEETS_WHERE,
       ...(excludeMovementId ? { id: { not: excludeMovementId } } : {}),
     },
     select: { tipe: true, qty: true },
   });
 
-  const totalIn = movements.filter((m) => m.tipe === 'IN').reduce((s, m) => s + m.qty, 0);
-  const totalOut = movements.filter((m) => m.tipe === 'OUT').reduce((s, m) => s + Math.abs(m.qty), 0);
-  return totalIn - totalOut;
+  return computeMovementStockTotals(movements, { excludeHistoriSheets: false }).netStock;
 }
 
 // ─── PUT /api/mtc/history/[id] - Edit Riwayat Transaksi ──────────────────────

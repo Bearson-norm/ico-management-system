@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import ValuationBreakdownTable from './ValuationBreakdownTable';
+import { computeSparepartCurrentStock, NOT_HISTORI_SHEETS_WHERE } from '@/lib/mtc/stock-utils';
 
 export const metadata = {
   title: 'Breakdown Nilai Aset Stok MTC',
@@ -25,7 +26,7 @@ export default async function ValuationBreakdownPage() {
       movements: {
         where: {
           tipe: { in: ['IN', 'OUT'] },
-          OR: [{ purchaseType: null }, { purchaseType: { not: 'histori-sheets' } }],
+          ...NOT_HISTORI_SHEETS_WHERE,
         },
         select: { tipe: true, qty: true },
       },
@@ -35,19 +36,13 @@ export default async function ValuationBreakdownPage() {
   // Calculate stocks and valuations
   const sparepartsValuation = allSpareparts.map((sp) => {
     const price = Number(sp.harga || 0);
-    let currentStock: number;
-    let valuation: number;
-
-    if (sp.tipeUkur === 'bulk') {
-      const totalPanjangSisa = sp.potonganFisiks.reduce((sum, p) => sum + p.panjangSisa, 0);
-      currentStock = totalPanjangSisa;
-      valuation = currentStock > 0 ? currentStock * price : 0;
-    } else {
-      const totalIn = sp.movements.filter((m) => m.tipe === 'IN').reduce((sum, m) => sum + m.qty, 0);
-      const totalOut = sp.movements.filter((m) => m.tipe === 'OUT').reduce((sum, m) => sum + m.qty, 0);
-      currentStock = totalIn - totalOut;
-      valuation = currentStock > 0 ? currentStock * price : 0;
-    }
+    const currentStock = computeSparepartCurrentStock({
+      tipeUkur: sp.tipeUkur,
+      movements: sp.movements,
+      potonganFisiks: sp.potonganFisiks,
+      excludeHistoriSheets: false,
+    });
+    const valuation = currentStock > 0 ? currentStock * price : 0;
 
     return {
       id: sp.id,

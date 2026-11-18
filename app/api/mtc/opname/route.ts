@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { ok, err } from '@/lib/utils';
 import { requireMtcEditor } from '@/lib/auth';
+import { computeSparepartCurrentStock, NOT_HISTORI_SHEETS_WHERE } from '@/lib/mtc/stock-utils';
 
 // GET /api/mtc/opname - List all Stock Opname sessions
 export async function GET(req: NextRequest) {
@@ -91,29 +92,19 @@ export async function POST(req: NextRequest) {
         } : {})
       },
       include: {
-        kategori: true
+        kategori: true,
+        potonganFisiks: {
+          where: { status: 'aktif' },
+          select: { panjangSisa: true },
+        },
+        movements: {
+          where: {
+            tipe: { in: ['IN', 'OUT'] },
+            ...NOT_HISTORI_SHEETS_WHERE,
+          },
+          select: { tipe: true, qty: true },
+        },
       }
-    });
-
-    // Fetch all stock movements to calculate currentStock
-    // Exclude histori-sheets imports — stok real sudah dicatat 3 bulan terakhir
-    const allMovements = await prisma.stockMovement.findMany({
-      where: {
-        OR: [{ purchaseType: null }, { purchaseType: { not: 'histori-sheets' } }],
-      },
-      select: {
-        sparepartId: true,
-        tipe: true,
-        qty: true
-      }
-    });
-
-    const stockMap = new Map<string, number>();
-    allMovements.forEach(m => {
-      if (!m.sparepartId) return;
-      const current = stockMap.get(m.sparepartId) || 0;
-      if (m.tipe === 'IN') stockMap.set(m.sparepartId, current + m.qty);
-      else if (m.tipe === 'OUT') stockMap.set(m.sparepartId, current - m.qty);
     });
 
     // 2. Create the OpnameSession
@@ -130,7 +121,14 @@ export async function POST(req: NextRequest) {
     // 3. Pre-populate OpnameItems for all matching spareparts
     if (spareparts.length > 0) {
       const itemsData = spareparts.map(sp => {
-        const qtySistem = stockMap.get(sp.id) ?? 0;
+        const qtySistem = Math.round(
+          computeSparepartCurrentStock({
+            tipeUkur: sp.tipeUkur,
+            movements: sp.movements,
+            potonganFisiks: sp.potonganFisiks,
+            excludeHistoriSheets: false,
+          })
+        );
         return {
           sessionId: newSession.id,
           sparepartId: sp.id,

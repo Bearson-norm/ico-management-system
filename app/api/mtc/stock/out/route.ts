@@ -3,20 +3,18 @@ import { prisma } from '@/lib/prisma';
 import { requireMtcEditor } from '@/lib/auth';
 import { StockOutSchema } from '@/lib/validations/stock';
 import { ok, err } from '@/lib/utils';
+import { computeMovementStockTotals, NOT_HISTORI_SHEETS_WHERE } from '@/lib/mtc/stock-utils';
 
-async function getCurrentStock(sparepartId: string): Promise<number> {
-  const agg = await prisma.stockMovement.groupBy({
-    by: ['tipe'],
+async function getCurrentStock(db: typeof prisma | Parameters<Parameters<typeof prisma.$transaction>[0]>[0], sparepartId: string): Promise<number> {
+  const movements = await db.stockMovement.findMany({
     where: {
       sparepartId,
       tipe: { in: ['IN', 'OUT'] },
-      OR: [{ purchaseType: null }, { purchaseType: { not: 'histori-sheets' } }],
+      ...NOT_HISTORI_SHEETS_WHERE,
     },
-    _sum: { qty: true },
+    select: { tipe: true, qty: true },
   });
-  const totalIn = agg.find((r) => r.tipe === 'IN')?._sum.qty ?? 0;
-  const totalOut = agg.find((r) => r.tipe === 'OUT')?._sum.qty ?? 0;
-  return totalIn - totalOut;
+  return computeMovementStockTotals(movements, { excludeHistoriSheets: false }).netStock;
 }
 
 export async function POST(req: NextRequest) {
@@ -99,8 +97,8 @@ export async function POST(req: NextRequest) {
             }
           }
         } else {
-          // Item unit biasa: cek stok akumulasi
-          const stok = await getCurrentStock(it.sparepartId);
+          // Item unit biasa: cek stok akumulasi di dalam transaksi agar aman untuk multi-baris/konkuren
+          const stok = await getCurrentStock(tx, it.sparepartId);
           if (stok < it.qty) {
             throw new Error(`Stok ${sp.nama} tidak cukup (sisa: ${stok})`);
           }

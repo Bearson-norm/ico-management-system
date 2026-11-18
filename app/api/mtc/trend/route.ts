@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireMtcAuth } from '@/lib/auth';
+import {
+  buildMtcTrendMovementWhere,
+  computeSparepartCurrentStock,
+  NOT_HISTORI_SHEETS_WHERE,
+} from '@/lib/mtc/stock-utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,25 +45,7 @@ export async function GET(req: NextRequest) {
 
     // 3. Overview Top 10 Most Consumed Parts (jika dibutuhkan untuk overview dashboard)
     const topMovements = await prisma.stockMovement.findMany({
-      where: {
-        tipe: 'OUT',
-        sparepartId: { not: null },
-        NOT: [
-          { keterangan: { contains: '[SILENT]' } },
-          { keterangan: { contains: '[OPNAME]' } },
-        ],
-        ...(kategori === 'Maintenance'
-          ? {
-              OR: [
-                { kategoriOut: 'Maintenance' },
-                { kategoriOut: 'Maintenance Produksi' },
-                { keterangan: { contains: '[Mesin:' } },
-                { noReport: { not: null } },
-              ],
-            }
-          : {}),
-        ...(dateLimit ? { tanggal: { gte: dateLimit } } : {}),
-      },
+      where: buildMtcTrendMovementWhere({ kategori, dateLimit }),
       select: {
         sparepartId: true,
         qty: true,
@@ -101,10 +88,14 @@ export async function GET(req: NextRequest) {
       include: {
         kategori: true,
         mesins: { select: { id: true, nama: true } },
+        potonganFisiks: {
+          where: { status: 'aktif' },
+          select: { panjangSisa: true },
+        },
         movements: {
           where: {
             tipe: { in: ['IN', 'OUT'] },
-            OR: [{ purchaseType: null }, { purchaseType: { not: 'histori-sheets' } }],
+            ...NOT_HISTORI_SHEETS_WHERE,
           },
           select: { tipe: true, qty: true },
         },
@@ -120,32 +111,21 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Hitung stok aktual (In minus Out non-histori-sheets)
-    const totalIn = targetSp.movements.filter((m) => m.tipe === 'IN').reduce((s, m) => s + m.qty, 0);
-    const totalOut = targetSp.movements.filter((m) => m.tipe === 'OUT').reduce((s, m) => s + Math.abs(m.qty), 0);
-    const currentStock = totalIn - totalOut;
+    // Hitung stok aktual (selaras dengan API stok: bulk pakai potonganFisiks, unit pakai IN - OUT)
+    const currentStock = computeSparepartCurrentStock({
+      tipeUkur: targetSp.tipeUkur,
+      movements: targetSp.movements,
+      potonganFisiks: targetSp.potonganFisiks,
+      excludeHistoriSheets: false,
+    });
 
     // 6. Ambil semua OUT movements untuk target part ini (termasuk histori sheets untuk tren akurat)
     const movements = await prisma.stockMovement.findMany({
-      where: {
+      where: buildMtcTrendMovementWhere({
         sparepartId: targetSpId,
-        tipe: 'OUT',
-        NOT: [
-          { keterangan: { contains: '[SILENT]' } },
-          { keterangan: { contains: '[OPNAME]' } },
-        ],
-        ...(kategori === 'Maintenance'
-          ? {
-              OR: [
-                { kategoriOut: 'Maintenance' },
-                { kategoriOut: 'Maintenance Produksi' },
-                { keterangan: { contains: '[Mesin:' } },
-                { noReport: { not: null } },
-              ],
-            }
-          : {}),
-        ...(dateLimit ? { tanggal: { gte: dateLimit } } : {}),
-      },
+        kategori,
+        dateLimit,
+      }),
       include: {
         pic: { select: { nama: true } },
         report: { include: { mesin: true } },

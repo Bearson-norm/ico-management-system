@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
+import { shouldSendSilentStockAdjustment } from '@/lib/mtc/stock-utils';
 
 type TabType = 'sparepart' | 'mesin' | 'teknisi' | 'kategori' | 'bom';
 
@@ -100,21 +101,28 @@ export default function MasterPage() {
     setModalType(type);
     setIsEdit(!!data);
     if (type === 'sparepart') {
-      setForm(data ? {
-        ...data,
-        kategoriId: data.kategoriId || '',
-        purchasingStatus: data.purchasingStatus || 'NONE',
-        tipeUkur: data.tipeUkur || 'unit',
-        dapatDibeliUlang: data.dapatDibeliUlang !== undefined ? data.dapatDibeliUlang : true,
-        mesinIds: data.mesins?.map((m: any) => m.id.toString()) || [],
-        currentStock: data.currentStock ?? 0,
-      } : {
-        purchasingStatus: 'NONE',
-        currentStock: 0,
-        tipeUkur: 'unit',
-        dapatDibeliUlang: true,
-        aktif: true,
-      });
+      if (data) {
+        const hasLoadedStock = data.currentStock !== undefined && data.currentStock !== null;
+        setForm({
+          ...data,
+          kategoriId: data.kategoriId || '',
+          purchasingStatus: data.purchasingStatus || 'NONE',
+          tipeUkur: data.tipeUkur || 'unit',
+          dapatDibeliUlang: data.dapatDibeliUlang !== undefined ? data.dapatDibeliUlang : true,
+          mesinIds: data.mesins?.map((m: any) => m.id.toString()) || [],
+          currentStock: hasLoadedStock ? data.currentStock : '',
+          initialCurrentStock: hasLoadedStock ? Number(data.currentStock) : null,
+        });
+      } else {
+        setForm({
+          purchasingStatus: 'NONE',
+          currentStock: 0,
+          initialCurrentStock: null,
+          tipeUkur: 'unit',
+          dapatDibeliUlang: true,
+          aktif: true,
+        });
+      }
     } else if (type === 'mesin') {
       setForm(data
           ? { ...data, tipe: data.tipe || 'perbaikan', vital: data.vital ?? false }
@@ -132,11 +140,21 @@ export default function MasterPage() {
     e.preventDefault();
     const endpoint = `/api/mtc/master/${modalType}`;
     const method = isEdit ? 'PUT' : 'POST';
-    
+
+    let payload = form;
+    if (modalType === 'sparepart') {
+      const { initialCurrentStock, currentStock, ...rest } = form;
+      if (isEdit && !shouldSendSilentStockAdjustment(form.tipeUkur, initialCurrentStock, currentStock)) {
+        payload = rest;
+      } else {
+        payload = { ...rest, currentStock };
+      }
+    }
+
     const res = await fetch(endpoint, {
       method,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form)
+      body: JSON.stringify(payload)
     });
 
     if (res.ok) {
@@ -832,10 +850,22 @@ export default function MasterPage() {
                         )}
                       </div>
                       <div className="form-group">
-                        <label className="form-label">Stok Saat Ini (Qty)</label>
-                        <input type="number" step="any" className="form-input" value={form.currentStock ?? 0} onChange={e => setForm({...form, currentStock: e.target.value})} />
+                        <label className="form-label" htmlFor="master-current-stock">Stok Saat Ini (Qty)</label>
+                        <input
+                          id="master-current-stock"
+                          type="number"
+                          step={form.tipeUkur === 'bulk' ? 'any' : 1}
+                          className="form-input"
+                          disabled={isEdit && (form.tipeUkur === 'bulk' || form.initialCurrentStock === null)}
+                          value={form.currentStock ?? ''}
+                          onChange={e => setForm({...form, currentStock: e.target.value})}
+                        />
                         <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 4 }}>
-                          *Penyesuaian stok langsung (silent).
+                          {isEdit && form.tipeUkur === 'bulk'
+                            ? 'Stok item Bulk dihitung otomatis dari daftar Potongan Fisik (Roll).'
+                            : isEdit && form.initialCurrentStock === null
+                              ? 'Stok tidak dimuat dari tab ini — ubah stok melalui tab Sparepart.'
+                              : '*Penyesuaian stok langsung (silent) hanya dibuat jika nilai stok diubah.'}
                         </div>
                       </div>
                     </div>
