@@ -9,33 +9,9 @@ import {
   serializeBundleParts,
   validateBundleParts,
 } from '@/lib/mtc/bundle-receive';
-
-type TxClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
-
-async function recalculateSparepartPurchasingStatus(tx: TxClient, sparepartId: string) {
-  const pendingItems = await tx.procurementTracking.findMany({
-    where: {
-      sparepartId,
-      tanggalTerima: null,
-      statusPo: { notIn: ['DONE', 'CANCELLED'] },
-      statusPr: { notIn: ['CANCELLED', 'REJECTED'] },
-    },
-  });
-
-  const totalPendingQty = pendingItems.reduce((sum: number, p: any) => sum + (p.qty || 0), 0);
-  const hasPendingPo = pendingItems.some((p: any) => p.nomorPo);
-  const firstPending = pendingItems[0];
-
-  await tx.sparepart.update({
-    where: { id: sparepartId },
-    data: {
-      purchasingStatus: totalPendingQty > 0 ? (hasPendingPo ? 'PO' : firstPending?.statusPr || 'PR') : 'NONE',
-      purchasingNoPr: totalPendingQty > 0 ? firstPending?.nomorPr || null : null,
-      purchasingNoPo: totalPendingQty > 0 ? pendingItems.find((p: any) => p.nomorPo)?.nomorPo || null : null,
-      purchasingQty: totalPendingQty,
-    },
-  });
-}
+import { isPackConvertedToUnits, parsePackMetadata } from '@/lib/mtc/procurement-utils';
+import { shouldAutoMergeUnreceive } from '@/lib/mtc/procurement-matching';
+import { PENDING_ARRIVAL_WHERE, syncSparepartProcurement } from '@/lib/mtc/procurement-server';
 
 // POST /api/mtc/procurement/receive
 export async function POST(req: NextRequest) {
@@ -80,16 +56,8 @@ export async function POST(req: NextRequest) {
     const finalHarga = harga !== undefined ? Number(harga) : Number(tracking.harga || 0);
     const finalVendor = vendor !== undefined ? vendor : tracking.vendor;
 
-    let isAlreadyInUnits = false;
-    let existingPackMeta: any = null;
-    if (tracking.linkedPartsJson) {
-      try {
-        existingPackMeta = JSON.parse(tracking.linkedPartsJson);
-        if (existingPackMeta && (existingPackMeta.isConvertedToUnits || existingPackMeta.originalPackQty !== undefined)) {
-          isAlreadyInUnits = true;
-        }
-      } catch {}
-    }
+    const existingPackMeta = parsePackMetadata(tracking.linkedPartsJson);
+    const isAlreadyInUnits = isPackConvertedToUnits(tracking.linkedPartsJson);
 
     const packModeActive = Boolean(isPackMode) || (Number(qtyPerPack) > 1) || isAlreadyInUnits;
     const effectivePackMultiplier = Number(qtyPerPack) > 1 ? Number(qtyPerPack) : (Number(existingPackMeta?.qtyPerPack) || 1);
@@ -114,8 +82,8 @@ export async function POST(req: NextRequest) {
     const movementQty = actualReceiveUnits;
     const movementHarga = isAlreadyInUnits ? finalHarga : Number((finalHarga / multiplier).toFixed(2));
 
-    const packMetadata = packModeActive
-      ? JSON.stringify({
+    const packMetadataObj = packModeActive
+      ? {
           type: 'pack',
           isPackMode: true,
           qtyPerPack: effectivePackMultiplier,
@@ -124,8 +92,14 @@ export async function POST(req: NextRequest) {
           originalPackQty: isAlreadyInUnits ? (existingPackMeta?.originalPackQty || tracking.qty) : tracking.qty,
           originalPackPrice: isAlreadyInUnits ? (existingPackMeta?.originalPackPrice || (finalHarga * effectivePackMultiplier)) : finalHarga,
           isConvertedToUnits: true,
-        })
-      : tracking.linkedPartsJson;
+        }
+      : null;
+
+    const packMetadata = packMetadataObj ? JSON.stringify(packMetadataObj) : tracking.linkedPartsJson;
+    const splitChildPackMetadata = JSON.stringify({
+      ...(packMetadataObj || existingPackMeta || {}),
+      splitFromId: tracking.id,
+    });
 
     // Hitung elapsed lead time dalam hari
     const elapsedMs = tDate.getTime() - new Date(tracking.tanggalList).getTime();
@@ -141,6 +115,17 @@ export async function POST(req: NextRequest) {
       const validatedParts = validation.parts;
 
       await prisma.$transaction(async (tx) => {
+        // Update tracking first so pending arrival aggregation excludes this completed item
+        await tx.procurementTracking.update({
+          where: { id: tracking.id },
+          data: {
+            tanggalTerima: tDate,
+            isStocked: Boolean(isStocked),
+            harga: finalHarga,
+            vendor: finalVendor,
+          },
+        });
+
         const existingBundleMovs = await tx.stockMovement.findMany({
           where: {
             OR: [
@@ -175,11 +160,12 @@ export async function POST(req: NextRequest) {
           }
 
           for (const staleId of staleSparepartIds) {
-            await recalculateSparepartPurchasingStatus(tx, staleId);
+            await syncSparepartProcurement(tx, staleId);
           }
         }
 
         const resolvedParts: BundlePartInput[] = [];
+        const syncedBundleSpIds = new Set<string>(staleSparepartIds);
 
         for (const part of validatedParts) {
           const sp = await tx.sparepart.findUnique({
@@ -224,25 +210,14 @@ export async function POST(req: NextRequest) {
             });
           }
 
-          // 2. Hitung Lead Time Baru untuk Sparepart
-          const calculatedAvgLeadTime = sp.avgLeadTime === 0
-            ? elapsedDays
-            : Number((sp.avgLeadTime * 0.8 + elapsedDays * 0.2).toFixed(2));
-          const calculatedMaxLeadTime = Math.max(sp.maxLeadTime, Math.round(elapsedDays));
-
-          // 3. Update Master Sparepart
-          await tx.sparepart.update({
-            where: { id: sp.id },
-            data: {
-              harga: part.harga,
-              purchasingStatus: 'NONE',
-              purchasingQty: 0,
-              prDate: null,
-              poDate: null,
-              avgLeadTime: calculatedAvgLeadTime,
-              maxLeadTime: calculatedMaxLeadTime,
-            },
+          await syncSparepartProcurement(tx, sp.id, {
+            candidateHarga: part.harga,
+            allowHargaUpdate: part.harga > 0,
+            updateLeadTime: true,
+            leadTimeReceiptDate: tDate,
+            leadTimeStartDate: tracking.tanggalList,
           });
+          syncedBundleSpIds.add(sp.id);
 
           resolvedParts.push({
             sparepartId: sp.id,
@@ -254,14 +229,17 @@ export async function POST(req: NextRequest) {
           });
         }
 
-        // 4. Update data pelacakan utama & simpan daftar komponen pecahan
+        if (tracking.sparepartId && !syncedBundleSpIds.has(tracking.sparepartId)) {
+          await syncSparepartProcurement(tx, tracking.sparepartId, {
+            updateLeadTime: true,
+            leadTimeReceiptDate: tDate,
+            leadTimeStartDate: tracking.tanggalList,
+          });
+        }
+
         await tx.procurementTracking.update({
           where: { id: tracking.id },
           data: {
-            tanggalTerima: tDate,
-            isStocked: Boolean(isStocked),
-            harga: finalHarga,
-            vendor: finalVendor,
             linkedPartsJson: serializeBundleParts(resolvedParts),
           },
         });
@@ -336,29 +314,7 @@ export async function POST(req: NextRequest) {
           });
         }
 
-        // 2. Hitung Lead Time Baru untuk Sparepart
-        const calculatedAvgLeadTime = sp.avgLeadTime === 0
-          ? elapsedDays
-          : Number((sp.avgLeadTime * 0.8 + elapsedDays * 0.2).toFixed(2));
-        const calculatedMaxLeadTime = Math.max(sp.maxLeadTime, Math.round(elapsedDays));
-
-        // 3. Update Master Sparepart
-        const newPurchasingQty = isPartial ? remainingUnits : 0;
-        const newPurchasingStatus = isPartial && newPurchasingQty > 0 ? 'PO' : 'NONE';
-
-        await tx.sparepart.update({
-          where: { id: sp.id },
-          data: {
-            harga: movementHarga,
-            purchasingStatus: newPurchasingStatus,
-            purchasingQty: newPurchasingQty,
-            ...(newPurchasingStatus === 'NONE' ? { prDate: null, poDate: null } : {}),
-            avgLeadTime: calculatedAvgLeadTime,
-            maxLeadTime: calculatedMaxLeadTime,
-          },
-        });
-
-        // 3b. Jika Kemasan Roll atau Sparepart Bertipe Bulk, buat baris PotonganFisik per Roll
+        // 2. Jika Kemasan Roll atau Sparepart Bertipe Bulk, buat baris PotonganFisik per Roll
         const isRollOrBulk = selectedUomPack.toLowerCase() === 'roll' || sp.tipeUkur === 'bulk';
         if (isRollOrBulk) {
           if (sp.tipeUkur !== 'bulk' || (selectedUomUnit && sp.uom !== selectedUomUnit)) {
@@ -423,7 +379,7 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        // 4. Update data pelacakan yang diterima
+        // 3. Update data pelacakan yang diterima
         await tx.procurementTracking.update({
           where: { id: tracking.id },
           data: {
@@ -436,7 +392,7 @@ export async function POST(req: NextRequest) {
           },
         });
 
-        // 5. Jika Penerimaan Parsial (Sebagian), buat record sisa pesanan yang masih ditunggu
+        // 4. Jika Penerimaan Parsial (Sebagian), buat record sisa pesanan yang masih ditunggu
         if (isPartial) {
           await tx.procurementTracking.create({
             data: {
@@ -469,10 +425,19 @@ export async function POST(req: NextRequest) {
               odooNotes: tracking.odooNotes
                 ? `${tracking.odooNotes}\n[Penerimaan Parsial: ${actualReceiveUnits} diterima tgl ${tanggalTerima}, sisa ${remainingUnits} ${selectedUomUnit} menunggu]`
                 : `[Penerimaan Parsial: ${actualReceiveUnits} diterima tgl ${tanggalTerima}, sisa ${remainingUnits} ${selectedUomUnit} menunggu]`,
-              linkedPartsJson: packMetadata,
+              linkedPartsJson: splitChildPackMetadata,
             },
           });
         }
+
+        // 5. Recompute Master Sparepart dari semua item pengadaan aktif (termasuk PO lain jika ada)
+        await syncSparepartProcurement(tx, sp.id, {
+          candidateHarga: movementHarga,
+          allowHargaUpdate: movementHarga > 0,
+          updateLeadTime: true,
+          leadTimeReceiptDate: tDate,
+          leadTimeStartDate: tracking.tanggalList,
+        });
       });
 
       const msg = isPartial
@@ -527,35 +492,7 @@ export async function POST(req: NextRequest) {
           });
         }
 
-        // 2. Update Lead Time Sparepart jika terhubung
-        if (tracking.sparepartId) {
-          const sp = await tx.sparepart.findUnique({
-            where: { id: tracking.sparepartId },
-          });
-
-          if (sp) {
-            const calculatedAvgLeadTime = sp.avgLeadTime === 0
-              ? elapsedDays
-              : Number((sp.avgLeadTime * 0.8 + elapsedDays * 0.2).toFixed(2));
-            const calculatedMaxLeadTime = Math.max(sp.maxLeadTime, Math.round(elapsedDays));
-
-            const newPurchasingQty = isPartial ? remainingUnits : 0;
-            const newPurchasingStatus = isPartial && newPurchasingQty > 0 ? 'PO' : 'NONE';
-
-            await tx.sparepart.update({
-              where: { id: sp.id },
-              data: {
-                purchasingStatus: newPurchasingStatus,
-                purchasingQty: newPurchasingQty,
-                ...(newPurchasingStatus === 'NONE' ? { prDate: null, poDate: null } : {}),
-                avgLeadTime: calculatedAvgLeadTime,
-                maxLeadTime: calculatedMaxLeadTime,
-              },
-            });
-          }
-        }
-
-        // 3. Update data pelacakan saat ini
+        // 2. Update data pelacakan saat ini
         await tx.procurementTracking.update({
           where: { id: tracking.id },
           data: {
@@ -568,7 +505,7 @@ export async function POST(req: NextRequest) {
           },
         });
 
-        // 4. Jika Penerimaan Parsial, buat record sisa pesanan yang masih ditunggu
+        // 3. Jika Penerimaan Parsial, buat record sisa pesanan yang masih ditunggu
         if (isPartial) {
           await tx.procurementTracking.create({
             data: {
@@ -601,8 +538,17 @@ export async function POST(req: NextRequest) {
               odooNotes: tracking.odooNotes
                 ? `${tracking.odooNotes}\n[Penerimaan Parsial: ${actualReceiveUnits} diterima tgl ${tanggalTerima}, sisa ${remainingUnits} ${selectedUomUnit} menunggu]`
                 : `[Penerimaan Parsial: ${actualReceiveUnits} diterima tgl ${tanggalTerima}, sisa ${remainingUnits} ${selectedUomUnit} menunggu]`,
-              linkedPartsJson: packMetadata,
+              linkedPartsJson: splitChildPackMetadata,
             },
+          });
+        }
+
+        // 4. Update Lead Time & status Sparepart jika terhubung
+        if (tracking.sparepartId) {
+          await syncSparepartProcurement(tx, tracking.sparepartId, {
+            updateLeadTime: true,
+            leadTimeReceiptDate: tDate,
+            leadTimeStartDate: tracking.tanggalList,
           });
         }
       });
@@ -640,20 +586,29 @@ export async function DELETE(req: NextRequest) {
     }
 
     await prisma.$transaction(async (tx) => {
-      // 1. Hapus mutasi stok (StockMovement) terkait item pengadaan ini jika ada
-      await tx.stockMovement.deleteMany({
-        where: {
-          OR: [
-            { keterangan: { contains: `[Penerimaan Pengadaan #${tracking.id}` } },
-            { keterangan: { contains: `[Penerimaan Paket #${tracking.id}` } },
-            { keterangan: { contains: `[Penerimaan Langsung Pakai Pengadaan #${tracking.id}` } },
-            ...(tracking.sparepartId && tracking.nomorPo ? [{
-              sparepartId: tracking.sparepartId,
-              keterangan: { contains: `[Odoo Sync Penerimaan PR: ${tracking.nomorPr || '—'} / PO: ${tracking.nomorPo}]` }
-            }] : []),
-          ]
-        }
+      // 1. Ambil dan hapus mutasi stok (StockMovement) terkait item pengadaan ini
+      const movWhere = {
+        OR: [
+          { keterangan: { contains: `[Penerimaan Pengadaan #${tracking.id}` } },
+          { keterangan: { contains: `[Penerimaan Paket #${tracking.id}` } },
+          { keterangan: { contains: `[Penerimaan Langsung Pakai Pengadaan #${tracking.id}` } },
+          ...(tracking.sparepartId && tracking.nomorPo ? [{
+            sparepartId: tracking.sparepartId,
+            keterangan: { contains: `[Odoo Sync Penerimaan PR: ${tracking.nomorPr || '—'} / PO: ${tracking.nomorPo}]` }
+          }] : []),
+        ]
+      };
+      const existingMovements = await tx.stockMovement.findMany({
+        where: movWhere,
+        select: { id: true, keterangan: true },
       });
+      const deletedDescriptions = existingMovements.map((m) => m.keterangan || '');
+
+      if (existingMovements.length > 0) {
+        await tx.stockMovement.deleteMany({
+          where: { id: { in: existingMovements.map((m) => m.id) } },
+        });
+      }
 
       // 1b. Bersihkan potongan fisik terkait jika penerimaan dibatalkan
       await tx.potonganFisik.deleteMany({
@@ -662,25 +617,26 @@ export async function DELETE(req: NextRequest) {
         },
       });
 
-      // 2. Cari apakah ada sibling pending (sisa pecahan parsial yang belum diterima) untuk auto-merge
-      const siblingPending = await tx.procurementTracking.findFirst({
+      // 2. Cari sibling pending hanya untuk kasus pecahan parsial dari item ini (bukan baris PO terpisah yang namanya kebetulan sama)
+      const siblingCandidates = await tx.procurementTracking.findMany({
         where: {
           id: { not: tracking.id },
           originalName: tracking.originalName,
-          tanggalTerima: null,
-          statusPo: { notIn: ['DONE', 'CANCELLED'] },
-          statusPr: { notIn: ['CANCELLED', 'REJECTED'] },
+          ...PENDING_ARRIVAL_WHERE,
           ...(tracking.nomorPo ? { nomorPo: tracking.nomorPo } : {}),
           ...(tracking.nomorPr ? { nomorPr: tracking.nomorPr } : {}),
         },
         orderBy: { id: 'desc' }
       });
 
+      const siblingPending = siblingCandidates.find((sib) =>
+        shouldAutoMergeUnreceive(tracking, sib, deletedDescriptions)
+      );
+
       const targetStatusPo = tracking.nomorPo ? 'PO' : null;
       const targetStatusPr = tracking.statusPr === 'RECEIVED' ? (tracking.nomorPo ? 'PO' : 'APPROVED') : tracking.statusPr;
 
       if (siblingPending) {
-        // Auto-merge: Satukan kembali kuantitas ke baris tracking ini dan hapus sibling pecahan
         const mergedQty = tracking.qty + siblingPending.qty;
         await tx.procurementTracking.update({
           where: { id: tracking.id },
@@ -715,7 +671,7 @@ export async function DELETE(req: NextRequest) {
         tracking.linkedPartsJson
       );
       for (const spId of affectedSpIds) {
-        await recalculateSparepartPurchasingStatus(tx, spId);
+        await syncSparepartProcurement(tx, spId);
       }
     });
 

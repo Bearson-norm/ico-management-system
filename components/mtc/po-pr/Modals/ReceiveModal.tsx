@@ -2,6 +2,7 @@ import React, { useEffect, useId } from 'react';
 import { TrackingItem } from '@/types/mtc/procurement';
 import { BundlePartInput, ReceiveMode } from '@/lib/mtc/bundle-receive';
 import { SplitReceiveSection } from './SplitReceiveSection';
+import { isPackConvertedToUnits, computeReceivePackQty } from '@/lib/mtc/procurement-utils';
 
 type ReceiveModalProps = {
   showReceiveModal: boolean;
@@ -83,20 +84,16 @@ export const ReceiveModal: React.FC<ReceiveModalProps> = ({
 
   if (!showReceiveModal || !receivingItem) return null;
 
-  let isAlreadyInUnits = false;
-  if (receivingItem.linkedPartsJson) {
-    try {
-      const meta = JSON.parse(receivingItem.linkedPartsJson);
-      if (meta && (meta.isConvertedToUnits || meta.originalPackQty !== undefined)) {
-        isAlreadyInUnits = true;
-      }
-    } catch {}
-  }
+  const isAlreadyInUnits = isPackConvertedToUnits(receivingItem.linkedPartsJson);
 
   const isSplitMode = receiveMode === 'split';
   const packActive = receiveMode === 'pack' || (isPackMode && receiveMode !== 'split');
-  const multiplier = packActive && !isAlreadyInUnits && Number(qtyPerPack) > 1 ? Number(qtyPerPack) : 1;
-  const totalPhysicalUnits = receivingItem.qty * multiplier;
+  const { multiplier, totalPhysicalUnits } = computeReceivePackQty(
+    receivingItem.qty,
+    packActive,
+    qtyPerPack,
+    isAlreadyInUnits,
+  );
   const unitPrice = multiplier > 1 ? Math.round((receivePrice || 0) / multiplier) : (receivePrice || 0);
   const canStockSingleItem = Boolean(receivingItem.sparepartId);
   const canSelectStockDestination = isSplitMode || canStockSingleItem;
@@ -193,7 +190,7 @@ export const ReceiveModal: React.FC<ReceiveModalProps> = ({
             <div style={{ fontSize: 11.5, color: 'var(--tx2)', marginTop: 4 }}>
               PR: {receivingItem.nomorPr || '-'} | PO: {receivingItem.nomorPo || '-'} | Dokumen Pesanan:{' '}
               <strong style={{ color: 'var(--tx)' }}>
-                {receivingItem.qty} {packActive ? uomPack : 'Pcs'}
+                {receivingItem.qty} {isAlreadyInUnits ? uomUnit : packActive ? uomPack : 'Pcs'}
               </strong>
             </div>
           </div>
@@ -225,8 +222,13 @@ export const ReceiveModal: React.FC<ReceiveModalProps> = ({
                 onClick={() => {
                   setReceiveMode('pack');
                   setIsPackMode(true);
-                  const mult = Math.max(1, qtyPerPack || 1);
-                  setReceiveQty(receivingItem.qty * mult);
+                  const { nextReceiveQty } = computeReceivePackQty(
+                    receivingItem.qty,
+                    true,
+                    qtyPerPack,
+                    isAlreadyInUnits,
+                  );
+                  setReceiveQty(nextReceiveQty);
                 }}
               >
                 Kemasan (Pack/Box/Set)
@@ -299,7 +301,13 @@ export const ReceiveModal: React.FC<ReceiveModalProps> = ({
                     onChange={(e) => {
                       const val = Math.max(1, Number(e.target.value) || 1);
                       setQtyPerPack(val);
-                      setReceiveQty(receivingItem.qty * val);
+                      const { nextReceiveQty } = computeReceivePackQty(
+                        receivingItem.qty,
+                        true,
+                        val,
+                        isAlreadyInUnits,
+                      );
+                      setReceiveQty(nextReceiveQty);
                     }}
                   />
                 </div>
@@ -334,14 +342,29 @@ export const ReceiveModal: React.FC<ReceiveModalProps> = ({
                   color: 'var(--tx2)',
                 }}
               >
-                <div>
-                  Pesanan Dokumen: <strong style={{ color: 'var(--tx)' }}>{receivingItem.qty} {uomPack}</strong> x {multiplier} ={' '}
-                  <strong style={{ color: 'var(--tx)' }}>{totalPhysicalUnits} {uomUnit}</strong> fisik.
-                </div>
-                <div style={{ marginTop: 2 }}>
-                  Harga Dokumen: Rp {receivePrice.toLocaleString('id-ID')} / {uomPack}. Estimasi Satuan:{' '}
-                  <strong style={{ color: '#4ade80' }}>Rp {unitPrice.toLocaleString('id-ID')} / {uomUnit}</strong>
-                </div>
+                {isAlreadyInUnits ? (
+                  <>
+                    <div>
+                      Qty Sudah Dikonversi ke Satuan:{' '}
+                      <strong style={{ color: 'var(--tx)' }}>{totalPhysicalUnits} {uomUnit}</strong> fisik (1 {uomPack} = {qtyPerPack} {uomUnit}).
+                    </div>
+                    <div style={{ marginTop: 2 }}>
+                      Harga Satuan Final:{' '}
+                      <strong style={{ color: '#4ade80' }}>Rp {unitPrice.toLocaleString('id-ID')} / {uomUnit}</strong>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      Pesanan Dokumen: <strong style={{ color: 'var(--tx)' }}>{receivingItem.qty} {uomPack}</strong> × {multiplier} ={' '}
+                      <strong style={{ color: 'var(--tx)' }}>{totalPhysicalUnits} {uomUnit}</strong> fisik.
+                    </div>
+                    <div style={{ marginTop: 2 }}>
+                      Harga Dokumen: Rp {receivePrice.toLocaleString('id-ID')} / {uomPack}. Estimasi Satuan:{' '}
+                      <strong style={{ color: '#4ade80' }}>Rp {unitPrice.toLocaleString('id-ID')} / {uomUnit}</strong>
+                    </div>
+                  </>
+                )}
                 <div style={{ color: '#93c5fd', marginTop: 2, fontWeight: 600 }}>
                   Diterima Saat Ini: {receiveQty} {uomUnit} (Total Rp {(receiveQty * unitPrice).toLocaleString('id-ID')})
                   {receiveQty < totalPhysicalUnits && (
@@ -541,7 +564,7 @@ export const ReceiveModal: React.FC<ReceiveModalProps> = ({
                     className="form-label"
                     style={{ fontWeight: 700, fontSize: 11, color: 'var(--tx2)' }}
                   >
-                    {packActive ? `Harga Dokumen PO (per ${uomPack})` : 'Harga Satuan Final (Rp)'}
+                    {packActive && !isAlreadyInUnits ? `Harga Dokumen PO (per ${uomPack})` : 'Harga Satuan Final (Rp)'}
                   </label>
                   <input
                     id={receivePriceId}

@@ -277,6 +277,9 @@ export const EditScmModal: React.FC<EditScmModalProps> = ({
                 value={editPrice}
                 onChange={(e) => setEditPrice(Number(e.target.value) || 0)}
               />
+              <div style={{ fontSize: 10, color: '#38bdf8', marginTop: 3 }}>
+                Subtotal ({editQty} Pcs): Rp {Math.round((editPrice || 0) * (editQty || 1)).toLocaleString('id-ID')}
+              </div>
             </div>
 
             <div className="form-group">

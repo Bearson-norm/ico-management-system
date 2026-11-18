@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Sparepart, TrackingItem, TabType, CardFilterType } from '@/types/mtc/procurement';
+import { TrackingItem, TabType, CardFilterType } from '@/types/mtc/procurement';
 import {
   BundlePartInput,
   ReceiveMode,
@@ -14,8 +14,10 @@ import {
   isOdooGrDone,
   isPhysicallyReceived,
   isCancelled,
+  isStalePendingItem,
   generateAutoAlias,
   getItemSimplifiedStatus,
+  matchesProcurementSearch,
 } from '@/lib/mtc/procurement-utils';
 
 import { HeaderSection } from '@/components/mtc/po-pr/HeaderSection';
@@ -31,8 +33,8 @@ import { OdooProcessedModal } from '@/components/mtc/po-pr/Modals/OdooProcessedM
 
 export default function ProcurementTrackingPage() {
   const [items, setItems] = useState<TrackingItem[]>([]);
-  const [spareparts, setSpareparts] = useState<Sparepart[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingArchived, setLoadingArchived] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   // Saved Odoo configurations
@@ -40,6 +42,8 @@ export default function ProcurementTrackingPage() {
   const [odooDb, setOdooDb] = useState('foom-production-5808833');
   const [odooUid, setOdooUid] = useState('34');
   const [odooSessionId, setOdooSessionId] = useState('');
+  const [staleDays, setStaleDays] = useState(60);
+  const [odooMinDate, setOdooMinDate] = useState('');
 
   // Modal visibility states
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -49,6 +53,8 @@ export default function ProcurementTrackingPage() {
   const [tempOdooDb, setTempOdooDb] = useState('foom-production-5808833');
   const [tempOdooUid, setTempOdooUid] = useState('34');
   const [tempOdooSessionId, setTempOdooSessionId] = useState('');
+  const [tempStaleDays, setTempStaleDays] = useState('60');
+  const [tempOdooMinDate, setTempOdooMinDate] = useState('');
   const [manualSyncStatus, setManualSyncStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
 
   // Odoo processed modal state
@@ -71,6 +77,8 @@ export default function ProcurementTrackingPage() {
   const [vendorFilter, setVendorFilter] = useState('');
   const [monthFilter, setMonthFilter] = useState('');
   const [yearFilter, setYearFilter] = useState('');
+  const [onlyStaleFilter, setOnlyStaleFilter] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
   // Tabs for main view
   const [activeTab, setActiveTab] = useState<TabType>('ALL');
@@ -87,7 +95,6 @@ export default function ProcurementTrackingPage() {
 
   // Master options
   const [dbCategories, setDbCategories] = useState<{ id: number; nama: string; tipe: string }[]>([]);
-  const [, setDbMesins] = useState<{ id: number; nama: string; tipe: string; area?: string | null }[]>([]);
   const [isCreatingNewSp, setIsCreatingNewSp] = useState(false);
   const [newSpNama, setNewSpNama] = useState('');
   const [newSpAlias, setNewSpAlias] = useState('');
@@ -139,9 +146,6 @@ export default function ProcurementTrackingPage() {
 
   useEffect(() => {
     fetchData();
-    fetchSpareparts();
-    fetchDbCategories();
-    fetchDbMesins();
 
     async function loadSettings() {
       try {
@@ -153,6 +157,8 @@ export default function ProcurementTrackingPage() {
           const currentOdooDb = dbData.mtc_odoo_db || 'foom-production-5808833';
           const currentOdooUid = dbData.mtc_odoo_uid || '34';
           const currentOdooSessionId = dbData.mtc_odoo_session_id || '';
+          const parsedStaleDays = Math.max(7, parseInt(dbData.mtc_stale_days || '60', 10) || 60);
+          const currentOdooMinDate = dbData.mtc_odoo_min_date || '';
 
           setOdooPassword(currentOdooPassword);
           setTempOdooPassword(currentOdooPassword);
@@ -162,6 +168,10 @@ export default function ProcurementTrackingPage() {
           setTempOdooUid(currentOdooUid);
           setOdooSessionId(currentOdooSessionId);
           setTempOdooSessionId(currentOdooSessionId);
+          setStaleDays(parsedStaleDays);
+          setTempStaleDays(String(parsedStaleDays));
+          setOdooMinDate(currentOdooMinDate);
+          setTempOdooMinDate(currentOdooMinDate);
         }
       } catch (err) {
         console.error('Failed to load settings from DB:', err);
@@ -172,6 +182,10 @@ export default function ProcurementTrackingPage() {
   }, []);
 
   useEffect(() => {
+    if (!showLinkModal && !showReceiveModal) return;
+    if (dbCategories.length === 0) {
+      fetchDbCategories();
+    }
     if (!showLinkModal) return;
     setLoadingSuggestions(true);
     const delayDebounceFn = setTimeout(async () => {
@@ -187,27 +201,33 @@ export default function ProcurementTrackingPage() {
     }, linkSearch ? 300 : 0);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [linkSearch, showLinkModal]);
+  }, [linkSearch, showLinkModal, showReceiveModal, dbCategories.length]);
 
   async function fetchData() {
     setLoading(true);
     try {
-      const res = await fetch('/api/mtc/procurement?archived=all');
-      const json = await res.json();
-      if (json.success) setItems(json.data || []);
+      // Stage 1: Muat data pengadaan aktif terlebih dahulu agar halaman terbuka instan
+      const resActive = await fetch('/api/mtc/procurement?archived=false', { cache: 'no-store' });
+      const jsonActive = await resActive.json();
+      const activeData: TrackingItem[] = jsonActive.success ? jsonActive.data || [] : [];
+      setItems(activeData);
+      setLoading(false);
+
+      // Stage 2: Muat data arsip/closed di belakang layar tanpa memblokir tampilan utama
+      setLoadingArchived(true);
+      const resArchived = await fetch('/api/mtc/procurement?archived=true', { cache: 'no-store' });
+      const jsonArchived = await resArchived.json();
+      if (jsonArchived.success && Array.isArray(jsonArchived.data)) {
+        const activeIds = new Set(activeData.map((i) => i.id));
+        const merged = [...activeData, ...jsonArchived.data.filter((i: TrackingItem) => !activeIds.has(i.id))];
+        setItems(merged);
+      }
     } catch (e) {
       console.error('Gagal mengambil data pengadaan', e);
     } finally {
       setLoading(false);
+      setLoadingArchived(false);
     }
-  }
-
-  async function fetchSpareparts() {
-    try {
-      const res = await fetch('/api/mtc/master/sparepart?simple=true');
-      const json = await res.json();
-      if (json.success) setSpareparts(json.data || []);
-    } catch (e) {}
   }
 
   async function fetchDbCategories() {
@@ -215,14 +235,6 @@ export default function ProcurementTrackingPage() {
       const res = await fetch('/api/mtc/master/kategori');
       const json = await res.json();
       if (json.success) setDbCategories(json.data || []);
-    } catch (e) {}
-  }
-
-  async function fetchDbMesins() {
-    try {
-      const res = await fetch('/api/mtc/master/mesin');
-      const json = await res.json();
-      if (json.success) setDbMesins(json.data || []);
     } catch (e) {}
   }
 
@@ -243,31 +255,36 @@ export default function ProcurementTrackingPage() {
           odooDb: odooDb,
           odooUid: parseInt(odooUid) || 34,
           odooSessionId: odooSessionId,
+          odooMinDate: odooMinDate || undefined,
         }),
       });
       const json = await res.json();
       if (json.success) {
         alert('✓ Sinkronisasi Odoo Cloud berhasil!');
         await fetchData();
-        await fetchSpareparts();
       } else {
         alert(`⚠️ Gagal menyinkronkan data: ${json.error}`);
       }
     } catch (err: any) {
       alert('✓ Permintaan sinkronisasi Odoo telah dikirim ke server. Memperbarui data...');
       await fetchData();
-      await fetchSpareparts();
     } finally {
       setActionLoading(null);
     }
   }
 
+
   async function handleSaveSettings(e: React.FormEvent) {
     e.preventDefault();
+    const nextStaleDays = Math.max(7, parseInt(tempStaleDays || '60', 10) || 60);
+    const nextMinDate = tempOdooMinDate.trim();
     setOdooPassword(tempOdooPassword);
     setOdooDb(tempOdooDb);
     setOdooUid(tempOdooUid);
     setOdooSessionId(tempOdooSessionId);
+    setStaleDays(nextStaleDays);
+    setTempStaleDays(String(nextStaleDays));
+    setOdooMinDate(nextMinDate);
 
     try {
       await fetch('/api/mtc/settings', {
@@ -278,6 +295,8 @@ export default function ProcurementTrackingPage() {
           mtc_odoo_db: tempOdooDb,
           mtc_odoo_uid: tempOdooUid,
           mtc_odoo_session_id: tempOdooSessionId,
+          mtc_stale_days: String(nextStaleDays),
+          mtc_odoo_min_date: nextMinDate,
         }),
       });
     } catch (err) {}
@@ -402,7 +421,6 @@ export default function ProcurementTrackingPage() {
         setReceiveParts([]);
         setSplitError(null);
         await fetchData();
-        await fetchSpareparts();
       } else {
         if (receiveMode === 'split') {
           setSplitError(json.error || 'Gagal mencatat penerimaan.');
@@ -420,6 +438,7 @@ export default function ProcurementTrackingPage() {
       setActionLoading(null);
     }
   }
+
 
   async function handleUnreceive(item: TrackingItem) {
     if (
@@ -448,6 +467,7 @@ export default function ProcurementTrackingPage() {
     }
   }
 
+
   async function handleLinkSparepart(sparepartId: string) {
     if (!linkingItem) return;
     setActionLoading(`link-${linkingItem.id}`);
@@ -475,6 +495,7 @@ export default function ProcurementTrackingPage() {
       setActionLoading(null);
     }
   }
+
 
   async function handleCreateAndLinkSparepart(e: React.FormEvent) {
     e.preventDefault();
@@ -514,7 +535,6 @@ export default function ProcurementTrackingPage() {
         setShowLinkModal(false);
         setLinkingItem(null);
         await fetchData();
-        await fetchSpareparts();
       } else {
         alert(`Gagal: ${jsonProc.error}`);
       }
@@ -524,6 +544,7 @@ export default function ProcurementTrackingPage() {
       setActionLoading(null);
     }
   }
+
 
   async function handleEditSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -566,6 +587,7 @@ export default function ProcurementTrackingPage() {
     }
   }
 
+
   async function handleOdooProcessedSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!odooProcessedItem) return;
@@ -596,6 +618,7 @@ export default function ProcurementTrackingPage() {
     }
   }
 
+
   async function handleUnlinkItem(item: TrackingItem) {
     if (!confirm('Apakah Anda yakin ingin memutus hubungan dengan suku cadang?')) return;
     setActionLoading(`unlink-${item.id}`);
@@ -615,6 +638,78 @@ export default function ProcurementTrackingPage() {
     } finally {
       setActionLoading(null);
     }
+  }
+
+
+  async function handleArchiveItems(ids: number[], label?: string) {
+    if (!ids.length) return;
+    const desc = label || `${ids.length} item`;
+    if (
+      !confirm(
+        `Tutup dan arsipkan ${desc} ke tab Closed/Arsip?\n\n` +
+          `Item tidak dihapus permanen, status badge PO/PR di Master Sparepart akan dibersihkan, dan Sync Odoo/Sheets tidak akan membuka ulang item ini.`
+      )
+    ) {
+      return;
+    }
+    setActionLoading('archive-stale');
+    try {
+      const res = await fetch('/api/mtc/procurement/archive-stale', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'archive',
+          ids,
+          reason: `Ditutup manual dari web (${desc})`,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setSelectedIds([]);
+        alert(`✓ ${json.data?.msg || 'Item berhasil diarsipkan!'}`);
+        await fetchData();
+      } else {
+        alert(`⚠️ ${json.error || 'Gagal mengarsipkan item.'}`);
+      }
+    } catch {
+      alert('Terjadi kesalahan saat mengarsipkan item.');
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function handleReopenItem(item: TrackingItem) {
+    if (
+      !confirm(
+        `Pulihkan "${item.originalName}" kembali ke daftar pengadaan aktif?\n\n` +
+          `Status PR/PO sebelumnya akan dikembalikan dan badge Sparepart terkait akan diperbarui.`
+      )
+    ) {
+      return;
+    }
+    setActionLoading(`reopen-${item.id}`);
+    try {
+      const res = await fetch('/api/mtc/procurement/archive-stale', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reopen', ids: [item.id] }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        alert(`✓ ${json.data?.msg || 'Item berhasil dipulihkan!'}`);
+        await fetchData();
+      } else {
+        alert(`⚠️ ${json.error || 'Gagal memulihkan item.'}`);
+      }
+    } catch {
+      alert('Terjadi kesalahan saat memulihkan item.');
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  function toggleSelectId(id: number) {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   }
 
   function openReceiveModal(item: TrackingItem) {
@@ -709,26 +804,19 @@ export default function ProcurementTrackingPage() {
 
   // Pure Local Items list (No Google Sheets scope)
   const scopedItems = useMemo(() => items, [items]);
+  const staleItems = useMemo(
+    () => scopedItems.filter((item) => isStalePendingItem(item, staleDays)),
+    [scopedItems, staleDays]
+  );
 
   // Strict Tab Filtering using procurement-utils
   const filteredItems = useMemo(() => {
     return scopedItems.filter((item) => {
       if (!filterItemByTab(item, activeTab, cardFilter)) return false;
+      if (onlyStaleFilter && !isStalePendingItem(item, staleDays)) return false;
 
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        const qNorm = q.replace(/^pro/, 'pr0').replace(/o/g, '0');
-        const origName = item.originalName.toLowerCase();
-        const prNo = (item.nomorPr || '').toLowerCase();
-        const poNo = (item.nomorPo || '').toLowerCase();
-        const spName = (item.sparepart?.nama || '').toLowerCase();
-
-        const matchName = origName.includes(q) || origName.includes(qNorm);
-        const matchPr = prNo.includes(q) || prNo.includes(qNorm);
-        const matchPo = poNo.includes(q) || poNo.includes(qNorm);
-        const matchOdoo = spName.includes(q) || spName.includes(qNorm);
-
-        if (!matchName && !matchPr && !matchPo && !matchOdoo) return false;
+      if (searchQuery.trim() && !matchesProcurementSearch(item, searchQuery)) {
+        return false;
       }
 
       if (urgencyFilter && item.urgency !== urgencyFilter) return false;
@@ -746,7 +834,19 @@ export default function ProcurementTrackingPage() {
 
       return true;
     });
-  }, [scopedItems, searchQuery, urgencyFilter, categoryFilter, vendorFilter, activeTab, monthFilter, yearFilter, cardFilter]);
+  }, [
+    scopedItems,
+    searchQuery,
+    urgencyFilter,
+    categoryFilter,
+    vendorFilter,
+    activeTab,
+    monthFilter,
+    yearFilter,
+    cardFilter,
+    onlyStaleFilter,
+    staleDays,
+  ]);
 
   const yearsList = useMemo(() => {
     const set = new Set<string>(['2026', '2025', '2024', '2023']);
@@ -801,6 +901,18 @@ export default function ProcurementTrackingPage() {
   // Group items dynamically
   const groupedPrItems = useMemo(() => {
     const groups: { [key: string]: TrackingItem[] } = {};
+    const scopeTotalsMap = new Map<string, { total: number; closed: number }>();
+
+    for (const item of scopedItems) {
+      const key =
+        groupingMode === 'PR'
+          ? item.nomorPr?.trim() || 'DRAFT'
+          : item.nomorPo?.trim() || 'BELUM_ADA_PO';
+      const entry = scopeTotalsMap.get(key) || { total: 0, closed: 0 };
+      entry.total++;
+      if (isClosedOrDone(item)) entry.closed++;
+      scopeTotalsMap.set(key, entry);
+    }
 
     filteredItems.forEach((item) => {
       const key =
@@ -826,11 +938,9 @@ export default function ProcurementTrackingPage() {
 
     return sortedKeys.map((key) => {
       const itemsInGroup = groups[key];
-      const allItemsForPr = scopedItems.filter((i) =>
-        (groupingMode === 'PR' ? i.nomorPr?.trim() || 'DRAFT' : i.nomorPo?.trim() || 'BELUM_ADA_PO') === key
-      );
-      const totalScopeItemsCount = allItemsForPr.length;
-      const closedScopeItemsCount = allItemsForPr.filter(isClosedOrDone).length;
+      const scopeEntry = scopeTotalsMap.get(key) || { total: itemsInGroup.length, closed: 0 };
+      const totalScopeItemsCount = scopeEntry.total;
+      const closedScopeItemsCount = scopeEntry.closed;
 
       let totalQty = 0;
       let totalCost = 0;
@@ -972,6 +1082,8 @@ export default function ProcurementTrackingPage() {
           setTempOdooDb(odooDb);
           setTempOdooUid(odooUid);
           setTempOdooSessionId(odooSessionId);
+          setTempStaleDays(String(staleDays));
+          setTempOdooMinDate(odooMinDate);
           setShowSettingsModal(true);
         }}
       />
@@ -1007,11 +1119,26 @@ export default function ProcurementTrackingPage() {
           setCardFilter={setCardFilter}
           scopedItems={scopedItems}
           checkMonthYear={checkMonthYear}
+          staleDays={staleDays}
+          staleCount={staleItems.length}
+          onlyStaleFilter={onlyStaleFilter}
+          setOnlyStaleFilter={setOnlyStaleFilter}
+          onBulkCloseAllStale={() =>
+            handleArchiveItems(
+              staleItems.map((i) => i.id),
+              `${staleItems.length} PO/PR aktif berusia ≥ ${staleDays} hari`
+            )
+          }
+          actionLoading={actionLoading}
         />
 
         {loading ? (
           <div style={{ textAlign: 'center', padding: 40, color: 'var(--tx3)' }}>
             Memuat data pengadaan Odoo...
+          </div>
+        ) : (activeTab === 'CLOSED' || activeTab === 'DONE') && loadingArchived && filteredItems.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 40, color: 'var(--tx3)' }}>
+            Memuat riwayat pengadaan selesai (Closed)...
           </div>
         ) : (
           <ProcurementGroupList
@@ -1035,6 +1162,12 @@ export default function ProcurementTrackingPage() {
             actionLoading={actionLoading}
             activeTab={activeTab}
             handleUnreceive={handleUnreceive}
+            staleDays={staleDays}
+            selectedIds={selectedIds}
+            onToggleSelectId={toggleSelectId}
+            onClearSelection={() => setSelectedIds([])}
+            onArchiveItems={handleArchiveItems}
+            onReopenItem={handleReopenItem}
           />
         )}
       </div>
@@ -1050,6 +1183,10 @@ export default function ProcurementTrackingPage() {
         setTempOdooUid={setTempOdooUid}
         tempOdooSessionId={tempOdooSessionId}
         setTempOdooSessionId={setTempOdooSessionId}
+        tempStaleDays={tempStaleDays}
+        setTempStaleDays={setTempStaleDays}
+        tempOdooMinDate={tempOdooMinDate}
+        setTempOdooMinDate={setTempOdooMinDate}
         handleSaveSettings={handleSaveSettings}
         manualSyncStatus={manualSyncStatus}
         actionLoading={actionLoading}
@@ -1111,7 +1248,6 @@ export default function ProcurementTrackingPage() {
         receiveParts={receiveParts}
         setReceiveParts={setReceiveParts}
         dbCategories={dbCategories}
-        onSparepartCreated={fetchSpareparts}
         splitError={splitError}
         handleReceiveSubmit={handleReceiveSubmit}
         actionLoading={actionLoading}

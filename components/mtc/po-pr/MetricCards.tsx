@@ -318,7 +318,11 @@ export const MetricCards: React.FC<MetricCardsProps> = ({
                 ? '2. Approval & Penawaran'
                 : cardFilter === 'PO'
                 ? '3. PO Terbit'
-                : '4. Selesai (Diterima)'}
+                : cardFilter === 'RECEIVED'
+                ? '4. Diterima (Belum GR)'
+                : cardFilter === 'CLOSED' || cardFilter === 'DONE'
+                ? '5. Closed (Diterima + GR)'
+                : cardFilter}
               &quot;
             </span>
           </div>

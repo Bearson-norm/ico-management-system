@@ -9,6 +9,23 @@ import { parse } from 'csv-parse/sync';
 import fs from 'fs';
 import path from 'path';
 import { shouldSkipPartialAutoSplitForBundle } from '@/lib/mtc/bundle-receive';
+import {
+  getLocalPackMultiplier,
+  getOdooPackMultiplier,
+  isBeforeSyncCutoff,
+  isManuallyArchived,
+  parsePackMetadata,
+} from '@/lib/mtc/procurement-utils';
+import {
+  filterTrueSplitSiblings,
+  getBestOdooLineName,
+  isGenericName,
+  isNonMtcItem,
+  matchItemsToLines,
+  matchOdooPrLinesToLocal,
+  shouldRecalculateLeadTimeOnSync,
+} from '@/lib/mtc/procurement-matching';
+import { syncSparepartProcurement } from '@/lib/mtc/procurement-server';
 
 function logDebug(message: string) {
   try {
@@ -107,101 +124,6 @@ function mapOdooStateToLocal(state: string): string {
   }
 }
 
-const GENERIC_NAMES = [
-  'EQUIPMENT', 'SPAREPARTS USAGE', 'SUPPLIES', 'FACTORY SUPPLIES', 'Barang GA', 'Produk Tanpa Nama',
-  'REPAIR AND MAINTENANCE', 'REPAIR & MAINTENANCE', 'MEDIA PLACEMENT', 'SPONSORSHIP', 'MARKETING SUPPLIES',
-  'OVERHEADS', 'OVERHEAD', 'OVERHEAD EXPENSE', 'OVERHEAD EXPENSES', 'UTILITY', 'UTILITIES',
-  'DIRECT EXPENSE', 'DIRECT EXPENSES', 'INDIRECT EXPENSE', 'INDIRECT EXPENSES', 'GENERAL EXPENSE', 'GENERAL EXPENSES',
-  'CONSUMABLES', 'CONSUMABLE', 'LAB CONSUMABLE', 'LAB CONSUMABLES', 'LABORATORY CONSUMABLE', 'LABORATORY CONSUMABLES',
-  'LAB SUPPLIES', 'LABORATORY SUPPLIES', 'SAFETY SUPPLIES', 'SAFETY EQUIPMENT', 'OTHER EXPENSES', 'OTHER EXPENSE',
-  'SERVICES', 'SERVICE', 'HARDWARE', 'TOOLS', 'TOOL'
-];
-const ACCOUNT_NAME_PATTERNS = [
-  /^SUPPLIES\s+FACTORY\s+RELATED$/i,
-  /^REPAIR\s+AND\s+MAINTENANCE/i,
-  /^OFFICE\s+SUPPLIES$/i,
-  /^FACTORY\s+SUPPLIES$/i,
-  /^GENERAL\s+SUPPLIES$/i,
-  /^MAINTENANCE\s+SUPPLIES$/i,
-  /^CLEANING\s+SUPPLIES$/i,
-  /^LAB(ORATORY)?\s+CONSUMABLES?$/i,
-  /^LAB(ORATORY)?\s+SUPPLIES$/i,
-  /^SAFETY\s+(SUPPLIES|EQUIPMENT)$/i,
-  /^Barang\s+GA$/i,
-  /^MEDIA\s+PLACEMENT$/i,
-  /^SPONSORSHIP$/i,
-  /^OVERHEADS?$/i,
-  /^OVERHEAD\s+EXPENSES?$/i,
-  /^UTILIT(Y|IES)$/i,
-];
-
-function isGenericName(name: string | null | undefined): boolean {
-  if (!name || !name.trim()) return false;
-  const trimmed = name.trim();
-  const lower = trimmed.toLowerCase();
-
-  if (GENERIC_NAMES.some(g => lower === g.toLowerCase())) {
-    return true;
-  }
-  for (const pattern of ACCOUNT_NAME_PATTERNS) {
-    if (pattern.test(trimmed)) {
-      const hasNumbers = /\d/.test(trimmed);
-      if (!hasNumbers) return true;
-    }
-  }
-
-  // Generic keyword match without specific specs/digits
-  const genericWords = [
-    'consumable', 'consumables', 'supplies', 'overhead', 'overheads',
-    'utility', 'utilities', 'repair and maintenance', 'repair & maintenance',
-    'equipment', 'general expense', 'direct expense', 'indirect expense'
-  ];
-  if (genericWords.some(w => lower.includes(w))) {
-    const hasSpecificSpecs = /\d/.test(trimmed) || /uph|liter|kg|mm|cm|pack|pcs|set|unit|box|cartridge|bottle|jerigen/i.test(trimmed);
-    if (!hasSpecificSpecs) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-const NON_MTC_KEYWORDS = [
-  'lollipop', 'lolipop', 'neon box', 'vapestore', 'vape store', 'wus vape', 'montir vape',
-  'media placement', 'sponsorship', 'marketing supplies', 'promo', 'billboard', 'booth',
-  'event', 'influencer', 'endorse', 'branding', 'flyer', 'brosur', 'banner'
-];
-
-function isNonMtcItem(name: string | null | undefined, keterangan: string | null | undefined): boolean {
-  const combined = `${name || ''} ${keterangan || ''}`.toLowerCase();
-  return NON_MTC_KEYWORDS.some(k => combined.includes(k));
-}
-
-function getBestOdooLineName(line: any): string {
-  const variant = (line.product_description_variants || '')?.trim();
-  const lineName = (line.name || '')?.trim();
-  const productLabel = (Array.isArray(line.product_id) ? line.product_id[1] : '')?.trim();
-  
-  // 1. Prioritaskan product_description_variants jika ada dan bukan tag generic
-  if (variant && !isGenericName(variant)) {
-    return variant;
-  }
-  // 2. Jika deskripsi lineName ada dan bukan generic, serta productLabel generic (misal "OVERHEADS"), gunakan lineName (misal "Nitrogen UPH")
-  if (lineName && !isGenericName(lineName) && isGenericName(productLabel)) {
-    return lineName;
-  }
-  // 3. Gunakan nama Master Product dari product_id[1] jika bukan tag generic
-  if (productLabel && !isGenericName(productLabel)) {
-    return productLabel;
-  }
-  // 4. Gunakan deskripsi line.name jika bukan tag generic
-  if (lineName && !isGenericName(lineName)) {
-    return lineName;
-  }
-  
-  return variant || lineName || productLabel || 'Produk Tanpa Nama';
-}
-
 function combinePrAndPoLinks(existingRef: string | null | undefined, newUrl: string, type: 'pr' | 'po' | 'gr'): string {
   let pr: string | null = null;
   let po: string | null = null;
@@ -233,203 +155,6 @@ function combinePrAndPoLinks(existingRef: string | null | undefined, newUrl: str
     return JSON.stringify({ pr, po, gr });
   }
   return newUrl;
-}
-
-function getPackMultiplier(linkedPartsJson: string | null | undefined): number {
-  if (!linkedPartsJson) return 1;
-  try {
-    const parsed = JSON.parse(linkedPartsJson);
-    if (parsed && (parsed.type === 'pack' || parsed.isPackMode) && Number(parsed.qtyPerPack) > 0) {
-      return Number(parsed.qtyPerPack);
-    }
-  } catch {}
-  return 1;
-}
-
-const MATCH_STOP_WORDS = new Set(['per', 'isi', 'sak', 'untuk', 'kg', 'pcs', 'dan', 'atau', 'dengan', 'filter', 'air', 'gedung', 'sumur', 'kotor', 'pam', 'repeat', 'order', 'kebutuhan']);
-const getMatchTokens = (str: any) => {
-  if (!str || typeof str !== 'string') return [];
-  return str.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !MATCH_STOP_WORDS.has(w));
-};
-
-// Calculate match score between a candidate line and a local tracking item
-function computeLineMatchScore(line: any, item: any, totalLines: number, totalItems: number): number {
-  if (!line || !item) return 0;
-
-  const odooItemName = (typeof item.sparepart?.nama === 'string') ? item.sparepart.nama.toLowerCase().trim() : '';
-  const originalName = (typeof item.originalName === 'string') ? item.originalName.toLowerCase().trim() : '';
-  const targetQty = Number(item.qty) || 0;
-
-  const rawProdName = Array.isArray(line.product_id) ? line.product_id[1] : '';
-  const prodName = (typeof rawProdName === 'string') ? rawProdName.toLowerCase().trim() : '';
-  const lineName = (typeof line.name === 'string') ? line.name.toLowerCase().trim() : '';
-  const lineQty = Number(line.product_qty) || 0;
-
-  const originalDigits = originalName.match(/\b\d+\b/g) || [];
-
-  let score = 0;
-
-  // 1. Exact Match (highest priority)
-  if (originalName && (originalName === prodName || originalName === lineName)) {
-    score += 100;
-  }
-  if (odooItemName && (odooItemName === prodName || odooItemName === lineName)) {
-    score += 80;
-  }
-
-  // 2. Substring Match
-  if (prodName && prodName.length > 3) {
-    if (originalName.includes(prodName) || prodName.includes(originalName)) {
-      score += 25;
-    }
-    if (odooItemName && (odooItemName.includes(prodName) || prodName.includes(odooItemName))) {
-      score += 20;
-    }
-  }
-
-  if (lineName && lineName.length > 3) {
-    if (originalName.includes(lineName) || lineName.includes(originalName)) {
-      score += 25;
-    }
-    if (odooItemName && (odooItemName.includes(lineName) || lineName.includes(odooItemName))) {
-      score += 20;
-    }
-  }
-
-  // 3. Word Token Overlap Match
-  const origTokens = getMatchTokens(originalName);
-  const itemTokens = getMatchTokens(odooItemName);
-  const lineTokens = getMatchTokens(lineName);
-  const prodTokens = getMatchTokens(prodName);
-
-  let maxCommonWords = 0;
-  for (const targetTokens of [origTokens, itemTokens]) {
-    if (targetTokens.length === 0) continue;
-    for (const refTokens of [lineTokens, prodTokens]) {
-      if (refTokens.length === 0) continue;
-      const common = targetTokens.filter(t => refTokens.includes(t));
-      if (common.length > maxCommonWords) {
-        maxCommonWords = common.length;
-      }
-    }
-  }
-
-  if (maxCommonWords >= 1) {
-    score += Math.min(maxCommonWords * 10, 40);
-  }
-
-  // 4. Digit/Number Sequence Match
-  if (score > 0 && originalDigits.length > 0) {
-    let digitMatchCount = 0;
-    for (const d of originalDigits) {
-      const regex = new RegExp('\\b' + d + '\\b');
-      if (regex.test(prodName) || regex.test(lineName)) {
-        digitMatchCount++;
-      }
-    }
-    score += digitMatchCount * 12;
-  }
-
-  // 5. Quantity Match
-  const isLineDescriptionGeneric = isGenericName(lineName) || (!lineName && isGenericName(prodName));
-  if (targetQty > 0 && targetQty === lineQty) {
-    if (score > 0) {
-      score += 8;
-    } else if (totalLines === 1 && totalItems === 1 && isLineDescriptionGeneric && isGenericName(originalName)) {
-      score += 20;
-    }
-  }
-
-  // 6. Single Item Fallback ONLY IF both group and PO have exactly 1 item!
-  if (score === 0 && totalLines === 1 && totalItems === 1) {
-    if (isLineDescriptionGeneric || isGenericName(originalName)) {
-      score += 25;
-    }
-  }
-
-  return score;
-}
-
-// Global Bipartite 1-to-1 Matcher:
-// Ensures each local item matches at most 1 Odoo line, and each Odoo line is claimed by at most 1 local item.
-function matchItemsToLines(items: any[], lines: any[]): Map<number, any> {
-  const result = new Map<number, any>();
-  if (!items || items.length === 0 || !lines || lines.length === 0) return result;
-
-  const candidates: { item: any; line: any; score: number }[] = [];
-  for (const item of items) {
-    for (const line of lines) {
-      const score = computeLineMatchScore(line, item, lines.length, items.length);
-      if (score >= 20) {
-        candidates.push({ item, line, score });
-      }
-    }
-  }
-
-  // Sort descending by score
-  candidates.sort((a, b) => b.score - a.score);
-
-  const usedItemIds = new Set<number>();
-  const usedLineIds = new Set<any>();
-
-  for (const cand of candidates) {
-    const itemId = cand.item.id;
-    const lineKey = cand.line.id !== undefined ? cand.line.id : cand.line;
-
-    if (!usedItemIds.has(itemId) && !usedLineIds.has(lineKey)) {
-      usedItemIds.add(itemId);
-      usedLineIds.add(lineKey);
-      result.set(itemId, cand.line);
-    }
-  }
-
-  // Split Siblings Matcher:
-  // If an Odoo line was matched to an item, and there are other items in `items`
-  // that are split siblings of that item (same name/sparepart and same PR/group),
-  // they belong to the SAME Odoo PO line!
-  for (const item of items) {
-    if (result.has(item.id)) continue;
-
-    const matchedSibling = items.find((sib) => {
-      if (sib.id === item.id || !result.has(sib.id)) return false;
-
-      // Match by sparepartId if both have it
-      if (item.sparepartId && sib.sparepartId && item.sparepartId === sib.sparepartId) {
-        return true;
-      }
-
-      // Match by exact originalName (case-insensitive)
-      const nameA = item.originalName?.trim().toLowerCase();
-      const nameB = sib.originalName?.trim().toLowerCase();
-      return nameA && nameB && nameA === nameB;
-    });
-
-    if (matchedSibling) {
-      const siblingLine = result.get(matchedSibling.id);
-      if (siblingLine) {
-        result.set(item.id, siblingLine);
-      }
-    }
-  }
-
-  // Strict 1-to-1 fallback: only if exactly 1 item and 1 line
-  if (items.length === 1 && lines.length === 1 && result.size === 0) {
-    const singleItem = items[0];
-    const singleLine = lines[0];
-    const score = computeLineMatchScore(singleLine, singleItem, 1, 1);
-    const lineDesc = singleLine.name || (Array.isArray(singleLine.product_id) ? singleLine.product_id[1] : '');
-    if (score > 0 || isGenericName(lineDesc) || isGenericName(singleItem.originalName)) {
-      result.set(singleItem.id, singleLine);
-    }
-  }
-
-  return result;
-}
-
-function findBestMatchedLine(lines: any[], item: any): any {
-  if (!lines || lines.length === 0 || !item) return null;
-  const res = matchItemsToLines([item], lines);
-  return res.get(item.id) || null;
 }
 
 // Helper to fetch and format Chatter logs for a specific document model
@@ -569,7 +294,7 @@ async function queryOdoo(
   }
 }
 
-// Helper to find Requisitions or Requests by name with fuzzy fallback
+// Helper to find Requests or Requisitions by name with fuzzy fallback (prioritizes purchase.request over purchase.requisition)
 async function findOdooPR(
   prName: string,
   odooOptions: any
@@ -577,55 +302,16 @@ async function findOdooPR(
   const cleanPrName = prName.trim();
   if (!cleanPrName) return null;
 
-  // 1. Try exact purchase.requisition
-  try {
-    const reqs = await queryOdoo(
-      'purchase.requisition',
-      'search_read',
-      [[['name', '=', cleanPrName]]],
-      { fields: ['id', 'name', 'state', 'create_date'], limit: 1 },
-      odooOptions
-    );
-    if (reqs && reqs.length > 0) {
-      logDebug(`Exact Requisition Match found for ${cleanPrName}: ${reqs[0].name}`);
-      return { model: 'purchase.requisition', ...reqs[0] };
-    }
-  } catch (e: any) {
-    logDebug(`Error querying exact purchase.requisition: ${e.message || e}`);
-  }
-
-  // 2. Try fuzzy purchase.requisition
   const prMatch = cleanPrName.match(/^PR0*(\d+)$/i);
-  if (prMatch) {
-    const seq = prMatch[1];
-    try {
-      const fuzzyReqs = await queryOdoo(
-        'purchase.requisition',
-        'search_read',
-        [[['name', 'ilike', seq]]],
-        { fields: ['id', 'name', 'state', 'create_date'], limit: 20 },
-        odooOptions
-      );
-      if (fuzzyReqs && fuzzyReqs.length > 0) {
-        const regex = new RegExp('(?:\\D|^)0*' + seq + '\\\\b', 'i');
-        const matched = fuzzyReqs.find((req: any) => regex.test(req.name) || req.name?.includes(cleanPrName));
-        if (matched) {
-          logDebug(`Fuzzy Requisition Match selected for seq ${seq}: ${matched.name}`);
-          return { model: 'purchase.requisition', ...matched };
-        }
-      }
-    } catch (e: any) {
-      logDebug(`Error querying fuzzy purchase.requisition: ${e.message || e}`);
-    }
-  }
+  const teMatch = cleanPrName.match(/^TE0*(\d+)$/i);
 
-  // 3. Try exact purchase.request
+  // 1. Try exact purchase.request FIRST (authoritative source for PRxxxx)
   try {
     const reqs = await queryOdoo(
       'purchase.request',
       'search_read',
       [[['name', '=', cleanPrName]]],
-      { fields: ['id', 'name', 'state', 'create_date'], limit: 1 },
+      { fields: ['id', 'name', 'state', 'create_date'], order: 'id desc', limit: 1 },
       odooOptions
     );
     if (reqs && reqs.length > 0) {
@@ -636,7 +322,7 @@ async function findOdooPR(
     logDebug(`Error querying exact purchase.request: ${e.message || e}`);
   }
 
-  // 4. Try fuzzy purchase.request
+  // 2. Try fuzzy purchase.request if PR pattern
   if (prMatch) {
     const seq = prMatch[1];
     try {
@@ -644,12 +330,12 @@ async function findOdooPR(
         'purchase.request',
         'search_read',
         [[['name', 'ilike', seq]]],
-        { fields: ['id', 'name', 'state', 'create_date'], limit: 20 },
+        { fields: ['id', 'name', 'state', 'create_date'], order: 'id desc', limit: 20 },
         odooOptions
       );
       if (fuzzyReqs && fuzzyReqs.length > 0) {
-        const regex = new RegExp('(?:\\D|^)0*' + seq + '\\\\b', 'i');
-        const matched = fuzzyReqs.find((req: any) => regex.test(req.name) || req.name?.includes(cleanPrName));
+        const regex = new RegExp('^PR[/0-9-]*0*' + seq + '\\b', 'i');
+        const matched = fuzzyReqs.find((req: any) => regex.test(req.name || '') || req.name?.includes(cleanPrName));
         if (matched) {
           logDebug(`Fuzzy Request Match selected for seq ${seq}: ${matched.name}`);
           return { model: 'purchase.request', ...matched };
@@ -657,6 +343,54 @@ async function findOdooPR(
       }
     } catch (e: any) {
       logDebug(`Error querying fuzzy purchase.request: ${e.message || e}`);
+    }
+  }
+
+  // 3. Try exact purchase.requisition (by name or origin, preferring non-cancelled)
+  try {
+    const reqs = await queryOdoo(
+      'purchase.requisition',
+      'search_read',
+      [['|', ['name', '=', cleanPrName], ['origin', '=', cleanPrName]]],
+      { fields: ['id', 'name', 'origin', 'state', 'create_date'], order: 'id desc', limit: 10 },
+      odooOptions
+    );
+    if (reqs && reqs.length > 0) {
+      const activeReq = reqs.find((r: any) => r.state !== 'cancel' && r.state !== 'rejected' && r.state !== 'close') || reqs[0];
+      logDebug(`Exact Requisition Match found for ${cleanPrName}: ${activeReq.name} (state: ${activeReq.state})`);
+      return { model: 'purchase.requisition', ...activeReq };
+    }
+  } catch (e: any) {
+    logDebug(`Error querying exact purchase.requisition: ${e.message || e}`);
+  }
+
+  // 4. Try fuzzy purchase.requisition (by origin if PR pattern, or by name if TE pattern)
+  if (prMatch || teMatch) {
+    const seq = prMatch ? prMatch[1] : teMatch![1];
+    const searchField = prMatch ? 'origin' : 'name';
+    try {
+      const fuzzyReqs = await queryOdoo(
+        'purchase.requisition',
+        'search_read',
+        [[[searchField, 'ilike', seq]]],
+        { fields: ['id', 'name', 'origin', 'state', 'create_date'], order: 'id desc', limit: 20 },
+        odooOptions
+      );
+      if (fuzzyReqs && fuzzyReqs.length > 0) {
+        const prefix = prMatch ? 'PR' : 'TE';
+        const regex = new RegExp(prefix + '[/0-9-]*0*' + seq + '\\b', 'i');
+        const matchingList = fuzzyReqs.filter((req: any) => {
+          const val = (req[searchField] || '') as string;
+          return regex.test(val) || val.includes(cleanPrName);
+        });
+        if (matchingList.length > 0) {
+          const matched = matchingList.find((r: any) => r.state !== 'cancel' && r.state !== 'rejected' && r.state !== 'close') || matchingList[0];
+          logDebug(`Fuzzy Requisition Match selected for seq ${seq}: ${matched.name} (state: ${matched.state})`);
+          return { model: 'purchase.requisition', ...matched };
+        }
+      }
+    } catch (e: any) {
+      logDebug(`Error querying fuzzy purchase.requisition: ${e.message || e}`);
     }
   }
 
@@ -780,6 +514,8 @@ export async function POST(req: NextRequest) {
   let odooErrorStr = '';
 
   const skipSheets = body?.skipSheets || body?.odooOnly || dbSettings['mtc_sync_odoo_only'] === 'true';
+  const syncMinDateStr = String(body?.odooMinDate ?? dbSettings['mtc_odoo_min_date'] ?? '').trim();
+  const odooCutoffStr = /^\d{4}-\d{2}-\d{2}$/.test(syncMinDateStr) ? `${syncMinDateStr} 00:00:00` : '';
 
   // -------------------------------------------------------------
   // STEP 1: SINKRONISASI GOOGLE SHEETS
@@ -873,6 +609,10 @@ export async function POST(req: NextRequest) {
             }
 
             if (trackingItem) {
+              // Never resurrect items that were manually closed/archived from the web UI
+              if (isManuallyArchived(trackingItem)) {
+                continue;
+              }
               // MTC PRO Price Sync Flow:
               // If status is in draft states (DRAFT, WAITING_PRICE, CONTINUE) and price is now resolved (> 0), auto-promote to READY_ODOO
               const isDraftStatus = (s: string | null | undefined) => !s || s === 'DRAFT' || s === 'WAITING_PRICE' || s === 'CONTINUE';
@@ -895,31 +635,6 @@ export async function POST(req: NextRequest) {
               let finalStatusPo = statusPo || trackingItem.statusPo;
               let finalVendor = vendor || trackingItem.vendor;
               let finalEtaFoom = etaFoom || trackingItem.etaFoom;
-
-              // If Sparepart is matched, update its price and status in the master spareparts DB too
-              if (trackingItem.sparepartId) {
-                const sp = await tx.sparepart.findUnique({
-                  where: { id: trackingItem.sparepartId },
-                  select: { purchasingStatus: true, harga: true }
-                });
-                const currentSpStatus = sp?.purchasingStatus || 'NONE';
-                const isPriceUpdate = finalHarga > 0 && (currentSpStatus === 'NONE' || currentSpStatus === 'WAITING_PRICE' || currentSpStatus === 'DRAFT');
-                
-                await tx.sparepart.update({
-                  where: { id: trackingItem.sparepartId },
-                  data: {
-                    ...(isPriceUpdate ? {
-                      harga: finalHarga,
-                      purchasingStatus: 'READY_ODOO',
-                    } : {
-                      harga: finalHarga > 0 ? finalHarga : undefined,
-                    }),
-                    ...(finalNomorPr ? { purchasingNoPr: finalNomorPr } : {}),
-                    ...(finalNomorPo ? { purchasingNoPo: finalNomorPo } : {}),
-                    ...(linkReferences ? { linkReference: linkReferences } : {}),
-                  }
-                });
-              }
 
                // Update the tracking item
                await tx.procurementTracking.update({
@@ -950,8 +665,27 @@ export async function POST(req: NextRequest) {
                    sheetId: finalSheetId,
                  }
                });
+
+              const effectiveSheetSpId = sparepartId || trackingItem.sparepartId;
+              if (effectiveSheetSpId) {
+                if (linkReferences) {
+                  await tx.sparepart.update({
+                    where: { id: effectiveSheetSpId },
+                    data: { linkReference: linkReferences },
+                  });
+                }
+                const packM = getLocalPackMultiplier(trackingItem.linkedPartsJson);
+                const unitPrice = packM > 1 ? Number((finalHarga / packM).toFixed(2)) : finalHarga;
+                await syncSparepartProcurement(tx, effectiveSheetSpId, {
+                  candidateHarga: unitPrice,
+                  allowHargaUpdate: unitPrice > 0 && !trackingItem.tanggalTerima,
+                });
+              }
                updatedCount++;
              } else {
+               if (isBeforeSyncCutoff(tanggalList, syncMinDateStr)) {
+                 continue;
+               }
                // CREATE new record since it is in Google Sheets but not in local DB
                const isDraftStatus = (s: string | null | undefined) => !s || s === 'DRAFT' || s === 'WAITING_PRICE' || s === 'CONTINUE';
                let finalStatusPr = statusPr;
@@ -988,28 +722,16 @@ export async function POST(req: NextRequest) {
                  }
                });
 
-              // If Sparepart is matched, update its price and status in the master spareparts DB too
               if (sparepartId) {
-                const sp = await tx.sparepart.findUnique({
-                  where: { id: sparepartId },
-                  select: { purchasingStatus: true, harga: true }
-                });
-                const currentSpStatus = sp?.purchasingStatus || 'NONE';
-                const isPriceUpdate = harga > 0 && (currentSpStatus === 'NONE' || currentSpStatus === 'WAITING_PRICE' || currentSpStatus === 'DRAFT');
-
-                await tx.sparepart.update({
-                  where: { id: sparepartId },
-                  data: {
-                    ...(isPriceUpdate ? {
-                      harga: harga,
-                      purchasingStatus: 'READY_ODOO',
-                    } : {
-                      harga: harga > 0 ? harga : undefined,
-                    }),
-                    ...(nomorPr ? { purchasingNoPr: nomorPr } : {}),
-                    ...(nomorPo ? { purchasingNoPo: nomorPo } : {}),
-                    ...(linkReferences ? { linkReference: linkReferences } : {}),
-                  }
+                if (linkReferences) {
+                  await tx.sparepart.update({
+                    where: { id: sparepartId },
+                    data: { linkReference: linkReferences },
+                  });
+                }
+                await syncSparepartProcurement(tx, sparepartId, {
+                  candidateHarga: harga,
+                  allowHargaUpdate: harga > 0 && !tanggalTerima,
                 });
               }
 
@@ -1048,37 +770,308 @@ export async function POST(req: NextRequest) {
 
       let importedPrCount = 0;
 
+      const processedPrFromRequests = new Set<string>();
       const processedPrFromRequisitions = new Set<string>();
       const foundOdooPrNames = new Set<string>();
 
-      // Cari nomor PR yang masih berstatus terbuka di DB lokal agar tidak pernah tertinggal meski > 60 hari
+      // Cari nomor PR yang masih berstatus aktif/terbuka di DB lokal agar tidak tertinggal meski > 60 hari
+      // Abaikan PR yang sudah CANCELLED/REJECTED/RECEIVED atau ditutup manual agar dokumen lama tidak terus dikejar
       const openLocalPRs = await prisma.procurementTracking.findMany({
         where: {
-          statusPr: { in: ['DRAFT', 'TO_APPROVE', 'APPROVED'] },
-          nomorPr: { not: null }
+          nomorPr: { not: null },
+          AND: [
+            {
+              OR: [
+                { statusPr: { in: ['DRAFT', 'TO_APPROVE', 'APPROVED', 'RFQ'] } },
+                { nomorPo: null },
+                { nomorPo: '' },
+                { statusPo: null },
+                { statusPo: { notIn: ['DONE', 'CANCELLED'] } }
+              ]
+            },
+            { statusPr: { notIn: ['CANCELLED', 'REJECTED', 'RECEIVED'] } },
+            { OR: [{ linkedPartsJson: null }, { NOT: { linkedPartsJson: { contains: '"manuallyArchived":true' } } }] }
+          ]
         },
         select: { nomorPr: true },
         distinct: ['nomorPr']
       });
       const openPrNames = openLocalPRs.map(p => p.nomorPr!.trim()).filter(Boolean);
 
-      // Import/Sync from purchase.requisition
+      // 2a-1. Import/Sync from purchase.request FIRST (Authoritative source for PRxxxx)
       try {
-        logDebug(`Mencari purchase.requisition di Odoo sejak ${thirtyDaysAgoStr} untuk UID ${parsedUid}... (open PRs: ${openPrNames.length})`);
-        const reqDomain: any[] = openPrNames.length > 0
-          ? ['|', ['create_date', '>=', thirtyDaysAgoStr], '|', ['origin', 'in', openPrNames], ['name', 'in', openPrNames]]
-          : [['create_date', '>=', thirtyDaysAgoStr]];
-        if (parsedUid) {
-          reqDomain.push('|');
-          reqDomain.push(['user_id', '=', parsedUid]);
-          reqDomain.push(['create_uid', '=', parsedUid]);
+        logDebug(`Mencari purchase.request di Odoo sejak ${thirtyDaysAgoStr} (cutoff: ${odooCutoffStr || 'none'}) untuk UID ${parsedUid}... (open PRs: ${openPrNames.length})`);
+        const dateDomain: any[] = ['|', ['create_date', '>=', thirtyDaysAgoStr], ['write_date', '>=', thirtyDaysAgoStr]];
+        const effectiveDateDomain: any[] = odooCutoffStr
+          ? ['&', ['create_date', '>=', odooCutoffStr], ...dateDomain]
+          : dateDomain;
+        const uidReqDomain: any[] = parsedUid
+          ? ['|', ['requested_by', '=', parsedUid], ['create_uid', '=', parsedUid]]
+          : [];
+        const recentUidDomain: any[] = parsedUid ? ['&', ...effectiveDateDomain, ...uidReqDomain] : effectiveDateDomain;
+        const requestDomain: any[] = openPrNames.length > 0
+          ? ['|', ['name', 'in', openPrNames], ...recentUidDomain]
+          : recentUidDomain;
+
+        const recentRequests = await queryOdoo(
+          'purchase.request',
+          'search_read',
+          [requestDomain],
+          { fields: ['id', 'name', 'state', 'create_date', 'write_date', 'description', 'requested_by', 'create_uid'], order: 'id desc', limit: 2000 },
+          odooOptions
+        );
+
+        if (recentRequests && recentRequests.length > 0) {
+          logDebug(`Ditemukan ${recentRequests.length} purchase.request di Odoo.`);
+          for (const r of recentRequests) {
+            if (r.name) foundOdooPrNames.add(String(r.name).trim());
+          }
+
+          const reqIds = recentRequests.map((r: any) => r.id);
+          const prNames = recentRequests.map((r: any) => r.name?.trim()).filter(Boolean);
+
+          // Batch fetch all request lines
+          logDebug(`Batch fetching lines for ${reqIds.length} requests...`);
+          const allReqLines = await queryOdoo(
+            'purchase.request.line',
+            'search_read',
+            [[['request_id', 'in', reqIds]]],
+            { fields: ['request_id', 'product_id', 'product_qty', 'estimated_cost', 'name'], limit: 5000 },
+            odooOptions
+          );
+
+          logDebug(`Ditemukan total ${allReqLines ? allReqLines.length : 0} request lines.`);
+
+          // Batch fetch all local tracking items for these PRs
+          const localTrackings = await prisma.procurementTracking.findMany({
+            where: { nomorPr: { in: prNames } },
+            include: { sparepart: true }
+          });
+
+          // Group local trackings by nomorPr
+          const localMap: Record<string, any[]> = {};
+          for (const item of localTrackings) {
+            const key = item.nomorPr?.trim();
+            if (key) {
+              if (!localMap[key]) localMap[key] = [];
+              localMap[key].push(item);
+            }
+          }
+
+          // Process each request (prefer newest if duplicate name exists)
+          for (const req of recentRequests) {
+            const prName = req.name?.trim();
+            if (!prName) continue;
+            if (processedPrFromRequests.has(prName)) continue;
+
+            const reqLines = (allReqLines || []).filter((line: any) => line.request_id && line.request_id[0] === req.id);
+            if (reqLines.length === 0) continue;
+            processedPrFromRequests.add(prName);
+
+            const localItems = localMap[prName] || [];
+
+            // PENTING: state 'done' pada purchase.request hanya berarti PR sudah disetujui/diproses ke Tender/PO, BUKAN sudah GR ('RECEIVED')!
+            let localStatusPr = 'DRAFT';
+            const reqState = req.state;
+            if (reqState === 'draft') localStatusPr = 'DRAFT';
+            else if (reqState === 'to_approve') localStatusPr = 'TO_APPROVE';
+            else if (reqState === 'approved' || reqState === 'done') localStatusPr = 'APPROVED';
+            else if (reqState === 'rejected' || reqState === 'cancel') localStatusPr = 'CANCELLED';
+
+            const prDate = req.create_date ? new Date(req.create_date) : new Date();
+            if (localItems.length === 0 && isBeforeSyncCutoff(prDate, syncMinDateStr)) continue;
+
+            const validReqLines = reqLines.map((line: any) => {
+              let prodName = getBestOdooLineName(line);
+              if (isGenericName(prodName)) {
+                const desc = (line.description || line.name || '').replace(/<[^>]*>/g, '').trim();
+                if (desc && !isGenericName(desc)) {
+                  prodName = desc;
+                }
+              }
+              return {
+                line,
+                prodName,
+                cleanProdName: prodName.toLowerCase().trim(),
+                qty: Math.max(1, Math.round(Number(line.product_qty) || 1)),
+                price: Number(line.estimated_cost) || 0
+              };
+            });
+
+            const { assignedLocalByLineIdx, usedLocalItemIds } = matchOdooPrLinesToLocal(validReqLines, localItems);
+
+            await prisma.$transaction(async (tx) => {
+              const touchedSparepartIds = new Set<string>();
+              for (let li = 0; li < validReqLines.length; li++) {
+                const { line, prodName: finalProdName, qty, price } = validReqLines[li];
+                const sparepartId = await findMtcSparepartMatch(tx, finalProdName);
+                const matchedItem = assignedLocalByLineIdx.get(li) || null;
+
+                if (matchedItem) {
+                  if (isManuallyArchived(matchedItem)) {
+                    continue;
+                  }
+                  const resolvedSpId = sparepartId || matchedItem.sparepartId;
+
+                  // Determine accurate statusPr without overwriting active PO/RFQ states on approved PRs
+                  let effectiveStatusPr = localStatusPr;
+                  if (localStatusPr === 'APPROVED') {
+                    const hasActivePo = !!(matchedItem.nomorPo && matchedItem.statusPo !== 'CANCELLED');
+                    if (matchedItem.statusPo === 'DONE') {
+                      effectiveStatusPr = 'RECEIVED';
+                    } else if (hasActivePo) {
+                      effectiveStatusPr = 'PO';
+                    } else if (matchedItem.statusPo === 'RFQ' || matchedItem.statusPo === 'TO_APPROVE') {
+                      effectiveStatusPr = matchedItem.statusPo;
+                    } else {
+                      effectiveStatusPr = 'APPROVED';
+                    }
+                  }
+
+                  const hasSplitSibling = localItems.some(
+                    (other: any) =>
+                      other.id !== matchedItem.id &&
+                      (other.originalName || '').toLowerCase().trim() === (matchedItem.originalName || '').toLowerCase().trim() &&
+                      (other.tanggalTerima || other.statusPo === 'DONE')
+                  );
+                  const hasActivePo = !!(matchedItem.nomorPo && matchedItem.statusPo !== 'CANCELLED');
+                  const isAlreadyPastPr = !!(hasActivePo || matchedItem.tanggalTerima || matchedItem.statusPo === 'DONE');
+                  const shouldPreserveQty = !!(matchedItem.tanggalTerima || matchedItem.statusPo === 'DONE' || hasSplitSibling);
+                  const odooPackM = getOdooPackMultiplier(matchedItem.linkedPartsJson);
+
+                  const updateData: any = {
+                    statusPr: effectiveStatusPr,
+                    ...(!isAlreadyPastPr && price > 0 ? { harga: odooPackM > 1 ? Number((price / odooPackM).toFixed(2)) : price } : {}),
+                    ...(!shouldPreserveQty ? { qty } : {}),
+                    sparepartId: resolvedSpId,
+                    isStocked: resolvedSpId ? true : undefined,
+                  };
+
+                  if (localStatusPr !== 'CANCELLED' && matchedItem.statusPo === 'CANCELLED') {
+                    updateData.statusPo = null;
+                    updateData.nomorPo = null;
+                  }
+                  if (localStatusPr === 'DRAFT' && !matchedItem.tanggalTerima && matchedItem.statusPo !== 'DONE') {
+                    updateData.statusPo = null;
+                    updateData.nomorPo = null;
+                  }
+
+                  if (!isGenericName(finalProdName) && matchedItem.originalName !== finalProdName) {
+                    updateData.originalName = finalProdName;
+                  }
+
+                  if (hasActualChanges(matchedItem, updateData)) {
+                    await tx.procurementTracking.update({
+                      where: { id: matchedItem.id },
+                      data: updateData
+                    });
+                    if (matchedItem.sparepartId) touchedSparepartIds.add(matchedItem.sparepartId);
+                    if (resolvedSpId) touchedSparepartIds.add(resolvedSpId);
+                  }
+                } else {
+                  const dbExisting = await tx.procurementTracking.findFirst({
+                    where: {
+                      nomorPr: prName,
+                      ...(usedLocalItemIds.size > 0 ? { id: { notIn: Array.from(usedLocalItemIds) } } : {}),
+                      originalName: { equals: finalProdName, mode: 'insensitive' }
+                    }
+                  });
+
+                  if (dbExisting) {
+                    usedLocalItemIds.add(dbExisting.id);
+                    if (isManuallyArchived(dbExisting)) {
+                      continue;
+                    }
+                    const resolvedSpId = sparepartId || dbExisting.sparepartId;
+                    const hasActivePo = !!(dbExisting.nomorPo && dbExisting.statusPo !== 'CANCELLED');
+                    const isAlreadyPastPr = !!(hasActivePo || dbExisting.tanggalTerima || dbExisting.statusPo === 'DONE');
+                    const shouldPreserveQty = !!(dbExisting.tanggalTerima || dbExisting.statusPo === 'DONE');
+                    const odooPackM = getOdooPackMultiplier(dbExisting.linkedPartsJson);
+                    let effectiveStatusPr = localStatusPr;
+                    if (localStatusPr === 'APPROVED') {
+                      if (dbExisting.statusPo === 'DONE') effectiveStatusPr = 'RECEIVED';
+                      else if (dbExisting.nomorPo && dbExisting.statusPo !== 'CANCELLED') effectiveStatusPr = 'PO';
+                      else if (dbExisting.statusPo === 'RFQ' || dbExisting.statusPo === 'TO_APPROVE') effectiveStatusPr = dbExisting.statusPo;
+                    }
+                    const dbUpdateData: any = {
+                      statusPr: effectiveStatusPr,
+                      ...(localStatusPr !== 'CANCELLED' && dbExisting.statusPo === 'CANCELLED' ? { statusPo: null, nomorPo: null } : {}),
+                      ...(!isAlreadyPastPr && price > 0 ? { harga: odooPackM > 1 ? Number((price / odooPackM).toFixed(2)) : price } : {}),
+                      ...(!shouldPreserveQty ? { qty } : {}),
+                      sparepartId: resolvedSpId,
+                      isStocked: resolvedSpId ? true : undefined,
+                    };
+                    if (hasActualChanges(dbExisting, dbUpdateData)) {
+                      await tx.procurementTracking.update({
+                        where: { id: dbExisting.id },
+                        data: dbUpdateData
+                      });
+                      if (dbExisting.sparepartId) touchedSparepartIds.add(dbExisting.sparepartId);
+                      if (resolvedSpId) touchedSparepartIds.add(resolvedSpId);
+                    }
+                  } else if (!isBeforeSyncCutoff(prDate, syncMinDateStr)) {
+                    const createdItem = await tx.procurementTracking.create({
+                      data: {
+                        originalName: finalProdName,
+                        qty,
+                        harga: price,
+                        nomorPr: prName,
+                        statusPr: localStatusPr,
+                        tanggalList: prDate,
+                        keterangan: (line.name && line.name !== finalProdName) ? line.name : (line.description || req.description || null),
+                        sparepartId,
+                        isStocked: sparepartId ? true : false,
+                        productCategory: 'Sparepart',
+                        urgency: 'Normal'
+                      }
+                    });
+                    usedLocalItemIds.add(createdItem.id);
+                    if (sparepartId) touchedSparepartIds.add(sparepartId);
+                    importedPrCount++;
+                  }
+                }
+              }
+
+              // Bersihkan draf lokal yatim yang tidak ada di baris Odoo untuk PR ini
+              for (const leftover of localItems) {
+                if (!usedLocalItemIds.has(leftover.id) && !isManuallyArchived(leftover) && (!leftover.nomorPo || leftover.statusPo === 'CANCELLED' || leftover.statusPr === 'CANCELLED') && !leftover.tanggalTerima) {
+                  logDebug(`[Request Sync] Menghapus orphan draft ID ${leftover.id} (${leftover.originalName}) karena tidak ada di Odoo ${prName}`);
+                  await tx.procurementTracking.delete({ where: { id: leftover.id } }).catch(() => {});
+                  if (leftover.sparepartId) touchedSparepartIds.add(leftover.sparepartId);
+                }
+              }
+
+              for (const spId of touchedSparepartIds) {
+                await syncSparepartProcurement(tx, spId);
+              }
+            }, { timeout: 60000, maxWait: 10000 });
+          }
         }
+      } catch (errReqImport) {
+        console.error('Gagal mengimpor purchase.request baru dari Odoo:', errReqImport);
+        logDebug(`Error request import: ${errReqImport}`);
+      }
+
+      // 2a-2. Import/Sync from purchase.requisition SECOND (Tender TE0xxxx / Direct Requisitions)
+      try {
+        logDebug(`Mencari purchase.requisition di Odoo sejak ${thirtyDaysAgoStr} (cutoff: ${odooCutoffStr || 'none'}) untuk UID ${parsedUid}... (open PRs: ${openPrNames.length})`);
+        const dateDomain: any[] = ['|', ['create_date', '>=', thirtyDaysAgoStr], ['write_date', '>=', thirtyDaysAgoStr]];
+        const effectiveDateDomain: any[] = odooCutoffStr
+          ? ['&', ['create_date', '>=', odooCutoffStr], ...dateDomain]
+          : dateDomain;
+        const uidReqDomain: any[] = parsedUid
+          ? ['|', ['user_id', '=', parsedUid], ['create_uid', '=', parsedUid]]
+          : [];
+        const recentUidDomain: any[] = parsedUid ? ['&', ...effectiveDateDomain, ...uidReqDomain] : effectiveDateDomain;
+        const reqDomain: any[] = openPrNames.length > 0
+          ? ['|', '|', ['origin', 'in', openPrNames], ['name', 'in', openPrNames], ...recentUidDomain]
+          : recentUidDomain;
 
         const recentRequisitions = await queryOdoo(
           'purchase.requisition',
           'search_read',
           [reqDomain],
-          { fields: ['id', 'name', 'origin', 'state', 'create_date', 'description', 'user_id', 'create_uid'] },
+          { fields: ['id', 'name', 'origin', 'state', 'create_date', 'write_date', 'description', 'user_id', 'create_uid'], order: 'id desc', limit: 2000 },
           odooOptions
         );
 
@@ -1088,12 +1081,20 @@ export async function POST(req: NextRequest) {
             if (r.name) foundOdooPrNames.add(String(r.name).trim());
             if (r.origin) foundOdooPrNames.add(String(r.origin).trim());
           }
-          
+
+          // Urutkan agar Tender (TE) yang aktif (done/open/in_progress) diproses LEBIH DULU daripada TE yang cancel!
+          recentRequisitions.sort((a: any, b: any) => {
+            const aCancel = (a.state === 'cancel' || a.state === 'rejected' || a.state === 'close') ? 1 : 0;
+            const bCancel = (b.state === 'cancel' || b.state === 'rejected' || b.state === 'close') ? 1 : 0;
+            if (aCancel !== bCancel) return aCancel - bCancel;
+            return b.id - a.id;
+          });
+
           const reqIds = recentRequisitions.map((r: any) => r.id);
           const prNames = recentRequisitions
             .map((r: any) => (r.origin && String(r.origin).trim() ? String(r.origin).trim() : r.name?.trim()))
             .filter(Boolean);
-          
+
           // Batch fetch all requisition lines (NO 'name' field!)
           logDebug(`Batch fetching lines for ${reqIds.length} requisitions...`);
           const allReqLines = await queryOdoo(
@@ -1103,7 +1104,7 @@ export async function POST(req: NextRequest) {
             { fields: ['requisition_id', 'product_id', 'product_qty', 'price_unit', 'product_description_variants'], limit: 5000 },
             odooOptions
           );
-          
+
           logDebug(`Ditemukan total ${allReqLines ? allReqLines.length : 0} requisition lines.`);
 
           // Batch fetch all local tracking items for these PRs
@@ -1126,84 +1127,103 @@ export async function POST(req: NextRequest) {
           for (const req of recentRequisitions) {
             const prName = (req.origin && String(req.origin).trim()) ? String(req.origin).trim() : req.name?.trim();
             if (!prName) continue;
+            if (processedPrFromRequisitions.has(prName)) continue;
             processedPrFromRequisitions.add(prName);
 
-            const reqLines = allReqLines.filter((line: any) => line.requisition_id && line.requisition_id[0] === req.id);
+            const teNumber = (req.name && String(req.name).trim()) ? String(req.name).trim() : null;
+            const reqState = req.state;
+            const isTeCancelled = reqState === 'cancel' || reqState === 'rejected' || reqState === 'close';
+
+            // Jika PR ini SUDAH disinkronkan dari purchase.request, JANGAN timpa statusPr atau baris itemnya!
+            // Cukup perbarui nomorTe saja (jika TE tidak cancel atau jika nomorTe lokal masih kosong).
+            if (processedPrFromRequests.has(prName)) {
+              if (teNumber) {
+                await prisma.procurementTracking.updateMany({
+                  where: {
+                    nomorPr: prName,
+                    ...(isTeCancelled ? { OR: [{ nomorTe: null }, { nomorTe: '' }] } : {})
+                  },
+                  data: { nomorTe: teNumber }
+                });
+              }
+              continue;
+            }
+
+            // Jika dokumen ini adalah PR0xxxx yang sudah ada di DB lokal dan TE-nya berstatus cancel,
+            // JANGAN ubah status PR menjadi CANCELLED hanya karena dokumen Tender (TE) dibatalkan!
+            const localItems = localMap[prName] || [];
+            if (isTeCancelled && prName.toUpperCase().startsWith('PR') && localItems.length > 0) {
+              if (teNumber) {
+                await prisma.procurementTracking.updateMany({
+                  where: {
+                    nomorPr: prName,
+                    OR: [{ nomorTe: null }, { nomorTe: '' }]
+                  },
+                  data: { nomorTe: teNumber }
+                });
+              }
+              continue;
+            }
+
+            const reqLines = (allReqLines || []).filter((line: any) => line.requisition_id && line.requisition_id[0] === req.id);
             if (reqLines.length === 0) continue;
 
-            let localItems = localMap[prName] || [];
-
+            // PENTING: state 'done' pada purchase.requisition hanya berarti Tender selesai, BUKAN GR selesai ('RECEIVED')!
             let localStatusPr = 'DRAFT';
-            const reqState = req.state;
             if (reqState === 'in_progress') localStatusPr = 'TO_APPROVE';
             else if (reqState === 'open') localStatusPr = 'RFQ';
-            else if (reqState === 'done') localStatusPr = 'RECEIVED';
-            else if (reqState === 'cancel' || reqState === 'rejected' || reqState === 'close') localStatusPr = 'CANCELLED';
+            else if (reqState === 'done') localStatusPr = 'APPROVED';
+            else if (isTeCancelled) localStatusPr = 'CANCELLED';
 
             const prDate = req.create_date ? new Date(req.create_date) : new Date();
+            if (localItems.length === 0 && isBeforeSyncCutoff(prDate, syncMinDateStr)) continue;
+
+            const validReqLines = reqLines
+              .map((line: any) => {
+                const prodName = getBestOdooLineName(line);
+                return {
+                  line,
+                  prodName,
+                  cleanProdName: prodName.toLowerCase().trim(),
+                  qty: Math.max(1, Math.round(Number(line.product_qty) || 1)),
+                  price: Number(line.price_unit) || 0
+                };
+              })
+              .filter((v: any) => !isNonMtcItem(v.prodName, req.description) && (localItems.length > 0 || !isGenericName(v.prodName)));
+
+            if (validReqLines.length === 0) continue;
+
+            const { assignedLocalByLineIdx, usedLocalItemIds } = matchOdooPrLinesToLocal(validReqLines, localItems);
 
             await prisma.$transaction(async (tx) => {
-              for (const line of reqLines) {
-                const prodName = getBestOdooLineName(line);
-                if (isNonMtcItem(prodName, req.description)) continue;
-
-                const qty = Number(line.product_qty) || 1;
-                const price = Number(line.price_unit) || 0;
-
-                // Try to find a match in local items for this PR
-                let bestMatchIndex = -1;
-                let bestScore = -1;
-
-                for (let i = 0; i < localItems.length; i++) {
-                  const local = localItems[i];
-                  let score = 0;
-                  const cleanLocalName = local.originalName.toLowerCase().trim();
-                  const cleanProdName = prodName.toLowerCase().trim();
-
-                  if (cleanLocalName === cleanProdName) {
-                    score += 100;
-                  } else if (cleanProdName.length > 3 && (cleanLocalName.includes(cleanProdName) || cleanProdName.includes(cleanLocalName))) {
-                    score += 20;
-                  }
-
-                  if (local.qty === Math.round(qty)) {
-                    score += 10;
-                  }
-
-                  if (score > bestScore) {
-                    bestScore = score;
-                    bestMatchIndex = i;
-                  }
-                }
-
+              const touchedSparepartIds = new Set<string>();
+              for (let li = 0; li < validReqLines.length; li++) {
+                const { prodName, qty, price } = validReqLines[li];
                 const sparepartId = await findMtcSparepartMatch(tx, prodName);
-                const teNumber = (req.name && String(req.name).trim()) ? String(req.name).trim() : null;
+                const matchedItem = assignedLocalByLineIdx.get(li) || null;
 
-                let targetIndex = (bestMatchIndex !== -1 && bestScore >= 15) ? bestMatchIndex : -1;
-                // If prodName is generic but localItems has remaining items for this PR, reuse local item
-                if (targetIndex === -1 && isGenericName(prodName) && localItems.length > 0) {
-                  targetIndex = 0;
-                } else if (targetIndex === -1 && localItems.length > 0) {
-                  // Fallback: match by exact price or single remaining item
-                  const priceMatchIndex = localItems.findIndex(l => price > 0 && Number(l.harga) > 0 && Math.abs(Number(l.harga) - price) < 10);
-                  if (priceMatchIndex !== -1) {
-                    targetIndex = priceMatchIndex;
-                  } else if (reqLines.length === 1 && localItems.length === 1) {
-                    targetIndex = 0;
+                if (matchedItem) {
+                  if (isManuallyArchived(matchedItem)) {
+                    continue;
                   }
-                }
-
-                if (targetIndex !== -1) {
-                  // MATCH / REUSE FOUND: update existing local item in-place (no duplicates!)
-                  const matchedItem = localItems[targetIndex];
-                  localItems.splice(targetIndex, 1);
-
                   const resolvedSpId = sparepartId || matchedItem.sparepartId;
+                  let effectiveStatusPr = localStatusPr;
+                  if (localStatusPr === 'APPROVED' || localStatusPr === 'RFQ') {
+                    if (matchedItem.statusPo === 'DONE') effectiveStatusPr = 'RECEIVED';
+                    else if (matchedItem.nomorPo && matchedItem.statusPo !== 'CANCELLED') effectiveStatusPr = 'PO';
+                    else if (matchedItem.statusPo === 'RFQ' || matchedItem.statusPo === 'TO_APPROVE') effectiveStatusPr = matchedItem.statusPo;
+                  }
+
+                  const hasActivePo = !!(matchedItem.nomorPo && matchedItem.statusPo !== 'CANCELLED');
+                  const isAlreadyPastPr = !!(hasActivePo || matchedItem.tanggalTerima || matchedItem.statusPo === 'DONE');
+                  const shouldPreserveQty = !!(matchedItem.tanggalTerima || matchedItem.statusPo === 'DONE');
+                  const odooPackM = getOdooPackMultiplier(matchedItem.linkedPartsJson);
+
                   const updateData: any = {
-                    statusPr: localStatusPr,
+                    statusPr: effectiveStatusPr,
                     ...(localStatusPr === 'CANCELLED' ? { statusPo: 'CANCELLED' } : {}),
-                    harga: price > 0 ? price : undefined,
-                    qty: Math.round(qty),
+                    ...(!isAlreadyPastPr && price > 0 ? { harga: odooPackM > 1 ? Number((price / odooPackM).toFixed(2)) : price } : {}),
+                    ...(!shouldPreserveQty ? { qty } : {}),
                     sparepartId: resolvedSpId,
                     isStocked: resolvedSpId ? true : undefined,
                     ...(teNumber ? { nomorTe: teNumber } : {}),
@@ -1218,39 +1238,50 @@ export async function POST(req: NextRequest) {
                       where: { id: matchedItem.id },
                       data: updateData
                     });
+                    if (matchedItem.sparepartId) touchedSparepartIds.add(matchedItem.sparepartId);
+                    if (resolvedSpId) touchedSparepartIds.add(resolvedSpId);
                   }
-                } else if (!isGenericName(prodName)) {
-                  // Double check DB directly to prevent duplicate creation
+                } else {
                   const dbExisting = await tx.procurementTracking.findFirst({
                     where: {
                       nomorPr: prName,
-                      OR: [
-                        { originalName: { equals: prodName, mode: 'insensitive' } },
-                        { originalName: { contains: prodName, mode: 'insensitive' } }
-                      ]
+                      ...(usedLocalItemIds.size > 0 ? { id: { notIn: Array.from(usedLocalItemIds) } } : {}),
+                      originalName: { equals: prodName, mode: 'insensitive' }
                     }
                   });
 
                   if (dbExisting) {
+                    usedLocalItemIds.add(dbExisting.id);
+                    if (isManuallyArchived(dbExisting)) {
+                      continue;
+                    }
                     const resolvedSpId = sparepartId || dbExisting.sparepartId;
-                    await tx.procurementTracking.update({
-                      where: { id: dbExisting.id },
-                      data: {
-                        statusPr: localStatusPr,
-                        ...(localStatusPr === 'CANCELLED' ? { statusPo: 'CANCELLED' } : {}),
-                        harga: price > 0 ? price : undefined,
-                        qty: Math.round(qty),
-                        sparepartId: resolvedSpId,
-                        isStocked: resolvedSpId ? true : undefined,
-                        ...(teNumber ? { nomorTe: teNumber } : {}),
-                      }
-                    });
-                  } else {
-                    // NO MATCH AT ALL & LOCAL LIST EMPTY: create new local item
-                    await tx.procurementTracking.create({
+                    const hasActivePo = !!(dbExisting.nomorPo && dbExisting.statusPo !== 'CANCELLED');
+                    const isAlreadyPastPr = !!(hasActivePo || dbExisting.tanggalTerima || dbExisting.statusPo === 'DONE');
+                    const shouldPreserveQty = !!(dbExisting.tanggalTerima || dbExisting.statusPo === 'DONE');
+                    const odooPackM = getOdooPackMultiplier(dbExisting.linkedPartsJson);
+                    const dbUpdateData: any = {
+                      statusPr: localStatusPr,
+                      ...(localStatusPr === 'CANCELLED' ? { statusPo: 'CANCELLED' } : {}),
+                      ...(!isAlreadyPastPr && price > 0 ? { harga: odooPackM > 1 ? Number((price / odooPackM).toFixed(2)) : price } : {}),
+                      ...(!shouldPreserveQty ? { qty } : {}),
+                      sparepartId: resolvedSpId,
+                      isStocked: resolvedSpId ? true : undefined,
+                      ...(teNumber ? { nomorTe: teNumber } : {}),
+                    };
+                    if (hasActualChanges(dbExisting, dbUpdateData)) {
+                      await tx.procurementTracking.update({
+                        where: { id: dbExisting.id },
+                        data: dbUpdateData
+                      });
+                      if (dbExisting.sparepartId) touchedSparepartIds.add(dbExisting.sparepartId);
+                      if (resolvedSpId) touchedSparepartIds.add(resolvedSpId);
+                    }
+                  } else if (!isGenericName(prodName) && !isBeforeSyncCutoff(prDate, syncMinDateStr)) {
+                    const createdItem = await tx.procurementTracking.create({
                       data: {
                         originalName: prodName,
-                        qty: Math.round(qty),
+                        qty,
                         harga: price,
                         nomorPr: prName,
                         nomorTe: teNumber,
@@ -1264,6 +1295,8 @@ export async function POST(req: NextRequest) {
                         urgency: 'Normal'
                       }
                     });
+                    usedLocalItemIds.add(createdItem.id);
+                    if (sparepartId) touchedSparepartIds.add(sparepartId);
                     importedPrCount++;
                   }
                 }
@@ -1271,10 +1304,15 @@ export async function POST(req: NextRequest) {
 
               // Bersihkan draf lokal yatim yang tidak ada di baris Odoo untuk PR ini
               for (const leftover of localItems) {
-                if (!leftover.nomorPo) {
+                if (!usedLocalItemIds.has(leftover.id) && !isManuallyArchived(leftover) && !leftover.nomorPo && !leftover.tanggalTerima) {
                   logDebug(`[Requisition Sync] Menghapus orphan draft ID ${leftover.id} (${leftover.originalName}) karena tidak ada di Odoo ${prName}`);
                   await tx.procurementTracking.delete({ where: { id: leftover.id } }).catch(() => {});
+                  if (leftover.sparepartId) touchedSparepartIds.add(leftover.sparepartId);
                 }
+              }
+
+              for (const spId of touchedSparepartIds) {
+                await syncSparepartProcurement(tx, spId);
               }
             }, { timeout: 60000, maxWait: 10000 });
           }
@@ -1282,229 +1320,6 @@ export async function POST(req: NextRequest) {
       } catch (errReqImport) {
         console.error('Gagal mengimpor purchase.requisition baru dari Odoo:', errReqImport);
         logDebug(`Error requisition import: ${errReqImport}`);
-      }
-
-      // Import/Sync from purchase.request
-      try {
-        logDebug(`Mencari purchase.request di Odoo sejak ${thirtyDaysAgoStr} untuk UID ${parsedUid}... (open PRs: ${openPrNames.length})`);
-        const requestDomain: any[] = openPrNames.length > 0
-          ? ['|', ['create_date', '>=', thirtyDaysAgoStr], ['name', 'in', openPrNames]]
-          : [['create_date', '>=', thirtyDaysAgoStr]];
-        if (parsedUid) {
-          requestDomain.push('|');
-          requestDomain.push(['requested_by', '=', parsedUid]);
-          requestDomain.push(['create_uid', '=', parsedUid]);
-        }
-
-        const recentRequests = await queryOdoo(
-          'purchase.request',
-          'search_read',
-          [requestDomain],
-          { fields: ['id', 'name', 'state', 'create_date', 'description', 'requested_by', 'create_uid'] },
-          odooOptions
-        );
-
-        if (recentRequests && recentRequests.length > 0) {
-          logDebug(`Ditemukan ${recentRequests.length} purchase.request di Odoo.`);
-          for (const r of recentRequests) {
-            if (r.name) foundOdooPrNames.add(String(r.name).trim());
-          }
-          
-          const reqIds = recentRequests.map((r: any) => r.id);
-          const prNames = recentRequests.map((r: any) => r.name?.trim()).filter(Boolean);
-          
-          // Batch fetch all request lines
-          logDebug(`Batch fetching lines for ${reqIds.length} requests...`);
-          const allReqLines = await queryOdoo(
-            'purchase.request.line',
-            'search_read',
-            [[['request_id', 'in', reqIds]]],
-            { fields: ['request_id', 'product_id', 'product_qty', 'estimated_cost', 'name'], limit: 5000 },
-            odooOptions
-          );
-          
-          logDebug(`Ditemukan total ${allReqLines ? allReqLines.length : 0} request lines.`);
-
-          // Batch fetch all local tracking items for these PRs
-          const localTrackings = await prisma.procurementTracking.findMany({
-            where: { nomorPr: { in: prNames } },
-            include: { sparepart: true }
-          });
-
-          // Group local trackings by nomorPr
-          const localMap: Record<string, any[]> = {};
-          for (const item of localTrackings) {
-            const key = item.nomorPr?.trim();
-            if (key) {
-              if (!localMap[key]) localMap[key] = [];
-              localMap[key].push(item);
-            }
-          }
-
-          // Process each request
-          for (const req of recentRequests) {
-            const prName = req.name?.trim();
-            if (!prName) continue;
-            if (processedPrFromRequisitions.has(prName)) {
-              logDebug(`Skipping purchase.request for ${prName} as it was already processed in purchase.requisition`);
-              continue;
-            }
-
-            const reqLines = allReqLines.filter((line: any) => line.request_id && line.request_id[0] === req.id);
-            if (reqLines.length === 0) continue;
-
-            let localItems = localMap[prName] || [];
-
-            let localStatusPr = 'DRAFT';
-            const reqState = req.state;
-            if (reqState === 'to_approve') localStatusPr = 'TO_APPROVE';
-            else if (reqState === 'approved') localStatusPr = 'APPROVED';
-            else if (reqState === 'rejected') localStatusPr = 'CANCELLED';
-            else if (reqState === 'done') localStatusPr = 'RECEIVED';
-
-            const prDate = req.create_date ? new Date(req.create_date) : new Date();
-
-            await prisma.$transaction(async (tx) => {
-              for (const line of reqLines) {
-                const prodName = getBestOdooLineName(line);
-                const qty = Number(line.product_qty) || 1;
-                const price = Number(line.estimated_cost) || 0;
-
-                // Try to find a match in local items for this PR
-                let bestMatchIndex = -1;
-                let bestScore = -1;
-
-                for (let i = 0; i < localItems.length; i++) {
-                  const local = localItems[i];
-                  let score = 0;
-                  const cleanLocalName = local.originalName.toLowerCase().trim();
-                  const cleanProdName = prodName.toLowerCase().trim();
-
-                  if (cleanLocalName === cleanProdName) {
-                    score += 100;
-                  } else if (cleanProdName.length > 3 && (cleanLocalName.includes(cleanProdName) || cleanProdName.includes(cleanLocalName))) {
-                    score += 20;
-                  }
-
-                  if (local.qty === Math.round(qty)) {
-                    score += 10;
-                  }
-
-                  if (score > bestScore) {
-                    bestScore = score;
-                    bestMatchIndex = i;
-                  }
-                }
-
-                const sparepartId = await findMtcSparepartMatch(tx, prodName);
-
-                let targetIndex = (bestMatchIndex !== -1 && bestScore >= 15) ? bestMatchIndex : -1;
-                // If prodName is generic but localItems has remaining items for this PR, reuse local item
-                if (targetIndex === -1 && isGenericName(prodName) && localItems.length > 0) {
-                  targetIndex = 0;
-                } else if (targetIndex === -1 && localItems.length > 0) {
-                  // Fallback: match by exact price or single remaining item
-                  const priceMatchIndex = localItems.findIndex(l => price > 0 && Number(l.harga) > 0 && Math.abs(Number(l.harga) - price) < 10);
-                  if (priceMatchIndex !== -1) {
-                    targetIndex = priceMatchIndex;
-                  } else if (reqLines.length === 1 && localItems.length === 1) {
-                    targetIndex = 0;
-                  }
-                }
-
-                if (targetIndex !== -1) {
-                  // MATCH / REUSE FOUND: update existing local item in-place (no duplicates!)
-                  const matchedItem = localItems[targetIndex];
-                  localItems.splice(targetIndex, 1);
-
-                  const resolvedSpId = sparepartId || matchedItem.sparepartId;
-                  const updateData: any = {
-                    statusPr: localStatusPr,
-                    harga: price > 0 ? price : undefined,
-                    qty: Math.round(qty),
-                    sparepartId: resolvedSpId,
-                    isStocked: resolvedSpId ? true : undefined,
-                  };
-
-                  if (!isGenericName(prodName) && matchedItem.originalName !== prodName) {
-                    updateData.originalName = prodName;
-                  }
-
-                  if (hasActualChanges(matchedItem, updateData)) {
-                    await tx.procurementTracking.update({
-                      where: { id: matchedItem.id },
-                      data: updateData
-                    });
-                  }
-                } else {
-                  // Fallback name if generic
-                  let finalProdName = prodName;
-                  if (isGenericName(finalProdName)) {
-                    const desc = (line.description || line.name || '').replace(/<[^>]*>/g, '').trim();
-                    if (desc && !isGenericName(desc)) {
-                      finalProdName = desc;
-                    }
-                  }
-
-                  // Double check DB directly to prevent duplicate creation
-                  const dbExisting = await tx.procurementTracking.findFirst({
-                    where: {
-                      nomorPr: prName,
-                      OR: [
-                        { originalName: { equals: finalProdName, mode: 'insensitive' } },
-                        { originalName: { contains: finalProdName, mode: 'insensitive' } }
-                      ]
-                    }
-                  });
-
-                  if (dbExisting) {
-                    const resolvedSpId = sparepartId || dbExisting.sparepartId;
-                    const isAlreadyPastPr = !!(dbExisting.nomorPo || dbExisting.tanggalTerima || dbExisting.linkGr);
-                    await tx.procurementTracking.update({
-                      where: { id: dbExisting.id },
-                      data: {
-                        statusPr: localStatusPr,
-                        harga: price > 0 ? price : undefined,
-                        ...(!isAlreadyPastPr ? { qty: Math.round(qty) } : {}),
-                        sparepartId: resolvedSpId,
-                        isStocked: resolvedSpId ? true : undefined,
-                      }
-                    });
-                  } else {
-                    // NO MATCH: create new local item
-                    await tx.procurementTracking.create({
-                      data: {
-                        originalName: finalProdName,
-                        qty: Math.round(qty),
-                        harga: price,
-                        nomorPr: prName,
-                        statusPr: localStatusPr,
-                        tanggalList: prDate,
-                        keterangan: (line.name && line.name !== finalProdName) ? line.name : (line.description || null),
-                        sparepartId,
-                        isStocked: sparepartId ? true : false,
-                        productCategory: 'Sparepart',
-                        urgency: 'Normal'
-                      }
-                    });
-                    importedPrCount++;
-                  }
-                }
-              }
-
-              // Bersihkan draf lokal yatim yang tidak ada di baris Odoo untuk PR ini
-              for (const leftover of localItems) {
-                if (!leftover.nomorPo) {
-                  logDebug(`[Request Sync] Menghapus orphan draft ID ${leftover.id} (${leftover.originalName}) karena tidak ada di Odoo ${prName}`);
-                  await tx.procurementTracking.delete({ where: { id: leftover.id } }).catch(() => {});
-                }
-              }
-            }, { timeout: 60000, maxWait: 10000 });
-          }
-        }
-      } catch (errReqImport) {
-        console.error('Gagal mengimpor purchase.request baru dari Odoo:', errReqImport);
-        logDebug(`Error request import: ${errReqImport}`);
       }
 
       // 2b. Auto-cleanup: Hapus draft PR di DB lokal yang sudah dihapus permanen di Odoo (dan belum ada PO)
@@ -1604,29 +1419,40 @@ export async function POST(req: NextRequest) {
       }
 
       const checkDaysAgo = new Date();
-      checkDaysAgo.setDate(checkDaysAgo.getDate() - 180);
+      checkDaysAgo.setDate(checkDaysAgo.getDate() - 90);
 
-      // Find all active tracking items that have a PR or PO number,
-      // are relatively recent (list date within the last 180 days or recent receipt),
-      // or are not yet complete (statusPo != 'DONE' or pending receipt).
+      // Fokus HANYA pada PR/PO yang masih berjalan (active / ongoing):
+      // 1. Memiliki nomor PR atau nomor PO yang valid (bukan null, kosong, atau '-')
+      // 2. Belum berstatus DONE/CLOSED (statusPo != 'DONE')
+      // 3. Belum berstatus CANCELLED (statusPr != 'CANCELLED' && statusPo != 'CANCELLED')
+      // 4. Belum berstatus RECEIVED (kecuali jika baru diterima fisik dalam 90 hari terakhir untuk sinkronisasi dokumen GR Odoo)
       const trackingItems = await prisma.procurementTracking.findMany({
         where: {
-          OR: [
-            { nomorPr: { not: null } },
-            { nomorPo: { not: null } },
-          ],
-          NOT: {
-            statusPr: 'CANCELLED'
-          },
           AND: [
             {
               OR: [
-                { tanggalList: { gte: checkDaysAgo } },
+                { nomorPr: { not: null, notIn: ['', '-'] } },
+                { nomorPo: { not: null, notIn: ['', '-'] } }
+              ]
+            },
+            {
+              OR: [
+                { statusPo: { not: 'DONE' } },
+                { linkGr: { contains: 'model=stock.picking' } }
+              ]
+            },
+            {
+              statusPr: { not: 'CANCELLED' }
+            },
+            {
+              statusPo: { not: 'CANCELLED' }
+            },
+            {
+              OR: [
+                { statusPr: { not: 'RECEIVED' } },
                 { tanggalTerima: { gte: checkDaysAgo } },
                 { tanggalTerima: null },
-                { statusPo: { not: 'DONE' } },
-                { linkGr: null },
-                { linkGr: { contains: 'model=good.received' } }
+                { linkGr: { contains: 'model=stock.picking' } }
               ]
             }
           ]
@@ -1652,14 +1478,19 @@ export async function POST(req: NextRequest) {
       let updatedOdooCount = 0;
 
       // Helper function to fetch all Odoo info for a specific group of items (PR/PO)
-      const fetchOdooDataForGroup = async (docName: string, prNo: string | undefined, poNo: string | undefined, teNo: string | undefined) => {
-        logDebug(`PO Search for document ${docName} -> poNo: ${poNo}, prNo: ${prNo}, teNo: ${teNo}`);
+      const fetchOdooDataForGroup = async (
+        docName: string,
+        prNo: string | undefined,
+        poNos: string[],
+        teNos: string[]
+      ) => {
+        logDebug(`PO Search for document ${docName} -> poNos: ${poNos.join(',')}, prNo: ${prNo}, teNos: ${teNos.join(',')}`);
         const searchCriteria: any[] = [
           ['name', '=', docName],
           ['origin', '=', docName],
           ['partner_ref', '=', docName]
         ];
-        if (teNo) {
+        for (const teNo of teNos) {
           searchCriteria.push(['name', 'ilike', teNo]);
           searchCriteria.push(['origin', 'ilike', teNo]);
           searchCriteria.push(['partner_ref', 'ilike', teNo]);
@@ -1668,26 +1499,69 @@ export async function POST(req: NextRequest) {
           searchCriteria.push(['name', 'ilike', prNo]);
           searchCriteria.push(['origin', 'ilike', prNo]);
         }
-        if (poNo && poNo !== docName) {
-          searchCriteria.push(['name', 'ilike', poNo]);
+        for (const poNo of poNos) {
+          if (poNo && poNo !== docName) {
+            searchCriteria.push(['name', 'ilike', poNo]);
+          }
         }
 
-        const domain: any[] = [];
-        for (let i = 0; i < searchCriteria.length - 1; i++) {
-          domain.push('|');
-        }
-        domain.push(...searchCriteria);
+        const buildOrDomain = (criteria: any[]) => {
+          const dom: any[] = [];
+          for (let i = 0; i < criteria.length - 1; i++) {
+            dom.push('|');
+          }
+          dom.push(...criteria);
+          return dom;
+        };
 
         let odooPos = await queryOdoo(
           'purchase.order',
           'search_read',
-          [domain],
+          [buildOrDomain(searchCriteria)],
           {
             fields: ['id', 'name', 'state', 'amount_total', 'partner_id', 'date_order', 'origin', 'partner_ref', 'create_date'],
             limit: 50
           },
           odooOptions
         );
+
+        // Jika belum menemukan PO aktif dan grup ini punya nomor PR, cek apakah ada TE lain di purchase.requisition untuk PR ini
+        const hasActivePoInInitial = Array.isArray(odooPos) && odooPos.some((p: any) => p.state !== 'cancel');
+        if (!hasActivePoInInitial && prNo) {
+          try {
+            const linkedTes = await queryOdoo(
+              'purchase.requisition',
+              'search_read',
+              [[['origin', 'ilike', prNo]]],
+              { fields: ['id', 'name', 'state'], order: 'id desc', limit: 10 },
+              odooOptions
+            ).catch(() => []);
+            const extraTeNames = (linkedTes || [])
+              .map((t: any) => t.name?.trim())
+              .filter((n: string) => n && !teNos.includes(n));
+            if (extraTeNames.length > 0) {
+              const teCriteria: any[] = [];
+              for (const tName of extraTeNames) {
+                teCriteria.push(['origin', 'ilike', tName]);
+                teCriteria.push(['partner_ref', 'ilike', tName]);
+              }
+              const extraPos = await queryOdoo(
+                'purchase.order',
+                'search_read',
+                [buildOrDomain(teCriteria)],
+                {
+                  fields: ['id', 'name', 'state', 'amount_total', 'partner_id', 'date_order', 'origin', 'partner_ref', 'create_date'],
+                  limit: 50
+                },
+                odooOptions
+              ).catch(() => []);
+              if (extraPos && extraPos.length > 0) {
+                const existingIds = new Set((odooPos || []).map((p: any) => p.id));
+                odooPos = [...(odooPos || []), ...extraPos.filter((p: any) => !existingIds.has(p.id))];
+              }
+            }
+          } catch {}
+        }
 
         if (odooPos && odooPos.length > 0) {
           logDebug(`Found ${odooPos.length} PO Matches for ${docName}`);
@@ -1724,8 +1598,8 @@ export async function POST(req: NextRequest) {
 
               if (fuzzyPos && fuzzyPos.length > 0) {
                 const seqRegex = isPrPattern 
-                  ? new RegExp('(PR|RFQ)[/0-9-]*0*' + seq + '\\\\b', 'i')
-                  : new RegExp('(?:\\\\D|^)0*' + seq + '\\\\b', 'i');
+                  ? new RegExp('(PR|RFQ)[/0-9-]*0*' + seq + '\\b', 'i')
+                  : new RegExp('(?:\\D|^)0*' + seq + '\\b', 'i');
 
                 const matched = fuzzyPos.filter((po: any) => {
                   const name = po.name || '';
@@ -1747,11 +1621,11 @@ export async function POST(req: NextRequest) {
         if (!odooPos || odooPos.length === 0) {
           // Document not found in purchase.order. Fallback to PR.
           const prOrDocName = prNo || docName;
-          logDebug(`PO not found for ${docName}. Falling back to purchase.requisition/request query for ${prOrDocName}...`);
+          logDebug(`PO not found for ${docName}. Falling back to purchase.request/requisition query for ${prOrDocName}...`);
           try {
             const matchedPR = await findOdooPR(prOrDocName, odooOptions);
             if (matchedPR) {
-              return { isPrOnly: true, matchedPR };
+              return { isPrOnly: true, matchedPR, clearCancelledPo: false };
             }
           } catch (errPR) {
             console.error(`Gagal mencari PR fallback Odoo untuk ${docName}:`, errPR);
@@ -1759,20 +1633,42 @@ export async function POST(req: NextRequest) {
           return null;
         }
 
-        if (odooPos && odooPos.length > 0) {
-          // Sort POs: active non-cancelled POs (purchase, done) FIRST, cancelled POs LAST
+        // Filter PO aktif (non-cancel) vs PO cancel
+        const activePos = odooPos.filter((po: any) => po.state !== 'cancel');
+        if (activePos.length > 0) {
+          // Gunakan HANYA PO yang aktif (jangan campurkan RFQ/PO yang sudah cancel agar tidak menimpa item aktif menjadi CANCELLED!)
+          odooPos = activePos;
           odooPos.sort((a: any, b: any) => {
-            const aCancel = a.state === 'cancel' ? 1 : 0;
-            const bCancel = b.state === 'cancel' ? 1 : 0;
-            if (aCancel !== bCancel) return aCancel - bCancel;
+            const aConfirmed = (a.state === 'purchase' || a.state === 'done') ? 0 : 1;
+            const bConfirmed = (b.state === 'purchase' || b.state === 'done') ? 0 : 1;
+            if (aConfirmed !== bConfirmed) return aConfirmed - bConfirmed;
             return b.id - a.id;
           });
+        } else {
+          // Semua PO di Odoo untuk dokumen ini berstatus 'cancel'.
+          // Cek apakah dokumen PR aslinya di Odoo masih aktif (tidak rejected/cancel).
+          const prOrDocName = prNo || (docName.toUpperCase().startsWith('PR') ? docName : null);
+          if (prOrDocName) {
+            try {
+              const matchedPR = await findOdooPR(prOrDocName, odooOptions);
+              if (matchedPR && matchedPR.state !== 'cancel' && matchedPR.state !== 'rejected' && matchedPR.state !== 'close') {
+                logDebug(`All POs for ${docName} are cancelled, but PR ${prOrDocName} in Odoo is still ${matchedPR.state}. Treating as PR-only and clearing cancelled PO.`);
+                return { isPrOnly: true, matchedPR, clearCancelledPo: true };
+              }
+            } catch (errPRCheck) {
+              console.error(`Gagal memeriksa status PR untuk PO cancel ${docName}:`, errPRCheck);
+            }
+          }
+          // Jika semua PO cancel dan tidak ada PR aktif di Odoo: Tinggalkan saja (jangan sentuh item lokal)
+          logDebug(`All POs for ${docName} are cancelled and no active PR found in Odoo. Skipping document (tinggalkan saja).`);
+          return null;
         }
 
         // We found POs! Gather all PO lines and logs
         const allPoLines: any[] = [];
         const allLogs: any[] = [];
         let prCreateDate: Date | null = null;
+        let poLinesQueryFailed = false;
         const poGrStatusMap = new Map<number, { isGrDone: boolean, odooGrDate: Date | null, odooGrLink: string | null }>();
 
         for (const odooPo of odooPos) {
@@ -1783,27 +1679,44 @@ export async function POST(req: NextRequest) {
           const vendorName = Array.isArray(odooPo.partner_id) ? odooPo.partner_id[1] : null;
           const amountTotal = odooPo.amount_total || 0;
 
-          // Fetch PO logs, lines, GRs, and Pickings in parallel (highly optimized!)
-          const [poLogs, poLines, odooGrs, odooPickings] = await Promise.all([
+          // Fetch PO logs, lines, GRs, and Pickings in parallel
+          const [poLogs, poLinesRaw, odooGrs, odooPickings] = await Promise.all([
             fetchChatterLogs('purchase.order', poId, 'PO', odooOptions).catch(() => []),
             queryOdoo(
               'purchase.order.line',
               'search_read',
               [[['order_id', '=', poId]]],
               {
-                fields: ['name', 'price_unit', 'price_subtotal', 'price_total', 'product_qty', 'qty_received', 'product_id'],
-                limit: 50
+                fields: ['id', 'name', 'price_unit', 'price_subtotal', 'price_total', 'product_qty', 'qty_received', 'product_id'],
+                limit: 100
               },
               odooOptions
-            ).catch(() => []),
+            ).catch(async () => {
+              // Retry once after 500ms if transient timeout/error
+              await new Promise((r) => setTimeout(r, 500));
+              return queryOdoo(
+                'purchase.order.line',
+                'search_read',
+                [[['order_id', '=', poId]]],
+                {
+                  fields: ['id', 'name', 'price_unit', 'price_subtotal', 'price_total', 'product_qty', 'qty_received', 'product_id'],
+                  limit: 100
+                },
+                odooOptions
+              ).catch((errLine) => {
+                logDebug(`Failed to fetch purchase.order.line for PO ${poName}: ${errLine}`);
+                poLinesQueryFailed = true;
+                return [];
+              });
+            }),
             queryOdoo(
               'good.received',
               'search_read',
               [[['purchase_id', '=', poId]]],
               {
-                fields: ['id', 'state', 'write_date', 'name'],
+                fields: ['id', 'state', 'write_date', 'date', 'name'],
                 order: 'id desc',
-                limit: 1
+                limit: 20
               },
               odooOptions
             ).catch(() => []),
@@ -1814,7 +1727,7 @@ export async function POST(req: NextRequest) {
               {
                 fields: ['id', 'state', 'date_done', 'name'],
                 order: 'id desc',
-                limit: 1
+                limit: 20
               },
               odooOptions
             ).catch(() => [])
@@ -1822,28 +1735,37 @@ export async function POST(req: NextRequest) {
 
           allLogs.push(...poLogs);
 
-          for (const line of poLines) {
-            line.parentPoName = poName;
-            line.parentPoId = poId;
-            line.parentPoState = odooState;
-            line.parentLocalStatusPr = localStatusPr;
-            line.parentVendorName = vendorName;
-            line.parentAmountTotal = amountTotal;
+          // Fetch good.received.line for accurate per-line GR status when good.received records exist
+          let grLines: any[] = [];
+          if (odooGrs && odooGrs.length > 0) {
+            const grIds = odooGrs.map((g: any) => g.id);
+            grLines = await queryOdoo(
+              'good.received.line',
+              'search_read',
+              [[['good_id', 'in', grIds]]],
+              {
+                fields: ['id', 'good_id', 'line_purchase_id', 'product_id', 'description', 'quantity', 'received_qty', 'out_standing', 'state'],
+                limit: 200
+              },
+              odooOptions
+            ).catch(() => []);
           }
-          allPoLines.push(...poLines);
 
           let odooGrDate: Date | null = null;
           let isGrDone = false;
           let odooGrLink: string | null = null;
 
-          // 1. Check good.received model
+          // 1. Check good.received model (prefer 'done' GR for header link/date if all GRs are done)
           if (odooGrs && odooGrs.length > 0) {
-            const odooGr = odooGrs[0];
-            odooGrLink = `https://foomx.odoo.com/web#id=${odooGr.id}&model=good.received&view_type=form`;
-            if (odooGr.state === 'done') {
+            const doneGrs = odooGrs.filter((g: any) => g.state === 'done');
+            const pendingGrs = odooGrs.filter((g: any) => g.state !== 'done' && g.state !== 'cancel');
+            const primaryGr = doneGrs[0] || odooGrs[0];
+            odooGrLink = `https://foomx.odoo.com/web#id=${primaryGr.id}&model=good.received&view_type=form`;
+            if (doneGrs.length > 0 && pendingGrs.length === 0) {
               isGrDone = true;
-              if (odooGr.write_date) {
-                const parsedGrDate = new Date(odooGr.write_date);
+              const rawDate = doneGrs[0].write_date || doneGrs[0].date;
+              if (rawDate) {
+                const parsedGrDate = new Date(rawDate);
                 if (!isNaN(parsedGrDate.getTime())) {
                   odooGrDate = parsedGrDate;
                 }
@@ -1851,16 +1773,14 @@ export async function POST(req: NextRequest) {
             }
           }
 
-          // 2. Check stock.picking model
+          // 2. Check stock.picking model (for date_done / isGrDone fallback ONLY; linkGr always uses good.received)
           if (odooPickings && odooPickings.length > 0) {
-            const picking = odooPickings[0];
-            if (!odooGrLink) {
-              odooGrLink = `https://foomx.odoo.com/web#id=${picking.id}&model=stock.picking&view_type=form`;
-            }
-            if (picking.state === 'done') {
+            const donePickings = odooPickings.filter((p: any) => p.state === 'done');
+            const pendingPickings = odooPickings.filter((p: any) => p.state !== 'done' && p.state !== 'cancel');
+            if (donePickings.length > 0 && pendingPickings.length === 0 && (!odooGrs || odooGrs.length === 0)) {
               isGrDone = true;
-              if (picking.date_done) {
-                const parsedDate = new Date(picking.date_done);
+              if (donePickings[0].date_done) {
+                const parsedDate = new Date(donePickings[0].date_done);
                 if (!isNaN(parsedDate.getTime())) {
                   odooGrDate = parsedDate;
                 }
@@ -1868,8 +1788,81 @@ export async function POST(req: NextRequest) {
             }
           }
 
-          // Catatan: JANGAN memukul rata isGrDone = true hanya karena PO state 'done' atau 'purchase'!
-          // Status GR Selesai HANYA valid jika surat jalan / good.received atau stock.picking sudah dinyatakan 'done' di Odoo.
+          // Filter out zero-quantity PO lines (product_qty <= 0 and qty_received <= 0) on non-cancelled POs
+          const validPoLines = (poLinesRaw || []).filter((line: any) => {
+            if (odooState === 'cancel') return true;
+            return Number(line.product_qty) > 0 || Number(line.qty_received) > 0;
+          });
+
+          for (const line of validPoLines) {
+            line.parentPoName = poName;
+            line.parentPoId = poId;
+            line.parentPoState = odooState;
+            line.parentLocalStatusPr = localStatusPr;
+            line.parentVendorName = vendorName;
+            line.parentAmountTotal = amountTotal;
+
+            // Compute exact per-line GR status
+            const poLineQty = Number(line.product_qty) || 0;
+            const odooQtyReceived = Number(line.qty_received) || 0;
+            const myGrLines = grLines.filter(
+              (gl: any) => Array.isArray(gl.line_purchase_id) && gl.line_purchase_id[0] === line.id && gl.state !== 'cancel'
+            );
+            const myDoneGrLines = myGrLines.filter((gl: any) => gl.state === 'done');
+            const myPendingGrLines = myGrLines.filter((gl: any) => gl.state !== 'done');
+
+            let grLineReceivedSum = 0;
+            for (const gl of myDoneGrLines) {
+              const rcv = Number(gl.received_qty) || 0;
+              const qty = Number(gl.quantity) || 0;
+              const out = Number(gl.out_standing) || 0;
+              if (rcv > 0) {
+                grLineReceivedSum += rcv;
+              } else if (out === 0 && qty > 0 && myPendingGrLines.length === 0) {
+                // Covers Odoo GRs where state === 'done', out_standing === 0, quantity > 0, and received_qty was left 0
+                grLineReceivedSum += qty;
+              }
+            }
+
+            const effectiveQtyReceived = Math.max(odooQtyReceived, grLineReceivedSum);
+            line.lineEffectiveQtyReceived = effectiveQtyReceived;
+
+            // A PO line is GR Done ONLY if poLineQty > 0 and its received quantity covers poLineQty
+            line.lineIsGrDone =
+              poLineQty > 0 &&
+              (effectiveQtyReceived >= poLineQty ||
+                (myGrLines.length === 0 && isGrDone && odooQtyReceived > 0));
+
+            let lineGrLink = odooGrLink;
+            let lineGrDate = odooGrDate;
+            let linePendingGrLink: string | null = null;
+            if (myPendingGrLines.length > 0) {
+              const pendingGrId = Array.isArray(myPendingGrLines[0].good_id) ? myPendingGrLines[0].good_id[0] : null;
+              const pendingGrObj = (odooGrs || []).find((g: any) => g.id === pendingGrId);
+              if (pendingGrObj) {
+                linePendingGrLink = `https://foomx.odoo.com/web#id=${pendingGrObj.id}&model=good.received&view_type=form`;
+              }
+            }
+            if (myDoneGrLines.length > 0) {
+              const doneGrId = Array.isArray(myDoneGrLines[0].good_id) ? myDoneGrLines[0].good_id[0] : null;
+              const doneGrObj = (odooGrs || []).find((g: any) => g.id === doneGrId) || (odooGrs || []).find((g: any) => g.state === 'done');
+              if (doneGrObj) {
+                lineGrLink = `https://foomx.odoo.com/web#id=${doneGrObj.id}&model=good.received&view_type=form`;
+                const rawDate = doneGrObj.write_date || doneGrObj.date;
+                if (rawDate) {
+                  const parsed = new Date(rawDate);
+                  if (!isNaN(parsed.getTime())) lineGrDate = parsed;
+                }
+              }
+            } else if (linePendingGrLink) {
+              lineGrLink = linePendingGrLink;
+              lineGrDate = null;
+            }
+            line.lineGrLink = lineGrLink;
+            line.linePendingGrLink = linePendingGrLink || lineGrLink;
+            line.lineGrDate = lineGrDate;
+          }
+          allPoLines.push(...validPoLines);
 
           poGrStatusMap.set(poId, { isGrDone, odooGrDate, odooGrLink });
         }
@@ -1919,30 +1912,39 @@ export async function POST(req: NextRequest) {
           isPrOnly: false,
           odooPos,
           allPoLines,
+          poLinesQueryFailed,
           poGrStatusMap,
           prCreateDate,
           chatterNotes
         };
       };
 
-      // Query Odoo data for all groups in parallel (massively speeds up sync!)
-      logDebug(`Starting parallel Odoo fetches for ${Object.keys(groupedItems).length} documents...`);
-      const fetchPromises = Object.keys(groupedItems).map(async (docName) => {
-        const items = groupedItems[docName];
-        const representativeItem = items[0];
-        const prNo = representativeItem.nomorPr?.trim();
-        const poNo = representativeItem.nomorPo?.trim();
-        const teNo = representativeItem.nomorTe?.trim();
-        try {
-          const data = await fetchOdooDataForGroup(docName, prNo, poNo, teNo);
-          return { docName, items, data, error: null };
-        } catch (err) {
-          return { docName, items, data: null, error: err };
-        }
-      });
+      // Query Odoo data in controlled batches of 12 groups to prevent RPC timeout storms
+      const groupKeys = Object.keys(groupedItems);
+      const BATCH_SIZE = 12;
+      logDebug(`Starting batched Odoo fetches for ${groupKeys.length} documents (batch size: ${BATCH_SIZE})...`);
+      const odooResults: { docName: string; items: typeof trackingItems; data: any; error: any }[] = [];
 
-      const odooResults = await Promise.all(fetchPromises);
-      logDebug(`Finished parallel Odoo fetches. Processing database updates...`);
+      for (let i = 0; i < groupKeys.length; i += BATCH_SIZE) {
+        const batchKeys = groupKeys.slice(i, i + BATCH_SIZE);
+        const batchRes = await Promise.all(
+          batchKeys.map(async (docName) => {
+            const items = groupedItems[docName];
+            const representativeItem = items[0];
+            const prNo = representativeItem.nomorPr?.trim();
+            const poNos = Array.from(new Set(items.map((it: any) => it.nomorPo?.trim()).filter(Boolean) as string[]));
+            const teNos = Array.from(new Set(items.map((it: any) => it.nomorTe?.trim()).filter(Boolean) as string[]));
+            try {
+              const data = await fetchOdooDataForGroup(docName, prNo, poNos, teNos);
+              return { docName, items, data, error: null };
+            } catch (err) {
+              return { docName, items, data: null, error: err };
+            }
+          })
+        );
+        odooResults.push(...batchRes);
+      }
+      logDebug(`Finished batched Odoo fetches. Processing database updates...`);
 
       // Process database updates sequentially to avoid write locks and connection limits
       for (const result of odooResults) {
@@ -1956,12 +1958,13 @@ export async function POST(req: NextRequest) {
 
         if (data.isPrOnly) {
           const matchedPR = data.matchedPR;
+          const clearCancelledPo = Boolean(data.clearCancelledPo);
           const reqId = matchedPR.id;
           const reqState = matchedPR.state;
           const isRequisition = matchedPR.model === 'purchase.requisition';
           const localStatusPr = isRequisition
             ? (reqState === 'in_progress' ? 'TO_APPROVE' : reqState === 'open' ? 'RFQ' : reqState === 'done' ? 'APPROVED' : reqState === 'cancel' ? 'CANCELLED' : 'DRAFT')
-            : (reqState === 'to_approve' ? 'TO_APPROVE' : reqState === 'approved' ? 'APPROVED' : reqState === 'rejected' ? 'CANCELLED' : reqState === 'done' ? 'PO' : 'DRAFT');
+            : (reqState === 'to_approve' ? 'TO_APPROVE' : reqState === 'approved' ? 'APPROVED' : reqState === 'rejected' ? 'CANCELLED' : reqState === 'done' ? 'APPROVED' : 'DRAFT');
 
           let prLines: any[] = [];
           try {
@@ -1976,7 +1979,7 @@ export async function POST(req: NextRequest) {
               [[[parentField, '=', reqId]]],
               {
                 fields: ['product_id', 'product_qty', priceField, nameField],
-                limit: 50
+                limit: 100
               },
               odooOptions
             );
@@ -2002,6 +2005,7 @@ export async function POST(req: NextRequest) {
             const matchedPrMap = matchItemsToLines(items, prLines || []);
 
             for (const item of items) {
+              if (isManuallyArchived(item)) continue;
               let matchedPrice = 0;
               let matchedQty = 0;
               const matchedLine = matchedPrMap.get(item.id) || null;
@@ -2010,26 +2014,18 @@ export async function POST(req: NextRequest) {
                 matchedQty = matchedLine.product_qty || 0;
               }
 
-              const reqId = matchedPR.id;
               const odooPrUrl = `https://foomx.odoo.com/web#id=${reqId}&model=${matchedPR.model || 'purchase.request'}&view_type=form`;
 
-              // Check if chatterNotes contain PO confirmation (Order confirmation Pxxxxx)
-              let extractedPo: string | null = null;
-              if (chatterNotes) {
-                const m = chatterNotes.match(/Order confirmation\s+(P\d+)/i)
-                       || chatterNotes.match(/confirmed in Purchase Order\s+(P\d+)/i)
-                       || chatterNotes.match(/Purchase Order\s+(P\d+)/i);
-                if (m && m[1]) extractedPo = m[1].toUpperCase();
-              }
-
               const updateData: any = {
-                statusPr: extractedPo ? 'PO' : localStatusPr,
+                statusPr: localStatusPr,
                 odooNotes: chatterNotes || null,
                 linkReferences: combinePrAndPoLinks(item.linkReferences, odooPrUrl, 'pr')
               };
-              if (extractedPo && (!item.nomorPo || item.nomorPo.trim() === '')) {
-                updateData.nomorPo = extractedPo;
-                updateData.poApproved = true;
+              if (clearCancelledPo || (localStatusPr !== 'CANCELLED' && item.statusPo === 'CANCELLED')) {
+                updateData.nomorPo = null;
+                updateData.statusPo = null;
+                updateData.vendor = null;
+                updateData.linkGr = null;
               }
               if (isGenericName(item.originalName)) {
                 const lineToUse = matchedLine || (prLines && prLines[0]);
@@ -2053,8 +2049,9 @@ export async function POST(req: NextRequest) {
                   updateData.originalName = specificName;
                 }
               }
-              if (matchedPrice > 0) {
-                updateData.harga = matchedPrice;
+              if (matchedPrice > 0 && !item.nomorPo && !item.tanggalTerima && item.statusPo !== 'DONE') {
+                const odooPackM = getOdooPackMultiplier(item.linkedPartsJson);
+                updateData.harga = odooPackM > 1 ? Number((matchedPrice / odooPackM).toFixed(2)) : matchedPrice;
               }
               if (matchedQty > 0 && item.qty === Math.round(matchedQty)) {
                 updateData.qty = Math.round(matchedQty);
@@ -2073,17 +2070,16 @@ export async function POST(req: NextRequest) {
                 });
 
                 if (updatedItem.sparepartId) {
-                  const packMultiplier = getPackMultiplier(updatedItem.linkedPartsJson);
-                  const effectiveUnitPrice = packMultiplier > 1 ? (matchedPrice / packMultiplier) : matchedPrice;
-                  await tx.sparepart.update({
-                    where: { id: updatedItem.sparepartId },
-                    data: {
-                      purchasingStatus: localStatusPr,
-                      purchasingNoPr: updatedItem.nomorPr,
-                      odooNotes: chatterNotes || null,
-                      purchasingQty: updatedItem.qty * packMultiplier,
-                      ...(effectiveUnitPrice > 0 && !updatedItem.tanggalTerima ? { harga: effectiveUnitPrice } : {})
-                    }
+                  const odooPackM = getOdooPackMultiplier(updatedItem.linkedPartsJson);
+                  const effectiveUnitPrice = odooPackM > 1 ? Number((matchedPrice / odooPackM).toFixed(2)) : matchedPrice;
+                  await syncSparepartProcurement(tx, updatedItem.sparepartId, {
+                    odooNotes: chatterNotes || null,
+                    candidateHarga: effectiveUnitPrice,
+                    allowHargaUpdate:
+                      effectiveUnitPrice > 0 &&
+                      !updatedItem.nomorPo &&
+                      !updatedItem.tanggalTerima &&
+                      updatedItem.statusPo !== 'DONE',
                   });
                 }
               }
@@ -2092,39 +2088,23 @@ export async function POST(req: NextRequest) {
           updatedOdooCount += items.length;
         } else {
           // PO update
-          const { odooPos, allPoLines, poGrStatusMap, prCreateDate, chatterNotes } = data;
+          const { odooPos, allPoLines, poLinesQueryFailed, poGrStatusMap, prCreateDate, chatterNotes } = data;
 
           const matchedPoMap = matchItemsToLines(items, allPoLines || []);
 
           await prisma.$transaction(async (tx) => {
             for (const item of items) {
+              if (isManuallyArchived(item)) continue;
               const matchedLine = matchedPoMap.get(item.id) || null;
 
-              // If item doesn't match any PO line, it was NOT ordered in this PO!
+              // If item doesn't match any PO line in Odoo:
+              // Sesuai instruksi: tinggalkan saja, jangan hapus nomorPo atau statusPo lokal yang sudah ada
               if (!matchedLine) {
-                // Only update non-PO fields (notes, date) for unmatched items
-                const unlinkedUpdate: any = {
-                  odooNotes: chatterNotes || null,
-                };
-                if (prCreateDate) {
-                  unlinkedUpdate.tanggalList = prCreateDate;
-                }
-                // Clear wrongly-assigned PO if it was set to one of the POs for this PR
-                const odooPoNames = odooPos.map((p: any) => p.name);
-                if ((item.nomorPo && odooPoNames.includes(item.nomorPo)) || !item.nomorPo) {
-                  unlinkedUpdate.nomorPo = null;
-                  unlinkedUpdate.statusPo = null;
-                  unlinkedUpdate.linkGr = null;
-                  unlinkedUpdate.vendor = null;
-                  // JANGAN HAPUS tanggalTerima jika barang sudah pernah diterima fisik di gudang!
-                  if (!item.tanggalTerima) {
-                    unlinkedUpdate.tanggalTerima = null;
-                  }
-                  if (item.statusPr === 'PO' && !item.tanggalTerima) {
-                    unlinkedUpdate.statusPr = 'APPROVED';
-                  }
-                }
-                if (hasActualChanges(item, unlinkedUpdate)) {
+                const unlinkedUpdate: any = {};
+                if (chatterNotes) unlinkedUpdate.odooNotes = chatterNotes;
+                if (prCreateDate && !item.tanggalList) unlinkedUpdate.tanggalList = prCreateDate;
+
+                if (Object.keys(unlinkedUpdate).length > 0 && hasActualChanges(item, unlinkedUpdate)) {
                   await tx.procurementTracking.update({
                     where: { id: item.id },
                     data: unlinkedUpdate
@@ -2147,26 +2127,33 @@ export async function POST(req: NextRequest) {
               const odooPoUrl = `https://foomx.odoo.com/web#id=${poId}&model=purchase.order&view_type=form`;
 
               const grStatus = poGrStatusMap.get(poId) || { isGrDone: false, odooGrDate: null, odooGrLink: null };
-              const { isGrDone, odooGrDate, odooGrLink } = grStatus;
+              const odooGrDate = (matchedLine && matchedLine.lineGrDate !== undefined) ? matchedLine.lineGrDate : grStatus.odooGrDate;
+              const odooGrLink = (matchedLine && matchedLine.lineGrLink) ? matchedLine.lineGrLink : grStatus.odooGrLink;
+              const odooPendingGrLink = (matchedLine && matchedLine.linePendingGrLink) ? matchedLine.linePendingGrLink : odooGrLink;
+              const lineIsGrDone = matchedLine ? Boolean(matchedLine.lineIsGrDone) : false;
 
               let matchedPrice = 0;
               let matchedQty = matchedLine ? Number(matchedLine.product_qty) || 0 : 0;
-              let qtyReceived = matchedLine ? Number(matchedLine.qty_received) || 0 : 0;
+              let qtyReceived = matchedLine ? Number(matchedLine.lineEffectiveQtyReceived ?? matchedLine.qty_received) || 0 : 0;
 
               if (matchedLine) {
                 const priceTotal = Number(matchedLine.price_total) || 0;
+                const priceSubtotal = Number(matchedLine.price_subtotal) || 0;
                 const priceUnit = Number(matchedLine.price_unit) || 0;
                 if (priceTotal > 0 && matchedQty > 0) {
-                  // Gunakan harga total inkl. PPN 11% dibagi Qty
-                  matchedPrice = priceTotal / matchedQty;
+                  // Gunakan subtotal yang sudah kena PPN (price_total) dibagi Qty
+                  matchedPrice = Number((priceTotal / matchedQty).toFixed(2));
+                } else if (priceSubtotal > 0 && matchedQty > 0) {
+                  matchedPrice = Number(((priceSubtotal * 1.11) / matchedQty).toFixed(2));
                 } else if (priceUnit > 0) {
-                  matchedPrice = priceUnit * 1.11; // 11% PPN fallback
+                  matchedPrice = Number((priceUnit * 1.11).toFixed(2));
                 }
               }
 
+              const isConfirmedPo = odooState === 'purchase' || odooState === 'done';
               const updateData: any = {
                 statusPr: localStatusPr,
-                nomorPo: poName,
+                nomorPo: isConfirmedPo ? poName : null,
                 odooNotes: chatterNotes || null,
               };
               if ((!item.nomorPr || item.nomorPr.trim() === '') && targetPo && targetPo.origin) {
@@ -2205,11 +2192,19 @@ export async function POST(req: NextRequest) {
               
               updateData.linkReferences = combinePrAndPoLinks(item.linkReferences, odooPoUrl, 'po');
 
-              if (matchedPrice > 0) {
-                const packM = getPackMultiplier(item.linkedPartsJson);
-                updateData.harga = packM > 1 ? Number((matchedPrice / packM).toFixed(2)) : matchedPrice;
-              } else if (amountTotal > 0 && (!item.harga || Number(item.harga) === 0)) {
-                updateData.harga = amountTotal;
+              const odooPackM = getOdooPackMultiplier(item.linkedPartsJson);
+              const isItemAlreadyReceived = Boolean(item.tanggalTerima || item.statusPo === 'DONE');
+              if (!isItemAlreadyReceived) {
+                if (matchedPrice > 0) {
+                  updateData.harga = odooPackM > 1 ? Number((matchedPrice / odooPackM).toFixed(2)) : matchedPrice;
+                } else if (
+                  amountTotal > 0 &&
+                  allPoLines.length === 1 &&
+                  matchedQty === 1 &&
+                  (!item.harga || Number(item.harga) === 0)
+                ) {
+                  updateData.harga = odooPackM > 1 ? Number((amountTotal / odooPackM).toFixed(2)) : amountTotal;
+                }
               }
 
               // 1. Deteksi apakah item ini sudah pernah diterima secara fisik di gudang
@@ -2244,18 +2239,22 @@ export async function POST(req: NextRequest) {
                 }
               }
 
-              if (physicalMovement) {
+              // Jika tanggalTerima sebelumnya diisi otomatis oleh bug sync GR Odoo (statusPo === 'DONE' tapi qtyReceived === 0 dan tidak ada physicalMovement), jangan anggap sudah diterima fisik!
+              if (!physicalMovement && item.statusPo === 'DONE' && !lineIsGrDone && qtyReceived === 0) {
+                physicallyReceivedDate = null;
+                physicallyReceivedQty = 0;
+              } else if (physicalMovement) {
                 if (!physicallyReceivedDate) {
                   physicallyReceivedDate = physicalMovement.tanggal ? new Date(physicalMovement.tanggal) : new Date();
                 }
                 physicallyReceivedQty = physicalMovement.qty || 0;
               } else if (item.tanggalTerima) {
-                physicallyReceivedQty = item.qty;
+                physicallyReceivedQty = (item.qty || 0) * getLocalPackMultiplier(item.linkedPartsJson);
               }
 
               const isItemPhysicallyReceived = !!physicallyReceivedDate;
 
-              // 2. Deteksi sibling items (jika item dipecah/split karena penerimaan parsial)
+              // 2. Deteksi sibling items (hanya pecahan parsial dari baris PO yang sama)
               const siblingConditions: any[] = [];
               if (item.sparepartId) {
                 siblingConditions.push({
@@ -2280,16 +2279,18 @@ export async function POST(req: NextRequest) {
                 siblingConditions.push({ nomorPo: poName });
               }
 
-              const siblingItems = await tx.procurementTracking.findMany({
+              const rawSiblingItems = await tx.procurementTracking.findMany({
                 where: { AND: siblingConditions }
               });
+
+              const siblingItems = filterTrueSplitSiblings(item, matchedLine, rawSiblingItems, matchedPoMap);
 
               // Cari sibling lain yang sudah diterima (DONE, tanggalTerima, atau punya StockMovement)
               let alreadyReceivedQty = 0;
               for (const sib of siblingItems) {
                 if (sib.id === item.id) continue;
                 if (sib.statusPo === 'DONE' || sib.tanggalTerima) {
-                  alreadyReceivedQty += (sib.qty || 0);
+                  alreadyReceivedQty += (sib.qty || 0) * getLocalPackMultiplier(sib.linkedPartsJson);
                 } else {
                   let sibMov = await tx.stockMovement.findFirst({
                     where: {
@@ -2320,29 +2321,35 @@ export async function POST(req: NextRequest) {
                 }
               }
 
-              const packM = getPackMultiplier(item.linkedPartsJson);
-              const matchedQtyInUnits = matchedQty * packM;
-              const qtyReceivedInUnits = qtyReceived * packM;
+              const localMult = getLocalPackMultiplier(item.linkedPartsJson);
+              const itemQtyInUnits = (item.qty || 0) * localMult;
+              const matchedQtyInUnits = matchedQty * odooPackM;
+              const qtyReceivedInUnits = qtyReceived * odooPackM;
               const newReceiptQty = qtyReceivedInUnits - alreadyReceivedQty;
-              let finalIsGrDone = isGrDone;
+              let finalIsGrDone = lineIsGrDone;
               const isPartialOdooGr = !!(matchedLine && qtyReceived > 0 && qtyReceived < matchedQty);
+              const parsedItemPack = parsePackMetadata(item.linkedPartsJson);
+              const buildSplitChildPackJson = () => {
+                if (!parsedItemPack) return item.linkedPartsJson;
+                return JSON.stringify({
+                  ...parsedItemPack,
+                  isConvertedToUnits: true,
+                  splitFromId: item.id,
+                });
+              };
 
               // 3. Penentuan Quantity aman (Perlindungan Split Items)
               if (siblingItems.length > 1) {
                 if (isItemPhysicallyReceived) {
-                  // Item ini adalah porsi yang sudah diterima
                   updateData.qty = physicallyReceivedQty > 0 ? physicallyReceivedQty : item.qty;
                 } else {
-                  // Item ini adalah sisa pending pesanan
                   const remainingFromPo = matchedQtyInUnits > 0 ? Math.max(0, Math.round(matchedQtyInUnits) - alreadyReceivedQty) : item.qty;
                   updateData.qty = remainingFromPo > 0 ? remainingFromPo : item.qty;
                 }
               } else {
-                // Item tunggal (belum ada sibling di database)
-                const actualRcv = physicallyReceivedQty > 0 ? physicallyReceivedQty : (isItemPhysicallyReceived ? item.qty : 0);
+                const actualRcv = physicallyReceivedQty > 0 ? physicallyReceivedQty : (isItemPhysicallyReceived ? itemQtyInUnits : 0);
                 const isReceivedBundle = shouldSkipPartialAutoSplitForBundle(item.linkedPartsJson, isItemPhysicallyReceived);
                 if (!isReceivedBundle && isItemPhysicallyReceived && matchedQtyInUnits > 0 && actualRcv < Math.round(matchedQtyInUnits)) {
-                  // Kasus parsial: Barang diterima sebagian fisik (misal 1 dari 3), tetapi baris sisa PO belum ada di sistem
                   updateData.qty = actualRcv;
                   const remainingFromPo = Math.round(matchedQtyInUnits) - actualRcv;
                   if (remainingFromPo > 0) {
@@ -2361,14 +2368,14 @@ export async function POST(req: NextRequest) {
                         urgency: item.urgency,
                         linkReferences: odooPoUrl,
                         vendor: vendorName || item.vendor,
-                        harga: matchedPrice > 0 ? (packM > 1 ? Number((matchedPrice / packM).toFixed(2)) : matchedPrice) : item.harga,
+                        harga: matchedPrice > 0 ? (odooPackM > 1 ? Number((matchedPrice / odooPackM).toFixed(2)) : matchedPrice) : item.harga,
                         nomorPr: item.nomorPr,
                         statusPr: 'PO',
                         statusPo: 'PO',
                         nomorPo: poName,
                         nomorTe: item.nomorTe,
                         odooNotes: chatterNotes || null,
-                        linkedPartsJson: item.linkedPartsJson,
+                        linkedPartsJson: buildSplitChildPackJson(),
                         tanggalTerima: null,
                         isStocked: false,
                         linkGr: null
@@ -2377,24 +2384,38 @@ export async function POST(req: NextRequest) {
                     logDebug(`Auto-split sisa PO untuk Item ID ${item.id}: ${actualRcv} diterima (tetap), ${remainingFromPo} dibuat di PO Terbit`);
                   }
                 } else if (matchedQty > 0) {
-                  updateData.qty = packM > 1 ? matchedQtyInUnits : Math.round(matchedQty);
+                  updateData.qty = odooPackM > 1 ? Math.round(matchedQtyInUnits) : Math.round(matchedQty);
                 }
               }
 
-              // 4. Status PO dan tanggalTerima
+              const hasReceivedSplitSibling = siblingItems.some(
+                (sib: any) => sib.id !== item.id && (sib.tanggalTerima || sib.statusPo === 'DONE')
+              );
+
+              // 4. Status PO dan tanggalTerima (Akurat per baris PO!)
               if (odooState === 'cancel') {
                 updateData.statusPr = 'CANCELLED';
                 updateData.statusPo = 'CANCELLED';
                 finalIsGrDone = false;
-              } else if (isPartialOdooGr && newReceiptQty > 0 && newReceiptQty < item.qty && item.statusPo !== 'DONE' && !isItemPhysicallyReceived && siblingItems.length === 1) {
-                // SPLIT GR HANDLING DARI ODOO: Baru diterima sebagian di Odoo untuk item tunggal lokal
+              } else if (isPartialOdooGr && newReceiptQty > 0 && newReceiptQty < itemQtyInUnits && item.statusPo !== 'DONE' && !isItemPhysicallyReceived && siblingItems.length === 1) {
                 updateData.qty = newReceiptQty;
                 updateData.statusPo = 'DONE';
+                updateData.statusPr = 'RECEIVED';
+                if (parsedItemPack && odooPackM > 1) {
+                  updateData.linkedPartsJson = JSON.stringify({
+                    ...parsedItemPack,
+                    originalPackQty: parsedItemPack.originalPackQty ?? item.qty,
+                    isConvertedToUnits: true,
+                  });
+                }
                 if (odooGrDate) updateData.tanggalTerima = odooGrDate;
-                if (odooGrLink) updateData.linkGr = odooGrLink;
+                if (odooGrLink) {
+                  updateData.linkGr = odooGrLink;
+                  updateData.linkReferences = combinePrAndPoLinks(updateData.linkReferences || item.linkReferences, odooGrLink, 'gr');
+                }
                 finalIsGrDone = true;
 
-                const remainingQty = item.qty - newReceiptQty;
+                const remainingQty = itemQtyInUnits - newReceiptQty;
                 await tx.procurementTracking.create({
                   data: {
                     fbIndex: item.fbIndex,
@@ -2408,24 +2429,23 @@ export async function POST(req: NextRequest) {
                     productCategory: item.productCategory,
                     reason: item.reason,
                     urgency: item.urgency,
-                    linkReferences: odooPoUrl,
+                    linkReferences: odooPendingGrLink ? combinePrAndPoLinks(odooPoUrl, odooPendingGrLink, 'gr') : odooPoUrl,
+                    linkGr: odooPendingGrLink || null,
                     vendor: vendorName || item.vendor,
-                    harga: matchedPrice > 0 ? matchedPrice : item.harga,
+                    harga: matchedPrice > 0 ? (odooPackM > 1 ? Number((matchedPrice / odooPackM).toFixed(2)) : matchedPrice) : item.harga,
                     nomorPr: item.nomorPr,
                     statusPr: localStatusPr,
                     statusPo: localStatusPr === 'APPROVED' ? 'PO' : localStatusPr,
                     nomorPo: poName,
                     odooNotes: chatterNotes || null,
-                    linkedPartsJson: item.linkedPartsJson
+                    linkedPartsJson: buildSplitChildPackJson(),
                   }
                 });
                 logDebug(`Split GR untuk Item ID ${item.id}: ${newReceiptQty} diterima baru (updated), ${remainingQty} sisa pending (created)`);
               } else if (
-                (matchedLine && matchedLine.qty_received >= matchedLine.product_qty && matchedLine.product_qty > 0) ||
-                (isGrDone && !isPartialOdooGr) ||
-                (newReceiptQty >= item.qty && qtyReceived > 0)
+                (lineIsGrDone || (newReceiptQty >= itemQtyInUnits && qtyReceived > 0 && matchedQty > 0)) &&
+                (isItemPhysicallyReceived || !hasReceivedSplitSibling)
               ) {
-                // Dokumen GR Odoo sudah resmi DONE
                 updateData.statusPo = 'DONE';
                 updateData.statusPr = 'RECEIVED';
                 updateData.tanggalTerima = odooGrDate || physicallyReceivedDate || item.tanggalTerima || new Date();
@@ -2435,17 +2455,19 @@ export async function POST(req: NextRequest) {
                 }
                 finalIsGrDone = true;
               } else {
-                // Dokumen GR di Odoo masih DRAFT atau belum divalidasi
-                updateData.statusPo = (localStatusPr === 'APPROVED' || localStatusPr === 'PO') ? 'PO' : localStatusPr;
+                const pendingPoState = (localStatusPr === 'APPROVED' || localStatusPr === 'PO') ? 'PO' : localStatusPr;
+                updateData.statusPo = pendingPoState;
+                updateData.statusPr = pendingPoState;
 
-                // JANGAN hapus tanggalTerima jika barang sudah diterima fisik di gudang!
-                if (physicallyReceivedDate || item.tanggalTerima) {
-                  updateData.tanggalTerima = physicallyReceivedDate || item.tanggalTerima;
+                if (!physicalMovement && item.statusPo === 'DONE' && qtyReceived === 0) {
+                  updateData.tanggalTerima = null;
+                } else if (physicallyReceivedDate) {
+                  updateData.tanggalTerima = physicallyReceivedDate;
                 }
 
-                if (odooGrLink) {
-                  updateData.linkGr = odooGrLink;
-                  updateData.linkReferences = combinePrAndPoLinks(updateData.linkReferences || item.linkReferences, odooGrLink, 'gr');
+                if (odooPendingGrLink) {
+                  updateData.linkGr = odooPendingGrLink;
+                  updateData.linkReferences = combinePrAndPoLinks(updateData.linkReferences || item.linkReferences, odooPendingGrLink, 'gr');
                 }
                 finalIsGrDone = false;
               }
@@ -2460,69 +2482,24 @@ export async function POST(req: NextRequest) {
                 });
               }
 
-              // 5. Update Master Sparepart (hanya jika item memiliki link sparepartId)
+              // 5. Update Master Sparepart menggunakan agregasi terpusat
               if (updatedItem.sparepartId) {
-                // Hitung seluruh item pengadaan yang MASIH pending (belum diterima fisik dan belum DONE)
-                const pendingItems = await tx.procurementTracking.findMany({
-                  where: {
-                    sparepartId: updatedItem.sparepartId,
-                    tanggalTerima: null,
-                    statusPo: { notIn: ['DONE', 'CANCELLED'] },
-                    statusPr: { notIn: ['CANCELLED', 'REJECTED'] }
-                  }
-                });
-
-                const totalPendingQty = pendingItems.reduce((sum: number, p: any) => {
-                  const m = getPackMultiplier(p.linkedPartsJson);
-                  return sum + ((p.qty || 0) * m);
-                }, 0);
-                const hasPendingPo = pendingItems.some((p: any) => p.nomorPo);
-                const firstPending = pendingItems[0];
-
-                const packMultiplier = getPackMultiplier(updatedItem.linkedPartsJson);
-                const effectiveUnitPrice = packMultiplier > 1 ? (matchedPrice / packMultiplier) : matchedPrice;
-
-                const spUpdate: any = {
-                  purchasingStatus: totalPendingQty > 0 ? (hasPendingPo ? 'PO' : (firstPending?.statusPr || 'PR')) : 'NONE',
-                  purchasingNoPr: totalPendingQty > 0 ? firstPending?.nomorPr || null : null,
-                  purchasingNoPo: totalPendingQty > 0 ? pendingItems.find((p: any) => p.nomorPo)?.nomorPo || null : null,
+                const effectiveUnitPrice = odooPackM > 1 ? Number((matchedPrice / odooPackM).toFixed(2)) : matchedPrice;
+                const updateLeadTime =
+                  (finalIsGrDone || Boolean(updatedItem.tanggalTerima)) &&
+                  shouldRecalculateLeadTimeOnSync(
+                    item.tanggalTerima,
+                    item.statusPo,
+                    updatedItem.tanggalTerima,
+                    updatedItem.statusPo
+                  );
+                await syncSparepartProcurement(tx, updatedItem.sparepartId, {
                   odooNotes: updatedItem.odooNotes,
-                  purchasingQty: totalPendingQty,
-                };
-
-                // Proteksi harga: jangan menimpa harga sparepart yang sudah diterima fisik di gudang
-                if (effectiveUnitPrice > 0 && !updatedItem.tanggalTerima) {
-                  spUpdate.harga = effectiveUnitPrice;
-                }
-
-                if (totalPendingQty === 0) {
-                  spUpdate.prDate = null;
-                  spUpdate.poDate = null;
-                  spUpdate.purchasingStatus = 'NONE';
-                  spUpdate.purchasingQty = 0;
-                }
-
-                if (finalIsGrDone || updatedItem.tanggalTerima) {
-                  const sp = await tx.sparepart.findUnique({ where: { id: updatedItem.sparepartId } });
-                  if (sp) {
-                    const receiptDate = (odooGrDate || updatedItem.tanggalTerima) ? new Date(odooGrDate || updatedItem.tanggalTerima) : null;
-                    if (receiptDate && updatedItem.tanggalList) {
-                      const elapsedMs = receiptDate.getTime() - new Date(updatedItem.tanggalList).getTime();
-                      const elapsedDays = Math.max(1, elapsedMs / (1000 * 60 * 60 * 24));
-                      const calculatedAvgLeadTime = sp.avgLeadTime === 0
-                        ? elapsedDays
-                        : Number((sp.avgLeadTime * 0.8 + elapsedDays * 0.2).toFixed(2));
-                      const calculatedMaxLeadTime = Math.max(sp.maxLeadTime, Math.round(elapsedDays));
-                      
-                      spUpdate.avgLeadTime = calculatedAvgLeadTime;
-                      spUpdate.maxLeadTime = calculatedMaxLeadTime;
-                    }
-                  }
-                }
-
-                await tx.sparepart.update({
-                  where: { id: updatedItem.sparepartId },
-                  data: spUpdate
+                  candidateHarga: effectiveUnitPrice,
+                  allowHargaUpdate: effectiveUnitPrice > 0 && !updatedItem.tanggalTerima,
+                  updateLeadTime,
+                  leadTimeReceiptDate: (odooGrDate || updatedItem.tanggalTerima) ? new Date(odooGrDate || updatedItem.tanggalTerima) : null,
+                  leadTimeStartDate: updatedItem.tanggalList ? new Date(updatedItem.tanggalList) : null,
                 });
               }
             }
@@ -2537,100 +2514,6 @@ export async function POST(req: NextRequest) {
       odooErrorStr = e.message || String(e);
       console.error('[Sync Route Odoo Error]', e);
     }
-  }
-
-  // -------------------------------------------------------------
-  // STEP 3: RE-CALIBRATE HISTORICAL DATES FROM CACHED CHATTER LOGS
-  // -------------------------------------------------------------
-  // Special handling: if a PR was cancelled then re-submitted, use the date
-  // AFTER the last cancellation event as tanggalList, not the very oldest log.
-  // This prevents lead time from being inflated by the pre-cancellation history.
-  // -------------------------------------------------------------
-  try {
-    const allItemsWithNotes = await prisma.procurementTracking.findMany({
-      where: {
-        odooNotes: { not: null }
-      },
-      select: {
-        id: true,
-        tanggalList: true,
-        odooNotes: true
-      }
-    });
-
-    // Keywords that indicate a cancellation event in chatter body/subtype
-    const CANCEL_KEYWORDS = ['cancel', 'dibatalkan', 'batal', 'refused', 'ditolak', 'rejected'];
-
-    function isCancelLog(log: any): boolean {
-      const body = (log.body || '').toLowerCase();
-      const subtype = (log.subtype || '').toLowerCase();
-      return CANCEL_KEYWORDS.some(k => body.includes(k) || subtype.includes(k));
-    }
-
-    let fixedCount = 0;
-    await prisma.$transaction(async (tx) => {
-      for (const item of allItemsWithNotes) {
-        if (!item.odooNotes) continue;
-        try {
-          const logs = JSON.parse(item.odooNotes);
-          if (!Array.isArray(logs) || logs.length === 0) continue;
-
-          // Logs are sorted descending (newest first).
-          // Find the most recent cancellation event (if any).
-          let lastCancelIdx = -1;
-          for (let i = 0; i < logs.length; i++) {
-            if (isCancelLog(logs[i])) {
-              lastCancelIdx = i;
-              break; // found most recent cancel (logs are newest-first)
-            }
-          }
-
-          let targetDate: Date | null = null;
-
-          if (lastCancelIdx > 0) {
-            // There was a cancellation AND there are newer logs after it (index < lastCancelIdx).
-            // Use the oldest log that is NEWER than the last cancellation event.
-            // That is: logs[lastCancelIdx - 1] is the first log after the last cancel.
-            // But we want the OLDEST post-cancel log → that's logs[0] if lastCancelIdx > 0,
-            // actually we want the newest log that is still older than the cancel.
-            // Strategy: take the log at index (lastCancelIdx - 1) going towards 0;
-            // the oldest among those is at index 0 (newest log overall, already past cancel).
-            // More accurately: post-cancel logs are indices 0..(lastCancelIdx-1), oldest of these
-            // is at index (lastCancelIdx - 1).
-            const postCancelOldestLog = logs[lastCancelIdx - 1];
-            const d = new Date(postCancelOldestLog.date);
-            if (!isNaN(d.getTime())) {
-              targetDate = d;
-            }
-          }
-
-          // Fallback: no cancellation found → use the absolute oldest log
-          if (!targetDate) {
-            const oldestLog = logs[logs.length - 1];
-            const d = new Date(oldestLog.date);
-            if (!isNaN(d.getTime())) {
-              targetDate = d;
-            }
-          }
-
-          if (targetDate) {
-            const diffMs = Math.abs(new Date(item.tanggalList).getTime() - targetDate.getTime());
-            if (diffMs > 12 * 60 * 60 * 1000) { // difference > 12 hours
-              await tx.procurementTracking.update({
-                where: { id: item.id },
-                data: { tanggalList: targetDate }
-              });
-              fixedCount++;
-            }
-          }
-        } catch (e) {
-          // ignore parsing error
-        }
-      }
-    });
-    console.log(`[Sync Route] Re-calibrated ${fixedCount} historical dates from cached chatter logs (cancel-aware).`);
-  } catch (errCalibrate) {
-    console.error('[Sync Route] Failed to re-calibrate historical dates:', errCalibrate);
   }
 
   // -------------------------------------------------------------

@@ -1,4 +1,4 @@
-import React, { Fragment } from 'react';
+import React, { Fragment, useState, useEffect } from 'react';
 import { TrackingItem, GroupedPrItem } from '@/types/mtc/procurement';
 import {
   parseOdooLinks,
@@ -6,10 +6,14 @@ import {
   getStatusBadgeStyles,
   getEffectivePoNumber,
   getItemSimplifiedStatus,
+  getItemAgeDays,
   isReceivedOnly,
   isClosedOrDone,
   isPhysicallyReceived,
   isOdooGrDone,
+  isCancelled,
+  isManuallyArchived,
+  isStalePendingItem,
 } from '@/lib/mtc/procurement-utils';
 import { parseBundleParts } from '@/lib/mtc/bundle-receive';
 
@@ -34,6 +38,12 @@ type ProcurementGroupListProps = {
   actionLoading: string | null;
   activeTab: string;
   handleUnreceive?: (item: TrackingItem) => void;
+  staleDays: number;
+  selectedIds: number[];
+  onToggleSelectId: (id: number) => void;
+  onClearSelection: () => void;
+  onArchiveItems: (ids: number[], label?: string) => void;
+  onReopenItem: (item: TrackingItem) => void;
 };
 
 interface OdooChatterMessage {
@@ -385,7 +395,22 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
   actionLoading,
   activeTab,
   handleUnreceive,
+  staleDays,
+  selectedIds,
+  onToggleSelectId,
+  onClearSelection,
+  onArchiveItems,
+  onReopenItem,
 }) => {
+  const PAGE_SIZE = 30;
+  const [visibleLimit, setVisibleLimit] = useState(PAGE_SIZE);
+
+  useEffect(() => {
+    setVisibleLimit(PAGE_SIZE);
+  }, [activeTab, groupingMode, sortBy, filteredItemsCount]);
+
+  const visibleGroups = groupedPrItems.slice(0, visibleLimit);
+  const remainingGroupsCount = Math.max(0, groupedPrItems.length - visibleLimit);
   function renderFormattedItemName(name: string) {
     if (!name) return '—';
     const dashIndex = name.lastIndexOf(' - ');
@@ -427,8 +452,52 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
           gap: 10,
         }}
       >
-        <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--tx2)', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span>📋</span> Daftar Pengadaan SCM ({filteredItemsCount} Item Terfilter)
+        <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--tx2)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span>📋</span>
+          <span>Daftar Pengadaan SCM ({filteredItemsCount} Item Terfilter)</span>
+          {selectedIds.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 4 }}>
+              <span
+                className="badge"
+                style={{
+                  fontSize: 10,
+                  padding: '3px 8px',
+                  fontWeight: 800,
+                  background: 'rgba(168, 85, 247, 0.15)',
+                  color: '#c084fc',
+                  border: '1px solid rgba(168, 85, 247, 0.3)',
+                }}
+              >
+                {selectedIds.length} terpilih
+              </span>
+              <button
+                type="button"
+                className="btn btn-sm"
+                disabled={actionLoading !== null}
+                onClick={() => onArchiveItems(selectedIds, `${selectedIds.length} item terpilih`)}
+                style={{
+                  padding: '3px 9px',
+                  fontSize: 10,
+                  fontWeight: 800,
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  background: 'rgba(239, 68, 68, 0.15)',
+                  color: '#f87171',
+                  border: '1px solid rgba(239, 68, 68, 0.35)',
+                }}
+              >
+                📦 Tutup / Arsipkan Terpilih
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={onClearSelection}
+                style={{ padding: '3px 8px', fontSize: 10, cursor: 'pointer' }}
+              >
+                Batal Pilih
+              </button>
+            </div>
+          )}
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -527,7 +596,7 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {groupedPrItems.map((group) => {
+        {visibleGroups.map((group) => {
           const isPrDraft = groupingMode === 'PR' ? group.nomorPr === null : group.nomorPo === null;
           const prKey =
             groupingMode === 'PR'
@@ -540,6 +609,10 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
           const isExpanded = !!expandedGroups[prKey];
           const hasUrgentItem = group.hasUrgent;
 
+          const isAllManualArchived =
+            group.items.length > 0 && group.items.every((i) => isManuallyArchived(i));
+          const hasStaleItemInGroup = group.items.some((i) => isStalePendingItem(i, staleDays));
+
           // Simplified Group Header Badge
           let statusBadge = null;
           if (group.overallStatus === 'CANCELLED') {
@@ -550,12 +623,14 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
                   padding: '4px 10px',
                   fontSize: 10,
                   fontWeight: 700,
-                  background: 'rgba(239, 68, 68, 0.2)',
-                  color: '#f87171',
-                  border: '1px solid rgba(239, 68, 68, 0.4)',
+                  background: isAllManualArchived ? 'rgba(148, 163, 184, 0.18)' : 'rgba(239, 68, 68, 0.2)',
+                  color: isAllManualArchived ? '#cbd5e1' : '#f87171',
+                  border: isAllManualArchived
+                    ? '1px solid rgba(148, 163, 184, 0.35)'
+                    : '1px solid rgba(239, 68, 68, 0.4)',
                 }}
               >
-                🚫 Dibatalkan
+                {isAllManualArchived ? '🕸️ Ditutup Manual' : '🚫 Dibatalkan'}
               </span>
             );
           } else if (group.overallStatus === 'CLOSED' || group.overallStatus === 'DONE') {
@@ -887,6 +962,20 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
                       🚨 ADA ITEM URGENT
                     </span>
                   )}
+                  {hasStaleItemInGroup && (
+                    <span
+                      className="badge"
+                      style={{
+                        fontSize: 9,
+                        fontWeight: 800,
+                        background: 'rgba(245, 158, 11, 0.15)',
+                        color: '#fbbf24',
+                        border: '1px solid rgba(245, 158, 11, 0.35)',
+                      }}
+                    >
+                      ⏳ Menggantung ≥ {staleDays} hr
+                    </span>
+                  )}
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
@@ -981,6 +1070,11 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
                           const effectivePo = getEffectivePoNumber(item);
                           const itemStatus = getItemSimplifiedStatus(item);
                           const bundleParts = parseBundleParts(item.linkedPartsJson);
+                          const isManualClosed = isManuallyArchived(item);
+                          const isStale = isStalePendingItem(item, staleDays);
+                          const itemAgeDays = getItemAgeDays(item);
+                          const canSelectForArchive = !isGrDone && !isStockReceived && !isCancelled(item);
+                          const isSelected = selectedIds.includes(item.id);
 
                           return (
                             <Fragment key={item.id}>
@@ -996,17 +1090,47 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
                                 <td
                                   className="text-mono text-tiny text-muted"
                                   style={{ textAlign: 'center', paddingLeft: 20 }}
+                                  onClick={(e) => {
+                                    if (canSelectForArchive) e.stopPropagation();
+                                  }}
                                 >
-                                  {item.fbIndex || '—'}
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                                    {canSelectForArchive && (
+                                      <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        onChange={() => onToggleSelectId(item.id)}
+                                        aria-label={`Pilih item ${item.originalName}`}
+                                        style={{ cursor: 'pointer', accentColor: 'var(--pur)' }}
+                                      />
+                                    )}
+                                    <span>{item.fbIndex || '—'}</span>
+                                  </div>
                                 </td>
 
                                 <td>
                                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                                       {isItemUrgent && !isOdooGrDone && (
                                         <span style={{ color: 'var(--red)', fontSize: 12 }}>🚨</span>
                                       )}
                                       {renderFormattedItemName(item.originalName)}
+                                      {isStale && (
+                                        <span
+                                          className="badge"
+                                          style={{
+                                            fontSize: 9,
+                                            padding: '1px 6px',
+                                            fontWeight: 800,
+                                            background: 'rgba(245, 158, 11, 0.14)',
+                                            color: '#fbbf24',
+                                            border: '1px solid rgba(245, 158, 11, 0.35)',
+                                          }}
+                                          title={`Menunggu sejak ${new Date(item.tanggalList).toLocaleDateString('id-ID')}`}
+                                        >
+                                          ⏳ {itemAgeDays} hari
+                                        </span>
+                                      )}
                                     </div>
 
                                     {item.statusPr === 'READY_ODOO' && (
@@ -1079,13 +1203,27 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
                                               type="button"
                                               className="btn btn-ghost btn-sm"
                                               onClick={() => {
-                                                navigator.clipboard.writeText(String(item.harga || 0));
-                                                alert('✓ Harga disalin!');
+                                                navigator.clipboard.writeText(String(Math.round(Number(item.harga || 0))));
+                                                alert('✓ Harga satuan disalin!');
                                                 setActiveCopyPopoverId(null);
                                               }}
                                               style={{ justifyContent: 'flex-start', fontSize: 10, padding: '4px 8px' }}
                                             >
                                               💰 Harga Satuan
+                                            </button>
+                                            <button
+                                              type="button"
+                                              className="btn btn-ghost btn-sm"
+                                              onClick={() => {
+                                                navigator.clipboard.writeText(
+                                                  String(Math.round((Number(item.harga) || 0) * (item.qty || 1)))
+                                                );
+                                                alert('✓ Subtotal baris disalin!');
+                                                setActiveCopyPopoverId(null);
+                                              }}
+                                              style={{ justifyContent: 'flex-start', fontSize: 10, padding: '4px 8px' }}
+                                            >
+                                              💵 Subtotal Baris
                                             </button>
                                             <button
                                               type="button"
@@ -1422,11 +1560,35 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
 
                                 {/* Price */}
                                 <td>
-                                  <div style={{ fontWeight: 700 }}>{fmtRupiah(item.harga)}</div>
-                                  <div style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 2 }}>
-                                    Kat: {item.productCategory || 'Sparepart'} · Tipe:{' '}
-                                    {(item.keterangan || '').replace(/<[^>]*>/g, '').trim() || 'consumable'}
-                                  </div>
+                                  {(() => {
+                                    const unitPrice = Number(item.harga) || 0;
+                                    const lineSubtotal = Math.round(unitPrice * (item.qty || 1));
+                                    let uomLabel = item.sparepart?.uom || 'Pcs';
+                                    if (item.linkedPartsJson) {
+                                      try {
+                                        const p = JSON.parse(item.linkedPartsJson);
+                                        if (p && (p.type === 'pack' || p.isPackMode) && p.uomUnit) {
+                                          uomLabel = p.uomUnit;
+                                        }
+                                      } catch {}
+                                    }
+                                    return (
+                                      <>
+                                        <div style={{ fontWeight: 700 }}>
+                                          {unitPrice > 0 ? fmtRupiah(lineSubtotal) : '—'}
+                                        </div>
+                                        {unitPrice > 0 && (
+                                          <div style={{ fontSize: 10, fontWeight: 600, color: '#38bdf8', marginTop: 1 }}>
+                                            @ {fmtRupiah(Math.round(unitPrice))} / {uomLabel}
+                                          </div>
+                                        )}
+                                        <div style={{ fontSize: 9, color: 'var(--tx3)', marginTop: 2 }}>
+                                          Kat: {item.productCategory || 'Sparepart'} · Tipe:{' '}
+                                          {(item.keterangan || '').replace(/<[^>]*>/g, '').trim() || 'consumable'}
+                                        </div>
+                                      </>
+                                    );
+                                  })()}
                                 </td>
 
                                 {/* GR Link Direct */}
@@ -1583,6 +1745,53 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
                                       >
                                         🚀 Selesai Odoo
                                       </button>
+                                    ) : isManualClosed ? (
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                        <span
+                                          style={{
+                                            fontSize: 10,
+                                            fontWeight: 700,
+                                            color: '#cbd5e1',
+                                            background: 'rgba(148, 163, 184, 0.15)',
+                                            border: '1px solid rgba(148, 163, 184, 0.3)',
+                                            padding: '4px 8px',
+                                            borderRadius: 6,
+                                          }}
+                                        >
+                                          🕸️ Ditutup Manual
+                                        </span>
+                                        <button
+                                          type="button"
+                                          className="btn btn-ghost btn-sm"
+                                          disabled={actionLoading !== null}
+                                          onClick={() => onReopenItem(item)}
+                                          style={{
+                                            padding: '4px 8px',
+                                            fontSize: 10,
+                                            fontWeight: 700,
+                                            cursor: 'pointer',
+                                            color: '#38bdf8',
+                                            border: '1px solid rgba(56, 189, 248, 0.35)',
+                                          }}
+                                          title="Kembalikan item ini ke daftar pengadaan aktif"
+                                        >
+                                          ↩️ Pulihkan
+                                        </button>
+                                      </div>
+                                    ) : isCancelled(item) ? (
+                                      <span
+                                        style={{
+                                          fontSize: 10,
+                                          fontWeight: 700,
+                                          color: 'var(--red, #dc2626)',
+                                          background: 'var(--red-bg, rgba(220, 38, 38, 0.1))',
+                                          border: '1px solid rgba(220, 38, 38, 0.25)',
+                                          padding: '4px 8px',
+                                          borderRadius: 6,
+                                        }}
+                                      >
+                                        ✕ Dibatalkan
+                                      </span>
                                     ) : effectivePo ? (
                                       <button
                                         type="button"
@@ -1594,6 +1803,29 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
                                         📥 Terima Barang
                                       </button>
                                     ) : null}
+
+                                    {isStale && !isGrDone && !isStockReceived && !isCancelled(item) && (
+                                      <button
+                                        type="button"
+                                        className="btn btn-ghost btn-sm"
+                                        disabled={actionLoading !== null}
+                                        onClick={() =>
+                                          onArchiveItems([item.id], item.nomorPo || item.nomorPr || item.originalName)
+                                        }
+                                        style={{
+                                          padding: '5px 9px',
+                                          fontSize: 10,
+                                          fontWeight: 700,
+                                          cursor: 'pointer',
+                                          color: '#f87171',
+                                          border: '1px solid rgba(239, 68, 68, 0.35)',
+                                          background: 'rgba(239, 68, 68, 0.08)',
+                                        }}
+                                        title={`Arsipkan / tutup pengadaan lama (${itemAgeDays} hari belum datang) agar tidak menumpuk`}
+                                      >
+                                        📦 Tutup Lama
+                                      </button>
+                                    )}
                                   </div>
                                 </td>
                               </tr>
@@ -1617,6 +1849,46 @@ export const ProcurementGroupList: React.FC<ProcurementGroupListProps> = ({
             </div>
           );
         })}
+
+        {remainingGroupsCount > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 10, padding: '16px 0 8px' }}>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => setVisibleLimit((prev) => prev + 40)}
+              style={{
+                padding: '8px 20px',
+                fontSize: 12,
+                fontWeight: 700,
+                borderRadius: 8,
+                background: 'var(--sf2)',
+                border: '1px solid var(--pur)',
+                color: 'var(--pur)',
+                cursor: 'pointer',
+              }}
+            >
+              👇 Tampilkan Lebih Banyak (+{Math.min(40, remainingGroupsCount)} dari {remainingGroupsCount} grup tersisa)
+            </button>
+            {remainingGroupsCount > 40 && (
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => setVisibleLimit(groupedPrItems.length)}
+                style={{
+                  padding: '8px 16px',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  borderRadius: 8,
+                  border: '1px solid var(--br)',
+                  color: 'var(--tx3)',
+                  cursor: 'pointer',
+                }}
+              >
+                Tampilkan Semua ({groupedPrItems.length} Grup)
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </>
   );

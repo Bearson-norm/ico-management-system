@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireMtcAuth } from '@/lib/auth';
 import * as XLSX from 'xlsx';
+import { isOngoingConfirmedPo } from '@/lib/mtc/procurement-utils';
 
 export async function GET(req: NextRequest) {
   const session = await requireMtcAuth();
@@ -52,7 +53,7 @@ export async function GET(req: NextRequest) {
       'Link GR Odoo': it.linkGr || '-',
     });
 
-    const ongoingItems = validItems.filter((it) => it.statusPo === 'PO');
+    const ongoingItems = validItems.filter((it) => isOngoingConfirmedPo(it as any));
     const allRows = validItems.map(mapItemToRow);
     const ongoingRows = ongoingItems.map(mapItemToRow);
 

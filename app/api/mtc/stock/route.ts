@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { ok } from '@/lib/utils';
+import { deriveSparepartProcurementSummary } from '@/lib/mtc/procurement-utils';
+import { PENDING_ARRIVAL_WHERE } from '@/lib/mtc/procurement-server';
 
 // GET /api/mtc/stock — publik (viewer tanpa login), sama seperti V2
 export async function GET(req: NextRequest) {
@@ -20,7 +22,18 @@ export async function GET(req: NextRequest) {
       kategori: true,
       mesins: { select: { id: true, nama: true } },
       procurementTrackings: {
-        select: { nomorPr: true, nomorPo: true, linkReferences: true, statusPr: true, statusPo: true }
+        where: PENDING_ARRIVAL_WHERE,
+        orderBy: { tanggalList: 'desc' },
+        select: {
+          qty: true,
+          nomorPr: true,
+          nomorPo: true,
+          linkReferences: true,
+          statusPr: true,
+          statusPo: true,
+          tanggalTerima: true,
+          linkedPartsJson: true,
+        }
       },
       potonganFisiks: {
         where: { status: 'aktif' },
@@ -58,15 +71,28 @@ export async function GET(req: NextRequest) {
       else if (currentStock < sp.minQty) stockStatus = 'low';
       else                               stockStatus = 'safe';
 
-      const tracking = sp.procurementTrackings && sp.procurementTrackings[0];
-      const noPr = sp.purchasingNoPr || tracking?.nomorPr || null;
-      const noPo = sp.purchasingNoPo || tracking?.nomorPo || null;
-      const linkRef = sp.linkReference || tracking?.linkReferences || null;
+      const activeTrackings = sp.procurementTrackings || [];
+      const activeSummary = activeTrackings.length > 0
+        ? deriveSparepartProcurementSummary(activeTrackings)
+        : null;
+      const firstTracking = activeTrackings[0];
 
-      let pStatus = sp.purchasingStatus || 'NONE';
-      if (pStatus === 'NONE' || pStatus === 'APPROVED' || pStatus === 'RECEIVED') {
-        if (noPo) pStatus = 'PO';
-        else if (noPr) pStatus = 'PR';
+      const noPr = activeSummary
+        ? (activeSummary.purchasingNoPr || sp.purchasingNoPr || null)
+        : (sp.purchasingStatus !== 'NONE' ? sp.purchasingNoPr : null);
+      const noPo = activeSummary
+        ? (activeSummary.purchasingNoPo || sp.purchasingNoPo || null)
+        : (sp.purchasingStatus === 'PO' ? sp.purchasingNoPo : null);
+      const linkRef = sp.linkReference || firstTracking?.linkReferences || null;
+
+      let pStatus = activeSummary ? activeSummary.purchasingStatus : (sp.purchasingStatus || 'NONE');
+      if (pStatus !== 'NONE' && pStatus !== 'PR' && pStatus !== 'PO') {
+        const upper = pStatus.toUpperCase();
+        if (upper === 'CANCELLED' || upper === 'REJECTED' || upper === 'RECEIVED' || upper === 'DONE') {
+          pStatus = 'NONE';
+        } else {
+          pStatus = noPo ? 'PO' : 'PR';
+        }
       }
 
       return {

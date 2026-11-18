@@ -24,6 +24,12 @@ type SearchAndFiltersProps = {
   setCardFilter: (val: CardFilterType) => void;
   scopedItems: TrackingItem[];
   checkMonthYear: (item: TrackingItem, isReceived: boolean) => boolean;
+  staleDays: number;
+  staleCount: number;
+  onlyStaleFilter: boolean;
+  setOnlyStaleFilter: (val: boolean) => void;
+  onBulkCloseAllStale: () => void;
+  actionLoading: string | null;
 };
 
 export const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
@@ -48,6 +54,12 @@ export const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
   setCardFilter,
   scopedItems,
   checkMonthYear,
+  staleDays,
+  staleCount,
+  onlyStaleFilter,
+  setOnlyStaleFilter,
+  onBulkCloseAllStale,
+  actionLoading,
 }) => {
   const counts = {
     ALL: scopedItems.filter((i) => {
@@ -208,6 +220,76 @@ export const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
             </button>
           ))}
         </div>
+
+        {(staleCount > 0 || onlyStaleFilter) && (
+          <div
+            style={{
+              gridColumn: 'span 6',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 10,
+              padding: '8px 12px',
+              borderRadius: 8,
+              background: onlyStaleFilter ? 'rgba(245, 158, 11, 0.14)' : 'rgba(245, 158, 11, 0.08)',
+              border: '1px solid rgba(245, 158, 11, 0.3)',
+            }}
+          >
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#fbbf24', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>🕸️</span>
+              <span>
+                Ditemukan {staleCount} PO/PR aktif berumur ≥ {staleDays} hari yang belum diterima.
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={() => {
+                  const next = !onlyStaleFilter;
+                  setOnlyStaleFilter(next);
+                  if (next) {
+                    setActiveTab('ALL');
+                    setCardFilter(null);
+                  }
+                }}
+                style={{
+                  fontSize: 10,
+                  fontWeight: 800,
+                  padding: '4px 10px',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  background: onlyStaleFilter ? '#f59e0b' : 'var(--sf3)',
+                  color: onlyStaleFilter ? '#111827' : '#fbbf24',
+                  border: '1px solid rgba(245, 158, 11, 0.4)',
+                }}
+              >
+                {onlyStaleFilter ? '✕ Tampilkan Semua Umur' : `🔍 Fokus PO Lama (${staleCount})`}
+              </button>
+              {staleCount > 0 && (
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  disabled={actionLoading !== null}
+                  onClick={onBulkCloseAllStale}
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 800,
+                    padding: '4px 10px',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    background: 'rgba(239, 68, 68, 0.15)',
+                    color: '#f87171',
+                    border: '1px solid rgba(239, 68, 68, 0.35)',
+                  }}
+                >
+                  📦 Tutup Semua ≥ {staleDays} Hari
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

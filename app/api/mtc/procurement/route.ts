@@ -2,6 +2,12 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireMtcEditor } from '@/lib/auth';
 import { ok, err, generateItemId } from '@/lib/utils';
+import {
+  buildRestoredFromArchiveJson,
+  getLocalPackMultiplier,
+  isManuallyArchived,
+} from '@/lib/mtc/procurement-utils';
+import { syncSparepartProcurement } from '@/lib/mtc/procurement-server';
 
 // GET /api/mtc/procurement
 export async function GET(req: NextRequest) {
@@ -12,11 +18,17 @@ export async function GET(req: NextRequest) {
 
   const whereClause: any = {};
   if (archivedParam === 'true') {
-    whereClause.statusPo = 'DONE';
-  } else if (archivedParam === 'false') {
     whereClause.OR = [
-      { statusPo: null },
-      { NOT: { statusPo: 'DONE' } },
+      { statusPo: 'DONE' },
+      { statusPr: 'RECEIVED' },
+      { statusPr: 'CANCELLED' },
+      { statusPr: 'REJECTED' },
+      { statusPo: 'CANCELLED' },
+    ];
+  } else if (archivedParam === 'false') {
+    whereClause.AND = [
+      { OR: [{ statusPo: null }, { NOT: { statusPo: { in: ['DONE', 'CANCELLED'] } } }] },
+      { NOT: { statusPr: { in: ['RECEIVED', 'CANCELLED', 'REJECTED'] } } },
     ];
   }
 
@@ -36,7 +48,6 @@ export async function GET(req: NextRequest) {
             linkReference: true,
             alasan: true,
             purchasingStatus: true,
-            odooNotes: true,
           },
         },
       },
@@ -98,94 +109,81 @@ export async function POST(req: NextRequest) {
       const match = sheetUrl.trim().match(/\/d\/([a-zA-Z0-9-_]+)/);
       finalSheetId = match ? match[1] : sheetUrl.trim();
     }
-    let finalSparepartId = sparepartId || null;
-    let spName = '';
-    let targetStatusPr = 'CONTINUE'; // Default status PR
-    let finalHarga = harga != null ? Number(harga) : null;
-    let finalVendor = vendor || null;
+    const tracking = await prisma.$transaction(async (tx) => {
+      let finalSparepartId = sparepartId || null;
+      let targetStatusPr = 'CONTINUE';
+      let finalHarga = harga != null ? Number(harga) : null;
+      let finalVendor = vendor || null;
 
-    if (isPengadaanBaru) {
-      // 1. Jalankan Penomoran ID Sparepart Baru secara otomatis
-      const newSpId = await generateItemId(prisma);
-      
-      const priceVal = harga != null ? Number(harga) : 0;
-      const initialStatus = priceVal > 0 ? 'READY_ODOO' : 'WAITING_PRICE';
+      if (isPengadaanBaru) {
+        const newSpId = await generateItemId(tx as any);
+        const priceVal = harga != null ? Number(harga) : 0;
+        const initialStatus = priceVal > 0 ? 'READY_ODOO' : 'WAITING_PRICE';
 
-      // 2. Buat Sparepart di database master berstatus WAITING_PRICE atau READY_ODOO
-      const newSp = await prisma.sparepart.create({
-        data: {
-          id: newSpId,
-          nama: originalName.trim(),
-          namaAlias: namaAlias?.trim() || null,
-          uom: 'Pcs',
-          harga: priceVal,
-          aktif: true,
-          purchasingStatus: initialStatus,
-          purchasingQty: Number(qty) || 0,
-          purchasingNoPr: nomorPr?.trim() || null,
-          linkReference: linkReferences || null,
-          alasan: alasan || reason || null,
-        }
-      });
-
-      finalSparepartId = newSpId;
-      spName = originalName.trim();
-      targetStatusPr = initialStatus;
-      finalHarga = priceVal;
-    } else if (finalSparepartId) {
-      // Repeat Order: Lock Harga dari Database & Set Status READY_ODOO
-      const sp = await prisma.sparepart.findUnique({
-        where: { id: finalSparepartId },
-        select: { nama: true, harga: true }
-      });
-      if (sp) {
-        spName = sp.nama;
-        finalHarga = Number(sp.harga) || 0;
-        
-        // Cari vendor terakhir dari riwayat pengadaan tim
-        const lastProc = await prisma.procurementTracking.findFirst({
-          where: { sparepartId: finalSparepartId, vendor: { not: null } },
-          orderBy: { tanggalList: 'desc' },
-          select: { vendor: true }
+        await tx.sparepart.create({
+          data: {
+            id: newSpId,
+            nama: originalName.trim(),
+            namaAlias: namaAlias?.trim() || null,
+            uom: 'Pcs',
+            harga: priceVal,
+            aktif: true,
+            purchasingStatus: 'PR',
+            purchasingQty: Number(qty) || 0,
+            purchasingNoPr: nomorPr?.trim() || null,
+            linkReference: linkReferences || null,
+            alasan: alasan || reason || null,
+          }
         });
-        finalVendor = lastProc?.vendor || finalVendor;
-      }
-      targetStatusPr = 'READY_ODOO';
 
-      // Update Sparepart status di database master
-      await prisma.sparepart.update({
-        where: { id: finalSparepartId },
-        data: {
-          purchasingStatus: 'READY_ODOO',
-          purchasingQty: Number(qty) || 0,
-          purchasingNoPr: nomorPr?.trim() || null,
+        finalSparepartId = newSpId;
+        targetStatusPr = initialStatus;
+        finalHarga = priceVal;
+      } else if (finalSparepartId) {
+        const sp = await tx.sparepart.findUnique({
+          where: { id: finalSparepartId },
+          select: { nama: true, harga: true }
+        });
+        if (sp) {
+          finalHarga = Number(sp.harga) || 0;
+          const lastProc = await tx.procurementTracking.findFirst({
+            where: { sparepartId: finalSparepartId, vendor: { not: null } },
+            orderBy: { tanggalList: 'desc' },
+            select: { vendor: true }
+          });
+          finalVendor = lastProc?.vendor || finalVendor;
         }
+        targetStatusPr = 'READY_ODOO';
+      }
+
+      const tDate = new Date();
+      const created = await tx.procurementTracking.create({
+        data: {
+          originalName: originalName.trim(),
+          sparepartId: finalSparepartId,
+          keterangan: keterangan || null,
+          penggunaanBulan: penggunaanBulan ? Number(penggunaanBulan) : null,
+          kontrak3Bulan: Boolean(kontrak3Bulan),
+          tanggalList: tDate,
+          qty: Number(qty),
+          productCategory: productCategory || null,
+          reason: reason || null,
+          urgency: urgency || 'Normal',
+          linkReferences: linkReferences || null,
+          nomorPr: nomorPr?.trim() || null,
+          statusPr: targetStatusPr,
+          isStocked: isStocked !== undefined ? Boolean(isStocked) : false,
+          harga: finalHarga,
+          vendor: finalVendor,
+          sheetId: finalSheetId,
+        },
       });
-    }
 
-    const tDate = new Date();
+      if (finalSparepartId) {
+        await syncSparepartProcurement(tx, finalSparepartId);
+      }
 
-    // 3. Simpan di Database lokal PostgreSQL
-    const tracking = await prisma.procurementTracking.create({
-      data: {
-        originalName: originalName.trim(),
-        sparepartId: finalSparepartId,
-        keterangan: keterangan || null,
-        penggunaanBulan: penggunaanBulan ? Number(penggunaanBulan) : null,
-        kontrak3Bulan: Boolean(kontrak3Bulan),
-        tanggalList: tDate,
-        qty: Number(qty),
-        productCategory: productCategory || null,
-        reason: reason || null,
-        urgency: urgency || 'Normal',
-        linkReferences: linkReferences || null,
-        nomorPr: nomorPr?.trim() || null,
-        statusPr: targetStatusPr,
-        isStocked: isStocked !== undefined ? Boolean(isStocked) : false,
-        harga: finalHarga,
-        vendor: finalVendor,
-        sheetId: finalSheetId,
-      },
+      return created;
     });
 
     return ok({
@@ -245,17 +243,46 @@ export async function PATCH(req: NextRequest) {
     let finalVendor = vendor !== undefined ? (vendor?.trim() || null) : undefined;
     let finalStatusPr = statusPr !== undefined ? statusPr : undefined;
 
-    // Jika sparepartId baru dihubungkan secara manual
+    // Jika sparepartId baru dihubungkan secara manual:
+    // Jangan menimpa harga PO/PR yang sudah ada di item pengadaan!
+    // Hanya gunakan harga master sparepart sebagai fallback jika item belum punya PO dan harganya masih 0/kosong.
     if (sparepartId && sparepartId !== existing.sparepartId) {
-      const sp = await prisma.sparepart.findUnique({
-        where: { id: sparepartId },
-        select: { nama: true, harga: true, lokasi: true },
-      });
-      if (sp) {
-        if (harga === undefined && Number(sp.harga) > 0) {
+      const hasExistingPrice = existing.harga !== null && existing.harga !== undefined && Number(existing.harga) > 0;
+      if (harga === undefined && !hasExistingPrice && !existing.nomorPo) {
+        const sp = await prisma.sparepart.findUnique({
+          where: { id: sparepartId },
+          select: { nama: true, harga: true, lokasi: true },
+        });
+        if (sp && Number(sp.harga) > 0) {
           finalHarga = Number(sp.harga);
         }
       }
+    }
+
+    let finalStatusPo: string | null | undefined = undefined;
+    if (finalStatusPr !== undefined) {
+      const upperStatus = String(finalStatusPr).toUpperCase();
+      if (upperStatus === 'RECEIVED') {
+        finalStatusPo = 'DONE';
+      } else if (upperStatus === 'CANCELLED' || upperStatus === 'REJECTED') {
+        finalStatusPo = 'CANCELLED';
+      } else if (upperStatus === 'PO') {
+        finalStatusPo = 'PO';
+      } else if (upperStatus === 'RFQ' || upperStatus === 'TO_APPROVE') {
+        finalStatusPo = upperStatus;
+      } else {
+        finalStatusPo = null;
+      }
+    }
+
+    let nextLinkedPartsJson = linkedPartsJson !== undefined ? (linkedPartsJson || null) : undefined;
+    if (
+      nextLinkedPartsJson === undefined &&
+      finalStatusPr !== undefined &&
+      finalStatusPo !== 'CANCELLED' &&
+      isManuallyArchived(existing.linkedPartsJson)
+    ) {
+      nextLinkedPartsJson = buildRestoredFromArchiveJson(existing.linkedPartsJson);
     }
 
     const updated = await prisma.procurementTracking.update({
@@ -275,10 +302,11 @@ export async function PATCH(req: NextRequest) {
         keterangan: keterangan !== undefined ? (keterangan || null) : undefined,
         reason: reason !== undefined ? (reason || null) : undefined,
         statusPr: finalStatusPr,
+        statusPo: finalStatusPo,
         odooNotes: odooNotes !== undefined ? (odooNotes || null) : undefined,
         sparepartId: sparepartId !== undefined ? (sparepartId || null) : undefined,
         isStocked: isStocked !== undefined ? Boolean(isStocked) : (sparepartId ? true : undefined),
-        linkedPartsJson: linkedPartsJson !== undefined ? (linkedPartsJson || null) : undefined,
+        linkedPartsJson: nextLinkedPartsJson,
       },
     });
 
@@ -323,23 +351,19 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
-    // MTC PRO: Propagate status, nomor PR/PO, price, and chatter notes to Sparepart master database tableable
+    // MTC PRO: Recalculate purchasing status, purchasingQty, PR/PO numbers, and price on linked Sparepart master
     if (updated.sparepartId) {
-      const spUpdateData: any = {};
-      if (updated.statusPr) spUpdateData.purchasingStatus = updated.statusPr;
-      if (updated.nomorPr !== undefined) spUpdateData.purchasingNoPr = updated.nomorPr;
-      if (updated.nomorPo !== undefined) spUpdateData.purchasingNoPo = updated.nomorPo;
-      if (updated.odooNotes !== undefined) spUpdateData.odooNotes = updated.odooNotes;
-      if (updated.harga !== null && updated.harga !== undefined) {
-        spUpdateData.harga = updated.harga;
-      }
-
-      if (Object.keys(spUpdateData).length > 0) {
-        await prisma.sparepart.update({
-          where: { id: updated.sparepartId },
-          data: spUpdateData
-        });
-      }
+      const itemHarga = Number(updated.harga) || 0;
+      const packM = getLocalPackMultiplier(updated.linkedPartsJson);
+      const unitPrice = packM > 1 ? Number((itemHarga / packM).toFixed(2)) : itemHarga;
+      await syncSparepartProcurement(prisma, updated.sparepartId, {
+        odooNotes: updated.odooNotes,
+        candidateHarga: unitPrice,
+        allowHargaUpdate: unitPrice > 0 && !updated.tanggalTerima,
+      });
+    }
+    if (existing.sparepartId && existing.sparepartId !== updated.sparepartId) {
+      await syncSparepartProcurement(prisma, existing.sparepartId);
     }
 
     return ok({
@@ -368,9 +392,16 @@ export async function DELETE(req: NextRequest) {
     }
 
     if (id) {
+      const existing = await prisma.procurementTracking.findUnique({
+        where: { id: Number(id) },
+        select: { id: true, sparepartId: true },
+      });
       await prisma.procurementTracking.delete({
         where: { id: Number(id) }
       });
+      if (existing?.sparepartId) {
+        await syncSparepartProcurement(prisma, existing.sparepartId);
+      }
       return ok({ msg: 'Item berhasil dihapus' });
     }
 

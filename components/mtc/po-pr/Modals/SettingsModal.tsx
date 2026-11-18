@@ -11,6 +11,10 @@ type SettingsModalProps = {
   setTempOdooUid: (val: string) => void;
   tempOdooSessionId: string;
   setTempOdooSessionId: (val: string) => void;
+  tempStaleDays: string;
+  setTempStaleDays: (val: string) => void;
+  tempOdooMinDate: string;
+  setTempOdooMinDate: (val: string) => void;
   handleSaveSettings: (e: React.FormEvent) => void;
   manualSyncStatus: { type: 'success' | 'error'; msg: string } | null;
   actionLoading: string | null;
@@ -28,6 +32,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   setTempOdooUid,
   tempOdooSessionId,
   setTempOdooSessionId,
+  tempStaleDays,
+  setTempStaleDays,
+  tempOdooMinDate,
+  setTempOdooMinDate,
   handleSaveSettings,
   manualSyncStatus,
   actionLoading,
@@ -146,6 +154,47 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 value={tempOdooPassword}
                 onChange={(e) => setTempOdooPassword(e.target.value)}
               />
+            </div>
+
+            <div style={{ borderTop: '1px dashed var(--br)', margin: '16px 0' }} />
+
+            <div style={{ fontWeight: 800, fontSize: 12, color: 'var(--pur)', marginBottom: 10 }}>
+              🕸️ ATURAN FILTER PO/PR LAMA & CUT-OFF SYNC
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+              <div className="form-group">
+                <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>
+                  Batas Umur PO/PR Lama (Hari)
+                </label>
+                <input
+                  type="number"
+                  min={7}
+                  max={730}
+                  className="form-input"
+                  value={tempStaleDays}
+                  onChange={(e) => setTempStaleDays(e.target.value)}
+                  placeholder="60"
+                />
+                <div style={{ fontSize: 10, color: 'var(--mut)', marginTop: 4 }}>
+                  Tandai item aktif belum datang melebihi batas hari ini.
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" style={{ fontWeight: 700, fontSize: 11 }}>
+                  Cut-off Tanggal Sync (Opsional)
+                </label>
+                <input
+                  type="date"
+                  className="form-input"
+                  value={tempOdooMinDate}
+                  onChange={(e) => setTempOdooMinDate(e.target.value)}
+                />
+                <div style={{ fontSize: 10, color: 'var(--mut)', marginTop: 4 }}>
+                  Abaikan impor dokumen baru Odoo/Sheets sebelum tanggal ini.
+                </div>
+              </div>
             </div>
 
             {manualSyncStatus && (

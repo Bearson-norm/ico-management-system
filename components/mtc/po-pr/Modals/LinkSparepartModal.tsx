@@ -1,5 +1,6 @@
 import React from 'react';
 import { TrackingItem } from '@/types/mtc/procurement';
+import { fmtRupiah } from '@/lib/mtc/procurement-utils';
 
 type LinkSparepartModalProps = {
   showLinkModal: boolean;
@@ -126,6 +127,16 @@ export const LinkSparepartModal: React.FC<LinkSparepartModalProps> = ({
             </div>
             <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 4 }}>
               Qty: {linkingItem.qty} Pcs · Kategori: {linkingItem.productCategory || 'Sparepart'}
+              {Number(linkingItem.harga) > 0 && (
+                <>
+                  {' '}
+                  · Subtotal:{' '}
+                  <strong style={{ color: 'var(--tx)' }}>
+                    {fmtRupiah(Math.round(Number(linkingItem.harga) * (linkingItem.qty || 1)))}
+                  </strong>{' '}
+                  (@ {fmtRupiah(Math.round(Number(linkingItem.harga)))}/Pcs)
+                </>
+              )}
             </div>
           </div>
 
@@ -214,6 +225,7 @@ export const LinkSparepartModal: React.FC<LinkSparepartModalProps> = ({
                       <div style={{ fontWeight: 700, fontSize: 12 }}>{sp.nama}</div>
                       <div style={{ fontSize: 10, color: 'var(--tx3)', marginTop: 2 }}>
                         ID: {sp.id} · Lokasi: {sp.lokasi || '—'} · UOM: {sp.uom}
+                        {Number(sp.harga) > 0 && ` · Harga Master: ${fmtRupiah(Number(sp.harga))}`}
                       </div>
                     </div>
 

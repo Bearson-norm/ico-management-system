@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireMtcEditor } from '@/lib/auth';
 import { ok, err, generateItemId } from '@/lib/utils';
+import { syncSparepartProcurement } from '@/lib/mtc/procurement-server';
 
 // POST /api/mtc/procurement/batch
 export async function POST(req: NextRequest) {
@@ -33,6 +34,7 @@ export async function POST(req: NextRequest) {
 
     // 1. Simpan semua data pengadaan ke database lokal PostgreSQL dalam satu transaksi Prisma
     await prisma.$transaction(async (tx) => {
+      const touchedSparepartIds = new Set<string>();
       for (const item of items) {
         if (!item.originalName?.trim()) {
           throw new Error('Nama barang asli pada salah satu item wajib diisi');
@@ -47,13 +49,11 @@ export async function POST(req: NextRequest) {
         let finalVendor = item.vendor || null;
 
         if (item.isPengadaanBaru) {
-          // A. Jalankan Penomoran ID Sparepart Baru secara otomatis di dalam transaksi
           const newSpId = await generateItemId(tx as any);
           const priceVal = item.harga ? Number(item.harga) : 0;
           const initialStatus = priceVal > 0 ? 'READY_ODOO' : 'WAITING_PRICE';
 
-          // B. Buat Sparepart di database master berstatus WAITING_PRICE atau READY_ODOO
-          const newSp = await tx.sparepart.create({
+          await tx.sparepart.create({
             data: {
               id: newSpId,
               nama: item.originalName.trim(),
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
               uom: 'Pcs',
               harga: priceVal,
               aktif: true,
-              purchasingStatus: initialStatus,
+              purchasingStatus: 'PR',
               purchasingQty: Number(item.qty) || 0,
               purchasingNoPr: nomorPr?.trim() || null,
               linkReference: item.linkReferences || null,
@@ -73,15 +73,12 @@ export async function POST(req: NextRequest) {
           targetStatusPr = initialStatus;
           finalHarga = priceVal;
         } else if (finalSparepartId) {
-          // Repeat Order: Lock Harga dari Database & Set Status READY_ODOO
           const sp = await tx.sparepart.findUnique({
             where: { id: finalSparepartId },
             select: { nama: true, harga: true }
           });
           if (sp) {
             finalHarga = Number(sp.harga) || 0;
-            
-            // Cari vendor terakhir dari riwayat pengadaan tim
             const lastProc = await tx.procurementTracking.findFirst({
               where: { sparepartId: finalSparepartId, vendor: { not: null } },
               orderBy: { tanggalList: 'desc' },
@@ -90,16 +87,6 @@ export async function POST(req: NextRequest) {
             finalVendor = lastProc?.vendor || finalVendor;
           }
           targetStatusPr = 'READY_ODOO';
-
-          // Update Sparepart status di database master
-          await tx.sparepart.update({
-            where: { id: finalSparepartId },
-            data: {
-              purchasingStatus: 'READY_ODOO',
-              purchasingQty: Number(item.qty) || 0,
-              purchasingNoPr: nomorPr?.trim() || null,
-            }
-          });
         }
 
         // Auto READY_ODOO logic: jika ada harga > 0, otomatis READY_ODOO
@@ -129,6 +116,11 @@ export async function POST(req: NextRequest) {
           },
         });
         createdRecords.push(created);
+        if (finalSparepartId) touchedSparepartIds.add(finalSparepartId);
+      }
+
+      for (const spId of touchedSparepartIds) {
+        await syncSparepartProcurement(tx, spId);
       }
     });
 
