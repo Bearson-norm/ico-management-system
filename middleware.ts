@@ -54,7 +54,10 @@ export default async function middleware(req: NextRequest) {
 
   if (pathname.startsWith('/api/mtc')) {
     // Stok viewer & Trend analytics publik (tanpa login), sama seperti V2 /api/stock
-    if (req.method === 'GET' && (pathname === '/api/mtc/stock' || pathname === '/api/mtc/trend')) {
+    if (
+      (req.method === 'GET' && (pathname === '/api/mtc/stock' || pathname === '/api/mtc/trend')) ||
+      (req.method === 'OPTIONS' && pathname === '/api/mtc/stock')
+    ) {
       return NextResponse.next();
     }
     

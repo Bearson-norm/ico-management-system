@@ -1,6 +1,5 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { ok } from '@/lib/utils';
 import { deriveSparepartProcurementSummary } from '@/lib/mtc/procurement-utils';
 import { PENDING_ARRIVAL_WHERE } from '@/lib/mtc/procurement-server';
 import {
@@ -8,6 +7,16 @@ import {
   computeSparepartCurrentStock,
   NOT_HISTORI_SHEETS_WHERE,
 } from '@/lib/mtc/stock-utils';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
+}
 
 // GET /api/mtc/stock — publik (viewer tanpa login), sama seperti V2
 export async function GET(req: NextRequest) {
@@ -130,5 +139,5 @@ export async function GET(req: NextRequest) {
       return sp.status === status;
     });
 
-  return ok(result);
+  return NextResponse.json({ success: true, data: result }, { status: 200, headers: corsHeaders });
 }
