@@ -1,6 +1,16 @@
 'use client';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import {
+  compareParsedSLOC,
+  compareRackSegment,
+  countDistinctKolom,
+  getKolomGroupKey,
+  getRakGroupKey,
+  parseSLOC,
+  type ParsedSLOC,
+} from '@/lib/sloc';
+
 type StockItem = {
   id: string; nama: string; kategori: string; lokasi: string;
   uom: string; harga: number; minQty: number; maxQty?: number | null;
@@ -16,19 +26,12 @@ type StockItem = {
   purchasingNoPo?: string | null;
   linkReference?: string | null;
   mesins?: { id: number, nama: string }[];
-  _parsed?: { rak: string; kolom: string; level: string; bin: string; valid: boolean };
+  _parsed?: ParsedSLOC;
 };
-
-// Parse SLOC "1-A-1-1" → { rak:'1', kolom:'A', level:'1', bin:'1' }
-function parseSLOC(sloc: string) {
-  const p = (sloc || '').trim().split('-');
-  if (p.length >= 4) return { rak: p[0], kolom: p[1], level: p[2], bin: p[3], valid: true };
-  return { rak: sloc || '?', kolom: '', level: '', bin: '', valid: false };
-}
 
 // ── Chip lokasi visual — langsung terbaca tanpa decode manual ──────────────
 type LocationChipProps = {
-  parsed: ReturnType<typeof parseSLOC>;
+  parsed: ParsedSLOC;
   size?: 'sm' | 'md';     // sm = dalam list, md = search result
   hideRak?: boolean;       // dalam detail rak, tidak perlu ulang tampilkan Rak
 };
@@ -41,11 +44,15 @@ function LocationChip({ parsed, size = 'sm', hideRak = false }: LocationChipProp
     : { fontSize: 11, labelSize: 8, padding: '4px 8px', gap: 4 };
 
   const segments = [
-    ...(!hideRak ? [{ icon: '🏗️', label: 'RAK', value: parsed.rak, color: 'var(--pur)', bg: 'var(--pur-d)' }] : []),
-    { icon: '📂', label: 'KOLOM', value: parsed.kolom, color: 'var(--blu)', bg: 'var(--blu-d)' },
-    { icon: '≡',  label: 'BARIS', value: parsed.level, color: 'var(--grn)', bg: 'var(--grn-d)' },
-    { icon: '□',  label: 'BIN',   value: parsed.bin,   color: 'var(--ylw)', bg: 'var(--ylw-d)' },
+    ...(!hideRak && parsed.rak ? [{ icon: '🏗️', label: 'RAK', value: parsed.rak, color: 'var(--pur)', bg: 'var(--pur-d)' }] : []),
+    ...(parsed.kolom ? [{ icon: '📂', label: 'KOLOM', value: parsed.kolom, color: 'var(--blu)', bg: 'var(--blu-d)' }] : []),
+    ...(parsed.level ? [{ icon: '≡',  label: 'BARIS', value: parsed.level, color: 'var(--grn)', bg: 'var(--grn-d)' }] : []),
+    ...(parsed.bin   ? [{ icon: '□',  label: 'BIN',   value: parsed.bin,   color: 'var(--ylw)', bg: 'var(--ylw-d)' }] : []),
   ];
+
+  if (segments.length === 0) {
+    return <span style={{ fontSize: 11, color: 'var(--tx3)' }}>Rak {parsed.rak}</span>;
+  }
 
   return (
     <div style={{ display: 'inline-flex', alignItems: 'center', gap: seg.gap, flexWrap: 'wrap' }}>
@@ -81,13 +88,6 @@ function MovementClassBadge({ movementClass }: { movementClass?: 'slow' | 'fast'
   return null;
 }
 
-function compareRackSegment(a: string, b: string) {
-  const na = parseInt(a, 10);
-  const nb = parseInt(b, 10);
-  if (!Number.isNaN(na) && !Number.isNaN(nb) && na !== nb) return na - nb;
-  return a.localeCompare(b, 'id', { numeric: true, sensitivity: 'base' });
-}
-
 export type StatusFilter = 'all' | 'kritis' | 'low' | 'habis' | 'safe' | 'overstock' | 'pr' | 'po';
 
 function parseStatusFilter(raw: string | null): StatusFilter {
@@ -112,16 +112,8 @@ function matchesStatusFilter(item: StockItem, filter: StatusFilter): boolean {
 }
 
 function compareByRackOrder(a: StockItem, b: StockItem) {
-  const pA = a._parsed;
-  const pB = b._parsed;
-  if (!pA?.valid && !pB?.valid) return a.lokasi.localeCompare(b.lokasi, 'id');
-  if (!pA?.valid) return 1;
-  if (!pB?.valid) return -1;
   return (
-    compareRackSegment(pA.rak, pB.rak) ||
-    compareRackSegment(pA.kolom, pB.kolom) ||
-    compareRackSegment(pA.level, pB.level) ||
-    compareRackSegment(pA.bin, pB.bin) ||
+    compareParsedSLOC(a._parsed, b._parsed, a.lokasi, b.lokasi) ||
     a.nama.localeCompare(b.nama, 'id')
   );
 }
@@ -221,19 +213,24 @@ export default function StockViewer({ stockApiUrl = '/api/mtc/stock' }: { stockA
   const raks = useMemo(() => {
     const map = new Map<string, StockItem[]>();
     for (const item of filteredItems) {
-      const key = item._parsed?.valid ? `Rak ${item._parsed.rak}` : (item.lokasi || '(Tanpa Lokasi)');
+      const key = getRakGroupKey(item.lokasi, item._parsed);
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(item);
     }
     return Array.from(map.entries()).map(([rak, items]) => ({
       rak,
       items,
+      kolomCount: countDistinctKolom(items),
       total: items.length,
       habis: items.filter(i => i.status === 'habis').length,
       low:   items.filter(i => i.status === 'low').length,
       overstock: items.filter(i => i.status === 'overstock').length,
       safe:  items.filter(i => i.status === 'safe').length,
-    })).sort((a, b) => (b.habis * 2 + b.low) - (a.habis * 2 + a.low));
+    })).sort((a, b) => {
+      const priorityDiff = (b.habis * 2 + b.low) - (a.habis * 2 + a.low);
+      if (priorityDiff !== 0) return priorityDiff;
+      return compareParsedSLOC(a.items[0]?._parsed, b.items[0]?._parsed, a.rak, b.rak);
+    });
   }, [filteredItems]);
 
   // Search results (semua rak) dari allItems langsung
@@ -257,7 +254,7 @@ export default function StockViewer({ stockApiUrl = '/api/mtc/stock' }: { stockA
     if (!activeData) return new Map<string, StockItem[]>();
     const map = new Map<string, StockItem[]>();
     for (const item of activeData.items) {
-      const key = item._parsed?.valid ? `Kolom ${item._parsed.kolom}` : 'Lainnya';
+      const key = getKolomGroupKey(item._parsed);
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(item);
     }
@@ -282,7 +279,10 @@ export default function StockViewer({ stockApiUrl = '/api/mtc/stock' }: { stockA
                   ← Semua Rak
                 </button>
                 <div className="page-title">📦 {activeRak}</div>
-                <div className="page-sub">{activeData?.total} item · {kolomGroups.size} kolom</div>
+                <div className="page-sub">
+                  {activeData?.total} item
+                  {activeData && activeData.kolomCount > 0 ? ` · ${activeData.kolomCount} kolom` : ''}
+                </div>
               </>
             ) : (
               <>
@@ -523,7 +523,11 @@ export default function StockViewer({ stockApiUrl = '/api/mtc/stock' }: { stockA
             {/* 2-column grid per KOLOM */}
             <div className="stock-kolom-grid">
               {Array.from(kolomGroups.entries())
-                .sort(([a], [b]) => a.localeCompare(b))
+                .sort(([a], [b]) => {
+                  if (a === 'Lainnya') return 1;
+                  if (b === 'Lainnya') return -1;
+                  return a.localeCompare(b, 'id', { numeric: true, sensitivity: 'base' });
+                })
                 .map(([kolom, items]) => (
                   <KolomCard key={kolom} kolom={kolom} items={items} />
                 ))}
@@ -572,9 +576,7 @@ export default function StockViewer({ stockApiUrl = '/api/mtc/stock' }: { stockA
                       </div>
                       <div style={{ fontSize: 20, fontWeight: 800 }}>📦 {r.rak}</div>
                       <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 2 }}>
-                        {r.items[0]?._parsed?.valid
-                          ? `${new Set(r.items.map(i => i._parsed?.kolom)).size} Kolom`
-                          : `${r.total} item`}
+                        {r.kolomCount > 0 ? `${r.kolomCount} Kolom` : `${r.total} item`}
                       </div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
@@ -667,10 +669,11 @@ function KolomCard({ kolom, items }: { kolom: string; items: StockItem[] }) {
   const sorted = [...items].sort((a, b) => {
     const score = (i: StockItem) => i.status === 'habis' ? 3 : i.status === 'low' ? 2 : i.status === 'overstock' ? 1 : 0;
     if (score(b) !== score(a)) return score(b) - score(a);
-    // Sort by Level then Bin
-    const lA = a._parsed?.level ?? ''; const bA = a._parsed?.bin ?? '';
-    const lB = b._parsed?.level ?? ''; const bB = b._parsed?.bin ?? '';
-    return (lA + bA).localeCompare(lB + bB);
+    return (
+      compareRackSegment(a._parsed?.level ?? '', b._parsed?.level ?? '') ||
+      compareRackSegment(a._parsed?.bin ?? '', b._parsed?.bin ?? '') ||
+      a.nama.localeCompare(b.nama, 'id')
+    );
   });
 
   const habis = items.filter(i => i.status === 'habis').length;
@@ -688,7 +691,7 @@ function KolomCard({ kolom, items }: { kolom: string; items: StockItem[] }) {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontWeight: 800, fontSize: 16,
           }}>
-            {kolom.replace('Kolom ', '')}
+            {kolom === 'Lainnya' ? '—' : kolom.replace('Kolom ', '')}
           </div>
           <div>
             <div style={{ fontWeight: 700 }}>{kolom}</div>
@@ -705,8 +708,6 @@ function KolomCard({ kolom, items }: { kolom: string; items: StockItem[] }) {
       {/* Daftar item */}
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         {sorted.map((item, idx) => {
-          const p = item._parsed;
-          const lokLabel = p?.valid ? `Lvl ${p.level} · Bin ${p.bin}` : item.lokasi;
           const stockColor = item.status === 'safe' ? 'var(--grn)' : item.status === 'low' ? 'var(--ylw)' : item.status === 'overstock' ? 'var(--pur)' : 'var(--red)';
 
           return (
